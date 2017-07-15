@@ -1,4 +1,4 @@
-# テーブルのダンプ blocker
+# blocker
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `blocker`;
@@ -45,7 +45,7 @@ VALUES
 (9, 3, 'port', '50051','2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ customer
+# customer
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `customer`;
@@ -64,7 +64,7 @@ VALUES
 (2,'localhost','2017-04-13 13:44:34','2017-04-13 13:44:34'),
 (3,'local-host','2017-04-13 13:44:34','2017-04-13 13:44:34');
 
-# テーブルのダンプ customer_common_name
+# customer_common_name
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `customer_common_name`;
@@ -86,7 +86,7 @@ VALUES
 (2,2,'client.sample.example.com','2017-04-13 13:44:34','2017-04-13 13:44:34'),
 (3,3,'local-host', '2017-04-13 13:44:34','2017-04-13 13:44:34');
 
-# テーブルのダンプ identifier
+# identifier
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `identifier`;
@@ -102,7 +102,7 @@ CREATE TABLE `identifier` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-# テーブルのダンプ login_profile
+# login_profile
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `login_profile`;
@@ -125,7 +125,7 @@ VALUES
   (2,2,'ssh','go','receiver192.168.10.30','2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ parameter_value
+# parameter_value
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `parameter_value`;
@@ -152,7 +152,7 @@ VALUES
 (6,0,0,2,'FQDN','client.sample.example.com',0,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ port_range
+# port_range
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `port_range`;
@@ -174,7 +174,7 @@ VALUES
   (2,0,2,10000,65535,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ prefix
+# prefix
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `prefix`;
@@ -210,7 +210,7 @@ VALUES
 (15,0,0,2,0,'TARGET_PREFIX','2002:db8:6402::',64,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ mitigation_scope
+# mitigation_scope
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `mitigation_scope`;
@@ -231,7 +231,7 @@ VALUES
   (2,128,12333,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ signal_session_configuration
+# signal_session_configuration
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `signal_session_configuration`;
@@ -252,7 +252,7 @@ CREATE TABLE `signal_session_configuration` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-# テーブルのダンプ protection
+# protection
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `protection`;
@@ -277,7 +277,7 @@ CREATE TABLE `protection` (
   DEFAULT CHARSET = utf8;
 
 
-# テーブルのダンプ protection_parameter
+# protection_parameter
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `protection_parameter`;
@@ -293,7 +293,7 @@ CREATE TABLE `protection_parameter` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-# テーブルのダンプ protection_status
+# protection_status
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `protection_status`;
@@ -310,7 +310,7 @@ CREATE TABLE `protection_status` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-# テーブルのダンプ throughput_data
+# throughput_data
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `throughput_data`;
@@ -325,7 +325,7 @@ CREATE TABLE `throughput_data` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-# テーブルのダンプ access_control_list
+# access_control_list
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `access_control_list`;
@@ -342,7 +342,7 @@ CREATE TABLE `access_control_list` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-# テーブルのダンプ access_control_list_entry
+# access_control_list_entry
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `access_control_list_entry`;
@@ -358,7 +358,7 @@ CREATE TABLE `access_control_list_entry` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-# テーブルのダンプ acl_rule_action
+# acl_rule_action
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `acl_rule_action`;

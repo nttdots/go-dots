@@ -151,7 +151,7 @@ func (g *GoBgpRtbhReceiver) ExecuteProtection(p Protection) (err error) {
 	return
 
 	/*
-	 * BGP_ROLLBACK 未実装
+	 * TODO: BGP_ROLLBACK action
 	 */
 BGP_ROLLBACK:
 

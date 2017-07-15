@@ -1,4 +1,4 @@
-# テーブルのダンプ blocker
+# blocker
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `blocker`;
@@ -22,7 +22,7 @@ VALUES
   (100, 'GoBGP-RTBH',  5, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 
-# テーブルのダンプ blocker_parameters
+# blocker_parameters
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `blocker_parameter`;
@@ -53,7 +53,7 @@ VALUES
   (12, 100, 'port', '50056', '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 
-# テーブルのダンプ customer
+# customer
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `customer`;
@@ -73,7 +73,7 @@ VALUES
   (128,'client.sample.example.com','2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ customer_common_name
+# customer_common_name
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `customer_common_name`;
@@ -96,7 +96,7 @@ VALUES
   (3,128,'client.sample.example.com','2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ identifier
+# identifier
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `identifier`;
@@ -112,7 +112,7 @@ CREATE TABLE `identifier` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-# テーブルのダンプ login_profile
+# login_profile
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `login_profile`;
@@ -137,7 +137,7 @@ VALUES
   (4,100,'ssh','go','receiver192.168.100.40','2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ parameter_value
+# parameter_value
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `parameter_value`;
@@ -164,7 +164,7 @@ VALUES
   (5,0,0,2,'FQDN','client.sample.example.com',0,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ port_range
+# port_range
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `port_range`;
@@ -185,7 +185,7 @@ VALUES
   (1,0,1,10000,40000,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
   (2,0,2,10000,65535,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
-# テーブルのダンプ prefix
+# prefix
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `prefix`;
@@ -222,7 +222,7 @@ VALUES
   (13,0,0,2,0,'TARGET_PREFIX','2002:db8:6402::',64,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ mitigation_scope
+# mitigation_scope
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `mitigation_scope`;
@@ -243,7 +243,7 @@ VALUES
   (2,128,12333,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
-# テーブルのダンプ signal_session_configuration
+# signal_session_configuration
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `signal_session_configuration`;
@@ -264,7 +264,7 @@ CREATE TABLE `signal_session_configuration` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
-# テーブルのダンプ protection
+# protection
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `protection`;
@@ -293,7 +293,7 @@ VALUES
 (100, 1, false, 'RTBH', 1, null, null, null, 1, 2, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
 (101, 2, false, 'RTBH', 1, null, null, null, 3, 4, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
-# テーブルのダンプ protection_parameter
+# protection_parameter
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `protection_parameter`;
@@ -315,7 +315,7 @@ VALUES
 (3, 101, 'customerId', '10', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
 (4, 101, 'target', '192.168.241.0', '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
-# テーブルのダンプ protection_status
+# protection_status
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `protection_status`;
@@ -338,7 +338,7 @@ VALUES
 (3, 0, 0, 5, 6, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
 (4, 0, 0, 7, 8, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
-# テーブルのダンプ throughput_data
+# throughput_data
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `throughput_data`;
@@ -363,7 +363,7 @@ values
 (7, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
 (8, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
-# テーブルのダンプ access_control_list
+# access_control_list
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `access_control_list`;
@@ -383,7 +383,7 @@ insert into access_control_list(id, customer_id, name, type, created, updated)
 values
 (1, 127, 'abc', 'abc', '2017-06-13 12:00:00', '2017-06-14 15:00:00');
 
-# テーブルのダンプ access_control_list_entry
+# access_control_list_entry
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `access_control_list_entry`;
@@ -402,7 +402,7 @@ insert into access_control_list_entry(id, access_control_list_id, rule_name, cre
 VALUES
 (1, 1, 'abc', '2017-06-13 12:00:00', '2017-06-14 15:00:00');
 
-# テーブルのダンプ acl_rule_action
+# acl_rule_action
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `acl_rule_action`;

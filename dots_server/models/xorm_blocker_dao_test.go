@@ -264,7 +264,7 @@ func TestGetBlockerParameters(t *testing.T) {
 }
 
 func TestDeleteBlocker(t *testing.T) {
-	// 事前チェック
+	// checking the pre-condition
 	blocker, err := models.GetBlockerById(100)
 	if err != nil {
 		t.Errorf("get blocker err: %s", err)
@@ -281,14 +281,14 @@ func TestDeleteBlocker(t *testing.T) {
 		return
 	}
 
-	// 削除
+	// Test Action: Deleting the Blocker
 	err = models.DeleteBlockerById(100)
 	if err != nil {
 		t.Errorf("delete blocker err: %s", err)
 		return
 	}
 
-	// 事後チェック
+	// checking the post-condition
 	blocker, err = models.GetBlockerById(100)
 	if err != nil {
 		t.Errorf("get blocker err: %s", err)
