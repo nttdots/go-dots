@@ -7,21 +7,21 @@ import (
 
 // ---server socket
 /*
-ネットワーク待ち受けリスナのインターフェース
+ * Network Listener Interface
  */
 type DotsNetworkListener interface {
 	Close()
 }
 
 /*
-ネットワーク待ち受けリスナのファクトリインターフェース
+ * Network Listener Factory Interface
  */
 type ListenerFactory interface {
 	CreateListener(address string, workerCh chan net.Conn, errorCh chan error) (DotsNetworkListener, error)
 }
 
 /*
-DTLSを使うリスナのためのファクトリ
+ * DTLS Network Listener Factory Interface
  */
 type DTLSListenerFactory struct {
 	caCertFile     string

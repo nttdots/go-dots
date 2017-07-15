@@ -15,7 +15,7 @@ func accessControlListEntrySampleDataCreate() {
 	testUpdAccessControlListEntry = models.AccessControlListEntry{}
 
 	// matches create test data
-	soruceIpv4Network, _ := models.NewPrefix("10.10.10.1/24")
+	sourceIpv4Network, _ := models.NewPrefix("10.10.10.1/24")
 	destinationIpv4Network, _ := models.NewPrefix("10.10.10.2/24")
 
 	testAccessControlListEntry.AclName = "aclname1"
@@ -24,7 +24,7 @@ func accessControlListEntrySampleDataCreate() {
 		Ace: []models.Ace{{
 			RuleName: "rule1",
 			Matches: &models.Matches{
-				SourceIpv4Network:      soruceIpv4Network,
+				SourceIpv4Network:      sourceIpv4Network,
 				DestinationIpv4Network: destinationIpv4Network,
 			},
 			Actions: &models.Actions{
