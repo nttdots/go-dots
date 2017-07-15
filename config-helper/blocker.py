@@ -2,43 +2,44 @@
 import argparse
 import yaml
 import MySQLdb
-import datetime
+from datetime import datetime
 from collections import defaultdict
 
-
-def getBlocker(blocker_id, cur):
-  blockers = defaultdict(list)
-
+def getBlockerIds(cur):
   # get existing blocker_id
   cur.execute("select id from blocker")
   ids = [row[0] for row in cur]
-  if blocker_id and blocker_id in ids:
-    ids = [blocker_id]
-  else:
-    print("existing blocker_id:", ids)
+  return ids
 
-  # get each blocker infomation from blocker and blocker_parameter
-  for i in ids:
-    d={}
-    # get blocker
-    command = "select type, capacity from blocker where id=%d" % i
-    cur.execute(command)
-    t, c = cur.fetchone()
-    d['id'] = i
-    d['type'] = t
-    d['capacity'] = c
+def getBlocker(i, cur):
+  d={}
+  # get blocker
+  cur.execute("select type, capacity from blocker where id=%d" % i)
+  t, c = cur.fetchone()
+  d['id'] = i
+  d['type'] = t
+  d['capacity'] = c
 
-    # get blocker_parameter
-    command = "select `key`, value from blocker_parameter where blocker_id=%d" % i
-    cur.execute(command)
-    for row in cur:
-      k, v = row
-      d[k] = v
-    blockers['blocker'].append(d)
-  return blockers
- 
+  # get blocker_parameter
+  cur.execute("select `key`, value from blocker_parameter where blocker_id=%d" % i)
+  for row in cur:
+    k, v = row
+    d[k] = v
+  return d
+
+def setBlocker(d, cur):
+  # set blocker
+  t = datetime.now()
+  cur.execute("insert into blocker values(%s, %s, %s, %s, %s, %s)", (d['id'], d['type'], d['capacity'], 0, t, t))
+
+  # set blocker_parameter
+  for k in ['nextHop', 'host', 'port']:
+    cur.execute("insert into blocker_parameter values(%s, %s, %s, %s, %s, %s)", (0, d['id'], k, d[k], t, t))
+  conn.commit()
 
 
+def printYamlDump(d):
+  print(yaml.dump(d, default_flow_style=False))
 
 if __name__ == "__main__":
   # get command line parameter
@@ -59,9 +60,29 @@ if __name__ == "__main__":
 
     print(args)
 
+    ids = getBlockerIds(cur)
+    i = int(args.id)
+
     if args.method == "get":
-      b = getBlocker(int(args.id), cur)
-      print(yaml.dump(dict(b), default_flow_style=False))
+      if i in ids: 
+        b = [ getBlocker(i, cur) ]
+      elif ids:
+        b = [ getBlocker(i, cur) for i in ids]
+      blockers = {'blocker': b}
+      printYamlDump(blockers)
+
+    elif args.method == "set":
+      with open(args.filename, 'r') as f:
+        try:
+          blockers = yaml.load(f)
+        except yaml.YAMLError as err:
+          print(err)
+      for d in blockers['blocker']:
+        if d['id'] not in ids:
+          setBlocker(d, cur)
+        else:
+          print("Duplicate id entry.")
+          printYamlDump(d)
 
   finally:
     conn.close()
