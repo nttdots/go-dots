@@ -23,9 +23,9 @@
     
     [runtime: some Go executables broken with macOS 10.12.4 / Xcode 8.3 but fine with Xcode 8.2 ](https://github.com/golang/go/issues/19734)
     
-## Dots-go
+## go-dots
 
-To install dots-go source and command line program, use the following:
+To install go-dots source and command line program, use the following:
 
     $ go get -u github.com/nttdots/go-dots/...
 
