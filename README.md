@@ -62,6 +62,12 @@ Upon receiving CoAP messages, a dots_server first find the appropriate message c
 
 Then the server retrieves mitigation scopes contained in the received mitigation request message. Again the dots_server validate the mitigation scopes to determine whether the customer which issued the request has the valid privilege for the mitigation operations. If the validation is successfully completed, the server select a blocker for the mitigation and execute the mitigation.
 
+### Server Configuration
+
+Server Configuration is done by the system configuration file and the database setup. The system configuration file is specified via '-config' option when the 'dots_server' is invoked. The sample configuration files are located as 'dots_server/dots_server.yaml' and 'dots_server/dots_server.yaml.template'. 
+
+To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)
+
 # Usage
 
 ## Server
@@ -89,9 +95,9 @@ Then the server retrieves mitigation scopes contained in the received mitigation
 
 ## Preparation
 
-### Setting up databases
+### Setting up databases for Tests.
 
-The 'dots_server' accesses the 'dots_test' database on MySQL as the root user.
+While the test, the 'dots_server' accesses the 'dots_test' database on MySQL as the root user.
 
 Before testing this project, You have to import the dumped data('dump.sql') as the test data.
 
