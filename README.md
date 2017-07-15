@@ -88,23 +88,7 @@ Or,
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequest.json
 
-# One box example on Docker (mitigation request)
-
-Build dots client, server, db and gobgp in one box and connect them each other on a docker network.
-
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/example/mitigation-request
-    $ docker-compose build
-    $ docker-compose up
-
-You can see how they work by this example command on the dots_client.
-
-    $ dots_client_controller -method Post -request mitigation_request -json dots_client/sampleMitigationRequest.json
-
-# Test
-
-## Preparation
-
-### Setting up databases
+## Setting up databases
 
 The 'dots_server' accesses the 'dots_test' database on MySQL as the root user.
 
@@ -119,7 +103,22 @@ Or you can run MySQL on docker.
     $ cd $GOPATH/src/github.com/nttdots/go-dots/
     $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots_test -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
 
-### Running tests
+# Test
+
+## One box example on Docker (mitigation request)
+
+Build dots client, server, db and gobgp in one box and connect them each other on a docker network.
+
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/example/mitigation-request
+    $ docker-compose build
+    $ docker-compose up
+
+You can see how they work by this example command on the dots_client.
+
+    $ dots_client_controller -method Post -request mitigation_request -json dots_client/sampleMitigationRequest.json
+
+
+## Running tests
 
 You can test all package by the commands below.
 
