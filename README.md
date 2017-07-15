@@ -47,9 +47,16 @@ To install go-dots source and command line program, use the following:
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequest.json
 
-# Example
+# One box example on Docker
 
-## CentOS7 on Docker [mitigation_request]
+## mitigation_request
+
+### build and up gobgp server
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/gobgp-server/
+    $ docker-compose build
+    $ docker-compose up -d
+
+### build and up dots client/server and db
     $ cd $GOPATH/src/github.com/nttdots/go-dots/example/mitigation-request
     $ docker-compose build
     $ docker-compose up
