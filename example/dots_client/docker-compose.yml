@@ -1,0 +1,27 @@
+version: "2.1"
+
+services:
+    dots_client:
+        container_name: dots_client
+        build: ../../
+        image: dots_base
+        working_dir: /go/src/github.com/nttdots/go-dots
+        entrypoint: ./dots_client/entry_point.sh
+        networks:
+          - dots_client_net
+        environment:
+          - DOTS_SERVER_IPV4=172.16.240.1
+          - DOTS_SERVER_IPV6=2001:db8:2::1
+          - SIGNAL_CHANNEL_PORT=4646
+          - DATA_CHANNEL_PORT=4647
+          - DOTS_CLI=
+networks:
+  dots_client_net:
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.16.240.0/24
+        gateway: 172.16.240.1
+      - subnet: 2001:db8:2::/48
+        gateway: 2001:db8:2::1

@@ -63,7 +63,7 @@ Then the server retrieves mitigation scopes contained in the received mitigation
 # Usage
 
 ## Server
-    $ $GOPATH/bin/dots_server -config [path to the config.yml file(ex: go-dots/dots_server/dots_server.yaml)]
+    $ $GOPATH/bin/dots_server -config [config.yml file (ex: go-dots/dots_server/dots_server.yaml)]
 
 Or,
 
@@ -72,7 +72,13 @@ Or,
     $ docker-compose up 
 
 ## Client
-    $ $GOPATH/bin/dots_client -host 127.0.0.1 -port 4646 
+    $ $GOPATH/bin/dots_client -server 127.0.0.1
+
+Or,
+
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/example/dots_client
+    $ docker-compose build
+    $ docker-compose up
     
 ## Client Controller [mitigation_request]
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Post \
