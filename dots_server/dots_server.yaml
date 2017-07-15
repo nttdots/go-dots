@@ -1,9 +1,9 @@
 system:
   signalConfigurationParameter:
-    heartbeatInterval: 60
-    maxRetransmit: 3
-    ackTimeout: 30
-    ackRandomFactor: 8888
+    heartbeatInterval: 30-60
+    maxRetransmit: 3-10
+    ackTimeout: 30-120
+    ackRandomFactor: 0-8888
   secureFile:
     serverCertFile: ../certs/server-cert.pem
     serverKeyFile: ../certs/server-key.pem
