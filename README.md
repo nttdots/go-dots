@@ -30,6 +30,23 @@ To install go-dots source and command line program, use the following:
     $ go get -u github.com/nttdots/go-dots/...
 
 
+# How it works
+
+go-dots consists of 3 daemons below:
+
+* dots_server: dots server agent
+* dots_client: dots client specified in the Internet drafts
+* dots_client_controller: The controller for the dots_client. Operators controll the dots_client by this controller
+
+To explain the relationships between each daemons in detail, here we illustrates the mitigation request procedure of our system. First, dots_client_controller passes request JSONs to the dots_client. Examples of these JSONs are located in the 'dots_client/' directory in this Github project. Remember to edit the 'mitigation-id' fields in the JSON file every time you make requests to the dots_server. Then the dots client converts the received JSON to the CBOR format and send a mitigation request to the server via a CoAP connection.
+
+The figure below shows the detailed sequence diagram which depicts how a dots_server handle a mitigation request. 
+
+<img src='https://github.com/nttdots/go-dots/blob/documentation/docs/pics/mitigation_request_sequence.png' title='mitigation requests sequence diagram'>
+
+Upon receiving CoAP messages, a dots_server first find the appropriate message controller for the received message. The message controller first find the customer information bound to the common name field contained in the client certificate. The customer information is configured and stored in the RDB before the server is started. If no appropriate customer objets is found, the dots_server decline the received request. 
+
+Then the server retrieve mitigation scopes contained in the received mitigation request message. Again the dots_server validate the mitigation scopes to determine whether the customer which issued the request has the valid privilege for the mitigation operations. If the validation is successfully completed, the server select a blocker for the mitigation and execute the mitigation.
 
 # Usage
 
