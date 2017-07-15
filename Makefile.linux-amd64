@@ -1,0 +1,8 @@
+.PHONY:
+
+FLAGS=CROSS_FLAGS=GOOS=linux GOARCH=amd64
+
+all:
+	$(FLAGS) make
+clean:
+	$(FLAGS) make clean

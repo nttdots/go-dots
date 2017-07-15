@@ -1,0 +1,62 @@
+version: "2.1"
+
+services:
+    dots_client:
+        container_name: dots_client
+        image: dots_base
+        networks:
+          dots_net:
+            ipv4_address: 172.16.238.10
+            ipv6_address: 2001:db8::8
+        depends_on:
+          - dots_server
+        working_dir: /go/src/github.com/nttdots/go-dots
+        entrypoint: ./dots_client/entry_point.sh
+        command: dots_client_controller -method Post -request mitigation_request -json dots_client/sampleMitigationRequest.json
+        environment:
+          - DOTS_SERVER_IPV6=2001:db8::9
+          - SIGNAL_CHANNEL_PORT=4646
+          - DATA_CHANNEL_PORT=4647
+          - DOTS_SERVER_IPV4=172.16.238.11
+          - DOTS_CLI=
+    dots_server:
+        container_name: dots_server
+        build: ../../
+        image: dots_base
+        entrypoint: ./entry_point.sh
+        depends_on:
+          - db
+          - gobgp
+        networks:
+          dots_net:
+            ipv4_address: 172.16.238.11
+            ipv6_address: 2001:db8::9
+        working_dir: /go/src/github.com/nttdots/go-dots/dots_server
+        command: dots_server -vv -config /etc/dots_server.yaml
+        volumes:
+          - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
+    db:
+      container_name: db
+      image: mysql:5.7
+      networks:
+          - dots_net
+      restart: always
+      environment:
+        - MYSQL_DATABASE=dots
+        - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      volumes:
+        - ../../dots_server/db_models/dump_docker.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+    gobgp:
+      extends:
+        file:  ../../gobgp-server/docker-compose.yml
+        service: gobgp
+networks:
+  dots_net:
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.16.238.0/24
+        gateway: 172.16.238.1
+      - subnet: 2001:db8::/32
+        gateway: 2001:db8::1

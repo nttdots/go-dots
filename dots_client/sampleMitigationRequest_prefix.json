@@ -1,0 +1,14 @@
+{
+  "mitigation-scope": {
+    "scope": [
+      {
+        "mitigation-id": 12332,
+        "target-prefix": [
+          "10.101.0.0/24"
+        ],
+        "target-port-range": [],
+        "target-protocol": []
+      }
+    ]
+  }
+}

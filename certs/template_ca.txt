@@ -1,0 +1,12 @@
+# X.509 server certificate options
+
+organization = "Example CA"
+state = "Tokyo"
+country = JP
+cn = "ca.example.com"
+expiration_days = 365
+
+# X.509 v3 extensions
+ca
+cert_signing_key
+crl_signing_key

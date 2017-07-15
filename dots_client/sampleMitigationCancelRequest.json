@@ -1,0 +1,12 @@
+{
+  "mitigation-scope": {
+    "scope": [
+      {
+        "mitigation-id": 12332
+      },
+      {
+        "mitigation-id": 12333
+      }
+    ]
+  }
+}

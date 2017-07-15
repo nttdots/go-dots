@@ -1,0 +1,7 @@
+{
+  "session-id": 1234534333242,
+  "heartbeat-interval": 30,
+  "max-retransmit": 7,
+  "ack-timeout": 5,
+  "ack-random-factor": 1.5
+}

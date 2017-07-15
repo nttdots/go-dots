@@ -1,0 +1,38 @@
+{
+  "identifier": {
+    "alias": [
+      {
+        "alias-name": "Server1",
+        "traffic-protocol": [
+          6
+        ],
+        "ip": [
+          "2002:db8:6401::1",
+          "2002:db8:6401::2"
+        ],
+        "port-range": [
+          {
+            "lower-port": 443,
+            "upper-port": 65535
+          }
+        ]
+      },
+      {
+        "alias-name": "Server2",
+        "traffic-protocol": [
+          6
+        ],
+        "ip": [
+          "2002:db8:6401::10",
+          "2002:db8:6401::20"
+        ],
+        "port-range": [
+          {
+            "lower-port": 80,
+            "upper-port": 9999
+          }
+        ]
+      }
+    ]
+  }
+}

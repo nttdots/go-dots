@@ -1,0 +1,25 @@
+{
+  "access-lists": {
+    "acl": [
+      {
+        "acl-name": "sample-ipv4-acl",
+        "acl-type": "ipv4",
+        "access-list-entries": {
+          "ace": [
+            {
+              "rule-name": "rule1",
+              "matches": {
+                "source-ipv4-network": "10.10.10.1/24",
+                "destination-ipv4-network": "11.11.11.1/24"
+              },
+              "actions": {
+                "deny": [null],
+                "permit": ["permit","other"]
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

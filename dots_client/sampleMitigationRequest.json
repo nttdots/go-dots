@@ -1,0 +1,54 @@
+{
+  "mitigation-scope": {
+    "scope": [
+      {
+        "mitigation-id": 12332,
+        "target-ip": [
+          "2002:db8:6401::1",
+          "2002:db8:6401::2"
+        ],
+        "target-port-range": [
+          {
+            "lower-port": 80,
+            "upper-port": 80
+          },
+          {
+            "lower-port": 443,
+            "upper-port": 443
+          },
+          {
+            "lower-port": 8080,
+            "upper-port": 8080
+          }
+        ],
+        "target-protocol": [
+          6
+        ]
+      },
+      {
+        "mitigation-id": 12333,
+        "target-ip": [
+          "2002:db8:6402::1",
+          "2002:db8:6402::2"
+        ],
+        "target-port-range": [
+          {
+            "lower-port": 82,
+            "upper-port": 82
+          },
+          {
+            "lower-port": 442,
+            "upper-port": 442
+          },
+          {
+            "lower-port": 8082,
+            "upper-port": 8082
+          }
+        ],
+        "target-protocol": [
+          2
+        ]
+      }
+    ]
+  }
+}

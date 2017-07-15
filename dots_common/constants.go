@@ -1,0 +1,16 @@
+package dots_common
+
+const (
+	DEFAULT_CLIENT_SOCKET_FILE  = "/tmp/dots_client.sock"
+	DEFAULT_SIGNAL_CHANNEL_PORT = 4646
+	DEFAULT_DATA_CHANNEL_PORT   = 4647
+)
+
+const (
+	SERVICE_WORKER_QUEUE_SIZE = 10
+)
+
+const (
+	IPV4_HOST_PREFIX_LEN = "/32"
+	IPV6_HOST_PREFIX_LEN = "/128"
+)

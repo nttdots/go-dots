@@ -1,0 +1,22 @@
+system:
+  signalConfigurationParameter:
+    heartbeatInterval: 60
+    maxRetransmit: 3
+    ackTimeout: 30
+    ackRandomFactor: 8888
+  secureFile:
+    serverCertFile: ../certs/server-cert.pem
+    serverKeyFile: ../certs/server-key.pem
+    crlFile: ../certs/crl.pem
+    certFile: ../certs/ca-cert.pem
+  network:
+    bindAddress: "::"
+    signalChannelPort: 4646
+    dataChannelPort: 4647
+  database:
+    username: root
+    password:
+    protocol: tcp
+    host: localhost
+    port: 3306
+    databaseName: dots

@@ -1,0 +1,20 @@
+{
+  "signal_configuration_parameter_validate_value": {
+    "heartbeat_interval": {
+      "min_value": 15,
+      "max_value": 60
+    },
+    "max_retransmit": {
+      "min_value": 3,
+      "max_value": 15
+    },
+    "ack_timeout": {
+      "min_value": 1,
+      "max_value": 30
+    },
+    "ack_random_factor": {
+      "min_value": 1.0,
+      "max_value": 4.0
+    }
+  }
+}
