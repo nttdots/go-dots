@@ -58,5 +58,5 @@ networks:
       config:
       - subnet: 172.16.238.0/24
         gateway: 172.16.238.1
-      - subnet: 2001:db8::/32
+      - subnet: 2001:db8::/48
         gateway: 2001:db8::1
