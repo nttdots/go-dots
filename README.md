@@ -10,6 +10,8 @@ This is a DDoS Open Threat Signaling (dots) implementation written in Go. This i
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
+Licensed under Apache License 2.0.
+
 # How to Install
 
 ## Requirements
@@ -56,7 +58,7 @@ The figure below shows the detailed sequence diagram which depicts how a dots_se
 
 <img src='https://github.com/nttdots/go-dots/blob/documentation/docs/pics/mitigation_request_sequence.png' title='mitigation requests sequence diagram'>
 
-Upon receiving CoAP messages, a dots_server first find the appropriate message controller for the received message. The message controller first find the customer information bound to the common name field contained in the client certificate. The customer information is configured and stored in the RDB before the server is started. If no appropriate customer objets is found, the dots_server decline the received request. 
+Upon receiving CoAP messages, a dots_server first find the appropriate message controller for the received message. The message controller first find the customer information bound with the common name field contained in the client certificate. The customer information is configured and stored in the RDB before the server is started. To setup databases, refer to [Setting up databases](./docs/DATABASE.md). If no appropriate customer objets is found, the dots_server decline the received request. 
 
 Then the server retrieves mitigation scopes contained in the received mitigation request message. Again the dots_server validate the mitigation scopes to determine whether the customer which issued the request has the valid privilege for the mitigation operations. If the validation is successfully completed, the server select a blocker for the mitigation and execute the mitigation.
 
