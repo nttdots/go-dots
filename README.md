@@ -66,6 +66,7 @@ Then the server retrieves mitigation scopes contained in the received mitigation
     $ $GOPATH/bin/dots_server -config [path to the config.yml file(ex: go-dots/dots_server/dots_server.yaml)]
 
 Or,
+
     $ cd $GOPATH/src/github.com/nttdots/go-dots/example/dots_server
     $ docker-compose build
     $ docker-compose up 
