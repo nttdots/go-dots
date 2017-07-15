@@ -34,7 +34,7 @@ To install go-dots source and command line program, use the following:
 # Usage
 
 ## Server
-    $ $GOPATH/bin/dots_server -host 127.0.0.1 -port 4646 -file [path to the config file]
+    $ $GOPATH/bin/dots_server -config [path to the config.yml file(ex: go-dots/dots_server/dots_server.yaml)]
 
 ## Client
     $ $GOPATH/bin/dots_client -host 127.0.0.1 -port 4646 
