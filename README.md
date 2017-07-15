@@ -46,7 +46,7 @@ The figure below shows the detailed sequence diagram which depicts how a dots_se
 
 Upon receiving CoAP messages, a dots_server first find the appropriate message controller for the received message. The message controller first find the customer information bound to the common name field contained in the client certificate. The customer information is configured and stored in the RDB before the server is started. If no appropriate customer objets is found, the dots_server decline the received request. 
 
-Then the server retrieve mitigation scopes contained in the received mitigation request message. Again the dots_server validate the mitigation scopes to determine whether the customer which issued the request has the valid privilege for the mitigation operations. If the validation is successfully completed, the server select a blocker for the mitigation and execute the mitigation.
+Then the server retrieves mitigation scopes contained in the received mitigation request message. Again the dots_server validate the mitigation scopes to determine whether the customer which issued the request has the valid privilege for the mitigation operations. If the validation is successfully completed, the server select a blocker for the mitigation and execute the mitigation.
 
 # Usage
 
