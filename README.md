@@ -65,6 +65,11 @@ Then the server retrieves mitigation scopes contained in the received mitigation
 ## Server
     $ $GOPATH/bin/dots_server -config [path to the config.yml file(ex: go-dots/dots_server/dots_server.yaml)]
 
+Or,
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/example/dots_server
+    $ docker-compose build
+    $ docker-compose up 
+
 ## Client
     $ $GOPATH/bin/dots_client -host 127.0.0.1 -port 4646 
     
@@ -80,15 +85,14 @@ Then the server retrieves mitigation scopes contained in the received mitigation
 
 ## mitigation_request
 
-### build and up gobgp server
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/gobgp-server/
-    $ docker-compose build
-    $ docker-compose up -d
+Build dots client, server, db and gobgp in one box and connect them each other on docker network.
 
-### build and up dots client/server and db
     $ cd $GOPATH/src/github.com/nttdots/go-dots/example/mitigation-request
     $ docker-compose build
     $ docker-compose up
+
+You can see how they work by this example command on the dots_client.
+    $ dots_client_controller -method Post -request mitigation_request -json dots_client/sampleMitigationRequest.json
 
 # Test
 
