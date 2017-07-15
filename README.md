@@ -88,17 +88,16 @@ Or,
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequest.json
 
-# One box example on Docker
+# One box example on Docker (mitigation request)
 
-## mitigation_request
-
-Build dots client, server, db and gobgp in one box and connect them each other on docker network.
+Build dots client, server, db and gobgp in one box and connect them each other on a docker network.
 
     $ cd $GOPATH/src/github.com/nttdots/go-dots/example/mitigation-request
     $ docker-compose build
     $ docker-compose up
 
 You can see how they work by this example command on the dots_client.
+
     $ dots_client_controller -method Post -request mitigation_request -json dots_client/sampleMitigationRequest.json
 
 # Test
