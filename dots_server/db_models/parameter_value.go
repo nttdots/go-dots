@@ -44,6 +44,9 @@ func CreateParameterValue(value interface{}, typeString string, identifierId int
 	if contains(valueTypesString, typeString) {
 		parameterValue.StringValue = value.(string)
 	} else if contains(valueTypesInt, typeString) {
+		if typeString == ParameterValueFieldTrafficProtocol {
+			parameterValue.Type = ParameterValueTypeTargetProtocol
+		}
 		parameterValue.IntValue = value.(int)
 	} else { // invalid input
 		return nil
