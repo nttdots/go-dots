@@ -29,3 +29,6 @@ _testmain.go
 dots_client/dots_client
 dots_server/dots_server
 dots_client_controller/dots_client_controller
+
+__pycache__/
+*.py[cod]

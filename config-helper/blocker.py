@@ -5,12 +5,9 @@ import MySQLdb
 from datetime import datetime
 from collections import defaultdict
 
+# utils
+import utils
 
-def getBlockerIds(cur):
-    # get existing blocker_id
-    cur.execute("select id from blocker")
-    ids = [row[0] for row in cur]
-    return ids
 
 
 def getBlocker(i, cur):
@@ -75,7 +72,7 @@ if __name__ == "__main__":
             host=args.host, port=args.port, user=args.user, passwd=args.passwd, db=args.db)
         cur = conn.cursor()
 
-        ids = getBlockerIds(cur)
+        ids = utils.getRows(cur, 'id', 'blocker')
         i = int(args.id)
 
         if args.method == "get":
