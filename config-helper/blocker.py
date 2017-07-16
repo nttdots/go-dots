@@ -9,11 +9,10 @@ from collections import defaultdict
 import utils
 
 
-
 def getBlocker(i, cur):
     d = {}
     # get from blocker table
-    cur.execute("select type, capacity from blocker where id=%d" % i)
+    cur.execute("select type, capacity from blocker where id=%s", (i,))
     t, c = cur.fetchone()
     d['id'] = i
     d['type'] = t
@@ -21,7 +20,7 @@ def getBlocker(i, cur):
 
     # get from blocker_parameter table
     cur.execute(
-        "select `key`, value from blocker_parameter where blocker_id=%d" % i)
+        "select `key`, value from blocker_parameter where blocker_id=%s", (i,))
     for row in cur:
         k, v = row
         d[k] = v
@@ -47,10 +46,6 @@ def delBlocker(i, cur):
     cur.execute("delete from blocker_parameter where blocker_id=%d" % i)
 
 
-def printYamlDump(blockers):
-    print(yaml.dump(blockers, default_flow_style=False))
-
-
 if __name__ == "__main__":
     # get command line parameter
     parser = argparse.ArgumentParser(description='argparse blocker')
@@ -72,7 +67,7 @@ if __name__ == "__main__":
             host=args.host, port=args.port, user=args.user, passwd=args.passwd, db=args.db)
         cur = conn.cursor()
 
-        ids = utils.getRows(cur, 'id', 'blocker')
+        ids = utils.getRows(cur, col='id', table='blocker')
         i = int(args.id)
 
         if args.method == "get":
@@ -81,28 +76,25 @@ if __name__ == "__main__":
             elif ids:
                 b = [getBlocker(i, cur) for i in ids]
             blockers = {'blocker': b}
-            printYamlDump(blockers)
+            utils.printYamlDump(blockers)
 
         elif args.method == "set":
-            with open(args.filename, 'r') as f:
-                try:
-                    blockers = yaml.load(f)
-                except yaml.YAMLError as err:
-                    print(err)
+            blockers = utils.fileYamlLoad(args.filename)
             for d in blockers['blocker']:
                 if d['id'] not in ids:
                     setBlocker(d, cur)
                 else:
                     print("Duplicate id entry.")
-                    printYamlDump(d)
+                    utils.printYamlDump(d)
 
         elif args.method == "del":
+            blockers = {'blocker': []}
             if i in ids:
-                print("Delete entry")
-                b = getBlocker(i, cur)
-                blockers = {'blocker': [b]}
-                printYamlDump(blockers)
-                delBlocker(i, cur)
+                 b = getBlocker(i, cur)
+                 blockers['blocker'].append(b)
+                 delBlocker(i, cur)
+            print("Deleted.")
+            utils.printYamlDump(blockers)
 
         conn.commit()
 

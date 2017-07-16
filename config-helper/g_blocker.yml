@@ -1,0 +1,7 @@
+blocker:
+  - id: 1
+    type: GoBGP-RTBH
+    capacity: 100
+    host: 163.138.228.201 
+    port: 50051
+    nextHop: 10.250.0.1
