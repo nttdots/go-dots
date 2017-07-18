@@ -327,13 +327,13 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// add Commit() after all actions
 	err = session.Commit()
 
-	return protectionGetByMitigationId(newProtection.MitigationId)
+	return protectionGetByMitigationId(engine, newProtection.MitigationId)
 Rollback:
 	session.Rollback()
 	return
 }
 
-func protectionGetByMitigationId(mitigationId int) (db_models.Protection, error) {
+func protectionGetByMitigationId(engine *xorm.Engine, mitigationId int) (db_models.Protection, error) {
 	protection := make([]db_models.Protection, 0)
 
 	if err := engine.Where("mitigation_scope_id = ?", mitigationId).Find(&protection); err == nil {
