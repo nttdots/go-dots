@@ -60,15 +60,20 @@ func storeThroughputData(session *xorm.Session, td *ThroughputData) (err error) 
 func loadProtectionStatus(engine *xorm.Engine, id int64) (pps *ProtectionStatus, err error) {
 	dps := db_models.ProtectionStatus{}
 
-	ok, err := engine.ID(id).Get(&dps)
+	protectionStatus := []db_models.ProtectionStatus{} // Todo: query(...).first()
+	err = engine.Where("id=?", id).Find(&protectionStatus)
+//	ok, err := engine.ID(id).Get(&dps)
 	if err != nil {
 		return
 	}
+	/*
 	if !ok {
 		pps = nil
 		return
 	}
+	*/
 
+	/*
 	peak, err := loadThroughput(engine, dps.PeakThroughputId)
 	if err != nil {
 		return
@@ -77,9 +82,12 @@ func loadProtectionStatus(engine *xorm.Engine, id int64) (pps *ProtectionStatus,
 	if err != nil {
 		return
 	}
+	*/
 
+	// skipping ThroughputData for now. will fix
 	pps = NewProtectionStatus(
-		dps.Id, dps.TotalPackets, dps.TotalBits, peak, average,
+		//dps.Id, dps.TotalPackets, dps.TotalBits, peak, average,
+		dps.Id, dps.TotalPackets, dps.TotalBits, &ThroughputData{0,0,0}, &ThroughputData{0,0,0},
 	)
 	return
 }
@@ -91,14 +99,19 @@ func loadProtectionStatus(engine *xorm.Engine, id int64) (pps *ProtectionStatus,
 func loadThroughput(engine *xorm.Engine, id int64) (ptd *ThroughputData, err error) {
 	dtd := db_models.ThroughputData{}
 
-	ok, err := engine.ID(id).Get(&dtd)
+	throughputData := []db_models.ThroughputData{}
+	err = engine.Where("id=?", id).Find(&throughputData)
+//	ok, err := engine.ID(id).Get(&dtd)
 	if err != nil {
 		return
 	}
+	/*
 	if !ok {
 		ptd = nil
 		return
 	}
+	*/
+	dtd = throughputData[0]
 	ptd = &ThroughputData{
 		id:  dtd.Id,
 		bps: dtd.Bps,
@@ -179,7 +192,6 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	var forwardedDataInfo, blockedDataInfo *db_models.ProtectionStatus
 	var blockerId int64
 	var storedProtection []db_models.Protection
-
 
 	// database connection create
 	engine, err := ConnectDB()
@@ -329,12 +341,13 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// add Commit() after all actions
 	err = session.Commit()
 
+	// obtain the new protection stored in the DB for update the id.
 	storedProtection = make([]db_models.Protection, 0)
-	if err := engine.Where("mitigation_scope_id = ?", newProtection.MitigationId).Find(&storedProtection); err == nil {
+	if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err == nil {
 		return storedProtection[0], nil
-	} else {
-		return nil, err
 	}
+
+	return
 
 Rollback:
 	session.Rollback()
@@ -546,11 +559,15 @@ func GetProtectionById(id int64) (p Protection, err error) {
 		return
 	}
 
-	ok, err := engine.Id(id).Get(&dbp)
-	if !ok {
-		log.WithField("id", id).Warnf("protection not found.")
+	// FIXME: codes below does not work properly... maybe aroud the database schema
+	//ok, err := engine.Id(id).Get(&dbp)
+	protections := []db_models.Protection{} // Todo: query(...).first()
+	err = engine.Where("id=?", id).Find(&protections)
+	if err != nil {
+		log.WithField("id", id).Warnf("GetProtectionById: protection not found.", err)
 		return nil, nil
 	}
+	dbp = protections[0]
 
 	p, err = toProtection(engine, dbp)
 
