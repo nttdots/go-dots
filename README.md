@@ -117,13 +117,13 @@ The 'dots_server' accesses the 'dots_test' database on MySQL as the root user.
 Before testing this project, You have to import the dumped data('dump.sql') as the test data.
 
     $ cd $GOPATH/src/github.com/nttdots/go-dots/
-    $ mysql -u root dots_test < ./dots_server/db_models/test_dump.sql
+    $ mysql -u root dots < ./dots_server/db_models/test_dump.sql
 
 
 Or you can run MySQL on docker.
 
     $ cd $GOPATH/src/github.com/nttdots/go-dots/
-    $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots_test -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
+    $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
 
 
 ## Running tests
