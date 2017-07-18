@@ -14,11 +14,9 @@ services:
         entrypoint: ./dots_client/entry_point.sh
         command: dots_client_controller -method Post -request mitigation_request -json dots_client/sampleMitigationRequest.json
         environment:
-          - DOTS_SERVER_IPV6=2001:db8::9
+          - DOTS_SERVER=2001:db8::9
           - SIGNAL_CHANNEL_PORT=4646
           - DATA_CHANNEL_PORT=4647
-          - DOTS_SERVER_IPV4=172.16.238.11
-          - DOTS_CLI=
     dots_server:
         container_name: dots_server
         build: ../../

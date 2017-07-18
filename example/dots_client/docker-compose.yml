@@ -10,11 +10,9 @@ services:
         networks:
           - dots_client_net
         environment:
-          - DOTS_SERVER_IPV4=172.16.240.1
-          - DOTS_SERVER_IPV6=2001:db8:2::1
+          - DOTS_SERVER=172.16.240.1
           - SIGNAL_CHANNEL_PORT=4646
           - DATA_CHANNEL_PORT=4647
-          - DOTS_CLI=
 networks:
   dots_client_net:
     enable_ipv6: true
