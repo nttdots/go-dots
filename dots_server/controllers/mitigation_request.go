@@ -177,7 +177,7 @@ func createMitigationScope(req *messages.MitigationRequest, customer *models.Cus
 			return err
 		}
 		if !models.MitigationScopeValidator.Validate(models.MessageEntity(scope), customer) {
-			return errors.New("validation error.")
+			continue
 		}
 		// store them to the mitigationScope table
 		_, err = models.CreateMitigationScope(*scope, *customer)

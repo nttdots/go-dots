@@ -4,6 +4,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	"reflect"
 )
 
 /*
@@ -43,8 +44,7 @@ func CreateIdentifier(identifier Identifier, customer Customer) (newIdentifier d
 		return
 	}
 
-	// registration data settings
-	// for customer
+	// registering data identifiers for customer
 	newIdentifier = db_models.Identifier{
 		CustomerId: customer.Id,
 		AliasName:  identifier.AliasName,
@@ -55,18 +55,18 @@ func CreateIdentifier(identifier Identifier, customer Customer) (newIdentifier d
 		goto Rollback
 	}
 
-	// Registered FQDN, URI, E_164 and TrafficProtocol
+	// Registering FQDN, URI, E_164 and TrafficProtocol
 	err = createIdentifierParameterValue(session, identifier, newIdentifier.Id)
 	if err != nil {
 		goto Rollback
 	}
-	// Registered Ip and Prefix
+	// Registering Ip and Prefix
 	err = createIdentifierPrefix(session, identifier, newIdentifier.Id)
 	if err != nil {
 		goto Rollback
 	}
 
-	// Registered PortRange
+	// Registering PortRange
 	err = createIdentifierPortRange(session, identifier, newIdentifier.Id)
 	if err != nil {
 		return
@@ -80,6 +80,67 @@ Rollback:
 	return
 }
 
+func isEmptyString(value interface{}) bool {
+	return reflect.TypeOf(value).Kind() == reflect.String && value == ""
+}
+
+func createAndSaveParameterValues(session *xorm.Session, identifiers []interface{}, typeString string, identifierId int64) (err error) {
+	// creating new identifiers
+	listLen := len(identifiers)
+	parameterList := make([]db_models.ParameterValue, listLen, listLen)
+	for _, v := range identifiers {
+		if isEmptyString(v) {
+			continue
+		}
+		newIdentifier := db_models.CreateParameterValue(v, typeString, identifierId)
+		parameterList = append(parameterList, *newIdentifier)
+	}
+	if len(parameterList) == 0 {
+		return nil // no new identifiers created. return here without errors
+	}
+
+	// saving the newly created identifiers to the DB.
+	_, err = session.Insert(parameterList)
+	if err != nil {
+		session.Rollback()
+		log.Infof("%s insert err: %s", typeString, err)
+	}
+
+	return
+}
+
+func isSetString(value reflect.Value) bool {
+	return value.Type() == reflect.TypeOf(SetString{})
+}
+
+func convertSetStringToArray(setString SetString) []interface{} {
+	var array = make([]interface{}, 0)
+	for _, v := range setString.List() {
+		array = append(array, v)
+	}
+	return array
+}
+
+func convertSetIntToArray(setInt SetInt) []interface{} {
+	var array = make([]interface{}, 0)
+	for _, v := range setInt.List() {
+		array = append(array, v)
+	}
+	return array
+}
+
+const ParameterValueFieldFqdn = "FQDN"
+const ParameterValueFieldUri = "URI"
+const ParameterValueFieldE164 = "E_164"
+const ParameterValueFieldTrafficProtocol = "TrafficProtocol"
+
+var valueTypes = []string{
+	ParameterValueFieldFqdn,
+	ParameterValueFieldUri,
+	ParameterValueFieldE164,
+	ParameterValueFieldTrafficProtocol,
+}
+
 /*
  * Store Set<string> and Set<int> related to the Identifier to the ParameterValue table in the DB.
  *
@@ -91,78 +152,19 @@ Rollback:
  *  err error
  */
 func createIdentifierParameterValue(session *xorm.Session, identifier Identifier, identifierId int64) (err error) {
-	// Registered FQDN
-	newFqdnList := []*db_models.ParameterValue{}
-	for _, v := range identifier.FQDN.List() {
-		if v == "" {
-			continue
+	for _, valueType := range valueTypes {
+		concreteIdentifierField := reflect.Indirect(reflect.ValueOf(identifier)).FieldByName(valueType)
+
+		var concreteIdentifiers []interface{}
+		if isSetString(concreteIdentifierField) {
+			concreteIdentifiers = convertSetStringToArray(concreteIdentifierField.Interface().(SetString))
+		} else {
+			concreteIdentifiers = convertSetIntToArray(concreteIdentifierField.Interface().(SetInt))
 		}
-		newFqdn := db_models.CreateFqdnParam(v)
-		newFqdn.IdentifierId = identifierId
-		newFqdnList = append(newFqdnList, newFqdn)
-	}
-	if len(newFqdnList) > 0 {
-		_, err = session.Insert(newFqdnList)
-		if err != nil {
-			session.Rollback()
-			log.Infof("FQDN insert err: %s", err)
-			return
-		}
+
+		createAndSaveParameterValues(session , concreteIdentifiers, valueType, identifierId)
 	}
 
-	// Registered URI
-	newUriList := []*db_models.ParameterValue{}
-	for _, v := range identifier.URI.List() {
-		if v == "" {
-			continue
-		}
-		newUri := db_models.CreateUriParam(v)
-		newUri.IdentifierId = identifierId
-		newUriList = append(newUriList, newUri)
-	}
-	if len(newUriList) > 0 {
-		_, err = session.Insert(newUriList)
-		if err != nil {
-			session.Rollback()
-			log.Infof("URI insert err: %s", err)
-			return
-		}
-	}
-
-	// Registered E_164
-	newE164List := []*db_models.ParameterValue{}
-	for _, v := range identifier.E_164.List() {
-		if v == "" {
-			continue
-		}
-		newE164 := db_models.CreateE164Param(v)
-		newE164.IdentifierId = identifierId
-		newE164List = append(newE164List, newE164)
-	}
-	if len(newE164List) > 0 {
-		_, err = session.Insert(newE164List)
-		if err != nil {
-			session.Rollback()
-			log.Infof("E164 insert err: %s", err)
-			return
-		}
-	}
-
-	// Registered TrafficProtocol
-	newTrafficProtocolList := []*db_models.ParameterValue{}
-	for _, v := range identifier.TrafficProtocol.List() {
-		newTrafficProtocol := db_models.CreateTrafficProtocolParam(v)
-		newTrafficProtocol.IdentifierId = identifierId
-		newTrafficProtocolList = append(newTrafficProtocolList, newTrafficProtocol)
-	}
-	if len(newTrafficProtocolList) > 0 {
-		_, err = session.Insert(newTrafficProtocolList)
-		if err != nil {
-			session.Rollback()
-			log.Infof("TrafficProtocol insert err: %s", err)
-			return
-		}
-	}
 
 	return
 }

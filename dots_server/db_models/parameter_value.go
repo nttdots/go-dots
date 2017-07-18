@@ -25,6 +25,36 @@ type ParameterValue struct {
 	Updated           time.Time `xorm:"updated"`
 }
 
+func contains(stringList []string, target string) bool {
+	for _, s := range stringList {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}
+
+const ParameterValueFieldTrafficProtocol = "TrafficProtocol"
+
+var valueTypesString = []string{ParameterValueTypeFqdn, ParameterValueTypeUri, ParameterValueTypeE164}
+var valueTypesInt = []string{ParameterValueFieldTrafficProtocol}
+
+func CreateParameterValue(value interface{}, typeString string, identifierId int64) *ParameterValue {
+	parameterValue := &ParameterValue{Type: typeString, IdentifierId: identifierId}
+	if contains(valueTypesString, typeString) {
+		parameterValue.StringValue = value.(string)
+	} else if contains(valueTypesInt, typeString) {
+		if typeString == ParameterValueFieldTrafficProtocol {
+			parameterValue.Type = ParameterValueTypeTargetProtocol
+		}
+		parameterValue.IntValue = value.(int)
+	} else { // invalid input
+		return nil
+	}
+
+	return parameterValue
+}
+
 func CreateFqdnParam(fqdn string) (param *ParameterValue) {
 	param = new(ParameterValue)
 	param.Type = ParameterValueTypeFqdn

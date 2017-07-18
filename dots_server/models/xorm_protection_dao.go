@@ -326,10 +326,21 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 
 	// add Commit() after all actions
 	err = session.Commit()
-	return
+
+	return protectionGetByMitigationId(newProtection.MitigationId)
 Rollback:
 	session.Rollback()
 	return
+}
+
+func protectionGetByMitigationId(mitigationId int) (db_models.Protection, error) {
+	protection := db_models.Protection{}
+	ok, err := engine.Table("protection").Where("mitigation_scope_id = ?", mitigationId).Get(&protection)
+	if ok {
+		return protection, nil
+	} else {
+		return nil, err
+	}
 }
 
 /*
