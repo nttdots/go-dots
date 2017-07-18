@@ -334,10 +334,10 @@ Rollback:
 }
 
 func protectionGetByMitigationId(mitigationId int) (db_models.Protection, error) {
-	protection := db_models.Protection{}
-	ok, err := engine.Table("protection").Where("mitigation_scope_id = ?", mitigationId).Get(&protection)
-	if ok {
-		return protection, nil
+	protection := make([]db_models.Protection, 0)
+
+	if err := engine.Where("mitigation_scope_id = ?", mitigationId).Find(&protection); err == nil {
+		return protection[0], nil
 	} else {
 		return nil, err
 	}
