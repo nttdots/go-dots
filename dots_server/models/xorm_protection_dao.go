@@ -178,6 +178,8 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	var protectionParameters []db_models.ProtectionParameter
 	var forwardedDataInfo, blockedDataInfo *db_models.ProtectionStatus
 	var blockerId int64
+	var storedProtection []db_models.Protection
+
 
 	// database connection create
 	engine, err := ConnectDB()
@@ -327,20 +329,16 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// add Commit() after all actions
 	err = session.Commit()
 
-	return protectionGetByMitigationId(newProtection.MitigationId)
-Rollback:
-	session.Rollback()
-	return
-}
-
-func protectionGetByMitigationId(mitigationId int) (db_models.Protection, error) {
-	protection := make([]db_models.Protection, 0)
-
-	if err := engine.Where("mitigation_scope_id = ?", mitigationId).Find(&protection); err == nil {
-		return protection[0], nil
+	storedProtection = make([]db_models.Protection, 0)
+	if err := engine.Where("mitigation_scope_id = ?", newProtection.MitigationId).Find(&storedProtection); err == nil {
+		return storedProtection[0], nil
 	} else {
 		return nil, err
 	}
+
+Rollback:
+	session.Rollback()
+	return
 }
 
 /*
