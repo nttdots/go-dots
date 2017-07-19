@@ -323,7 +323,6 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err != nil {
 		goto Rollback
 	}
-	fmt.Println("===== protection id:", protection.Id(), storedProtection[0].Id)
 
 	log.WithFields(log.Fields{
 		"protection": newProtection,
@@ -332,9 +331,11 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// Registering ProtectionParameters
 	protectionParameters = toProtectionParameters(protection, storedProtection[0].Id)
 	if len(protectionParameters) > 0 {
+		/*
 		for idx := range protectionParameters {
-			protectionParameters[idx].ProtectionId = newProtection.Id
+			protectionParameters[idx].ProtectionId = storedProtection[0].Id
 		}
+		*/
 
 		_, err = session.InsertMulti(protectionParameters)
 		if err != nil {
@@ -623,7 +624,6 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		 */
 		blocker, err = toBlocker(dbl)
 		if err != nil {
-			fmt.Println("to blocker: no blocker found")
 			return nil, err
 		}
 	}
@@ -983,7 +983,6 @@ func StartProtection(p Protection, b Blocker) (err error) {
 
 	// protection is_enabled -> true, start_at -> now
 	//count, err := session.ID(p.Id()).Cols("is_enabled", "started_at").Update(&db_models.Protection{IsEnabled: true, StartedAt: start})
-	fmt.Println("----- getting the protection enabled")
 	count, err := session.Where("id=?", p.Id()).Cols("is_enabled", "started_at").Update(&db_models.Protection{IsEnabled: true, StartedAt: start})
 	log.WithFields(
 		log.Fields{"id": p.Id(), "blockerId": b.Id(), "count": count},
@@ -994,7 +993,6 @@ func StartProtection(p Protection, b Blocker) (err error) {
 
 	// blocker load + 1
 	//count, err = session.ID(b.Id()).Incr("load", 1).Update(&dbb)
-	fmt.Println("----- incrementing the blocker load")
 	count, err = session.Where("id=?", b.Id()).Incr("load", 1).Update(&dbb)
 	log.WithFields(
 		log.Fields{"id": p.Id(), "count": count},
