@@ -107,7 +107,7 @@ func UpdateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 	updSignalSessionConfiguration.MaxRetransmit = signalSessionConfiguration.MaxRetransmit
 	updSignalSessionConfiguration.AckTimeout = signalSessionConfiguration.AckTimeout
 	updSignalSessionConfiguration.AckRandomFactor = signalSessionConfiguration.AckRandomFactor
-	_, err = session.ID(updSignalSessionConfiguration.Id).Update(updSignalSessionConfiguration)
+	_, err = session.Where("id = ?", updSignalSessionConfiguration.Id).Update(updSignalSessionConfiguration)
 	if err != nil {
 		log.Infof("customer update err: %s", err)
 		goto Rollback

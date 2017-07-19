@@ -1023,7 +1023,7 @@ ROLLBACK:
  *  1. turn the is_enabled field off and updates the finished_at with current datetime.
  *  2. decrease the value in the load field of the blocker.
  */
-func StopProtecition(p Protection, b Blocker) (err error) {
+func StopProtection(p Protection, b Blocker) (err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -1038,7 +1038,7 @@ func StopProtecition(p Protection, b Blocker) (err error) {
 	defer session.Close()
 
 	// protection is_enabled -> true, start_at -> now
-	count, err := session.ID(p.Id()).Cols("is_enabled", "finished_at").Update(&db_models.Protection{IsEnabled: false, FinishedAt: time.Now()})
+	count, err := session.Where("id = ?", p.Id()).Cols("is_enabled", "finished_at").Update(&db_models.Protection{IsEnabled: false, FinishedAt: time.Now()})
 	log.WithFields(
 		log.Fields{"id": p.Id(), "count": count},
 	).WithError(err).Debug("update protection. is_enable -> false, finished_at -> now")
@@ -1047,7 +1047,7 @@ func StopProtecition(p Protection, b Blocker) (err error) {
 	}
 
 	// blocker load - 1
-	count, err = session.ID(b.Id()).Incr("load", -1).Update(&db_models.Blocker{})
+	count, err = session.Where("id = ?", b.Id()).Incr("load", -1).Update(&db_models.Blocker{})
 	log.WithFields(
 		log.Fields{"id": p.Id(), "count": count},
 	).WithError(err).Debug("update blocker. load = load - 1")
