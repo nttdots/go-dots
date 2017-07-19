@@ -592,16 +592,28 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 	if dbp.TargetBlockerId == 0 {
 		blocker = nil
 	} else {
-		var dbl db_models.Blocker
-		ok, err := engine.ID(dbp.TargetBlockerId).Get(&dbl)
+		// var dbl db_models.Blocker
+		// ok, err := engine.ID(dbp.TargetBlockerId).Get(&dbl)
+		blockers := []db_models.Blocker{} // Todo: query(...).first()
+		err = engine.Where("id=?", dbp.TargetBlockerId).Find(&blockers)
+		fmt.Println("blocker_id:", dbp.TargetBlockerId)
 		if err != nil {
+			fmt.Println("dbl: no blocker found")
 			return nil, err
 		}
+		if len(blockers) == 0 {
+			blocker = nil
+		}
+		dbl := blockers[0]
+		fmt.Println("gotten blocker", dbl)
+		/*
 		if !ok {
 			blocker = nil
 		}
+		 */
 		blocker, err = toBlocker(dbl)
 		if err != nil {
+			fmt.Println("to blocker: no blocker found")
 			return nil, err
 		}
 	}
@@ -634,6 +646,7 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		p = nil
 		err = errors.New(fmt.Sprintf("invalid protection type: %s", dbp.Type))
 	}
+	fmt.Println("got protection successfully", p)
 
 	return
 
