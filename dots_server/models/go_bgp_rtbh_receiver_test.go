@@ -12,6 +12,7 @@ import (
 	"github.com/osrg/gobgp/packet/bgp"
 	"github.com/osrg/gobgp/table"
 	"google.golang.org/grpc"
+	"fmt"
 )
 
 func cleanPath(bgpClient *client.Client) {
@@ -90,7 +91,7 @@ func TestGoBgpRtbhReceiver_ExecuteProtection(t *testing.T) {
 	}
 	// check the contents of the Protection object.
 	dp1 := db_models.Protection{}
-	engine.ID(p1.Id()).Get(&dp1)
+	engine.Where("id = ?", p1.Id()).Get(&dp1)
 	if dp1.Id != p1.Id() {
 		t.Errorf("register protection %s error. want: %v, got: %v", "id", p1.Id(), dp1.Id)
 		return
@@ -115,7 +116,7 @@ func TestGoBgpRtbhReceiver_ExecuteProtection(t *testing.T) {
 	}
 	// Is the protection object properly inserted into the DB?
 	dp1 = db_models.Protection{}
-	engine.ID(p1.Id()).Get(&dp1)
+	engine.Where("id=?", p1.Id()).Get(&dp1)
 	if !dp1.IsEnabled {
 		t.Errorf("register protection update %s error. want: %v, got: %v", "isEnable", true, dp1.IsEnabled)
 		return
@@ -126,7 +127,10 @@ func TestGoBgpRtbhReceiver_ExecuteProtection(t *testing.T) {
 	}
 
 	// Check the BGP RIB.
-	rib, _ := bgpClient.GetRIB(bgp.RF_IPv4_UC, make([]*table.LookupPrefix, 0))
+	rib, err := bgpClient.GetRIB(bgp.RF_IPv4_UC, make([]*table.LookupPrefix, 0))
+	if err != nil {
+		fmt.Println("got error on getting the rib", err)
+	}
 	destinations := rib.GetSortedDestinations()
 	if len(destinations) != 1 {
 		t.Errorf("router destination count error. want: %d, got: %d", 1, len(destinations))
@@ -140,14 +144,14 @@ func TestGoBgpRtbhReceiver_ExecuteProtection(t *testing.T) {
 			net.IPv4(192, 168, 7, 0),
 			destinations[0].GetNlri().(*bgp.IPAddrPrefix).Prefix)
 	}
-	if !destinations[0].GetBestPath("192.168.7.100").GetNexthop().Equal(net.IPv4(0, 0, 0, 0)) {
+	if !destinations[0].GetBestPath("192.168.7.100").GetNexthop().Equal(net.IPv4(0, 0, 0, 1)) {
 		t.Errorf("router nextHop error. want:%s, got:%s",
-			net.IPv4(0, 0, 0, 0),
+			net.IPv4(0, 0, 0, 1),
 			destinations[0].GetBestPath("192.168.7.100").GetNexthop())
 	}
-	if !destinations[0].GetBestPath("192.168.8.100").GetNexthop().Equal(net.IPv4(0, 0, 0, 0)) {
+	if !destinations[0].GetBestPath("192.168.8.100").GetNexthop().Equal(net.IPv4(0, 0, 0, 1)) {
 		t.Errorf("router nextHop error. want:%s, got:%s",
-			net.IPv4(0, 0, 0, 0),
+			net.IPv4(0, 0, 0, 1),
 			destinations[0].GetBestPath("192.168.8.100").GetNexthop())
 	}
 

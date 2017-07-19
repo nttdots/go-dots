@@ -7,7 +7,7 @@ import (
 )
 
 func ToProtectionParameters(obj Protection) []db_models.ProtectionParameter {
-	return toProtectionParameters(obj)
+	return toProtectionParameters(obj, obj.Id())
 }
 
 func NewProtectionBase(id int64, mitigationId int, isEnabled bool, startdAt, finishedAt, recordTime time.Time,
