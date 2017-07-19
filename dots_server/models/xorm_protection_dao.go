@@ -38,7 +38,7 @@ func storeThroughputData(session *xorm.Session, td *ThroughputData) (err error) 
 		}
 		td.SetId(dtp.Id)
 	} else {
-		_, err = session.ID(dtp.Id).Cols("pps", "bps").Update(&dtp)
+		_, err = session.Where("id=?", dtp.Id).Cols("pps", "bps").Update(&dtp)
 		log.WithFields(log.Fields{
 			"data":  dtp,
 			"error": err,
@@ -134,13 +134,13 @@ func storeProtectionStatus(session *xorm.Session, ps *ProtectionStatus) (err err
 
 	peakId := ps.PeakThroughput().Id()
 	// check if there is already an entry with this ID.
-	if count, err := session.ID(peakId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
+	if count, err := session.Where("id=?", peakId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
 		peakId = 0
 	}
 
 	averageId := ps.AverageThroughput().Id()
 	// check if there is already an entry with this ID.
-	if count, err := session.ID(averageId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
+	if count, err := session.Where("id=?", averageId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
 		averageId = 0
 	}
 
@@ -163,7 +163,7 @@ func storeProtectionStatus(session *xorm.Session, ps *ProtectionStatus) (err err
 		}
 		ps.SetId(dps.Id)
 	} else {
-		_, err = session.ID(dps.Id).Cols("total_bits", "total_packets", "peak_throughput_id", "averate_throughput_id").Update(&dps)
+		_, err = session.Where("id=?", dps.Id).Cols("total_bits", "total_packets", "peak_throughput_id", "averate_throughput_id").Update(&dps)
 		log.WithFields(log.Fields{
 			"data": dps,
 			"err":  err,
@@ -420,7 +420,7 @@ func UpdateProtection(protection Protection) (err error) {
 
 	// Updated protection
 	updProtection = &db_models.Protection{}
-	chk, err = session.ID(protection.Id()).Get(updProtection)
+	chk, err = session.Where("id=?", protection.Id()).Get(updProtection)
 
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -443,7 +443,7 @@ func UpdateProtection(protection Protection) (err error) {
 	updProtection.StartedAt = protection.StartedAt()
 	updProtection.FinishedAt = protection.FinishedAt()
 	updProtection.RecordTime = protection.RecordTime()
-	_, err = session.ID(updProtection.Id).Cols("is_enabled", "started_at", "finished_at", "record_time").Update(updProtection)
+	_, err = session.Where("id=?", updProtection.Id).Cols("is_enabled", "started_at", "finished_at", "record_time").Update(updProtection)
 
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -785,7 +785,7 @@ func GetProtectionParameters(protectionId int64) (protectionParameters []db_mode
 func deleteProtection(session *xorm.Session, protection db_models.Protection) (err error) {
 
 	forwardInfo := db_models.ProtectionStatus{}
-	ok, err := session.ID(protection.ForwardedDataInfoId).Get(&forwardInfo)
+	ok, err := session.Where("id=?", protection.ForwardedDataInfoId).Get(&forwardInfo)
 	if ok {
 		err = deleteProtectionStatus(session, forwardInfo)
 		if err != nil {
@@ -794,7 +794,7 @@ func deleteProtection(session *xorm.Session, protection db_models.Protection) (e
 	}
 
 	blockedInfo := db_models.ProtectionStatus{}
-	ok, err = session.ID(protection.BlockedDataInfoId).Get(&blockedInfo)
+	ok, err = session.Where("id=?", protection.BlockedDataInfoId).Get(&blockedInfo)
 	if ok {
 		err = deleteProtectionStatus(session, blockedInfo)
 		if err != nil {
@@ -848,7 +848,7 @@ func DeleteProtectionById(id int64) (err error) {
 	}
 
 	p := db_models.Protection{}
-	ok, err := session.ID(id).Get(&p)
+	ok, err := session.Where("id=?", id).Get(&p)
 	if err != nil {
 		goto Error
 	}
@@ -982,7 +982,6 @@ func StartProtection(p Protection, b Blocker) (err error) {
 	start := time.Now()
 
 	// protection is_enabled -> true, start_at -> now
-	//count, err := session.ID(p.Id()).Cols("is_enabled", "started_at").Update(&db_models.Protection{IsEnabled: true, StartedAt: start})
 	count, err := session.Where("id=?", p.Id()).Cols("is_enabled", "started_at").Update(&db_models.Protection{IsEnabled: true, StartedAt: start})
 	log.WithFields(
 		log.Fields{"id": p.Id(), "blockerId": b.Id(), "count": count},
@@ -992,7 +991,6 @@ func StartProtection(p Protection, b Blocker) (err error) {
 	}
 
 	// blocker load + 1
-	//count, err = session.ID(b.Id()).Incr("load", 1).Update(&dbb)
 	count, err = session.Where("id=?", b.Id()).Incr("load", 1).Update(&dbb)
 	log.WithFields(
 		log.Fields{"id": p.Id(), "count": count},
@@ -1000,7 +998,6 @@ func StartProtection(p Protection, b Blocker) (err error) {
 	if count != 1 || err != nil {
 		goto ROLLBACK
 	}
-	//_, err = session.ID(b.Id()).Get(&dbb)
 	_, err = session.Where("id = ?", b.Id()).Get(&dbb)
 	if err != nil {
 		goto ROLLBACK
