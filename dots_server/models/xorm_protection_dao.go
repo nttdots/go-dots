@@ -230,7 +230,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		return nil
 	}
 
-	// Registered ForwardedDataInfo Group
+	// Registering ForwardedDataInfo Group
 	if protection.ForwardedDataInfo() != nil {
 		forwardedDataInfo = &db_models.ProtectionStatus{
 			TotalPackets: protection.ForwardedDataInfo().TotalPackets(),
@@ -314,12 +314,23 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		goto Rollback
 	}
 
+	err = session.Commit()
+	session = engine.NewSession()
+	defer session.Close()
+
+	// obtain the new protection stored in the DB for update the id.
+	storedProtection = make([]db_models.Protection, 0)
+	if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err != nil {
+		goto Rollback
+	}
+	fmt.Println("===== protection id:", protection.Id(), storedProtection[0].Id)
+
 	log.WithFields(log.Fields{
 		"protection": newProtection,
 	}).Debug("create new protection")
 
-	// Registered ProtectionParameters
-	protectionParameters = toProtectionParameters(protection)
+	// Registering ProtectionParameters
+	protectionParameters = toProtectionParameters(protection, storedProtection[0].Id)
 	if len(protectionParameters) > 0 {
 		for idx := range protectionParameters {
 			protectionParameters[idx].ProtectionId = newProtection.Id
@@ -342,12 +353,14 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	err = session.Commit()
 
 	// obtain the new protection stored in the DB for update the id.
+	/*
 	storedProtection = make([]db_models.Protection, 0)
 	if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err == nil {
 		return storedProtection[0], nil
 	}
+	*/
 
-	return
+	return storedProtection[0], nil
 
 Rollback:
 	session.Rollback()
@@ -500,7 +513,7 @@ func UpdateProtection(protection Protection) (err error) {
 		goto Rollback
 	}
 
-	protectionParameters = toProtectionParameters(protection)
+	protectionParameters = toProtectionParameters(protection, protection.Id())
 
 	if len(protectionParameters) > 0 {
 		_, err = session.InsertMulti(&protectionParameters)
@@ -596,16 +609,13 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		// ok, err := engine.ID(dbp.TargetBlockerId).Get(&dbl)
 		blockers := []db_models.Blocker{} // Todo: query(...).first()
 		err = engine.Where("id=?", dbp.TargetBlockerId).Find(&blockers)
-		fmt.Println("blocker_id:", dbp.TargetBlockerId)
 		if err != nil {
-			fmt.Println("dbl: no blocker found")
 			return nil, err
 		}
 		if len(blockers) == 0 {
 			blocker = nil
 		}
 		dbl := blockers[0]
-		fmt.Println("gotten blocker", dbl)
 		/*
 		if !ok {
 			blocker = nil
@@ -646,7 +656,6 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		p = nil
 		err = errors.New(fmt.Sprintf("invalid protection type: %s", dbp.Type))
 	}
-	fmt.Println("got protection successfully", p)
 
 	return
 
@@ -973,7 +982,9 @@ func StartProtection(p Protection, b Blocker) (err error) {
 	start := time.Now()
 
 	// protection is_enabled -> true, start_at -> now
-	count, err := session.ID(p.Id()).Cols("is_enabled", "started_at").Update(&db_models.Protection{IsEnabled: true, StartedAt: start})
+	//count, err := session.ID(p.Id()).Cols("is_enabled", "started_at").Update(&db_models.Protection{IsEnabled: true, StartedAt: start})
+	fmt.Println("----- getting the protection enabled")
+	count, err := session.Where("id=?", p.Id()).Cols("is_enabled", "started_at").Update(&db_models.Protection{IsEnabled: true, StartedAt: start})
 	log.WithFields(
 		log.Fields{"id": p.Id(), "blockerId": b.Id(), "count": count},
 	).WithError(err).Debug("update protection. is_enable -> true, start_at -> now")
@@ -982,14 +993,17 @@ func StartProtection(p Protection, b Blocker) (err error) {
 	}
 
 	// blocker load + 1
-	count, err = session.ID(b.Id()).Incr("load", 1).Update(&dbb)
+	//count, err = session.ID(b.Id()).Incr("load", 1).Update(&dbb)
+	fmt.Println("----- incrementing the blocker load")
+	count, err = session.Where("id=?", b.Id()).Incr("load", 1).Update(&dbb)
 	log.WithFields(
 		log.Fields{"id": p.Id(), "count": count},
 	).WithError(err).Debug("update blocker. load = load + 1")
 	if count != 1 || err != nil {
 		goto ROLLBACK
 	}
-	_, err = session.ID(b.Id()).Get(&dbb)
+	//_, err = session.ID(b.Id()).Get(&dbb)
+	_, err = session.Where("id = ?", b.Id()).Get(&dbb)
 	if err != nil {
 		goto ROLLBACK
 	}

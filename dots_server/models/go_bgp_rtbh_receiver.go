@@ -10,6 +10,7 @@ import (
 	"github.com/osrg/gobgp/packet/bgp"
 	"github.com/osrg/gobgp/table"
 	"google.golang.org/grpc"
+	"fmt"
 )
 
 const (
@@ -135,12 +136,16 @@ func (g *GoBgpRtbhReceiver) ExecuteProtection(p Protection) (err error) {
 		c.Close()
 	}(blockerClient)
 
+	fmt.Println("to path: ", b, p.Id())
 	paths := g.toPath(b)
 	if len(paths) > 0 {
+		fmt.Println("---- path created", paths)
 		_, err = blockerClient.AddPath(paths)
 		if err != nil {
 			return err
 		}
+	} else {
+		fmt.Println("---- no path created")
 	}
 
 	// update db
@@ -228,6 +233,7 @@ func (g *GoBgpRtbhReceiver) connect() (bgpClient *client.Client, err error) {
 
 func toBgpPrefix(cidr string) bgp.AddrPrefixInterface {
 	ip, ipNet, _ := net.ParseCIDR(cidr)
+	fmt.Println("----- creating a bgp prefix: ", cidr)
 	if ip.To4() == nil {
 		length, _ := ipNet.Mask.Size()
 		return bgp.NewIPv6AddrPrefix(uint8(length), ip.String())
@@ -238,6 +244,7 @@ func toBgpPrefix(cidr string) bgp.AddrPrefixInterface {
 }
 
 func (g *GoBgpRtbhReceiver) toPath(b *RTBH) []*table.Path {
+	fmt.Println("----- creating a bgp path: ", b.targets)
 	attrs := []bgp.PathAttributeInterface{
 		bgp.NewPathAttributeOrigin(bgp.BGP_ORIGIN_ATTR_TYPE_IGP),
 		bgp.NewPathAttributeNextHop(g.nextHop),

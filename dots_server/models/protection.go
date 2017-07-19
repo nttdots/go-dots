@@ -11,18 +11,20 @@ import (
 /*
  * Convert this protection to a DB protection model.
  */
-func toProtectionParameters(obj Protection) []db_models.ProtectionParameter {
+func toProtectionParameters(obj Protection, protectionId int64) []db_models.ProtectionParameter {
 	result := make([]db_models.ProtectionParameter, 0)
 
 	switch t := obj.(type) {
 	case *RTBH:
 		result = append(result, db_models.ProtectionParameter{
-			ProtectionId: obj.Id(),
+			//ProtectionId: obj.Id(),
+			ProtectionId: protectionId,
 			Key:          RTBH_PROTECTION_CUSTOMER_ID,
 			Value:        strconv.Itoa(t.customerId)})
 		for _, target := range t.Targets() {
 			result = append(result, db_models.ProtectionParameter{
-				ProtectionId: obj.Id(),
+				//ProtectionId: obj.Id(),
+				ProtectionId: protectionId,
 				Key:          RTBH_PROTECTION_TARGET,
 				Value:        target})
 		}
