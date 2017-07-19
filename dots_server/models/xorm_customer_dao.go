@@ -263,7 +263,7 @@ func UpdateCustomer(customer Customer) (err error) {
 	// for customer
 	updCustomer.Id = customer.Id
 	updCustomer.Name = customer.Name
-	_, err = session.ID(updCustomer.Id).Update(updCustomer)
+	_, err = session.Where("id = ?", updCustomer.Id).Update(updCustomer)
 	if err != nil {
 		session.Rollback()
 		log.Infof("customer update err: %s", err)

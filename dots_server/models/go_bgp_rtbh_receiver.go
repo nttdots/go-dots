@@ -10,6 +10,7 @@ import (
 	"github.com/osrg/gobgp/packet/bgp"
 	"github.com/osrg/gobgp/table"
 	"google.golang.org/grpc"
+	"fmt"
 )
 
 const (
@@ -190,7 +191,7 @@ func (g *GoBgpRtbhReceiver) StopProtection(p Protection) (err error) {
 		return err
 	}
 
-	err = StopProtecition(p, g)
+	err = StopProtection(p, g)
 	if err != nil {
 		goto BGP_ROLLBACK
 	}
@@ -227,6 +228,7 @@ func (g *GoBgpRtbhReceiver) connect() (bgpClient *client.Client, err error) {
 }
 
 func toBgpPrefix(cidr string) bgp.AddrPrefixInterface {
+	fmt.Println("== converting to GoBgp Path: ", cidr)
 	ip, ipNet, _ := net.ParseCIDR(cidr)
 	if ip.To4() == nil {
 		length, _ := ipNet.Mask.Size()

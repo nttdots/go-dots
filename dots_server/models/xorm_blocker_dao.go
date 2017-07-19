@@ -330,14 +330,14 @@ func UpdateBlockerLoad(blockerId int64, diff int) (err error) {
 	}
 	blocker := db_models.Blocker{}
 
-	ok, err := session.ID(blockerId).Get(&blocker)
+	ok, err := session.Where("id = ?", blockerId).Get(&blocker)
 	if err != nil {
 		goto Rollback
 	}
 
 	if ok {
 		blocker.Load += diff
-		_, err = session.ID(blockerId).Cols("Load").Update(&blocker)
+		_, err = session.Where("id = ?", blockerId).Cols("Load").Update(&blocker)
 		if err != nil {
 			goto Rollback
 		}

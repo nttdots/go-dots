@@ -182,7 +182,7 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 	// accessControlList data settings
 	updAccessControlList.Name = accessControlListEntry.AclName
 	updAccessControlList.Type = accessControlListEntry.AclType
-	_, err = session.ID(updAccessControlList.Id).Update(updAccessControlList)
+	_, err = session.Where("id = ?", updAccessControlList.Id).Update(updAccessControlList)
 	if err != nil {
 		log.WithError(err).Error("AccessControlList update err.")
 		goto Rollback
