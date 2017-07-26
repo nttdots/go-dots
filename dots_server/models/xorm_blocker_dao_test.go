@@ -57,6 +57,8 @@ func saveTestBlocker() {
 	session.Begin()
 	session.Insert(&testBlocker)
 	session.Commit()
+
+	engine.Where("type='sample'").Get(&testBlocker)
 }
 
 func TestCreateBlocker(t *testing.T) {
