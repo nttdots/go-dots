@@ -54,7 +54,10 @@ func CreateIdentifier(identifier Identifier, customer Customer) (newIdentifier d
 		log.Infof("identifier insert err: %s", err)
 		goto Rollback
 	}
+	session.Commit()
+	engine.Where("customer_id = ? AND alias_name = ?", customer.Id, identifier.AliasName).Get(&newIdentifier)
 
+	session = engine.NewSession()
 	// Registering FQDN, URI, E_164 and TrafficProtocol
 	err = createIdentifierParameterValue(session, identifier, newIdentifier.Id)
 	if err != nil {
@@ -84,7 +87,7 @@ func isEmptyString(value interface{}) bool {
 	return reflect.TypeOf(value).Kind() == reflect.String && value == ""
 }
 
-func createAndSaveParameterValues(session *xorm.Session, identifiers []interface{}, typeString string, identifierId int64) (err error) {
+func createParameterValues(session *xorm.Session, identifiers []interface{}, typeString string, identifierId int64) (err error) {
 	// creating new identifiers
 	listLen := len(identifiers)
 	parameterList := make([]db_models.ParameterValue, listLen, listLen)
@@ -112,6 +115,8 @@ func createAndSaveParameterValues(session *xorm.Session, identifiers []interface
 func isSetString(value reflect.Value) bool {
 	return value.Type() == reflect.TypeOf(SetString{})
 }
+
+// Todo: integrate SetString and SetInt utilizing the interface
 
 func convertSetStringToArray(setString SetString) []interface{} {
 	var array = make([]interface{}, 0)
@@ -162,7 +167,7 @@ func createIdentifierParameterValue(session *xorm.Session, identifier Identifier
 			concreteIdentifiers = convertSetIntToArray(concreteIdentifierField.Interface().(SetInt))
 		}
 
-		createAndSaveParameterValues(session , concreteIdentifiers, valueType, identifierId)
+		createParameterValues(session, concreteIdentifiers, valueType, identifierId)
 	}
 
 

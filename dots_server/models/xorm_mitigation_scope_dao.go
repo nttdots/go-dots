@@ -38,7 +38,6 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 
 	// transaction start
 	session := engine.NewSession()
-	defer session.Close()
 
 	err = session.Begin()
 	if err != nil {
@@ -60,17 +59,36 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		return
 	}
 
-	// Registered FQDN, URI, E_164, alias and target_protocol
+	if err = session.Commit(); err != nil {
+		session.Rollback()
+		log.Errorf("mitigationScope commit err: %s", err)
+		return
+	}
+	session.Close()
+	if _, err = engine.Where("customer_id=? and mitigation_id=?", customer.Id, mitigationScope.MitigationId).Get(&newMitigationScope); err != nil {
+		session.Rollback()
+		log.Errorf("mitigationScope renew err: %s", err)
+		return
+	}
+
+	session = engine.NewSession()
+	defer session.Close()
+	err = session.Begin()
+	if err != nil {
+		session.Rollback()
+		return
+	}
+	// Registering FQDN, URI, E_164, alias and target_protocol
 	err = createMitigationScopeParameterValue(session, mitigationScope, newMitigationScope.Id)
 	if err != nil {
 		return
 	}
-	// Registered TargetIP and TargetPrefix
+	// Registering TargetIP and TargetPrefix
 	err = createMitigationScopePrefix(session, mitigationScope, newMitigationScope.Id)
 	if err != nil {
 		return
 	}
-	// Registered TragetPortRange
+	// Registering TragetPortRange
 	err = createMitigationScopePortRange(session, mitigationScope, newMitigationScope.Id)
 	if err != nil {
 		return

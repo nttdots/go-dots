@@ -5,6 +5,133 @@ import (
 	"github.com/nttdots/go-dots/dots_server/db_models"
 )
 
+func createAce(accessControlListId int64, ace Ace) (aclEntry *db_models.AccessControlListEntry, err error) {
+	session := engine.NewSession()
+	defer session.Close()
+
+	err = session.Begin()
+	if err != nil {
+		return
+	}
+
+	aclEntry = &db_models.AccessControlListEntry{
+		AccessControlListId: accessControlListId,
+		RuleName:            ace.RuleName,
+	}
+	_, err = session.Insert(aclEntry)
+	if err != nil {
+		log.Infof("access_control_list_entry insert err: %s", err)
+		return nil, err
+	}
+	session.Commit()
+
+	var newAclEntry = db_models.AccessControlListEntry{}
+	_, err = engine.Where("access_control_list_id=? and rule_name=?", accessControlListId, ace.RuleName).Get(&newAclEntry)
+	if err != nil {
+		return nil, err
+	}
+
+	return &newAclEntry, nil
+}
+
+func createAceNetworkParameters(aceId int64, ace Ace) (err error) {
+	session := engine.NewSession()
+	defer session.Close()
+
+	// repeated part No.1
+	newSourceIpv4Network := db_models.CreateSourceIpv4NetworkParam(
+		ace.Matches.SourceIpv4Network.Addr,
+		ace.Matches.SourceIpv4Network.PrefixLen)
+	newSourceIpv4Network.AccessControlListEntryId = aceId
+
+	if _, err = session.Insert(newSourceIpv4Network); err != nil {
+		log.Infof("source_ipv4_network insert err: %s", err)
+		return
+	}
+
+	// repeated part No.2
+	newDestinationIpv4Network := db_models.CreateDestinationIpv4NetworkParam(
+		ace.Matches.DestinationIpv4Network.Addr,
+		ace.Matches.DestinationIpv4Network.PrefixLen)
+	newDestinationIpv4Network.AccessControlListEntryId = aceId
+
+	if _, err = session.Insert(newDestinationIpv4Network); err != nil {
+		log.Infof("destination_ipv4_network insert err: %s", err)
+		return
+	}
+
+	err = session.Commit()
+	return
+}
+
+func createAceRuleAction(aceId int64, ace Ace) (err error) {
+	session := engine.NewSession()
+	defer session.Close()
+
+	newActions := []*db_models.AclRuleAction{}
+	// repeated part No.1
+	if ace.Actions.Deny != nil {
+		for _, vv := range ace.Actions.Deny {
+			newDeny := db_models.CreateAclRuleActionDenyParam(vv)
+			newDeny.AccessControlListEntryId = aceId
+			newActions = append(newActions, newDeny)
+		}
+	}
+	// repeated part No.2
+	if ace.Actions.Permit != nil {
+		for _, vv := range ace.Actions.Permit {
+			newPermit := db_models.CreateAclRuleActionPermitParam(vv)
+			newPermit.AccessControlListEntryId = aceId
+			newActions = append(newActions, newPermit)
+		}
+	}
+	// repeated part No.3
+	if ace.Actions.RateLimit != nil {
+		for _, vv := range ace.Actions.RateLimit {
+			newRateLimit := db_models.CreateAclRuleActionRateLimitParam(vv)
+			newRateLimit.AccessControlListEntryId = aceId
+			newActions = append(newActions, newRateLimit)
+		}
+	}
+	_, err = session.Insert(&newActions)
+	if err != nil {
+		log.Infof("action insert err: %s", err)
+		//			goto Rollback
+	}
+
+	session.Commit()
+
+	return
+}
+
+// Todo: Rolling back
+func createAccessControlListEntryDB(accessControlListId int64, accessControlListEntry *AccessControlListEntry) (err error) {
+	session := engine.NewSession()
+	defer session.Close()
+
+	err = session.Begin()
+	if err != nil {
+		return
+	}
+
+	for _, ace := range accessControlListEntry.AccessListEntries.Ace {
+		newAccessControlListEntry, err := createAce(accessControlListId, ace)
+		if err != nil {
+			return err
+		}
+
+		if err = createAceNetworkParameters(newAccessControlListEntry.Id, ace); err != nil {
+			return err
+		}
+
+		if err = createAceRuleAction(newAccessControlListEntry.Id, ace); err != nil{
+			return err
+		}
+	}
+
+	return
+}
+
 /*
  * Stores an AccessControlList object to the database
  *
@@ -15,6 +142,8 @@ import (
  *  err error
  */
 func CreateAccessControlList(accessControlListEntry *AccessControlListEntry, customer *Customer) (newAccessControlList db_models.AccessControlList, err error) {
+	var acl = db_models.AccessControlList{}
+
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -50,74 +179,23 @@ func CreateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 		Name:       accessControlListEntry.AclName,
 		Type:       accessControlListEntry.AclType,
 	}
-	_, err = session.Insert(&newAccessControlList)
-	if err != nil {
+
+	if _, err = session.Insert(&newAccessControlList); err != nil {
 		log.Infof("access_control_list insert err: %s", err)
 		goto Rollback
 	}
-
-	// Registered access_control_list_entry
-	for _, v := range accessControlListEntry.AccessListEntries.Ace {
-		newAccessControlListEntry := db_models.AccessControlListEntry{
-			AccessControlListId: newAccessControlList.Id,
-			RuleName:            v.RuleName,
-		}
-		_, err = session.Insert(&newAccessControlListEntry)
-		if err != nil {
-			log.Infof("access_control_list_entry insert err: %s", err)
-			goto Rollback
-		}
-
-		// Registered source_ipv4_network
-		newSourceIpv4Network := db_models.CreateSourceIpv4NetworkParam(v.Matches.SourceIpv4Network.Addr, v.Matches.SourceIpv4Network.PrefixLen)
-		newSourceIpv4Network.AccessControlListEntryId = newAccessControlListEntry.Id
-		_, err = session.Insert(newSourceIpv4Network)
-		if err != nil {
-			log.Infof("source_ipv4_network insert err: %s", err)
-			goto Rollback
-		}
-
-		// Registered destination_ipv4_network
-		newDestinationIpv4Network := db_models.CreateDestinationIpv4NetworkParam(v.Matches.DestinationIpv4Network.Addr, v.Matches.DestinationIpv4Network.PrefixLen)
-		newDestinationIpv4Network.AccessControlListEntryId = newAccessControlListEntry.Id
-		_, err = session.Insert(newDestinationIpv4Network)
-		if err != nil {
-			log.Infof("destination_ipv4_network insert err: %s", err)
-			goto Rollback
-		}
-
-		// Registered actions
-		newActions := []*db_models.AclRuleAction{}
-		if v.Actions.Deny != nil {
-			for _, vv := range v.Actions.Deny {
-				newDeny := db_models.CreateAclRuleActionDenyParam(vv)
-				newDeny.AccessControlListEntryId = newAccessControlListEntry.Id
-				newActions = append(newActions, newDeny)
-			}
-		}
-		if v.Actions.Permit != nil {
-			for _, vv := range v.Actions.Permit {
-				newPermit := db_models.CreateAclRuleActionPermitParam(vv)
-				newPermit.AccessControlListEntryId = newAccessControlListEntry.Id
-				newActions = append(newActions, newPermit)
-			}
-		}
-		if v.Actions.RateLimit != nil {
-			for _, vv := range v.Actions.RateLimit {
-				newRateLimit := db_models.CreateAclRuleActionRateLimitParam(vv)
-				newRateLimit.AccessControlListEntryId = newAccessControlListEntry.Id
-				newActions = append(newActions, newRateLimit)
-			}
-		}
-		_, err = session.Insert(&newActions)
-		if err != nil {
-			log.Infof("action insert err: %s", err)
-			goto Rollback
-		}
+	if err = session.Commit(); err != nil {
+		goto Rollback
 	}
 
-	// add Commit() after all actions
-	err = session.Commit()
+	_, err = engine.Where("customer_id=? AND name=? AND type=?",
+		customer.Id,
+		accessControlListEntry.AclName,
+		accessControlListEntry.AclType).Get(&acl)
+	if err != nil {
+		return
+	}
+	err = createAccessControlListEntryDB(newAccessControlList.Id, accessControlListEntry)
 	return
 Rollback:
 	session.Rollback()
@@ -151,7 +229,7 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 		return
 	}
 
-	// accessControlList data update
+	// accessControlList data to be updated
 	updAccessControlList := db_models.AccessControlList{}
 	ok, err := session.Where("customer_id = ?", customer.Id).Get(&updAccessControlList)
 	if err != nil {
@@ -179,7 +257,7 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 		return
 	}
 
-	// accessControlList data settings
+	// accessControlList data configurations
 	updAccessControlList.Name = accessControlListEntry.AclName
 	updAccessControlList.Type = accessControlListEntry.AclType
 	_, err = session.Where("id = ?", updAccessControlList.Id).Update(updAccessControlList)
@@ -217,70 +295,12 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 
 		goto Rollback
 	}
-
-	// Registered access_control_list_entry
-	for _, v := range accessControlListEntry.AccessListEntries.Ace {
-		newAccessControlListEntry := db_models.AccessControlListEntry{
-			AccessControlListId: updAccessControlList.Id,
-			RuleName:            v.RuleName,
-		}
-
-		_, err = session.Insert(&newAccessControlListEntry)
-		if err != nil {
-			log.WithError(err).Error("access_control_list_entry insert error.")
-			goto Rollback
-		}
-
-		// Registered source_ipv4_network
-		newSourceIpv4Network := db_models.CreateSourceIpv4NetworkParam(v.Matches.SourceIpv4Network.Addr, v.Matches.SourceIpv4Network.PrefixLen)
-		newSourceIpv4Network.AccessControlListEntryId = newAccessControlListEntry.Id
-		_, err = session.Insert(newSourceIpv4Network)
-		if err != nil {
-			log.Infof("source_ipv4_network insert err: %s", err)
-			goto Rollback
-		}
-
-		// Registered destination_ipv4_network
-		newDestinationIpv4Network := db_models.CreateDestinationIpv4NetworkParam(v.Matches.DestinationIpv4Network.Addr, v.Matches.DestinationIpv4Network.PrefixLen)
-		newDestinationIpv4Network.AccessControlListEntryId = newAccessControlListEntry.Id
-		_, err = session.Insert(newDestinationIpv4Network)
-		if err != nil {
-			log.Infof("destination_ipv4_network insert err: %s", err)
-			goto Rollback
-		}
-
-		// Registered actions
-		newActions := make([]interface{}, 0) //*db_models.AclRuleAction{}
-		if v.Actions.Deny != nil {
-			for _, vv := range v.Actions.Deny {
-				newDeny := db_models.CreateAclRuleActionDenyParam(vv)
-				newDeny.AccessControlListEntryId = newAccessControlListEntry.Id
-				newActions = append(newActions, newDeny)
-			}
-		}
-		if v.Actions.Permit != nil {
-			for _, vv := range v.Actions.Permit {
-				newPermit := db_models.CreateAclRuleActionPermitParam(vv)
-				newPermit.AccessControlListEntryId = newAccessControlListEntry.Id
-				newActions = append(newActions, newPermit)
-			}
-		}
-		if v.Actions.RateLimit != nil {
-			for _, vv := range v.Actions.RateLimit {
-				newRateLimit := db_models.CreateAclRuleActionRateLimitParam(vv)
-				newRateLimit.AccessControlListEntryId = newAccessControlListEntry.Id
-				newActions = append(newActions, newRateLimit)
-			}
-		}
-		_, err = session.Insert(newActions...)
-		if err != nil {
-			log.Infof("action insert err: %s", err)
-			goto Rollback
-		}
+	err = session.Commit()
+	if err != nil {
+		return
 	}
 
-	// add Commit() after all actions
-	err = session.Commit()
+	err = createAccessControlListEntryDB(updAccessControlList.Id, accessControlListEntry)
 	return
 Rollback:
 	session.Rollback()
