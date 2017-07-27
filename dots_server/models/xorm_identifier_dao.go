@@ -6,7 +6,6 @@ import (
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	"reflect"
 	"errors"
-	"fmt"
 )
 
 /*
@@ -337,39 +336,68 @@ func loadIdentifierParameterValue(identifier *Identifier) (err error) {
 }
 
 type NetworkParameterLoader struct {
-	session *xorm.Session
-	typeTemplate interface{}
+	//session *xorm.Session
+	executeQuery func (int64, *NetworkParameterLoader) error
 	fieldName string
 	handler func (*Identifier, string, interface{}) error
-	result interface{}
+	result []interface{}
 }
 
+/* because of the limitation of Golang reflection, we cannot use this.
 func (npl *NetworkParameterLoader) executeQuery() error {
-	slice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(npl.typeTemplate)), 0, 0)
-	// sliceValue := reflect.Indirect(reflect.ValueOf(slice.Interface()))
-	// sliceElementType := sliceValue.Type().Elem()
-	// pv := reflect.New(sliceElementType)
+	return npl.session.Find(typeTemplate)
+}
+*/
 
-	//return npl.session.Find(npl.typeTemplate)
-	return npl.session.Find(slice.Addr().Interface())
+func ipQuery(identifierId int64, npl *NetworkParameterLoader) error {
+	prefixes := []db_models.Prefix{}
+	err := engine.Where("identifier_id = ? AND type = ?", identifierId, db_models.PrefixTypeIp).OrderBy("id ASC").Find(&prefixes)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range prefixes {
+		npl.result = append(npl.result, p)
+	}
+
+	return nil
+}
+
+func prefixQuery(identifierId int64, npl *NetworkParameterLoader) error {
+	prefixes := []db_models.Prefix{}
+	err := engine.Where("identifier_id = ? AND type = ?", identifierId, db_models.PrefixTypePrefix).OrderBy("id ASC").Find(&prefixes)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range prefixes {
+		npl.result = append(npl.result, p)
+	}
+
+	return nil
+}
+
+func portRangeQuery(identifierId int64, npl *NetworkParameterLoader) error {
+	portRanges := []db_models.PortRange{}
+	err := engine.Where("identifier_id = ?", identifierId).OrderBy("id ASC").Find(&portRanges)
+	if err != nil {
+		return err
+	}
+
+	for _, p := range portRanges {
+		npl.result = append(npl.result, p)
+	}
+
+	return nil
 }
 
 func (npl *NetworkParameterLoader) load(identifier *Identifier) (err error) {
-	if err = npl.executeQuery(); err != nil {
+	if err = npl.executeQuery(identifier.Id, npl); err != nil {
 		return
 	}
 
-	slice, ok := npl.result.([]interface{})
-	if !ok {
-		errors.New("Convert error")
-	}
-
-	if len(slice) > 0 {
-		return nil
-	}
-	for _, v := range slice {
+	for _, v := range npl.result {
 		if err = npl.handler(identifier, npl.fieldName, v); err != nil {
-			fmt.Println(err)
 			continue // could be 'return'?
 		}
 	}
@@ -380,23 +408,23 @@ func (npl *NetworkParameterLoader) load(identifier *Identifier) (err error) {
 func initIdentifierNetworkParameters(identifierId int64) []NetworkParameterLoader {
 	loaders :=  []NetworkParameterLoader{
 		NetworkParameterLoader{
-			engine.Where("identifier_id = ? AND type = ?", identifierId, db_models.PrefixTypeIp).OrderBy("id ASC"),
-			db_models.Prefix{},
+			//engine.Where("identifier_id = ? AND type = ?", identifierId, db_models.PrefixTypeIp).OrderBy("id ASC"),
+			ipQuery,
 			"IP",
 			appendDbPrefix,
 			nil,
 
 		},
 		NetworkParameterLoader{
-			engine.Where("identifier_id = ? AND type = ?", identifierId, db_models.PrefixTypePrefix).OrderBy("id ASC"),
-			db_models.Prefix{},
+			//engine.Where("identifier_id = ? AND type = ?", identifierId, db_models.PrefixTypePrefix).OrderBy("id ASC"),
+			prefixQuery,
 			"Prefix",
 			appendDbPrefix,
 			nil,
 		},
 		NetworkParameterLoader{
-			engine.Where("identifier_id = ?", identifierId).OrderBy("id ASC"),
-			db_models.PortRange{},
+			//engine.Where("identifier_id = ?", identifierId).OrderBy("id ASC"),
+			portRangeQuery,
 			"PortRange",
 			appendDbPortRange,
 			nil,
@@ -416,7 +444,8 @@ func appendDbPrefix(identifier *Identifier, fieldName string, prefixI interface{
 	if err != nil {
 		return err
 	}
-	identifier.Prefix = append(identifier.Prefix, loadedPrefix)
+	field := reflect.ValueOf(identifier).Elem().FieldByName(fieldName).Addr().Interface().(*[]Prefix)
+	*field = append(*field, loadedPrefix)
 
 	return nil
 }
@@ -475,55 +504,10 @@ func GetIdentifier(customerId int) (identifier *Identifier, err error) {
 	identifier.AliasName = dbIdentifier.AliasName
 
 	loadIdentifierParameterValue(identifier)
-	/*
 	for _, loader := range initIdentifierNetworkParameters(dbIdentifier.Id) {
 		err := loader.load(identifier)
-		fmt.Println("hoge:", err)
-	}
-	*/
-
-	// Todo: refactor below
-	// Get IP data
-	dbPrefixIPList := []db_models.Prefix{}
-	err = engine.Where("identifier_id = ? AND type = ?", dbIdentifier.Id, db_models.PrefixTypeIp).OrderBy("id ASC").Find(&dbPrefixIPList)
-	if err != nil {
-		return
-	}
-	if len(dbPrefixIPList) > 0 {
-		for _, v := range dbPrefixIPList {
-			loadPrefix, err := NewPrefix(db_models.CreateIpAddress(v.Addr, v.PrefixLen))
-			if err != nil {
-				continue
-			}
-			identifier.IP = append(identifier.IP, loadPrefix)
-		}
-	}
-
-	// Get Prefix data
-	dbPrefixPrefixList := []db_models.Prefix{}
-	err = engine.Where("identifier_id = ? AND type = ?", dbIdentifier.Id, db_models.PrefixTypePrefix).OrderBy("id ASC").Find(&dbPrefixPrefixList)
-	if err != nil {
-		return
-	}
-	if len(dbPrefixPrefixList) > 0 {
-		for _, v := range dbPrefixPrefixList {
-			loadPrefix, err := NewPrefix(db_models.CreateIpAddress(v.Addr, v.PrefixLen))
-			if err != nil {
-				continue
-			}
-			identifier.Prefix = append(identifier.Prefix, loadPrefix)
-		}
-	}
-
-	// Get PortRange data
-	dbPrefixPortRangeList := []db_models.PortRange{}
-	err = engine.Where("identifier_id = ?", dbIdentifier.Id).OrderBy("id ASC").Find(&dbPrefixPortRangeList)
-	if err != nil {
-		return
-	}
-	if len(dbPrefixPortRangeList) > 0 {
-		for _, v := range dbPrefixPortRangeList {
-			identifier.PortRange = append(identifier.PortRange, PortRange{LowerPort: v.LowerPort, UpperPort: v.UpperPort})
+		if err != nil {
+			log.Errorf(err.Error())
 		}
 	}
 
