@@ -38,7 +38,6 @@ func createAceNetworkParameters(aceId int64, ace Ace) (err error) {
 	session := engine.NewSession()
 	defer session.Close()
 
-	// repeated part No.1
 	newSourceIpv4Network := db_models.CreateSourceIpv4NetworkParam(
 		ace.Matches.SourceIpv4Network.Addr,
 		ace.Matches.SourceIpv4Network.PrefixLen)
@@ -49,7 +48,6 @@ func createAceNetworkParameters(aceId int64, ace Ace) (err error) {
 		return
 	}
 
-	// repeated part No.2
 	newDestinationIpv4Network := db_models.CreateDestinationIpv4NetworkParam(
 		ace.Matches.DestinationIpv4Network.Addr,
 		ace.Matches.DestinationIpv4Network.PrefixLen)
@@ -69,7 +67,6 @@ func createAceRuleAction(aceId int64, ace Ace) (err error) {
 	defer session.Close()
 
 	newActions := []*db_models.AclRuleAction{}
-	// repeated part No.1
 	if ace.Actions.Deny != nil {
 		for _, vv := range ace.Actions.Deny {
 			newDeny := db_models.CreateAclRuleActionDenyParam(vv)
@@ -77,7 +74,6 @@ func createAceRuleAction(aceId int64, ace Ace) (err error) {
 			newActions = append(newActions, newDeny)
 		}
 	}
-	// repeated part No.2
 	if ace.Actions.Permit != nil {
 		for _, vv := range ace.Actions.Permit {
 			newPermit := db_models.CreateAclRuleActionPermitParam(vv)
@@ -85,7 +81,6 @@ func createAceRuleAction(aceId int64, ace Ace) (err error) {
 			newActions = append(newActions, newPermit)
 		}
 	}
-	// repeated part No.3
 	if ace.Actions.RateLimit != nil {
 		for _, vv := range ace.Actions.RateLimit {
 			newRateLimit := db_models.CreateAclRuleActionRateLimitParam(vv)
@@ -96,12 +91,10 @@ func createAceRuleAction(aceId int64, ace Ace) (err error) {
 	_, err = session.Insert(&newActions)
 	if err != nil {
 		log.Infof("action insert err: %s", err)
-		//			goto Rollback
+		return err
 	}
 
-	session.Commit()
-
-	return
+	return session.Commit()
 }
 
 // Todo: Rolling back
@@ -144,14 +137,14 @@ func createAccessControlListEntryDB(accessControlListId int64, accessControlList
 func CreateAccessControlList(accessControlListEntry *AccessControlListEntry, customer *Customer) (newAccessControlList db_models.AccessControlList, err error) {
 	var acl = db_models.AccessControlList{}
 
-	// database connection create
+	// create database connection
 	engine, err := ConnectDB()
 	if err != nil {
 		log.Errorf("database connect error: %s", err)
 		return
 	}
 
-	// same customer_id data check
+	// data duplication check by customer_id
 	c := db_models.AccessControlList{}
 	ok, err := engine.Where("customer_id = ?", customer.Id).Get(&c)
 	if err != nil {
@@ -172,8 +165,7 @@ func CreateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 		return
 	}
 
-	// registration data settings
-	// for customer
+	// registering new data for the customer
 	newAccessControlList = db_models.AccessControlList{
 		CustomerId: customer.Id,
 		Name:       accessControlListEntry.AclName,
@@ -300,8 +292,7 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 		return
 	}
 
-	err = createAccessControlListEntryDB(updAccessControlList.Id, accessControlListEntry)
-	return
+	return createAccessControlListEntryDB(updAccessControlList.Id, accessControlListEntry)
 Rollback:
 	session.Rollback()
 	return

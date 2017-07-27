@@ -5,6 +5,8 @@ import (
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	"reflect"
+	"errors"
+	"fmt"
 )
 
 /*
@@ -24,7 +26,7 @@ func CreateIdentifier(identifier Identifier, customer Customer) (newIdentifier d
 		return
 	}
 
-	// same customer_id data check
+	// duplication check by customer_id
 	c := new(db_models.Identifier)
 	_, err = engine.Where("customer_id = ? AND alias_name = ?", customer.Id, identifier.AliasName).Get(c)
 	if err != nil {
@@ -112,28 +114,6 @@ func createParameterValues(session *xorm.Session, identifiers []interface{}, typ
 	return
 }
 
-func isSetString(value reflect.Value) bool {
-	return value.Type() == reflect.TypeOf(SetString{})
-}
-
-// Todo: integrate SetString and SetInt utilizing the interface
-
-func convertSetStringToArray(setString SetString) []interface{} {
-	var array = make([]interface{}, 0)
-	for _, v := range setString.List() {
-		array = append(array, v)
-	}
-	return array
-}
-
-func convertSetIntToArray(setInt SetInt) []interface{} {
-	var array = make([]interface{}, 0)
-	for _, v := range setInt.List() {
-		array = append(array, v)
-	}
-	return array
-}
-
 const ParameterValueFieldFqdn = "FQDN"
 const ParameterValueFieldUri = "URI"
 const ParameterValueFieldE164 = "E_164"
@@ -158,18 +138,12 @@ var valueTypes = []string{
  */
 func createIdentifierParameterValue(session *xorm.Session, identifier Identifier, identifierId int64) (err error) {
 	for _, valueType := range valueTypes {
-		concreteIdentifierField := reflect.Indirect(reflect.ValueOf(identifier)).FieldByName(valueType)
-
-		var concreteIdentifiers []interface{}
-		if isSetString(concreteIdentifierField) {
-			concreteIdentifiers = convertSetStringToArray(concreteIdentifierField.Interface().(SetString))
-		} else {
-			concreteIdentifiers = convertSetIntToArray(concreteIdentifierField.Interface().(SetInt))
+		parameterValueField := reflect.Indirect(reflect.ValueOf(identifier)).FieldByName(valueType)
+		parameterValues := parameterValueField.Interface().(Set).ToInterfaceList()
+		if err = createParameterValues(session, parameterValues, valueType, identifierId); err != nil {
+			return
 		}
-
-		createParameterValues(session, concreteIdentifiers, valueType, identifierId)
 	}
-
 
 	return
 }
@@ -265,7 +239,7 @@ func UpdateIdentifier(identifier Identifier, customer Customer) (err error) {
 		return
 	}
 
-	// identifier data update
+	// updating identifier
 	updIdentifier := new(db_models.Identifier)
 	_, err = session.Where("customer_id = ?", customer.Id).Get(updIdentifier)
 	if err != nil {
@@ -273,7 +247,7 @@ func UpdateIdentifier(identifier Identifier, customer Customer) (err error) {
 	}
 	if updIdentifier.Id == 0 {
 		// no data found
-		log.Infof("identifier update data exitst err: %s", err)
+		log.Infof("updating identifier does not exist err: %s", err)
 		return
 	}
 
@@ -288,7 +262,7 @@ func UpdateIdentifier(identifier Identifier, customer Customer) (err error) {
 	// Delete target data of ParameterValue and Prefix, then register new data
 	err = db_models.DeleteIdentifierParameterValue(session, updIdentifier.Id)
 	if err != nil {
-		log.Infof("ParameterValue record delete err(Identifler.id:%d): %s", updIdentifier.Id, err)
+		log.Infof("ParameterValue record delete err(Identifier.id:%d): %s", updIdentifier.Id, err)
 		goto Rollback
 	}
 	err = db_models.DeleteIdentifierPrefix(session, updIdentifier.Id)
@@ -320,12 +294,145 @@ func UpdateIdentifier(identifier Identifier, customer Customer) (err error) {
 	}
 
 	// add Commit() after all actions
-	err = session.Commit()
-	return
+	return session.Commit()
 Rollback:
 	session.Rollback()
 	return
 
+}
+
+func prepareIdentifierDbSession(identifierId int64, typeString string) *xorm.Session {
+	return engine.Where("identifier_id = ? AND type = ?", identifierId, typeString)
+}
+
+func toDbValueType(valueType string) (dbValueType string) {
+	if valueType == ParameterValueFieldTrafficProtocol {
+		return db_models.ParameterValueTypeTrafficProtocol
+	} else {
+		return valueType
+	}
+}
+
+func loadIdentifierParameterValue(identifier *Identifier) (err error) {
+	for _, valueType := range valueTypes {
+		dbValueType := toDbValueType(valueType)
+		session := prepareIdentifierDbSession(identifier.Id, dbValueType)
+
+		dbParameterValues := []db_models.ParameterValue{}
+		if err = session.OrderBy("id ASC").Find(&dbParameterValues); err != nil {
+			session.Close()
+			return
+		}
+		if len(dbParameterValues) == 0 {
+			session.Close()
+			continue
+		}
+
+		field := reflect.Indirect(reflect.ValueOf(identifier)).FieldByName(valueType)
+		field.Interface().(Set).FromParameterValue(dbParameterValues)
+		session.Close()
+	}
+
+	return
+}
+
+type NetworkParameterLoader struct {
+	session *xorm.Session
+	typeTemplate interface{}
+	fieldName string
+	handler func (*Identifier, string, interface{}) error
+	result interface{}
+}
+
+func (npl *NetworkParameterLoader) executeQuery() error {
+	slice := reflect.MakeSlice(reflect.SliceOf(reflect.TypeOf(npl.typeTemplate)), 0, 0)
+	// sliceValue := reflect.Indirect(reflect.ValueOf(slice.Interface()))
+	// sliceElementType := sliceValue.Type().Elem()
+	// pv := reflect.New(sliceElementType)
+
+	//return npl.session.Find(npl.typeTemplate)
+	return npl.session.Find(slice.Addr().Interface())
+}
+
+func (npl *NetworkParameterLoader) load(identifier *Identifier) (err error) {
+	if err = npl.executeQuery(); err != nil {
+		return
+	}
+
+	slice, ok := npl.result.([]interface{})
+	if !ok {
+		errors.New("Convert error")
+	}
+
+	if len(slice) > 0 {
+		return nil
+	}
+	for _, v := range slice {
+		if err = npl.handler(identifier, npl.fieldName, v); err != nil {
+			fmt.Println(err)
+			continue // could be 'return'?
+		}
+	}
+
+	return nil
+}
+
+func initIdentifierNetworkParameters(identifierId int64) []NetworkParameterLoader {
+	loaders :=  []NetworkParameterLoader{
+		NetworkParameterLoader{
+			engine.Where("identifier_id = ? AND type = ?", identifierId, db_models.PrefixTypeIp).OrderBy("id ASC"),
+			db_models.Prefix{},
+			"IP",
+			appendDbPrefix,
+			nil,
+
+		},
+		NetworkParameterLoader{
+			engine.Where("identifier_id = ? AND type = ?", identifierId, db_models.PrefixTypePrefix).OrderBy("id ASC"),
+			db_models.Prefix{},
+			"Prefix",
+			appendDbPrefix,
+			nil,
+		},
+		NetworkParameterLoader{
+			engine.Where("identifier_id = ?", identifierId).OrderBy("id ASC"),
+			db_models.PortRange{},
+			"PortRange",
+			appendDbPortRange,
+			nil,
+		},
+	}
+
+	return loaders
+}
+
+func appendDbPrefix(identifier *Identifier, fieldName string, prefixI interface{}) error {
+	prefix, ok := prefixI.(db_models.Prefix)
+	if !ok {
+		return errors.New("Could not convert to db_models.Prefix")
+	}
+
+	loadedPrefix, err := NewPrefix(db_models.CreateIpAddress(prefix.Addr, prefix.PrefixLen))
+	if err != nil {
+		return err
+	}
+	identifier.Prefix = append(identifier.Prefix, loadedPrefix)
+
+	return nil
+}
+
+func appendDbPortRange(identifier *Identifier, fieldName string, portRangeI interface{}) error {
+	portRange, ok := portRangeI.(db_models.PortRange)
+	if !ok {
+		return errors.New("Could not convert to db_models.PortRange")
+	}
+
+	identifier.PortRange = append(
+		identifier.PortRange,
+		PortRange{LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort},
+	)
+
+	return nil
 }
 
 /*
@@ -345,15 +452,15 @@ func GetIdentifier(customerId int) (identifier *Identifier, err error) {
 		return
 	}
 
-	// Get customer table data
+	// Get data from the customer table
 	customer, err := GetCustomer(customerId)
 	if err != nil {
 		return
 	}
-	// default value setting
+	// create a new empty identifier
 	identifier = NewIdentifier(&customer)
 
-	// Get identifier table data
+	// Get data from the identifier table
 	dbIdentifier := db_models.Identifier{}
 	chk, err := engine.Where("customer_id = ?", customerId).Get(&dbIdentifier)
 	if err != nil {
@@ -363,57 +470,19 @@ func GetIdentifier(customerId int) (identifier *Identifier, err error) {
 		// no data
 		return
 	}
+
 	identifier.Id = dbIdentifier.Id
 	identifier.AliasName = dbIdentifier.AliasName
 
-	// Get FQDN data
-	dbParameterValueFqdnList := []db_models.ParameterValue{}
-	err = engine.Where("identifier_id = ? AND type = ?", dbIdentifier.Id, db_models.ParameterValueTypeFqdn).OrderBy("id ASC").Find(&dbParameterValueFqdnList)
-	if err != nil {
-		return
+	loadIdentifierParameterValue(identifier)
+	/*
+	for _, loader := range initIdentifierNetworkParameters(dbIdentifier.Id) {
+		err := loader.load(identifier)
+		fmt.Println("hoge:", err)
 	}
-	if len(dbParameterValueFqdnList) > 0 {
-		for _, v := range dbParameterValueFqdnList {
-			identifier.FQDN.Append(db_models.GetFqdnValue(&v))
-		}
-	}
+	*/
 
-	// Get URI data
-	dbParameterValueUriList := []db_models.ParameterValue{}
-	err = engine.Where("identifier_id = ? AND type = ?", dbIdentifier.Id, db_models.ParameterValueTypeUri).OrderBy("id ASC").Find(&dbParameterValueUriList)
-	if err != nil {
-		return
-	}
-	if len(dbParameterValueUriList) > 0 {
-		for _, v := range dbParameterValueUriList {
-			identifier.URI.Append(db_models.GetUriValue(&v))
-		}
-	}
-
-	// Get E_164 data
-	dbParameterValueE164List := []db_models.ParameterValue{}
-	err = engine.Where("identifier_id = ? AND type = ?", dbIdentifier.Id, db_models.ParameterValueTypeE164).OrderBy("id ASC").Find(&dbParameterValueE164List)
-	if err != nil {
-		return
-	}
-	if len(dbParameterValueE164List) > 0 {
-		for _, v := range dbParameterValueE164List {
-			identifier.E_164.Append(db_models.GetE164Value(&v))
-		}
-	}
-
-	// Get Traffic_Protocol data
-	dbParameterValueTrafficProtocolList := []db_models.ParameterValue{}
-	err = engine.Where("identifier_id = ? AND type = ?", dbIdentifier.Id, db_models.ParameterValueTypeTrafficProtocol).OrderBy("id ASC").Find(&dbParameterValueTrafficProtocolList)
-	if err != nil {
-		return
-	}
-	if len(dbParameterValueTrafficProtocolList) > 0 {
-		for _, v := range dbParameterValueTrafficProtocolList {
-			identifier.TrafficProtocol.Append(db_models.GetTrafficProtocolValue(&v))
-		}
-	}
-
+	// Todo: refactor below
 	// Get IP data
 	dbPrefixIPList := []db_models.Prefix{}
 	err = engine.Where("identifier_id = ? AND type = ?", dbIdentifier.Id, db_models.PrefixTypeIp).OrderBy("id ASC").Find(&dbPrefixIPList)
