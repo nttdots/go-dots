@@ -99,12 +99,7 @@ Or,
 ## DB
 
 To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)
-
-### Setting up databases for tests
-
 The 'dots_server' accesses the 'dots' database on MySQL as the root user.
-
-Before testing this project, You have to import the dumped data('dump.sql') as the test data.
 
     $ cd $GOPATH/src/github.com/nttdots/go-dots/
     $ mysql -u root dots < ./dots_server/db_models/test_dump.sql
