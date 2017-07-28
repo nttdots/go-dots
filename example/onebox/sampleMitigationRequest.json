@@ -1,0 +1,29 @@
+{
+  "mitigation-scope": {
+    "scope": [
+      {
+        "mitigation-id": 12345,
+        "target-ip": [
+          "172.16.238.100"
+        ],
+        "target-port-range": [
+          {
+            "lower-port": 80,
+            "upper-port": 80
+          },
+          {
+            "lower-port": 443,
+            "upper-port": 443
+          },
+          {
+            "lower-port": 8080,
+            "upper-port": 8080
+          }
+        ],
+        "target-protocol": [
+          6
+        ]
+      }
+    ]
+  }
+}

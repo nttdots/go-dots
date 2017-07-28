@@ -12,7 +12,6 @@ services:
           - dots_server
         working_dir: /go/src/github.com/nttdots/go-dots
         entrypoint: ./dots_client/entry_point.sh
-        command: dots_client_controller -method Post -request mitigation_request -json dots_client/sampleMitigationRequest.json
         environment:
           - DOTS_SERVER=2001:db8::9
           - SIGNAL_CHANNEL_PORT=4646
@@ -45,7 +44,7 @@ services:
         - MYSQL_DATABASE=dots
         - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       volumes:
-        - ../../dots_server/db_models/onebox_example.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+        - ../../dots_server/db_models/template.sql:/docker-entrypoint-initdb.d/dump.sql:ro
     gobgp:
       extends:
         file:  ../../gobgp-server/docker-compose.yml
