@@ -37,17 +37,23 @@ services:
       container_name: db
       image: mysql:5.7
       networks:
-          - dots_net
+        dots_net:
+          ipv4_address: 172.16.238.12
+          ipv6_address: 2001:db8::a
       restart: always
       environment:
         - MYSQL_DATABASE=dots
         - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       volumes:
-        - ../../dots_server/db_models/dump_docker.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+        - ../../dots_server/db_models/onebox_example.sql:/docker-entrypoint-initdb.d/dump.sql:ro
     gobgp:
       extends:
         file:  ../../gobgp-server/docker-compose.yml
         service: gobgp
+      networks:
+        dots_net:
+          ipv4_address: 172.16.238.13
+          ipv6_address: 2001:db8::b
 networks:
   dots_net:
     enable_ipv6: true
