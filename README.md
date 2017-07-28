@@ -88,33 +88,52 @@ Or,
     $ docker-compose build
     $ docker-compose up
     
-## Client Controller [mitigation_request]
+### Client Controller [mitigation_request]
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Post \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequest.json
    
-## Client Controller [mitigation_cancel_request]
+### Client Controller [mitigation_cancel_request]
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequest.json
+
+## DB
+
+To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)
+
+### Setting up databases for tests
+
+The 'dots_server' accesses the 'dots' database on MySQL as the root user.
+
+Before testing this project, You have to import the dumped data('dump.sql') as the test data.
+
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/
+    $ mysql -u root dots < ./dots_server/db_models/test_dump.sql
+
+Or you can run MySQL on docker.
+
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/
+    $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
+
 
 # Test
 
 ## One box example on Docker (mitigation request and delete)
 
-1. Build dots client, server, db and gobgp in one box and connect them each other on a docker network.
+Build dots client, server, db and gobgp in one box and connect them each other on a docker network.
 
     $ cd $GOPATH/src/github.com/nttdots/go-dots/example/onebox
     $ docker-compose build
     $ docker-compose up
 
-2. Setup customer information in db
+Setup customer information in db
 
     $ docker exec -i db mysql -u root dots < customer_example.sql
 
-3. You can see how they work by this example command on the dots_client.
+You can see how they work by this example command on the dots_client.
 
     $ docker exec -i dots_client dots_client_controller -method Post -request mitigation_request -json example/onebox/sampleMitigationRequest.json
 
-4. Check the route is installed successfully in gobgp server
+Check the route is installed successfully in gobgp server
 
     $ docker exec -it gobgp gobgp global rib
 
@@ -122,11 +141,11 @@ Or,
 Network              Next Hop             AS_PATH              Age        Attrs
 *> 172.16.238.100/32    172.16.238.254                            00:00:42   [{Origin: i}]
 ```
-5. You can withdraw the route by Delete method
+You can withdraw the route by Delete method
 
     $ docker exec -i dots_client dots_client_controller -method Delete -request mitigation_request -json example/onebox/sampleMitigationRequest.json
 
-6. You can restore the db
+You can restore the db
 
     $ docker exec -i db mysql -u root dots < ../../dots_server/db_models/template.sql 
 
