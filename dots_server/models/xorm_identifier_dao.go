@@ -474,7 +474,7 @@ func appendDbPortRange(identifier *Identifier, fieldName string, portRangeI inte
  *  error error
  */
 func GetIdentifier(customerId int) (identifier *Identifier, err error) {
-	// database connection create
+	// create database connection
 	engine, err := ConnectDB()
 	if err != nil {
 		log.Error("database connect error: %s", err)

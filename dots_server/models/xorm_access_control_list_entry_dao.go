@@ -99,14 +99,6 @@ func createAceRuleAction(aceId int64, ace Ace) (err error) {
 
 // Todo: Rolling back
 func createAccessControlListEntryDB(accessControlListId int64, accessControlListEntry *AccessControlListEntry) (err error) {
-	session := engine.NewSession()
-	defer session.Close()
-
-	err = session.Begin()
-	if err != nil {
-		return
-	}
-
 	for _, ace := range accessControlListEntry.AccessListEntries.Ace {
 		newAccessControlListEntry, err := createAce(accessControlListId, ace)
 		if err != nil {
