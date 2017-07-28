@@ -98,32 +98,37 @@ Or,
 
 # Test
 
-## One box example on Docker (mitigation request)
+## One box example on Docker (mitigation request and delete)
 
-Build dots client, server, db and gobgp in one box and connect them each other on a docker network.
+1. Build dots client, server, db and gobgp in one box and connect them each other on a docker network.
 
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/example/mitigation-request
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/example/onebox
     $ docker-compose build
     $ docker-compose up
 
-You can see how they work by this example command on the dots_client.
+2. Setup customer information in db
 
-    $ dots_client_controller -method Post -request mitigation_request -json dots_client/sampleMitigationRequest.json
+    $ docker exec -i db mysql -u root dots < customer_example.sql
 
-## Setting up databases for tests
+3. You can see how they work by this example command on the dots_client.
 
-The 'dots_server' accesses the 'dots_test' database on MySQL as the root user.
+    $ docker exec -i dots_client dots_client_controller -method Post -request mitigation_request -json example/onebox/sampleMitigationRequest.json
 
-Before testing this project, You have to import the dumped data('dump.sql') as the test data.
+4. Check the route is installed successfully in gobgp server
 
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/
-    $ mysql -u root dots < ./dots_server/db_models/test_dump.sql
+    $ docker exec -it gobgp gobgp global rib
 
+```
+Network              Next Hop             AS_PATH              Age        Attrs
+*> 172.16.238.100/32    172.16.238.254                            00:00:42   [{Origin: i}]
+```
+5. You can withdraw the route by Delete method
 
-Or you can run MySQL on docker.
+    $ docker exec -i dots_client dots_client_controller -method Delete -request mitigation_request -json example/onebox/sampleMitigationRequest.json
 
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/
-    $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
+6. You can restore the db
+
+    $ docker exec -i db mysql -u root dots < ../../dots_server/db_models/template.sql 
 
 
 ## Running tests
