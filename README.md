@@ -98,7 +98,7 @@ Or,
 
 ## DB
 
-To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)
+To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)  
 The 'dots_server' accesses the 'dots' database on MySQL as the root user.
 
     $ cd $GOPATH/src/github.com/nttdots/go-dots/
