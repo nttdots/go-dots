@@ -114,11 +114,13 @@ Or you can run MySQL on docker.
     $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
 
 
-# Test
+# Example
 
 ## One box example on Docker (mitigation request and delete)
 
-Build dots client, server, db and gobgp in one box and connect them each other on a docker network.
+![diagram](https://github.com/nttdots/go-dots/blob/master/docs/pics/mitigation_example_diagram.png)
+
+This docker-compose file builds dots client, server, db and gobgp in one box and connect them each other on a docker network.
 
     $ cd $GOPATH/src/github.com/nttdots/go-dots/example/onebox
     $ docker-compose build
@@ -148,6 +150,7 @@ You can restore the db
 
     $ docker exec -i db mysql -u root dots < ../../dots_server/db_models/template.sql 
 
+# Test
 
 ## Running tests
 
