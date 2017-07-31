@@ -4,7 +4,7 @@
 
 ![logo](https://github.com/nttdots/go-dots/blob/master/go-dots_logo/go-dots_logo_blue.png)
 
-This is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
+"go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
 * draft-ietf-dots-architecture-04 
 * draft-ietf-dots-data-channel-02 
