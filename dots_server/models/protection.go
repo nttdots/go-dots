@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	log "github.com/sirupsen/logrus"
 )
 
 /*

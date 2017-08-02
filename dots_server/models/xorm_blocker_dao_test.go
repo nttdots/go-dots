@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"testing"
 
+	"fmt"
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	"github.com/nttdots/go-dots/dots_server/models"
-	"fmt"
 )
 
 var testBlockerBase models.BlockerBase

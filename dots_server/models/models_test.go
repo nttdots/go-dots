@@ -7,9 +7,9 @@ import (
 	"os/exec"
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/dots_server/models"
+	log "github.com/sirupsen/logrus"
 )
 
 func initLogger() {

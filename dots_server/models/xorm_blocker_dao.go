@@ -3,9 +3,9 @@ package models
 import (
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -299,12 +299,12 @@ func GetBlockerById(blockerId int64) (blocker db_models.Blocker, err error) {
 		return blockers[0], nil
 	}
 	/*
-	ok, err := engine.Id(blockerId).Get(&blocker)
-	if !ok {
-		return db_models.Blocker{}, nil
-	} else {
-		return
-	}
+		ok, err := engine.Id(blockerId).Get(&blocker)
+		if !ok {
+			return db_models.Blocker{}, nil
+		} else {
+			return
+		}
 	*/
 }
 

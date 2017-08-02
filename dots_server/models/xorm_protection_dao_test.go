@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	"github.com/nttdots/go-dots/dots_server/models"
+	log "github.com/sirupsen/logrus"
 )
 
 // implements Protection
@@ -113,7 +113,7 @@ func TestDeleteProtectionById(t *testing.T) {
 	// preparing for the test
 	engine, _ := models.ConnectDB()
 	var p db_models.Protection
-	ok, _ := engine.Where("id=?",100).Get(&p)
+	ok, _ := engine.Where("id=?", 100).Get(&p)
 	if !ok {
 		t.Errorf("protection id error: %d", 100)
 		return

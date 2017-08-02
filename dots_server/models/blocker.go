@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	log "github.com/sirupsen/logrus"
 )
 
 type BlockerType string
@@ -99,7 +99,7 @@ type LoadBaseBlockerSelection struct{}
 
 /*
  * Selects blockers based on their loads.
-*/
+ */
 func (d *LoadBaseBlockerSelection) selection(scope *MitigationScope) (b Blocker, err error) {
 	log.WithField("mitigation_id", scope.MitigationId).Debug("LoadBaseBlockerSelection")
 

@@ -68,7 +68,7 @@ func NewMitigationScope(c *Customer) (s *MitigationScope) {
  *
  * return:
  *  Prefix list of the target Prefixes
-*/
+ */
 func (s *MitigationScope) TargetList() []Prefix {
 	a := s.TargetIP
 	if a == nil {

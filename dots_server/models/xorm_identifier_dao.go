@@ -1,11 +1,11 @@
 package models
 
 import (
-	log "github.com/sirupsen/logrus"
+	"errors"
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	log "github.com/sirupsen/logrus"
 	"reflect"
-	"errors"
 )
 
 /*
@@ -337,23 +337,23 @@ func loadIdentifierParameterValue(identifier *Identifier) (err error) {
 
 // Todo: create DatabaseMapper layer and adopt it to the entire system
 type DatabaseStatement struct {
-	queryString	string
-	arguments 	[]reflect.Value
+	queryString string
+	arguments   []reflect.Value
 }
 
-func (ds *DatabaseStatement) SetQueryString (queryString string) {
+func (ds *DatabaseStatement) SetQueryString(queryString string) {
 	ds.queryString = queryString
 }
 
-func (ds *DatabaseStatement) QueryString () string {
+func (ds *DatabaseStatement) QueryString() string {
 	return ds.queryString
 }
 
-func (ds *DatabaseStatement) SetArguments (arguments []reflect.Value) {
+func (ds *DatabaseStatement) SetArguments(arguments []reflect.Value) {
 	ds.arguments = arguments
 }
 
-func (ds *DatabaseStatement) Arguments (arguments []reflect.Value) {
+func (ds *DatabaseStatement) Arguments(arguments []reflect.Value) {
 	ds.arguments = arguments
 }
 
@@ -378,13 +378,14 @@ func (fs *FindStatement) Prepare() (session *xorm.Session, err error) {
 }
 
 type NetworkParameterLoader struct {
-	session *xorm.Session
-	objectLoader func (*NetworkParameterLoader) interface{}
-	fieldName string
-	handler func (interface{}) interface{}
+	session      *xorm.Session
+	objectLoader func(*NetworkParameterLoader) interface{}
+	fieldName    string
+	handler      func(interface{}) interface{}
 }
 
 var mapTypeToPrefixDbType = map[string]string{"IP": db_models.PrefixTypeIp, "Prefix": db_models.PrefixTypePrefix}
+
 func toDbType(parameterType string) string {
 	if dbType, ok := mapTypeToPrefixDbType[parameterType]; !ok {
 		return ""
@@ -393,7 +394,7 @@ func toDbType(parameterType string) string {
 	}
 }
 
-func NewNetworkParameterLoader(identifierId int64, parameterType string, objectLoader func (*NetworkParameterLoader) interface{}, handler func (interface{}) interface{}) *NetworkParameterLoader{
+func NewNetworkParameterLoader(identifierId int64, parameterType string, objectLoader func(*NetworkParameterLoader) interface{}, handler func(interface{}) interface{}) *NetworkParameterLoader {
 	queryString := "identifier_id = ?"
 	arguments := []reflect.Value{reflect.ValueOf(identifierId)}
 	if dbType := toDbType(parameterType); dbType != "" {

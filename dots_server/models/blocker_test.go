@@ -144,9 +144,7 @@ func TestBlockerToModel(t *testing.T) {
 		time.Now(),
 	}
 
-	profile := db_models.LoginProfile{
-
-	}
+	profile := db_models.LoginProfile{}
 
 	params := make([]db_models.BlockerParameter, 3)
 	params[0] = db_models.BlockerParameter{

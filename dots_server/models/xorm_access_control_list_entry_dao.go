@@ -1,8 +1,8 @@
 package models
 
 import (
-	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	log "github.com/sirupsen/logrus"
 )
 
 func createAce(accessControlListId int64, ace Ace) (aclEntry *db_models.AccessControlListEntry, err error) {
@@ -109,7 +109,7 @@ func createAccessControlListEntryDB(accessControlListId int64, accessControlList
 			return err
 		}
 
-		if err = createAceRuleAction(newAccessControlListEntry.Id, ace); err != nil{
+		if err = createAceRuleAction(newAccessControlListEntry.Id, ace); err != nil {
 			return err
 		}
 	}
@@ -223,7 +223,7 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 		// no data found
 		log.WithFields(log.Fields{
 			"customer_id": customer.Id,
-		}).Warn("access_control_list update data not exist err.", )
+		}).Warn("access_control_list update data not exist err.")
 		return
 	}
 
@@ -235,9 +235,9 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 	if !ok {
 		// no data found
 		log.WithFields(log.Fields{
-			"customer_id": customer.Id,
+			"customer_id":            customer.Id,
 			"access_control_list_id": updAccessControlList.Id,
-		}).Warn("access_control_list_entry update data not exist err.", )
+		}).Warn("access_control_list_entry update data not exist err.")
 		return
 	}
 
@@ -254,7 +254,7 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 	err = db_models.DeleteAccessControlListEntry(session, updAccessControlList.Id)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"error": err,
+			"error":                err,
 			"accessControlList.id": updAccessControlList.Id,
 		}).Error("AccessControlListEntry record delete error.")
 		goto Rollback
@@ -264,7 +264,7 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 	err = db_models.DeleteAccessControlListEntryPrefix(session, updAccessControlListEntry.Id)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"error": err,
+			"error":                     err,
 			"AccessControlListEntry.id": updAccessControlListEntry.Id,
 		}).Error("AccessControlList record delete error.")
 
@@ -273,7 +273,7 @@ func UpdateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 	err = db_models.DeleteAccessControlListEntryAclRuleAction(session, updAccessControlListEntry.Id)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"error": err,
+			"error":                     err,
 			"AccessControlListEntry.id": updAccessControlListEntry.Id,
 		}).Error("AclRuleAction record delete error.")
 

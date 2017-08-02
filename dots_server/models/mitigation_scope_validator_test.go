@@ -3,8 +3,8 @@ package models_test
 import (
 	"testing"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/models"
+	log "github.com/sirupsen/logrus"
 )
 
 func TestMitigationScopeValidator_Validate_WrongType(t *testing.T) {

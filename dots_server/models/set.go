@@ -36,7 +36,7 @@ func (s SetString) Delete(value string) {
 	}
 }
 
-func (s SetString) ToInterfaceList() []interface {} {
+func (s SetString) ToInterfaceList() []interface{} {
 	var array = make([]interface{}, 0)
 	for _, v := range s.List() {
 		array = append(array, v)
@@ -95,7 +95,7 @@ func (s SetInt) FromParameterValue(array []db_models.ParameterValue) {
 	return
 }
 
-func (s SetInt) ToInterfaceList() []interface {} {
+func (s SetInt) ToInterfaceList() []interface{} {
 	var array = make([]interface{}, 0)
 	for _, v := range s.List() {
 		array = append(array, v)
@@ -108,6 +108,6 @@ func NewSetInt() SetInt {
 }
 
 type Set interface {
-	ToInterfaceList()	[]interface{}
+	ToInterfaceList() []interface{}
 	FromParameterValue([]db_models.ParameterValue)
 }

@@ -5,12 +5,12 @@ import (
 	"strconv"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"fmt"
 	"github.com/osrg/gobgp/client"
 	"github.com/osrg/gobgp/packet/bgp"
 	"github.com/osrg/gobgp/table"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	"fmt"
 )
 
 const (

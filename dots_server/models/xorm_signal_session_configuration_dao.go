@@ -1,8 +1,8 @@
 package models
 
 import (
-	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -170,7 +170,7 @@ func GetSignalSessionConfiguration(customerId int, sessionId int) (signalSession
  *  sessionId session ID
  * return:
  *  error error
-*/
+ */
 func DeleteSignalSessionConfiguration(customerId int, sessionId int) (err error) {
 	// database connection create
 	engine, err := ConnectDB()

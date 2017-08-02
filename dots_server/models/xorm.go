@@ -4,11 +4,11 @@ import (
 	"database/sql"
 	"fmt"
 
-	log "github.com/sirupsen/logrus"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/go-xorm/xorm"
 	_ "github.com/lib/pq"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
+	log "github.com/sirupsen/logrus"
 )
 
 var engine *xorm.Engine

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -62,32 +62,32 @@ func loadProtectionStatus(engine *xorm.Engine, id int64) (pps *ProtectionStatus,
 
 	protectionStatus := []db_models.ProtectionStatus{} // Todo: query(...).first()
 	err = engine.Where("id=?", id).Find(&protectionStatus)
-//	ok, err := engine.ID(id).Get(&dps)
+	//	ok, err := engine.ID(id).Get(&dps)
 	if err != nil {
 		return
 	}
 	/*
-	if !ok {
-		pps = nil
-		return
-	}
+		if !ok {
+			pps = nil
+			return
+		}
 	*/
 
 	/*
-	peak, err := loadThroughput(engine, dps.PeakThroughputId)
-	if err != nil {
-		return
-	}
-	average, err := loadThroughput(engine, dps.AverageThroughputId)
-	if err != nil {
-		return
-	}
+		peak, err := loadThroughput(engine, dps.PeakThroughputId)
+		if err != nil {
+			return
+		}
+		average, err := loadThroughput(engine, dps.AverageThroughputId)
+		if err != nil {
+			return
+		}
 	*/
 
 	// skipping ThroughputData for now. will fix
 	pps = NewProtectionStatus(
 		//dps.Id, dps.TotalPackets, dps.TotalBits, peak, average,
-		dps.Id, dps.TotalPackets, dps.TotalBits, &ThroughputData{0,0,0}, &ThroughputData{0,0,0},
+		dps.Id, dps.TotalPackets, dps.TotalBits, &ThroughputData{0, 0, 0}, &ThroughputData{0, 0, 0},
 	)
 	return
 }
@@ -101,15 +101,15 @@ func loadThroughput(engine *xorm.Engine, id int64) (ptd *ThroughputData, err err
 
 	throughputData := []db_models.ThroughputData{}
 	err = engine.Where("id=?", id).Find(&throughputData)
-//	ok, err := engine.ID(id).Get(&dtd)
+	//	ok, err := engine.ID(id).Get(&dtd)
 	if err != nil {
 		return
 	}
 	/*
-	if !ok {
-		ptd = nil
-		return
-	}
+		if !ok {
+			ptd = nil
+			return
+		}
 	*/
 	dtd = throughputData[0]
 	ptd = &ThroughputData{
@@ -254,7 +254,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 				"MitigationId":                  newProtection.MitigationId,
 				"ForwardedDataInfoTotalPackets": forwardedDataInfo.TotalPackets,
 				"ForwardedDataInfoTotalBits":    forwardedDataInfo.TotalBits,
-				"Err":                           err,
+				"Err": err,
 			}).Error("insert ProtectionStatus error")
 			goto Rollback
 		}
@@ -284,7 +284,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 				"MitigationId":                newProtection.MitigationId,
 				"BlockedDataInfoTotalPackets": blockedDataInfo.TotalPackets,
 				"BlockedDataInfoTotalBits":    blockedDataInfo.TotalBits,
-				"Err":                         err,
+				"Err": err,
 			}).Error("insert ProtectionStatus error")
 			goto Rollback
 		}
@@ -332,9 +332,9 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	protectionParameters = toProtectionParameters(protection, storedProtection[0].Id)
 	if len(protectionParameters) > 0 {
 		/*
-		for idx := range protectionParameters {
-			protectionParameters[idx].ProtectionId = storedProtection[0].Id
-		}
+			for idx := range protectionParameters {
+				protectionParameters[idx].ProtectionId = storedProtection[0].Id
+			}
 		*/
 
 		_, err = session.InsertMulti(protectionParameters)
@@ -355,10 +355,10 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 
 	// obtain the new protection stored in the DB for update the id.
 	/*
-	storedProtection = make([]db_models.Protection, 0)
-	if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err == nil {
-		return storedProtection[0], nil
-	}
+		storedProtection = make([]db_models.Protection, 0)
+		if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err == nil {
+			return storedProtection[0], nil
+		}
 	*/
 
 	return storedProtection[0], nil
@@ -472,7 +472,7 @@ func UpdateProtection(protection Protection) (err error) {
 				"MitigationId":                  updProtection.MitigationId,
 				"ForwardedDataInfoTotalPackets": updForwardedDataInfo.TotalPackets,
 				"ForwardedDataInfoTotalBits":    updForwardedDataInfo.TotalBits,
-				"Err":                           err,
+				"Err": err,
 			}).Error("update ProtectionStatus error")
 			goto Rollback
 		}
@@ -496,7 +496,7 @@ func UpdateProtection(protection Protection) (err error) {
 				"MitigationId":                updProtection.MitigationId,
 				"BlockedDataInfoTotalPackets": updBlockedDataInfo.TotalPackets,
 				"BlockedDataInfoTotalBits":    updBlockedDataInfo.TotalBits,
-				"Err":                         err,
+				"Err": err,
 			}).Error("update ProtectionStatus error")
 			goto Rollback
 		}
@@ -618,10 +618,10 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		}
 		dbl := blockers[0]
 		/*
-		if !ok {
-			blocker = nil
-		}
-		 */
+			if !ok {
+				blocker = nil
+			}
+		*/
 		blocker, err = toBlocker(dbl)
 		if err != nil {
 			return nil, err

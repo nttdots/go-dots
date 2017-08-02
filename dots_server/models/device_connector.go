@@ -1,8 +1,8 @@
 package models
 
 import (
-	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	log "github.com/sirupsen/logrus"
 )
 
 // Connector object to the mitigation devices.
@@ -22,7 +22,7 @@ type SshConnector struct {
  *  login_profile login account information
  * return:
  *  err error
-*/
+ */
 func (d *SshConnector) connect(login_profile LoginProfile) (err error) {
 	log.Infof("SshConnector.connect profile: %+v", login_profile)
 	d.connected = true

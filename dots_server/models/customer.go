@@ -88,7 +88,7 @@ func GetCustomerByCommonName(cn string) (*Customer, error) {
  * return:
  *  customer request source Customer
  *  error error
-*/
+ */
 func GetCustomerById(customerId int) (*Customer, error) {
 
 	customer, err := GetCustomer(customerId)
