@@ -364,6 +364,7 @@ func (al *AttributeLoader) Load(identifier *Identifier) (err error) {
 	obj := al.objectLoader(al)
 	field := reflect.ValueOf(identifier).Elem().FieldByName(al.fieldName)
 	al.attrSetter(field, obj)
+	al.session.Close()
 
 	return nil
 }
