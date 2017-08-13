@@ -6,6 +6,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
 	"reflect"
+	"strings"
 )
 
 /*
@@ -300,10 +301,6 @@ Rollback:
 
 }
 
-func prepareIdentifierDbSession(identifierId int64, typeString string) *xorm.Session {
-	return engine.Where("identifier_id = ? AND type = ?", identifierId, typeString)
-}
-
 func toDbValueType(valueType string) (dbValueType string) {
 	if valueType == ParameterValueFieldTrafficProtocol {
 		return db_models.ParameterValueTypeTrafficProtocol
@@ -312,41 +309,15 @@ func toDbValueType(valueType string) (dbValueType string) {
 	}
 }
 
-func loadIdentifierParameterValue(identifier *Identifier) (err error) {
-	for _, valueType := range valueTypes {
-		dbValueType := toDbValueType(valueType)
-		session := prepareIdentifierDbSession(identifier.Id, dbValueType)
-
-		dbParameterValues := []db_models.ParameterValue{}
-		if err = session.OrderBy("id ASC").Find(&dbParameterValues); err != nil {
-			session.Close()
-			return
-		}
-		if len(dbParameterValues) == 0 {
-			session.Close()
-			continue
-		}
-
-		field := reflect.Indirect(reflect.ValueOf(identifier)).FieldByName(valueType)
-		field.Interface().(Set).FromParameterValue(dbParameterValues)
-		session.Close()
-	}
-
-	return
-}
-
 // Todo: create DatabaseMapper layer and adopt it to the entire system
 type DatabaseStatement struct {
-	queryString string
+	queryString []string
 	arguments   []reflect.Value
 }
 
-func (ds *DatabaseStatement) SetQueryString(queryString string) {
-	ds.queryString = queryString
-}
-
-func (ds *DatabaseStatement) QueryString() string {
-	return ds.queryString
+func (ds *DatabaseStatement) Append(str string, arg reflect.Value) {
+	ds.queryString = append(ds.queryString, str)
+	ds.arguments = append(ds.arguments, arg)
 }
 
 func (ds *DatabaseStatement) SetArguments(arguments []reflect.Value) {
@@ -362,8 +333,9 @@ type FindStatement struct {
 }
 
 func (fs *FindStatement) Prepare() (session *xorm.Session, err error) {
+	queryString := strings.Join(fs.queryString, " AND ")
 	query := reflect.ValueOf(engine.Where)
-	ret := query.Call(fs.arguments)
+	ret := query.Call(append([]reflect.Value{reflect.ValueOf(queryString)}, fs.arguments...))
 	if len(ret) == 0 {
 		return nil, errors.New("Cannot obtain the session object")
 	}
@@ -377,66 +349,36 @@ func (fs *FindStatement) Prepare() (session *xorm.Session, err error) {
 	return
 }
 
-type NetworkParameterLoader struct {
+type AttributeSetter func(reflect.Value, interface{})
+type AttributeObjectLoader func(*AttributeLoader) interface{}
+
+type AttributeLoader struct {
 	session      *xorm.Session
-	objectLoader func(*NetworkParameterLoader) interface{}
 	fieldName    string
-	handler      func(interface{}) interface{}
+	objectLoader AttributeObjectLoader
+	attrSetter   AttributeSetter
 }
 
-var mapTypeToPrefixDbType = map[string]string{"IP": db_models.PrefixTypeIp, "Prefix": db_models.PrefixTypePrefix}
+func (al *AttributeLoader) Load(identifier *Identifier) (err error) {
+	obj := al.objectLoader(al)
+	field := reflect.ValueOf(identifier).Elem().FieldByName(al.fieldName)
+	al.attrSetter(field, obj)
 
-func toDbType(parameterType string) string {
-	if dbType, ok := mapTypeToPrefixDbType[parameterType]; !ok {
-		return ""
-	} else {
-		return dbType
-	}
+	return nil
 }
 
-func NewNetworkParameterLoader(identifierId int64, parameterType string, objectLoader func(*NetworkParameterLoader) interface{}, handler func(interface{}) interface{}) *NetworkParameterLoader {
-	queryString := "identifier_id = ?"
-	arguments := []reflect.Value{reflect.ValueOf(identifierId)}
-	if dbType := toDbType(parameterType); dbType != "" {
-		queryString += " AND type = ?"
-		arguments = append(arguments, reflect.ValueOf(dbType))
-	}
+type attrConverter func(interface{}) interface{}
 
-	statement := &FindStatement{&DatabaseStatement{queryString, arguments}}
-	session, err := statement.Prepare()
-	if err != nil {
-		return nil
-	}
-
-	return &NetworkParameterLoader{session.OrderBy("id ASC"), objectLoader, parameterType, handler}
-}
-
-func prefixQuery(npl *NetworkParameterLoader) interface{} {
-	prefixes := []db_models.Prefix{}
-	npl.session.Find(&prefixes)
-
-	return prefixes
-}
-
-func portRangeQuery(npl *NetworkParameterLoader) interface{} {
-	portRanges := []db_models.PortRange{}
-	npl.session.Find(&portRanges)
-
-	return portRanges
-}
-
-func (npl *NetworkParameterLoader) load(identifier *Identifier) (err error) {
-	list := npl.objectLoader(npl)
+func loadSliceAttribute(field reflect.Value, list interface{}, converter attrConverter) (err error) {
 	if reflect.TypeOf(list).Kind() != reflect.Slice {
-		return errors.New("NetworkParameter Argument Not Slice")
+		return errors.New("loadSliceAttribute: Not Slice")
 	}
-	field := reflect.ValueOf(identifier).Elem().FieldByName(npl.fieldName)
 	result := reflect.ValueOf(list)
 
 	for i := 0; i < result.Len(); i++ {
-		loadedObject := npl.handler(result.Index(i).Interface())
+		loadedObject := converter(result.Index(i).Interface())
 		if loadedObject == nil {
-			log.Errorf("NetworkParameter create object error")
+			log.Errorf("loadSliceAttribute: create object error")
 			continue
 		}
 		field.Set(reflect.Append(field, reflect.ValueOf(loadedObject)))
@@ -444,15 +386,80 @@ func (npl *NetworkParameterLoader) load(identifier *Identifier) (err error) {
 	return nil
 }
 
-func initIdentifierNetworkParameters(identifierId int64) []NetworkParameterLoader {
-	return []NetworkParameterLoader{
-		*NewNetworkParameterLoader(identifierId, "IP", prefixQuery, createPrefix),
-		*NewNetworkParameterLoader(identifierId, "Prefix", prefixQuery, createPrefix),
-		*NewNetworkParameterLoader(identifierId, "PortRange", portRangeQuery, createPortRange),
+var mapTypeToPrefixDbType = map[string]string{"IP": db_models.PrefixTypeIp, "Prefix": db_models.PrefixTypePrefix}
+
+func toDbNetworkParameterType(parameterType string) string {
+	if dbType, ok := mapTypeToPrefixDbType[parameterType]; !ok {
+		return ""
+	} else {
+		return dbType
 	}
 }
 
-func createPrefix(prefixI interface{}) interface{} {
+const NetworkParamIp = "IP"
+const NetworkParamPrefix = "Prefix"
+const NetworkParamPortRange = "PortRange"
+
+func newIdentifierFindDatabaseStatement(identifierId int64, parameterType string) (statement *FindStatement) {
+	statement = &FindStatement{&DatabaseStatement{}}
+	statement.Append("identifier_id = ?", reflect.ValueOf(identifierId))
+
+	switch parameterType {
+	case NetworkParamIp, NetworkParamPrefix, NetworkParamPortRange:
+		if dbType := toDbNetworkParameterType(parameterType); dbType != "" {
+			statement.Append("type = ?", reflect.ValueOf(dbType))
+		}
+	case ParameterValueFieldFqdn, ParameterValueFieldUri, ParameterValueFieldE164, ParameterValueFieldTrafficProtocol:
+		statement.Append("type = ?", reflect.ValueOf(toDbValueType(parameterType)))
+	}
+
+	return
+}
+
+func NewAttributeLoader(identifierId int64, parameterType string, objectLoader AttributeObjectLoader, objectSetter AttributeSetter) *AttributeLoader {
+	statement := newIdentifierFindDatabaseStatement(identifierId, parameterType)
+	session, err := statement.Prepare()
+	if err != nil {
+		return nil
+	}
+
+	return &AttributeLoader{session.OrderBy("id ASC"), parameterType, objectLoader, objectSetter}
+}
+
+func prefixQuery(al *AttributeLoader) interface{} {
+	prefixes := []db_models.Prefix{}
+	al.session.Find(&prefixes)
+
+	return prefixes
+}
+
+func portRangeQuery(al *AttributeLoader) interface{} {
+	portRanges := []db_models.PortRange{}
+	al.session.Find(&portRanges)
+
+	return portRanges
+}
+
+func parameterValueQuery(al *AttributeLoader) interface{} {
+	parameterValues := []db_models.ParameterValue{}
+	al.session.Find(&parameterValues)
+
+	return parameterValues
+}
+
+func initIdentifierAttributeLoaders(identifierId int64) []AttributeLoader {
+	return []AttributeLoader{
+		*NewAttributeLoader(identifierId, NetworkParamIp, prefixQuery, setPrefixAttribute),
+		*NewAttributeLoader(identifierId, NetworkParamPrefix, prefixQuery, setPrefixAttribute),
+		*NewAttributeLoader(identifierId, NetworkParamPortRange, portRangeQuery, setPortRangeAttribute),
+		*NewAttributeLoader(identifierId, ParameterValueFieldFqdn, parameterValueQuery, setParameterValueAttribute),
+		*NewAttributeLoader(identifierId, ParameterValueFieldUri, parameterValueQuery, setParameterValueAttribute),
+		*NewAttributeLoader(identifierId, ParameterValueFieldE164, parameterValueQuery, setParameterValueAttribute),
+		*NewAttributeLoader(identifierId, ParameterValueFieldTrafficProtocol, parameterValueQuery, setParameterValueAttribute),
+	}
+}
+
+func convertPrefix(prefixI interface{}) interface{} {
 	prefix, ok := prefixI.(db_models.Prefix)
 	if !ok {
 		return errors.New("Could not convert to db_models.Prefix")
@@ -464,13 +471,39 @@ func createPrefix(prefixI interface{}) interface{} {
 	return loadedPrefix
 }
 
-func createPortRange(portRangeI interface{}) interface{} {
+func setPrefixAttribute(field reflect.Value, prefixI interface{}) {
+	loadSliceAttribute(field, prefixI, convertPrefix)
+}
+
+func convertPortRange(portRangeI interface{}) interface{} {
 	portRange, ok := portRangeI.(db_models.PortRange)
 	if !ok {
 		return errors.New("Could not convert to db_models.PortRange")
 	}
 
 	return PortRange{LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort}
+}
+
+func setPortRangeAttribute(field reflect.Value, portRangeI interface{}) {
+	loadSliceAttribute(field, portRangeI, convertPortRange)
+}
+
+func setParameterValueAttribute(field reflect.Value, parameterValueI interface{}) {
+	dbParameterValues, ok := parameterValueI.([]db_models.ParameterValue)
+	if !ok {
+		return
+	}
+	field.Interface().(Set).FromParameterValue(dbParameterValues)
+}
+
+func loadIdentifierAttributes(identifier *Identifier) (err error) {
+	for _, loader := range initIdentifierAttributeLoaders(identifier.Id) {
+		err := loader.Load(identifier)
+		if err != nil {
+			log.Errorf(err.Error())
+		}
+	}
+	return
 }
 
 /*
@@ -511,14 +544,7 @@ func GetIdentifier(customerId int) (identifier *Identifier, err error) {
 
 	identifier.Id = dbIdentifier.Id
 	identifier.AliasName = dbIdentifier.AliasName
-
-	loadIdentifierParameterValue(identifier)
-	for _, loader := range initIdentifierNetworkParameters(dbIdentifier.Id) {
-		err := loader.load(identifier)
-		if err != nil {
-			log.Errorf(err.Error())
-		}
-	}
+	loadIdentifierAttributes(identifier)
 
 	return
 }
