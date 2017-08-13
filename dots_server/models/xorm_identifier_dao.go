@@ -359,6 +359,7 @@ type AttributeLoader struct {
 	attrSetter   AttributeSetter
 }
 
+// Todo: handle errors
 func (al *AttributeLoader) Load(identifier *Identifier) (err error) {
 	obj := al.objectLoader(al)
 	field := reflect.ValueOf(identifier).Elem().FieldByName(al.fieldName)
