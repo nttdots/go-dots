@@ -11,7 +11,7 @@ services:
       - ./nfacctd.conf:/etc/nfacctd.conf:ro
   sensor:
     image: ssugar/softflowd
-    command: ["/usr/sbin/softflowd", "-v", "5", "-m", "1", "-d", "-i", "eth0", "-n", "pmacct:5678"  ]
+    command: ["/usr/sbin/softflowd", "-v", "5", "-m", "1", "-d", "-i", "eth0", "-n", "pmacct:2055"  ]
     depends_on:
         pmacct:
           condition: service_started
