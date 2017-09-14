@@ -62,6 +62,9 @@
             },
             "lifetime": {
               "type": "integer"
+            },
+            "urgent-flag": {
+              "type": "boolean"
             }
           }
         }

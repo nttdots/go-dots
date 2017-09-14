@@ -7,6 +7,9 @@ services:
         image: dots_base
         depends_on:
           - db
+        depends_on:
+          db:
+            condition: service_healthy
         networks:
           - dots_net
         ports:
@@ -27,6 +30,11 @@ services:
         - MYSQL_ALLOW_EMPTY_PASSWORD=yes
       volumes:
         - ../../dots_server/db_models/dump_docker.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+      healthcheck:
+          test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+          interval: 3s
+          timeout: 1s
+          retries: 5
 networks:
   dots_net:
     enable_ipv6: true
