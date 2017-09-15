@@ -1,0 +1,14 @@
+# X.509 server certificate options
+
+organization = "sample aaa server"
+state = "Tokyo"
+country = JP
+cn = "diameter.sample.example.com"
+expiration_days = 365
+
+dns_name = "diameter.example.com"
+
+# X.509 v3 extensions
+tls_www_server
+signing_key
+encryption_key

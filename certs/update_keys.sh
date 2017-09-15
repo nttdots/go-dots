@@ -19,3 +19,9 @@ $CERTTOOL --generate-privkey --bits 4096 --outfile client-key.pem
 $CERTTOOL --generate-request --load-privkey client-key.pem --template template_client.txt --outfile client-csr.pem
 $CERTTOOL --generate-certificate --load-request client-csr.pem --load-ca-certificate ca-cert.pem --load-ca-privkey ca-key.pem  --template template_client.txt --outfile client-cert.pem
 rm -f client-csr.pem
+
+# update aaa server
+$CERTTOOL --generate-privkey --bits 4096 --outfile aaa-key.pem
+$CERTTOOL --generate-request --load-privkey aaa-key.pem --template template_aaa.txt --outfile aaa-csr.pem
+$CERTTOOL --generate-certificate --load-request aaa-csr.pem --load-ca-certificate ca-cert.pem --load-ca-privkey ca-key.pem  --template template_aaa.txt --outfile aaa-cert.pem
+rm -f aaa-csr.pem
