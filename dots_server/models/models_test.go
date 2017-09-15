@@ -162,11 +162,18 @@ system:
     signalChannelPort: 4646
     dataChannelPort: 4647
   database:
-    username: root
-    protocol: tcp
-    host: db
-    port: 3306
-    databaseName: dots
+    - name: dots
+      username: root
+      protocol: tcp
+      host: db
+      port: 3306
+      databaseName: dots
+    - name: pmacct
+      username: root
+      protocol: tcp
+      host: db
+      port: 3306
+      databaseName: pmacct
 customers:
   - name: isp1
     account: isp1

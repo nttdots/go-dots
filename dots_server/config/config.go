@@ -126,6 +126,7 @@ func (sfpc *SecureFile) Store() {
 
 // Secure file config
 type DatabaseNode struct {
+	Name         string `yaml:"name"`
 	Username     string `yaml:"username"`
 	Password     string `yaml:"password"`
 	Protocol     string `yaml:"protocol"`
@@ -140,6 +141,7 @@ func (dcn DatabaseNode) Convert() (interface{}, error) {
 	}
 
 	return &Database{
+		Name:         dcn.Name,
 		Username:     dcn.Username,
 		Password:     dcn.Password,
 		Protocol:     dcn.Protocol,
@@ -150,6 +152,7 @@ func (dcn DatabaseNode) Convert() (interface{}, error) {
 }
 
 type Database struct {
+	Name         string
 	Username     string
 	Password     string
 	Protocol     string
@@ -169,21 +172,23 @@ type ServerSystemConfig struct {
 	SignalConfigurationParameter *SignalConfigurationParameter
 	SecureFile                   *SecureFile
 	Network                      *Network
-	Database                     *Database
+	Database                     []Database
 }
 
 func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setSignalConfigurationParameter(*sc.SignalConfigurationParameter)
 	GetServerSystemConfig().setSecureFile(*sc.SecureFile)
 	GetServerSystemConfig().setNetwork(*sc.Network)
-	GetServerSystemConfig().setDatabase(*sc.Database)
+	for _, db := range sc.Database {
+		GetServerSystemConfig().setDatabase(db)
+	}
 }
 
 type ServerSystemConfigNode struct {
 	SignalConfigurationParameter SignalConfigurationParameterNode `yaml:"signalConfigurationParameter"`
 	SecureFile                   SecureFileNode                   `yaml:"secureFile"`
 	Network                      NetworkNode                      `yaml:"network"`
-	Database                     DatabaseNode                     `yaml:"database"`
+	Database                     []DatabaseNode                   `yaml:"database"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -202,16 +207,20 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
-	database, err := scn.Database.Convert()
-	if err != nil {
-		return nil, err
+	var databases []Database
+	for _, database := range scn.Database {
+		db, err := database.Convert()
+		if err != nil {
+			return nil, err
+		}
+		databases = append(databases, *db.(*Database))
 	}
 
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		SecureFile:                   secureFilePath.(*SecureFile),
 		Network:                      network.(*Network),
-		Database:                     database.(*Database),
+		Database:                     databases,
 	}, nil
 }
 
@@ -228,7 +237,7 @@ func (sc *ServerSystemConfig) setNetwork(config Network) {
 }
 
 func (sc *ServerSystemConfig) setDatabase(config Database) {
-	sc.Database = &config
+	sc.Database = append(sc.Database, config)
 }
 
 var systemConfigInstance *ServerSystemConfig

@@ -8,90 +8,180 @@ import (
 	"github.com/go-xorm/xorm"
 	_ "github.com/lib/pq"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
-	log "github.com/sirupsen/logrus"
+    log "github.com/sirupsen/logrus"
 )
 
-var engine *xorm.Engine
+var engineList map[string]*xorm.Engine = map[string]*xorm.Engine{"dots":nil, "pmacct":nil}
 var testFlag bool = false
 var dataSourceName string = ""
+const defaultDatabaseName = "dots"
 
 // test mode set
 func SetTestMode(flag bool) {
 	testFlag = flag
 }
 
-func getDateSourceName() string {
-	if dataSourceName != "" {
-		return dataSourceName
-	}
-	config := dots_config.GetServerSystemConfig().Database
+func getDateSourceName(databaseConfigName string) string {
+	dbs := dots_config.GetServerSystemConfig().Database
 
-	dataSourceName = fmt.Sprintf("%s:%s@%s(%s:%d)/%s", config.Username, config.Password, config.Protocol,
-		config.Host, config.Port, config.DatabaseName)
-	log.WithField("dataSource", dataSourceName).Debug("target database")
+	for _, config := range dbs {
+		if databaseConfigName == config.Name {
+			dataSourceName = fmt.Sprintf("%s:%s@%s(%s:%d)/%s", config.Username, config.Password, config.Protocol,
+				config.Host, config.Port, config.DatabaseName)
+            log.WithField("dataSource", dataSourceName).Debug("target database")
+		}
+	}
+
 	return dataSourceName
 }
 
+// get engine
+func GetEngine(params ...string) *xorm.Engine {
+	var databaseName string
+
+	switch len(params) {
+	case 1:
+		// not dots database setting
+		databaseName = params[0]
+	default:
+		// dots database setting
+		databaseName = defaultDatabaseName
+	}
+
+	for key, engine := range engineList {
+		if key == databaseName {
+			return engine
+		}
+	}
+	return nil
+}
+
+// get connect database name
+func getConnectDBSetting(params []string) (**xorm.Engine, string) {
+	var databaseName string
+
+	switch len(params) {
+	case 1:
+		// not dots database setting
+		databaseName = params[0]
+	default:
+		// dots database setting
+		databaseName = defaultDatabaseName
+	}
+
+	// target engine select
+	for key, engine := range engineList {
+		if key == databaseName {
+			return &engine, databaseName
+		}
+	}
+
+	var defaultEngine = engineList[defaultDatabaseName]
+	return &defaultEngine, databaseName
+}
+
+// set engineList
+func setEngineList(databaseName string, engine **xorm.Engine) {
+	for key, := range engineList {
+		if key == databaseName {
+			engineList[key] = *engine
+			return
+		}
+	}
+}
+
 // database connection create
-func ConnectDB() (*xorm.Engine, error) {
+func ConnectDB(params ...string) (*xorm.Engine, error) {
 	var err error
-	if engine != nil {
-		return engine, err
+
+	// get connect Database Setting
+	targetEngine, databaseName := getConnectDBSetting(params)
+
+	if *targetEngine != nil {
+		return *targetEngine, err
 	}
 
 	if testFlag {
-		engine, err = xorm.NewEngine("mysql", "root:@/dots_test")
+		*targetEngine, err = xorm.NewEngine("mysql", "root:@/"+databaseName+"_test")
 	} else {
-		engine, err = xorm.NewEngine("mysql", getDateSourceName())
+		*targetEngine, err = xorm.NewEngine("mysql", getDateSourceName(databaseName))
 	}
 
-	return engine, err
+	// set engineList
+	setEngineList(databaseName, targetEngine)
+
+	return *targetEngine, err
 }
 
 // database reconnection create
-func ReConnectDB() (*xorm.Engine, error) {
+func ReConnectDB(params ...string) (*xorm.Engine, error) {
 	var err error
-	if engine != nil {
-		engine.Close()
-		engine = nil
+
+	// get connect Database Setting
+	targetEngine, databaseName := getConnectDBSetting(params)
+
+	if *targetEngine != nil {
+		(*targetEngine).Close()
+		*targetEngine = nil
 	}
 
 	if testFlag {
-		engine, err = xorm.NewEngine("mysql", "root:@/dots_test")
+		*targetEngine, err = xorm.NewEngine("mysql", "root:@/"+databaseName+"_test")
 	} else {
-		engine, err = xorm.NewEngine("mysql", getDateSourceName())
+		*targetEngine, err = xorm.NewEngine("mysql", getDateSourceName(databaseName))
 	}
 
-	return engine, err
+	// set engineList
+	setEngineList(databaseName, targetEngine)
+
+	return *targetEngine, err
 }
 
 // Session start
-func GetSession(engine *xorm.Engine) (*xorm.Session, error) {
+func GetSession(engine *xorm.Engine, params ...string) (*xorm.Session, error) {
 	var err error
+
 	if engine == nil {
-		engine, err = ConnectDB()
+		if len(params) == 1 {
+			engine, err = ConnectDB(params[0])
+		} else {
+			engine, err = ConnectDB()
+		}
 	}
 
 	return engine.NewSession(), err
 }
 
 // Execute SQL display mode change
-func ShowSQL(display bool) (err error) {
-	if engine == nil {
+func ShowSQL(display bool, params ...string) (err error) {
+	var engine *xorm.Engine
+
+	if len(params) == 1 {
+		engine, err = ConnectDB(params[0])
+	} else {
 		engine, err = ConnectDB()
 	}
 
-	engine.ShowSQL(display)
+	if err == nil {
+		engine.ShowSQL(display)
+	}
 	return
+
 }
 
 // Execute SQL
-func ExecuteSQL(sql string) (res sql.Result, err error) {
-	if engine == nil {
+func ExecuteSQL(sql string, params ...string) (res sql.Result, err error) {
+	var engine *xorm.Engine
+
+	if len(params) == 1 {
+		engine, err = ConnectDB(params[0])
+	} else {
 		engine, err = ConnectDB()
 	}
 
-	res, err = engine.Exec(sql)
+	if err == nil {
+		res, err = engine.Exec(sql)
+	}
 	return
 
 }
