@@ -17,5 +17,7 @@ services:
           - ../certs/ca-key.pem:/etc/ssl/certs/ca-key.pem:ro
           - ../certs/aaa-cert.pem:/etc/ssl/certs/freeDiameter.pem:ro
           - ../certs/aaa-key.pem:/etc/ssl/private/freeDiameter.key:ro
+          - ./freeDiameter.conf:/freeDiameter.conf:ro
+          - ./diameap.conf:/diameap.conf:ro
         stdin_open: true
         tty: true
