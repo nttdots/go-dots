@@ -17,10 +17,12 @@ services:
         volumes:
           - ../certs/ca-cert.pem:/etc/ssl/certs/ca-cert.pem:ro
           - ../certs/ca-key.pem:/etc/ssl/certs/ca-key.pem:ro
+          - ../certs/server-cert.pem:/etc/ssl/certs/server-cert.pem:ro
+          - ../certs/server-key.pem:/etc/ssl/certs/server-key.pem:ro
           - ../certs/aaa-cert.pem:/etc/ssl/certs/freeDiameter.pem:ro
           - ../certs/aaa-key.pem:/etc/ssl/private/freeDiameter.key:ro
-          - ./freeDiameter.conf:/freeDiameter.conf:ro
-          - ./diameap.conf:/diameap.conf:ro
+          - ./config:/config:ro
+          - ../certs:/certs:ro
     diameap_db:
         container_name: diameap_db
         image: mysql:5.7
