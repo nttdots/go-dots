@@ -12,6 +12,8 @@ services:
           - 5658:5658
         hostname: diameter
         domainname: example.com
+        depends_on:
+          - diameap_db
         volumes:
           - ../certs/ca-cert.pem:/etc/ssl/certs/ca-cert.pem:ro
           - ../certs/ca-key.pem:/etc/ssl/certs/ca-key.pem:ro
@@ -19,5 +21,17 @@ services:
           - ../certs/aaa-key.pem:/etc/ssl/private/freeDiameter.key:ro
           - ./freeDiameter.conf:/freeDiameter.conf:ro
           - ./diameap.conf:/diameap.conf:ro
-        stdin_open: true
-        tty: true
+    diameap_db:
+        container_name: diameap_db
+        image: mysql:5.7
+        restart: always
+        environment:
+            - TZ=Asia/Tokyo
+            - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+            - MYSQL_DATABASE=diamEAP
+            - MYSQL_USER=diamEAP
+            - MYSQL_PASSWORD=diamEAP
+        ports:
+            - 13306:3306
+        volumes:
+            - ./init_db/diameap.sql:/docker-entrypoint-initdb.d/1.diameap.sql

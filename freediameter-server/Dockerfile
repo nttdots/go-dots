@@ -1,6 +1,6 @@
 FROM alpine
 RUN apk update \
- && apk add build-base cmake wget tar gzip file linux-headers bison flex glib libgcrypt glib-dev \
+ && apk add build-base cmake bash wget tar gzip file linux-headers bison flex glib libgcrypt glib-dev \
     libidn-dev gnutls-dev libgcrypt-dev gnutls libidn gnutls-utils ca-certificates lksctp-tools \
     lksctp-tools-dev mariadb-client-libs mariadb-dev \
  && rm /usr/lib/libmysqld* \
@@ -13,6 +13,8 @@ RUN apk update \
  && make install \
  && cd - \
  && rm -R freediameter.tar.gz build-freediameter \
+ && wget -O /usr/bin/wait-for-it.sh https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh \
+ && chmod 755 /usr/bin/wait-for-it.sh \
  && apk del build-base cmake wget tar gzip linux-headers glib-dev bison flex libgcrypt-dev libidn-dev gnutls-dev lksctp-tools-dev
 
 ADD ["start.sh", "/"]
