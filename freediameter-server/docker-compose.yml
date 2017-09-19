@@ -37,3 +37,4 @@ services:
             - 13306:3306
         volumes:
             - ./init_db/diameap.sql:/docker-entrypoint-initdb.d/1.diameap.sql
+            - ./init_db/diam_user.sql:/docker-entrypoint-initdb.d/2.diam_user.sql
