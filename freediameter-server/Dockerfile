@@ -9,7 +9,7 @@ RUN apk update \
  && cd build-freediameter \
  && tar xzvf ../freediameter.tar.gz --strip-components=1 \
  && cmake -DCMAKE_INSTALL_PREFIX=/usr -DDEFAULT_CONF_PATH=/ -DBUILD_TESTING:BOOL=OFF \
-    -DBUILD_APP_DIAMEAP:BOOL=ON -DBUILD_EAP_MD5:BOOL=ON -DBUILD_EAP_TLS:BOOL=ON -Wno-dev .\
+    -DBUILD_APP_DIAMEAP:BOOL=ON -DBUILD_EAP_MD5:BOOL=ON -DBUILD_EAP_TLS:BOOL=ON -DBUILD_ACL_WL:BOOL=ON -Wno-dev .\
  && make \
  && make install \
  && cd - \
