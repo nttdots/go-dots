@@ -13,10 +13,11 @@ import (
 	"math/rand"
 	"strconv"
 
+	"bytes"
+
 	"github.com/fiorix/go-diameter/diam/sm/smpeer"
 	common "github.com/nttdots/go-dots/dots_common"
 	log "github.com/sirupsen/logrus"
-	"bytes"
 )
 
 const (
@@ -41,14 +42,19 @@ func main() {
 	}
 
 	cfg := &sm.Settings{
-		OriginHost:       datatype.DiameterIdentity(host),
-		OriginRealm:      datatype.DiameterIdentity(realm),
-		VendorID:         0,
-		ProductName:      "diameter-auth-test",
-		OriginStateID:    datatype.Unsigned32(time.Now().Unix()),
+		OriginHost:    datatype.DiameterIdentity(host),
+		OriginRealm:   datatype.DiameterIdentity(realm),
+		VendorID:      0,
+		ProductName:   "diameter-auth-test",
+		OriginStateID: datatype.Unsigned32(time.Now().Unix()),
 	}
 
 	mux := sm.New(cfg)
+
+	const (
+		APPLICATION_NAS = datatype.Unsigned32(1)
+		APPLICATION_EAP = datatype.Unsigned32(5)
+	)
 
 	cli := &sm.Client{
 		Dict:               dict.Default,
@@ -61,7 +67,7 @@ func main() {
 			//diam.NewAVP(avp.AcctApplicationID, avp.Mbit, 1, datatype.Unsigned32(3)),
 		},
 		AuthApplicationID: []*diam.AVP{
-			diam.NewAVP(avp.AuthApplicationID, avp.Mbit, 0, datatype.Unsigned32(5)),
+			diam.NewAVP(avp.AuthApplicationID, avp.Mbit, 0, APPLICATION_EAP),
 		},
 	}
 
@@ -80,10 +86,17 @@ func main() {
 	if err != nil {
 		log.WithError(err).Fatal("error occurred(1).")
 	}
-	err = sendAAR(c, cfg)
+
+	sid, err := sendAAR(c, cfg)
 	if err != nil {
 		log.WithError(err).Fatal("error occurred(2).")
 	}
+	log.WithField("sid", sid).Info("determined session-id.")
+	defer func() {
+		sendSTR(sid, c, cfg)
+		c.Close()
+	}()
+
 	select {
 	case <-done:
 	case <-time.After(5 * time.Second):
@@ -103,10 +116,10 @@ func dial(cli *sm.Client, addr, cert, key string) (diam.Conn, error) {
 	return cli.Dial(addr)
 }
 
-func sendAAR(c diam.Conn, cfg *sm.Settings) error {
+func sendAAR(c diam.Conn, cfg *sm.Settings) (datatype.UTF8String, error) {
 	meta, ok := smpeer.FromContext(c.Context())
 	if !ok {
-		return errors.New("peer metadata unavailable")
+		return "", errors.New("peer metadata unavailable")
 	}
 
 	sid := "session;" + strconv.Itoa(int(rand.Uint32()))
@@ -122,7 +135,7 @@ func sendAAR(c diam.Conn, cfg *sm.Settings) error {
 
 	log.Printf("Sending AAR to %s\n%s", c.RemoteAddr(), m)
 	_, err := m.WriteTo(c)
-	return err
+	return datatype.UTF8String(sid), err
 }
 
 func sendHMR(c diam.Conn, cfg *sm.Settings) error {
@@ -143,6 +156,26 @@ func sendHMR(c diam.Conn, cfg *sm.Settings) error {
 	m.NewAVP(avp.DestinationHost, avp.Mbit, 0, meta.OriginHost)
 	m.NewAVP(avp.UserName, avp.Mbit, 0, datatype.UTF8String("foobar"))
 	log.Printf("Sending HMR to %s\n%s", c.RemoteAddr(), m)
+	_, err := m.WriteTo(c)
+	return err
+}
+
+func sendSTR(sid datatype.UTF8String, c diam.Conn, cfg *sm.Settings) error {
+	meta, ok := smpeer.FromContext(c.Context())
+	if !ok {
+		return errors.New("peer metadata unavailable")
+	}
+
+	m := diam.NewRequest(diam.SessionTermination, 1, nil)
+	m.NewAVP(avp.SessionID, avp.Mbit, 0, sid)
+	m.NewAVP(avp.OriginHost, avp.Mbit, 0, cfg.OriginHost)
+	m.NewAVP(avp.OriginRealm, avp.Mbit, 0, cfg.OriginRealm)
+	m.NewAVP(avp.DestinationRealm, avp.Mbit, 0, meta.OriginRealm)
+	m.NewAVP(avp.DestinationHost, avp.Mbit, 0, meta.OriginHost)
+	m.NewAVP(avp.AuthApplicationID, avp.Mbit, 0, datatype.Unsigned32(1))
+	m.NewAVP(avp.TerminationCause, avp.Mbit, 0, datatype.Unsigned32(0))
+
+	log.Printf("sending STR to %s\n%s", c.RemoteAddr(), m)
 	_, err := m.WriteTo(c)
 	return err
 }

@@ -162,6 +162,38 @@ func (dc *Database) Store() {
 	GetServerSystemConfig().setDatabase(*dc)
 }
 
+type AAANode struct {
+	Enable string `yaml:"enable"`
+	Server string `yaml:"server"`
+	Port   int    `yaml:"port"`
+	Tls    string `yaml:"tls"`
+}
+
+type AAA struct {
+	Enable bool
+	Server string
+	Port   int
+	Tls    bool
+}
+
+func (aaa AAANode) Convert() (interface{}, error) {
+	if strings.ToUpper(aaa.Enable) == "TRUE" {
+		if aaa.Port < 1 || aaa.Port > 65535 {
+			return nil, errors.New("AAA port must be between 1 and 65535")
+		}
+		return &AAA{
+			Enable: true,
+			Server: aaa.Server,
+			Port:   aaa.Port,
+			Tls:    strings.ToUpper(aaa.Tls) == "TRUE",
+		}, nil
+	} else {
+		return &AAA{
+			Enable: false,
+		}, nil
+	}
+}
+
 //
 
 // System global configuration container
@@ -170,6 +202,7 @@ type ServerSystemConfig struct {
 	SecureFile                   *SecureFile
 	Network                      *Network
 	Database                     *Database
+	AAA                          *AAA
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -184,6 +217,7 @@ type ServerSystemConfigNode struct {
 	SecureFile                   SecureFileNode                   `yaml:"secureFile"`
 	Network                      NetworkNode                      `yaml:"network"`
 	Database                     DatabaseNode                     `yaml:"database"`
+	AAA                          AAANode                          `yaml:"aaa"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -207,11 +241,14 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
+	aaa, err := scn.AAA.Convert()
+
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		SecureFile:                   secureFilePath.(*SecureFile),
 		Network:                      network.(*Network),
 		Database:                     database.(*Database),
+		AAA:                          aaa.(*AAA),
 	}, nil
 }
 

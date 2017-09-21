@@ -21,7 +21,7 @@ system:
     port: 3306
     databaseName: dots
   aaa:
-    enable: false
-    type: eap-md5 #eap-tls, eap-ttls
+    enable: true
     server: localhost
     port: 3868
+    tls: true

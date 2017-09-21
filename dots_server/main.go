@@ -6,13 +6,13 @@ import (
 	"net"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/coap"
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/connection"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/dots_server/controllers"
+	log "github.com/sirupsen/logrus"
 )
 
 var (
