@@ -20,7 +20,8 @@ services:
       - ./config:/config:ro
       - ../certs:/certs:ro
     extra_hosts:
-      - "client.example.com:172.23.0.254"
+      - "server.sample.example.com:172.23.0.254"
+      - "diameter.example.com:127.0.0.1"
   diameap_db:
     container_name: diameap_db
     image: mysql:5.7

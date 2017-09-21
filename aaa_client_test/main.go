@@ -16,6 +16,7 @@ import (
 	"github.com/fiorix/go-diameter/diam/sm/smpeer"
 	common "github.com/nttdots/go-dots/dots_common"
 	log "github.com/sirupsen/logrus"
+	"bytes"
 )
 
 const (
@@ -26,26 +27,28 @@ const (
 func main() {
 	common.SetUpLogger()
 
-	addr := "localhost:5658"
-	host := "client.example.com"
+	//addr := "localhost:5658"
+	addr := "localhost:3868"
+	host := "server.sample.example.com"
 	realm := "example.com"
-	certFile := "../certs/aaa-cert.pem"
-	keyFile := "../certs/aaa-key.pem"
+	certFile := "../certs/server-cert.pem"
+	keyFile := "../certs/server-key.pem"
+
+	eap_dict, _ := eap_dictXmlBytes()
+	err := dict.Default.Load(bytes.NewReader(eap_dict))
+	if err != nil {
+		log.WithError(err).Fatal("xml-dict error occurred.")
+	}
 
 	cfg := &sm.Settings{
 		OriginHost:       datatype.DiameterIdentity(host),
 		OriginRealm:      datatype.DiameterIdentity(realm),
-		VendorID:         13,
+		VendorID:         0,
 		ProductName:      "diameter-auth-test",
 		OriginStateID:    datatype.Unsigned32(time.Now().Unix()),
 	}
 
 	mux := sm.New(cfg)
-
-	const (
-		NASREQ = 1
-		DiameterBaseAccounting = 3
-	)
 
 	cli := &sm.Client{
 		Dict:               dict.Default,
@@ -55,10 +58,10 @@ func main() {
 		EnableWatchdog:     true,
 		WatchdogInterval:   5 * time.Second,
 		AcctApplicationID: []*diam.AVP{
-			diam.NewAVP(avp.AcctApplicationID, avp.Mbit, 0, datatype.Unsigned32(3)),
+			//diam.NewAVP(avp.AcctApplicationID, avp.Mbit, 1, datatype.Unsigned32(3)),
 		},
 		AuthApplicationID: []*diam.AVP{
-			diam.NewAVP(avp.AuthApplicationID, avp.Mbit, 0, datatype.Unsigned32(4)),
+			diam.NewAVP(avp.AuthApplicationID, avp.Mbit, 0, datatype.Unsigned32(5)),
 		},
 	}
 
@@ -96,8 +99,8 @@ func printErrors(ec <-chan *diam.ErrorReport) {
 }
 
 func dial(cli *sm.Client, addr, cert, key string) (diam.Conn, error) {
-	return cli.DialTLS(addr, cert, key)
-	//return cli.Dial(addr)
+	//return cli.DialTLS(addr, cert, key)
+	return cli.Dial(addr)
 }
 
 func sendAAR(c diam.Conn, cfg *sm.Settings) error {
