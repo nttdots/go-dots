@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"os"
+
 	"github.com/hashicorp/hcl"
 	"gopkg.in/yaml.v2"
 )
@@ -163,17 +165,21 @@ func (dc *Database) Store() {
 }
 
 type AAANode struct {
-	Enable string `yaml:"enable"`
-	Server string `yaml:"server"`
-	Port   int    `yaml:"port"`
-	Tls    string `yaml:"tls"`
+	Enable   string `yaml:"enable"`
+	Server   string `yaml:"server"`
+	Port     int    `yaml:"port"`
+	Tls      string `yaml:"tls"`
+	Realm    string `yaml:"realm"`
+	Hostname string `yaml:"hostname"`
 }
 
 type AAA struct {
-	Enable bool
-	Server string
-	Port   int
-	Tls    bool
+	Enable   bool
+	Server   string
+	Port     int
+	Tls      bool
+	Realm    string
+	Hostname string
 }
 
 func (aaa AAANode) Convert() (interface{}, error) {
@@ -181,11 +187,19 @@ func (aaa AAANode) Convert() (interface{}, error) {
 		if aaa.Port < 1 || aaa.Port > 65535 {
 			return nil, errors.New("AAA port must be between 1 and 65535")
 		}
+
+		hostname := aaa.Hostname
+		if hostname == "" {
+			hostname, _ = os.Hostname()
+		}
+
 		return &AAA{
-			Enable: true,
-			Server: aaa.Server,
-			Port:   aaa.Port,
-			Tls:    strings.ToUpper(aaa.Tls) == "TRUE",
+			Enable:   true,
+			Server:   aaa.Server,
+			Port:     aaa.Port,
+			Tls:      strings.ToUpper(aaa.Tls) == "TRUE",
+			Realm:    aaa.Realm,
+			Hostname: hostname,
 		}, nil
 	} else {
 		return &AAA{
@@ -210,6 +224,7 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setSecureFile(*sc.SecureFile)
 	GetServerSystemConfig().setNetwork(*sc.Network)
 	GetServerSystemConfig().setDatabase(*sc.Database)
+	GetServerSystemConfig().setAAA(*sc.AAA)
 }
 
 type ServerSystemConfigNode struct {
@@ -242,6 +257,9 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 	}
 
 	aaa, err := scn.AAA.Convert()
+	if err != nil {
+		return nil, err
+	}
 
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
@@ -266,6 +284,10 @@ func (sc *ServerSystemConfig) setNetwork(config Network) {
 
 func (sc *ServerSystemConfig) setDatabase(config Database) {
 	sc.Database = &config
+}
+
+func (sc *ServerSystemConfig) setAAA(config AAA) {
+	sc.AAA = &config
 }
 
 var systemConfigInstance *ServerSystemConfig

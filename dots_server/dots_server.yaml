@@ -23,5 +23,8 @@ system:
   aaa:
     enable: true
     server: localhost
-    port: 3868
+    port: 5658
     tls: true
+    realm: example.com
+    hostname: server.sample.example.com
+
