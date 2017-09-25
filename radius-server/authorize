@@ -1,0 +1,2 @@
+client1 Cleartext-Password := "password1"
+client2 Cleartext-Password := "password2"

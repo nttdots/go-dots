@@ -1,0 +1,23 @@
+version: "2.1"
+
+services:
+  radius-server:
+    container_name: radius-server
+    build: .
+    environment:
+      - TZ=Asia/Tokyo
+    ports:
+      - 1812
+      - 1813
+      - 18120
+    hostname: radius-server
+    domainname: example.com
+    networks:
+      - radius
+    volumes:
+      - ./log:/var/log/radius/
+      - ./radiusd.conf:/etc/raddb/radiusd.conf
+      - ./clients.conf:/etc/raddb/clients.conf
+networks:
+  radius:
+    driver: bridge
