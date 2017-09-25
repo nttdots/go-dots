@@ -9,7 +9,6 @@ import (
 	"net"
 	"reflect"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/gonuts/cbor"
 	"github.com/nttdots/go-dots/coap"
 	"github.com/nttdots/go-dots/dots_common"
@@ -17,6 +16,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/controllers"
 	"github.com/nttdots/go-dots/dots_server/models"
 	dtls "github.com/nttdots/go-dtls"
+	log "github.com/sirupsen/logrus"
 )
 
 type ControllerInfo struct {
@@ -31,13 +31,14 @@ type DotsServiceMethod func(request interface{}, customer *models.Customer) (con
  * Router struct invokes appropriate API controllers based on request-uris.
  */
 type Router struct {
-	ControllerMap map[string]ControllerInfo
+	ControllerMap     map[string]ControllerInfo
+	AuthenticatorChan chan<- interface{}
 }
 
-func NewRouter() *Router {
+func NewRouter(auth chan<- interface{}) *Router {
 	r := new(Router)
 	r.ControllerMap = make(ControllerInfoMap)
-
+	r.AuthenticatorChan = auth
 	return r
 }
 
@@ -228,6 +229,10 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.Forbidden)
 	}
 
+	if !r.authenticate(commonName) {
+		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.Unauthorized)
+	}
+
 	customer, err := models.GetCustomerByCommonName(commonName)
 	if err != nil || customer.Id == 0 {
 		log.WithFields(log.Fields{
@@ -243,4 +248,27 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 	log.Debug(CoapHeaderDisplay(request))
 
 	return r.callController(request, customer)
+}
+
+func (r *Router) authenticate(cn string) bool {
+	if r.AuthenticatorChan == nil {
+		return true
+	}
+
+	authChan := make(chan bool)
+	defer func() {
+		close(authChan)
+	}()
+
+	authRequest := RadiusAuthenticatorIdentifier{
+		Username: cn,
+		Password: "password1",
+		Result:   authChan,
+	}
+
+	r.AuthenticatorChan <- authRequest
+	select {
+	case result := <-authChan:
+		return result
+	}
 }

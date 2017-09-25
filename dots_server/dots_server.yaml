@@ -23,8 +23,6 @@ system:
   aaa:
     enable: true
     server: localhost
-    port: 5658
-    tls: true
-    realm: example.com
-    hostname: server.sample.example.com
+    port: 1812
+    secret: testing123
 

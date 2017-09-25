@@ -102,6 +102,8 @@ func main() {
 	case <-time.After(5 * time.Second):
 		log.Fatal("timeout: no hello answer received")
 	}
+
+
 	return
 }
 

@@ -165,41 +165,34 @@ func (dc *Database) Store() {
 }
 
 type AAANode struct {
-	Enable   string `yaml:"enable"`
-	Server   string `yaml:"server"`
-	Port     int    `yaml:"port"`
-	Tls      string `yaml:"tls"`
-	Realm    string `yaml:"realm"`
-	Hostname string `yaml:"hostname"`
+	Enable       string `yaml:"enable"`
+	Server       string `yaml:"server"`
+	Port         int    `yaml:"port"`
+	Secret       string `yaml:"secret"`
+	ClientIPAddr string `yaml:"client_ip_addr"`
 }
 
 type AAA struct {
-	Enable   bool
-	Server   string
-	Port     int
-	Tls      bool
-	Realm    string
-	Hostname string
+	Enable       bool
+	Server       string
+	Port         int
+	Secret       string
+	ClientIPAddr string
 }
 
 func (aaa AAANode) Convert() (interface{}, error) {
-	if strings.ToUpper(aaa.Enable) == "TRUE" {
+	enable, err := strconv.ParseBool(aaa.Enable)
+	if err == nil && enable {
 		if aaa.Port < 1 || aaa.Port > 65535 {
 			return nil, errors.New("AAA port must be between 1 and 65535")
 		}
 
-		hostname := aaa.Hostname
-		if hostname == "" {
-			hostname, _ = os.Hostname()
-		}
-
 		return &AAA{
-			Enable:   true,
-			Server:   aaa.Server,
-			Port:     aaa.Port,
-			Tls:      strings.ToUpper(aaa.Tls) == "TRUE",
-			Realm:    aaa.Realm,
-			Hostname: hostname,
+			Enable:       true,
+			Server:       aaa.Server,
+			Port:         aaa.Port,
+			Secret:       aaa.Secret,
+			ClientIPAddr: aaa.ClientIPAddr,
 		}, nil
 	} else {
 		return &AAA{
