@@ -7,9 +7,8 @@ services:
     environment:
       - TZ=Asia/Tokyo
     ports:
-      - 1812
-      - 1813
-      - 18120
+      - "1812:1812/udp"
+      - "1813:1813/udp"
     hostname: radius-server
     domainname: example.com
     networks:
@@ -20,4 +19,3 @@ services:
       - ./clients.conf:/etc/raddb/clients.conf
 networks:
   radius:
-    driver: bridge
