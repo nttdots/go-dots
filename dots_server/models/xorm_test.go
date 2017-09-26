@@ -8,13 +8,23 @@ import (
 
 func TestConnectDB(t *testing.T) {
 	models.SetTestMode(true)
-	db, err := models.ConnectDB()
+	dotsDb, err := models.ConnectDB()
 	if err != nil {
-		t.Error("database connection error")
+		t.Error("dots database connection error")
 	}
 
-	if db == nil {
-		t.Error("database connection error")
+	if dotsDb == nil {
+		t.Error("dots database connection error")
 	}
+
+	pmacctDb, err := models.ConnectDB("pmacct")
+	if err != nil {
+		t.Error("pmacct database connection error")
+	}
+
+	if pmacctDb == nil {
+		t.Error("pmacct database connection error")
+	}
+
 	models.SetTestMode(false)
 }

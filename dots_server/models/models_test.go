@@ -59,6 +59,8 @@ func TestMain(m *testing.M) {
 	identifierSampleDataCreate()
 	// access_control_list_entry test data create
 	accessControlListEntrySampleDataCreate()
+	// acct_v5 test data create
+	acctV5SampleDataCreate()
 
 	// execute sql display on
 	models.ShowSQL(true)
