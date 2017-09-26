@@ -24,7 +24,7 @@ func acctV5SampleDataCreate() {
     testAcctV5.IpDst = "192.168.1.0"
     testAcctV5.SrcPort = 5505
     testAcctV5.DstPort = 15505
-    testAcctV5.IpProto = "10.0.0.100"
+    testAcctV5.IpProto = "12345"
     testAcctV5.Tos = 30
     testAcctV5.Packets = 11111111
     testAcctV5.Bytes = 8888888
@@ -78,6 +78,7 @@ func TestGetAcctV5(t *testing.T) {
     }
     session.Commit()
 
+    // GetAcctV5 test execute
     acctV5, err := models.GetAcctV5(testAcctV5.IpDst, testAcctV5.DstPort)
     if err != nil {
         t.Errorf("get acct_v5 err: %s", err)

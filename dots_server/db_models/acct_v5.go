@@ -2,8 +2,6 @@ package db_models
 
 import (
     "time"
-    "cloud.google.com/go/vision"
-    "bytes"
 )
 
 type AcctV5 struct {

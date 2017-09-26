@@ -10,6 +10,7 @@ import (
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/dots_server/models"
 	log "github.com/sirupsen/logrus"
+	"github.com/go-xorm/xorm"
 )
 
 func initLogger() {
@@ -44,6 +45,7 @@ func TestMain(m *testing.M) {
 	//models.InitTable(true)
 	// test_dump.sql read and execute
 	loadSQL("../db_models/test_dump.sql")
+	loadSQL("../db_models/test_dump_pmacct.sql", "pmacct")
 
 	// customer test data create
 	customerSampleDataCreate()
@@ -96,8 +98,9 @@ func stopGoBGPServer() {
 	}
 }
 
-func loadSQL(filename string) {
+func loadSQL(filename string, params ...string) {
 
+	var engine *xorm.Engine
 	var err error
 
 	data, err := ioutil.ReadFile(filename)
@@ -105,7 +108,14 @@ func loadSQL(filename string) {
 		panic(err)
 	}
 
-	engine, err := models.ConnectDB()
+	switch len(params) {
+	case 1:
+		// not dots database setting
+		engine, err = models.ConnectDB(params[0])
+	default:
+		// dots database setting
+		engine, err = models.ConnectDB()
+	}
 	if err != nil {
 		panic(err)
 	}

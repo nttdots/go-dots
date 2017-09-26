@@ -82,7 +82,7 @@ func getConnectDBSetting(params []string) (**xorm.Engine, string) {
 
 // set engineList
 func setEngineList(databaseName string, engine **xorm.Engine) {
-	for key, := range engineList {
+	for key,_ := range engineList {
 		if key == databaseName {
 			engineList[key] = *engine
 			return
