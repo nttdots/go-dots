@@ -21,8 +21,7 @@ system:
     port: 3306
     databaseName: dots
   aaa:
-    enable: true
+    enable: false
     server: 127.0.0.1
     port: 1812
     secret: testing123
-
