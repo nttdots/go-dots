@@ -8,8 +8,6 @@ import (
 
 	"github.com/nttdots/go-dots/coap"
 
-	"strconv"
-
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/connection"
 	"github.com/nttdots/go-dots/dots_common/messages"
@@ -27,7 +25,7 @@ func init() {
 	flag.StringVar(&configFile, "config", defaultConfigFile, "config yaml file")
 }
 
-func Listen(factory connection.ListenerFactory, address string, signalChannelPort, dataChannelPort int, auth chan <- interface{}) {
+func Listen(factory connection.ListenerFactory, address string, signalChannelPort, dataChannelPort int, auth *Authenticator) {
 
 	var (
 		signalChannelRouter *Router = NewRouter(auth)
@@ -126,15 +124,7 @@ func main() {
 		config.SecureFile.ServerKeyFile,
 	)
 
-	var authenticatorChan chan <- interface{}
-	if config.AAA.Enable {
-		authenticatorChan = NewAuthenticator(config.AAA)
-		defer func() {
-			close(authenticatorChan)
-		}()
-	} else {
-		authenticatorChan = nil
-	}
+	authenticator := NewAuthenticator(config.AAA)
 
-	Listen(factory, config.Network.BindAddress, config.Network.SignalChannelPort, config.Network.DataChannelPort, authenticatorChan)
+	Listen(factory, config.Network.BindAddress, config.Network.SignalChannelPort, config.Network.DataChannelPort, authenticator)
 }

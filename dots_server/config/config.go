@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"os"
-
 	"github.com/hashicorp/hcl"
 	"gopkg.in/yaml.v2"
 )

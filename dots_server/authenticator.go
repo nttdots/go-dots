@@ -8,38 +8,36 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func NewAuthenticator(aaa *config.AAA) chan<- interface{} {
-	requestChan := make(chan interface{}, 100)
-	var radiusAuth *goradius.AuthenticatorT
-	if aaa.Enable {
-		radiusAuth = goradius.Authenticator(aaa.Server, strconv.Itoa(aaa.Port), aaa.Secret)
-	}
-
-	go func() {
-		for {
-			switch req := requestChan.(type) {
-			case RadiusAuthenticatorIdentifier:
-				if radiusAuth != nil {
-					b, err := radiusAuth.Authenticate(req.Username, req.Password, "1")
-					if err != nil {
-						log.WithError(err).Error("authenticate error.")
-						req.Result <- false
-					}
-					req.Result <- b
-				} else {
-					log.WithField("request", req).Error("unknown authenticate request.")
-					req.Result <- true
-				}
-			default:
-				log.WithField("request", req).Error("unknown authenticate request.")
-			}
-		}
-	}()
-	return requestChan
+type Authenticator struct {
+	enable              bool
+	radiusAuthenticator *goradius.AuthenticatorT
 }
 
-type RadiusAuthenticatorIdentifier struct {
-	Username string
-	Password string
-	Result   <-chan bool
+func (a *Authenticator) CheckClient(clientName, password, nasId string) (bool, error) {
+	if !a.enable {
+		return true, nil
+	}
+
+	log.WithFields(log.Fields{
+		"clientName": clientName,
+		"password":   password,
+		"nasId":      nasId,
+	}).Debug("check client")
+
+	return a.radiusAuthenticator.Authenticate(clientName, password, nasId)
+}
+
+func NewAuthenticator(aaa *config.AAA) *Authenticator {
+	if !aaa.Enable {
+		return &Authenticator{
+			enable:              false,
+			radiusAuthenticator: nil,
+		}
+	}
+
+	radiusAuth := goradius.Authenticator(aaa.Server, strconv.Itoa(aaa.Port), aaa.Secret)
+	return &Authenticator{
+		enable:              true,
+		radiusAuthenticator: radiusAuth,
+	}
 }

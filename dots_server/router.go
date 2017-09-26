@@ -31,14 +31,14 @@ type DotsServiceMethod func(request interface{}, customer *models.Customer) (con
  * Router struct invokes appropriate API controllers based on request-uris.
  */
 type Router struct {
-	ControllerMap     map[string]ControllerInfo
-	AuthenticatorChan chan<- interface{}
+	ControllerMap map[string]ControllerInfo
+	Authenticator *Authenticator
 }
 
-func NewRouter(auth chan<- interface{}) *Router {
+func NewRouter(auth *Authenticator) *Router {
 	r := new(Router)
 	r.ControllerMap = make(ControllerInfoMap)
-	r.AuthenticatorChan = auth
+	r.Authenticator = auth
 	return r
 }
 
@@ -133,7 +133,6 @@ func (r *Router) MarshalCbor(message interface{}) ([]byte, error) {
 	err := e.Encode(message)
 
 	return cborWriter.Bytes(), err
-
 }
 
 func (r *Router) createResponse(request *coap.Message, controllerResponse []byte,
@@ -251,24 +250,11 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 }
 
 func (r *Router) authenticate(cn string) bool {
-	if r.AuthenticatorChan == nil {
-		return true
-	}
 
-	authChan := make(chan bool)
-	defer func() {
-		close(authChan)
-	}()
-
-	authRequest := RadiusAuthenticatorIdentifier{
-		Username: cn,
-		Password: "password1",
-		Result:   authChan,
+	result, err := r.Authenticator.CheckClient(cn, "", "")
+	if err != nil {
+		log.WithError(err).Error("authenticate error.")
+		return false
 	}
-
-	r.AuthenticatorChan <- authRequest
-	select {
-	case result := <-authChan:
-		return result
-	}
+	return result
 }

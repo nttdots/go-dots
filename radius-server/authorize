@@ -1,2 +1,4 @@
 client1 Cleartext-Password := "password1"
 client2 Cleartext-Password := "password2"
+
+client.sample.example.com Cleartext-Password := ""

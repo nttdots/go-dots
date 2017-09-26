@@ -22,7 +22,7 @@ system:
     databaseName: dots
   aaa:
     enable: true
-    server: localhost
+    server: 127.0.0.1
     port: 1812
     secret: testing123
 
