@@ -10,6 +10,7 @@ import (
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
+	"time"
 )
 
 /*
@@ -283,40 +284,76 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 		if !models.MitigationScopeValidator.Validate(models.MessageEntity(scope), c) {
 			return errors.New("validation error.")
 		}
+
 		// send a blocker request to the blockerselectionservice.
 		// we receive the blocker the selection service propose via a dedicated channel.
 		models.BlockerSelectionService.Enqueue(scope, ch, errCh)
 		counter++
 	}
 
+	pmacct_finished := make(chan bool)
+	pmacct_process_counter := 0
 	// loop until we can obtain just enough blockers for the MitigationScopes
 	for counter > 0 {
 		select {
 		case scopeList := <-ch: // if a blocker is available
-			// register a MitigationScope to a Blocker and receive a Protection
-			p, e := scopeList.Blocker.RegisterProtection(scopeList.Scope)
-			if e != nil {
-				err = e
-				break
-			}
-			// invoke the protection on the blocker
-			e = scopeList.Blocker.ExecuteProtection(p)
-			if e != nil {
-				err = e
-				break
-			}
+			if (!scopeList.Scope.UrgentFlag) {
+				// この辺にurgent_flagを見て、処理の振り分けを実装する（？）
+				// goルーチンで実装すれば良さそう
+				go func() {
+					pmacct_process_counter++
+					// 指定時間待つ(1分？2分？)
+					// TODO: 待ち時間の確定
+					time.Sleep(120 * time.Second)
 
-			// register rollback sequences for the case if
-			// some errors occurred during this MitigationRequest handling.
-			unregisterCommands = append(unregisterCommands, func() {
-				scopeList.Blocker.UnregisterProtection(p)
-			})
+					// pmacctのデータ取得
+					acctList, e := models.GetAcctV5BySrcIpPort(scopeList.Scope.TargetIP, scopeList.Scope.TargetPortRange)
+					if (err != nil) {
+						err = e
+					}
+					packets, bytes := models.TotalPacketsBytesCalc(acctList)
+
+					// しきい値判定
+					// TODO: しきい値の確定
+					if packets > 10000 || bytes > 10000000 {
+						// しきい値以上であればblackhole行き
+					} else {
+						// しきい値以内であれば何もしない（？）
+					}
+
+					pmacct_finished <- true
+				}()
+			} else {
+				// register a MitigationScope to a Blocker and receive a Protection
+				p, e := scopeList.Blocker.RegisterProtection(scopeList.Scope)
+				if e != nil {
+					err = e
+					break
+				}
+				// invoke the protection on the blocker
+				e = scopeList.Blocker.ExecuteProtection(p)
+				if e != nil {
+					err = e
+					break
+				}
+
+				// register rollback sequences for the case if
+				// some errors occurred during this MitigationRequest handling.
+				unregisterCommands = append(unregisterCommands, func() {
+					scopeList.Blocker.UnregisterProtection(p)
+				})
+			}
 			counter--
 		case e := <-errCh: // case if some error occured while we obtain blockers.
 			counter--
 			err = e
 			break
 		}
+	}
+
+	// pmacct待ち処理があれば、終わるまで待つ
+	for i := 0; i < pmacct_process_counter; i++ {
+		<-pmacct_finished
 	}
 
 	if err != nil {

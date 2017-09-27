@@ -10,34 +10,35 @@ import (
  *
  * parameter:
  *  targetIp check dst Ip
- *  targetPort check dst Port
+ *  targetPortRange check dst Port
  * return:
  *  acctV5 AcctV5
  *  error error
  */
-func GetAcctV5ByDstIpPort(dstIp string, dstPort int) (acctV5 *AcctV5, err error) {
-    // create database connection
+func GetAcctV5ByDstIpPort(targetIP []Prefix, targetPortRange []PortRange) (acctV5List []AcctV5, err error) {
+    // Create database connection
     engine, err := ConnectDB("pmacct")
     if err != nil {
         log.Error("database connect error: %s", err)
         return
     }
 
-    // create a new empty acct_v5
-    acctV5 = NewAcctV5()
-
     // Get data from the acct_v5 table
-    dbAcctV5 := db_models.AcctV5{}
-    chk, err := engine.Where("ip_dst = ? AND dst_port = ?", dstIp, dstPort).Get(&dbAcctV5)
-    if err != nil {
-        return
-    }
-    if !chk {
-        // no data
-        return
+    dbAcctV5List := []db_models.AcctV5{}
+    for key, target := range targetIP {
+        targetPort := targetPortRange[key]
+
+        acctV5 := []db_models.AcctV5{}
+        err := engine.Where("ip_dst = ? AND ? <= dst_port AND dst_port <= ?", target.Addr, targetPort.LowerPort, targetPort.UpperPort).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
+        if err != nil {
+            return nil, err
+        }
+
+        dbAcctV5List = append(dbAcctV5List, acctV5...)
     }
 
-    acctV5 = CreateAcctV5Model(&dbAcctV5)
+    // Change db struct to model struct
+    acctV5List = CreateAcctV5Model(dbAcctV5List)
 
     return
 }
@@ -52,7 +53,7 @@ func GetAcctV5ByDstIpPort(dstIp string, dstPort int) (acctV5 *AcctV5, err error)
  *  acctV5 AcctV5
  *  error error
  */
-func GetAcctV5BySrcIpPort(srcIp string, srcPort int) (acctV5 *AcctV5, err error) {
+func GetAcctV5BySrcIpPort(targetIP []Prefix, targetPortRange []PortRange) (acctV5List []AcctV5, err error) {
     // create database connection
     engine, err := ConnectDB("pmacct")
     if err != nil {
@@ -60,21 +61,22 @@ func GetAcctV5BySrcIpPort(srcIp string, srcPort int) (acctV5 *AcctV5, err error)
         return
     }
 
-    // create a new empty acct_v5
-    acctV5 = NewAcctV5()
-
     // Get data from the acct_v5 table
-    dbAcctV5 := db_models.AcctV5{}
-    chk, err := engine.Where("ip_src = ? AND src_port = ?", srcIp, srcPort).Get(&dbAcctV5)
-    if err != nil {
-        return
-    }
-    if !chk {
-        // no data
-        return
+    dbAcctV5List := []db_models.AcctV5{}
+    for key, target := range targetIP {
+        targetPort := targetPortRange[key]
+
+        acctV5 := []db_models.AcctV5{}
+        err := engine.Where("ip_src = ? AND ? <= src_port AND src_port <= ?", target.Addr, targetPort.LowerPort, targetPort.UpperPort).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
+        if err != nil {
+            return nil, err
+        }
+
+        dbAcctV5List = append(dbAcctV5List, acctV5...)
     }
 
-    acctV5 = CreateAcctV5Model(&dbAcctV5)
+    // Change db struct to model struct
+    acctV5List = CreateAcctV5Model(dbAcctV5List)
 
     return
 }

@@ -7,14 +7,13 @@ import (
     "time"
 )
 
-var testAcctV5 models.AcctV5
-var testAcctV52 models.AcctV5
+var testAcctV5List []models.AcctV5
 
 func acctV5SampleDataCreate() {
     // create test acctV5s
-    testAcctV5 = models.AcctV5{}
 
-    // setting acctV5 create test data
+    // setting acctV5 create test data1
+    testAcctV5 := models.AcctV5{}
     testAcctV5.AgentId = 1
     testAcctV5.ClassId = "c1"
     testAcctV5.MacSrc = "00.11.22.33.44.55"
@@ -31,26 +30,87 @@ func acctV5SampleDataCreate() {
     testAcctV5.Flows = 1
     testAcctV5.StampInserted = time.Unix(0, 0)
     testAcctV5.StampUpdated = time.Unix(0, 0)
+    testAcctV5List = append(testAcctV5List, testAcctV5)
 
-    testAcctV52 = models.AcctV5{}
+    // setting acctV5 create test data2
+    testAcctV5 = models.AcctV5{}
+    testAcctV5.AgentId = 1
+    testAcctV5.ClassId = "c1"
+    testAcctV5.MacSrc = "00.11.22.33.44.55"
+    testAcctV5.MacDst = "EE.DD.CC.BB.AA.00"
+    testAcctV5.Vlan = 1
+    testAcctV5.IpSrc = "172.168.1.0"
+    testAcctV5.IpDst = "192.168.1.0"
+    testAcctV5.SrcPort = 5506
+    testAcctV5.DstPort = 15506
+    testAcctV5.IpProto = "12345"
+    testAcctV5.Tos = 30
+    testAcctV5.Packets = 2222222
+    testAcctV5.Bytes = 9999999
+    testAcctV5.Flows = 1
+    testAcctV5.StampInserted = time.Unix(10, 0)
+    testAcctV5.StampUpdated = time.Unix(10, 0)
+    testAcctV5List = append(testAcctV5List, testAcctV5)
 
-    // setting acctV5 create test data
-    testAcctV52.AgentId = 2
-    testAcctV52.ClassId = "c2"
-    testAcctV52.MacSrc = "22.33.44.55.44.33"
-    testAcctV52.MacDst = "99.88.77.66.55.AA"
-    testAcctV52.Vlan = 2
-    testAcctV52.IpSrc = "172.168.2.0"
-    testAcctV52.IpDst = "192.168.2.0"
-    testAcctV52.SrcPort = 5502
-    testAcctV52.DstPort = 15502
-    testAcctV52.IpProto = "12342"
-    testAcctV52.Tos = 32
-    testAcctV52.Packets = 11111112
-    testAcctV52.Bytes = 8888882
-    testAcctV52.Flows = 2
-    testAcctV52.StampInserted = time.Unix(0, 0)
-    testAcctV52.StampUpdated = time.Unix(0, 0)
+    // setting acctV5 create test data3
+    testAcctV5 = models.AcctV5{}
+    testAcctV5.AgentId = 2
+    testAcctV5.ClassId = "c2"
+    testAcctV5.MacSrc = "22.33.44.55.44.33"
+    testAcctV5.MacDst = "99.88.77.66.55.AA"
+    testAcctV5.Vlan = 2
+    testAcctV5.IpSrc = "172.168.2.0"
+    testAcctV5.IpDst = "192.168.2.0"
+    testAcctV5.SrcPort = 5600
+    testAcctV5.DstPort = 15600
+    testAcctV5.IpProto = "12342"
+    testAcctV5.Tos = 32
+    testAcctV5.Packets = 11111112
+    testAcctV5.Bytes = 8888882
+    testAcctV5.Flows = 2
+    testAcctV5.StampInserted = time.Unix(20, 0)
+    testAcctV5.StampUpdated = time.Unix(20, 0)
+    testAcctV5List = append(testAcctV5List, testAcctV5)
+
+    // setting acctV5 create test data4
+    testAcctV5 = models.AcctV5{}
+    testAcctV5.AgentId = 2
+    testAcctV5.ClassId = "c2"
+    testAcctV5.MacSrc = "22.33.44.55.44.33"
+    testAcctV5.MacDst = "99.88.77.66.55.AA"
+    testAcctV5.Vlan = 2
+    testAcctV5.IpSrc = "172.168.2.0"
+    testAcctV5.IpDst = "192.168.2.0"
+    testAcctV5.SrcPort = 5601
+    testAcctV5.DstPort = 15601
+    testAcctV5.IpProto = "12342"
+    testAcctV5.Tos = 32
+    testAcctV5.Packets = 11111112
+    testAcctV5.Bytes = 8888882
+    testAcctV5.Flows = 2
+    testAcctV5.StampInserted = time.Unix(30, 0)
+    testAcctV5.StampUpdated = time.Unix(30, 0)
+    testAcctV5List = append(testAcctV5List, testAcctV5)
+
+    // setting acctV5 create test data5
+    testAcctV5 = models.AcctV5{}
+    testAcctV5.AgentId = 2
+    testAcctV5.ClassId = "c2"
+    testAcctV5.MacSrc = "22.33.44.55.44.33"
+    testAcctV5.MacDst = "99.88.77.66.55.AA"
+    testAcctV5.Vlan = 2
+    testAcctV5.IpSrc = "172.168.2.0"
+    testAcctV5.IpDst = "192.168.2.0"
+    testAcctV5.SrcPort = 5602
+    testAcctV5.DstPort = 15602
+    testAcctV5.IpProto = "12342"
+    testAcctV5.Tos = 32
+    testAcctV5.Packets = 11111112
+    testAcctV5.Bytes = 8888882
+    testAcctV5.Flows = 2
+    testAcctV5.StampInserted = time.Unix(40, 0)
+    testAcctV5.StampUpdated = time.Unix(40, 0)
+    testAcctV5List = append(testAcctV5List, testAcctV5)
 
 }
 
@@ -70,171 +130,336 @@ func TestDataSetting(t *testing.T) {
         return
     }
 
-    // registering data identifiers for customer
-    newAcctV5 := models.CreateAcctV5DbModel(&testAcctV5)
-    _, err = session.Insert(newAcctV5)
-    if err != nil {
-        t.Errorf("acct_v5 insert err: %s", err)
-        session.Rollback()
-        return
+    // registering data
+    newAcctV5List := models.CreateAcctV5DbModel(testAcctV5List)
+    for _, newAcctV5 := range newAcctV5List {
+        _, err = session.Insert(newAcctV5)
+        if err != nil {
+            t.Errorf("acct_v5 insert err: %s", err)
+            session.Rollback()
+            return
+        }
     }
 
-    // registering data identifiers for customer
-    newAcctV52 := models.CreateAcctV5DbModel(&testAcctV52)
-    _, err = session.Insert(newAcctV52)
-    if err != nil {
-        t.Errorf("acct_v5 insert err: %s", err)
-        session.Rollback()
-        return
-    }
     session.Commit()
 
 }
 
 func TestGetAcctV5ByDstIpPort(t *testing.T) {
-    // GetAcctV5 test execute
-    acctV5, err := models.GetAcctV5ByDstIpPort(testAcctV5.IpDst, testAcctV5.DstPort)
+    // create search value
+    targetIP := []models.Prefix{}
+    targetPortRange := []models.PortRange{}
+
+    newPrefix1, err := models.NewPrefix("192.168.1.0/32")
     if err != nil {
-        t.Errorf("get acct_v5 err: %s", err)
+        t.Errorf("Prefix data create err: %s", err)
+        return
+    }
+    targetIP = append(targetIP, newPrefix1)
+    newPortRange1 := models.NewPortRange(15501, 15505)
+    targetPortRange = append(targetPortRange, newPortRange1)
+
+    newPrefix2, err := models.NewPrefix("192.168.1.0/32")
+    if err != nil {
+        t.Errorf("Prefix data create err: %s", err)
+        return
+    }
+    targetIP = append(targetIP, newPrefix2)
+    newPortRange2 := models.NewPortRange(15506, 15509)
+    targetPortRange = append(targetPortRange, newPortRange2)
+
+    // GetAcctV5 test execute
+    acctV5List, err := models.GetAcctV5ByDstIpPort(targetIP, targetPortRange)
+    if err != nil {
+        t.Errorf("Get acct_v5 err: %s", err)
         return
     }
 
-    if acctV5.AgentId != testAcctV5.AgentId {
-        t.Errorf("AgentId got %d, want %d", acctV5.AgentId, testAcctV5.AgentId)
+    if len(acctV5List) != 2 {
+        t.Errorf("Get record count got %d, want %d", len(acctV5List), 2)
     }
 
-    if acctV5.ClassId != testAcctV5.ClassId {
-        t.Errorf("ClassId got %s, want %s", acctV5.ClassId, testAcctV5.ClassId)
+    if acctV5List[0].AgentId != testAcctV5List[0].AgentId {
+        t.Errorf("AgentId got %d, want %d", acctV5List[0].AgentId, testAcctV5List[0].AgentId)
     }
 
-    if acctV5.MacSrc != testAcctV5.MacSrc {
-        t.Errorf("MacSrc got %s, want %s", acctV5.MacSrc, testAcctV5.MacSrc)
+    if acctV5List[0].ClassId != testAcctV5List[0].ClassId {
+        t.Errorf("ClassId got %s, want %s", acctV5List[0].ClassId, testAcctV5List[0].ClassId)
     }
 
-    if acctV5.MacDst != testAcctV5.MacDst {
-        t.Errorf("MacDst got %s, want %s", acctV5.MacDst, testAcctV5.MacDst)
+    if acctV5List[0].MacSrc != testAcctV5List[0].MacSrc {
+        t.Errorf("MacSrc got %s, want %s", acctV5List[0].MacSrc, testAcctV5List[0].MacSrc)
     }
 
-    if acctV5.Vlan != testAcctV5.Vlan {
-        t.Errorf("Vlan got %d, want %d", acctV5.Vlan, testAcctV5.Vlan)
+    if acctV5List[0].MacDst != testAcctV5List[0].MacDst {
+        t.Errorf("MacDst got %s, want %s", acctV5List[0].MacDst, testAcctV5List[0].MacDst)
     }
 
-    if acctV5.IpSrc != testAcctV5.IpSrc {
-        t.Errorf("IpSrc got %s, want %s", acctV5.IpSrc, testAcctV5.IpSrc)
+    if acctV5List[0].Vlan != testAcctV5List[0].Vlan {
+        t.Errorf("Vlan got %d, want %d", acctV5List[0].Vlan, testAcctV5List[0].Vlan)
     }
 
-    if acctV5.IpDst != testAcctV5.IpDst {
-        t.Errorf("IpDst got %s, want %s", acctV5.IpDst, testAcctV5.IpDst)
+    if acctV5List[0].IpSrc != testAcctV5List[0].IpSrc {
+        t.Errorf("IpSrc got %s, want %s", acctV5List[0].IpSrc, testAcctV5List[0].IpSrc)
     }
 
-    if acctV5.SrcPort != testAcctV5.SrcPort {
-        t.Errorf("SrcPort got %d, want %d", acctV5.SrcPort, testAcctV5.SrcPort)
+    if acctV5List[0].IpDst != testAcctV5List[0].IpDst {
+        t.Errorf("IpDst got %s, want %s", acctV5List[0].IpDst, testAcctV5List[0].IpDst)
     }
 
-    if acctV5.DstPort != testAcctV5.DstPort {
-        t.Errorf("DstPort got %d, want %d", acctV5.DstPort, testAcctV5.DstPort)
+    if acctV5List[0].SrcPort != testAcctV5List[0].SrcPort {
+        t.Errorf("SrcPort got %d, want %d", acctV5List[0].SrcPort, testAcctV5List[0].SrcPort)
     }
 
-    if acctV5.IpProto != testAcctV5.IpProto {
-        t.Errorf("IpProto got %s, want %s", acctV5.IpProto, testAcctV5.IpProto)
+    if acctV5List[0].DstPort != testAcctV5List[0].DstPort {
+        t.Errorf("DstPort got %d, want %d", acctV5List[0].DstPort, testAcctV5List[0].DstPort)
     }
 
-    if acctV5.Tos != testAcctV5.Tos {
-        t.Errorf("Tos got %d, want %d", acctV5.Tos, testAcctV5.Tos)
+    if acctV5List[0].IpProto != testAcctV5List[0].IpProto {
+        t.Errorf("IpProto got %s, want %s", acctV5List[0].IpProto, testAcctV5List[0].IpProto)
     }
 
-    if acctV5.Packets != testAcctV5.Packets {
-        t.Errorf("Packets got %d, want %d", acctV5.Packets, testAcctV5.Packets)
+    if acctV5List[0].Tos != testAcctV5List[0].Tos {
+        t.Errorf("Tos got %d, want %d", acctV5List[0].Tos, testAcctV5List[0].Tos)
     }
 
-    if acctV5.Bytes != testAcctV5.Bytes {
-        t.Errorf("Bytes got %d, want %d", acctV5.Bytes, testAcctV5.Bytes)
+    if acctV5List[0].Packets != testAcctV5List[0].Packets {
+        t.Errorf("Packets got %d, want %d", acctV5List[0].Packets, testAcctV5List[0].Packets)
     }
 
-    if acctV5.Flows != testAcctV5.Flows {
-        t.Errorf("Flows got %d, want %d", acctV5.Flows, testAcctV5.Flows)
+    if acctV5List[0].Bytes != testAcctV5List[0].Bytes {
+        t.Errorf("Bytes got %d, want %d", acctV5List[0].Bytes, testAcctV5List[0].Bytes)
     }
 
-    if acctV5.StampInserted != testAcctV5.StampInserted {
-        t.Errorf("StampInserted got %s, want %s", acctV5.StampInserted, testAcctV5.StampInserted)
+    if acctV5List[0].Flows != testAcctV5List[0].Flows {
+        t.Errorf("Flows got %d, want %d", acctV5List[0].Flows, testAcctV5List[0].Flows)
     }
 
-    if acctV5.StampUpdated != testAcctV5.StampUpdated {
-        t.Errorf("StampUpdated got %s, want %s", acctV5.StampUpdated, testAcctV5.StampUpdated)
+    if acctV5List[0].StampInserted != testAcctV5List[0].StampInserted {
+        t.Errorf("StampInserted got %s, want %s", acctV5List[0].StampInserted, testAcctV5List[0].StampInserted)
+    }
+
+    if acctV5List[0].StampUpdated != testAcctV5List[0].StampUpdated {
+        t.Errorf("StampUpdated got %s, want %s", acctV5List[0].StampUpdated, testAcctV5List[0].StampUpdated)
+    }
+
+    if acctV5List[1].AgentId != testAcctV5List[1].AgentId {
+        t.Errorf("AgentId got %d, want %d", acctV5List[1].AgentId, testAcctV5List[1].AgentId)
+    }
+
+    if acctV5List[1].ClassId != testAcctV5List[1].ClassId {
+        t.Errorf("ClassId got %s, want %s", acctV5List[1].ClassId, testAcctV5List[1].ClassId)
+    }
+
+    if acctV5List[1].MacSrc != testAcctV5List[1].MacSrc {
+        t.Errorf("MacSrc got %s, want %s", acctV5List[1].MacSrc, testAcctV5List[1].MacSrc)
+    }
+
+    if acctV5List[1].MacDst != testAcctV5List[1].MacDst {
+        t.Errorf("MacDst got %s, want %s", acctV5List[1].MacDst, testAcctV5List[1].MacDst)
+    }
+
+    if acctV5List[1].Vlan != testAcctV5List[1].Vlan {
+        t.Errorf("Vlan got %d, want %d", acctV5List[1].Vlan, testAcctV5List[1].Vlan)
+    }
+
+    if acctV5List[1].IpSrc != testAcctV5List[1].IpSrc {
+        t.Errorf("IpSrc got %s, want %s", acctV5List[1].IpSrc, testAcctV5List[1].IpSrc)
+    }
+
+    if acctV5List[1].IpDst != testAcctV5List[1].IpDst {
+        t.Errorf("IpDst got %s, want %s", acctV5List[1].IpDst, testAcctV5List[1].IpDst)
+    }
+
+    if acctV5List[1].SrcPort != testAcctV5List[1].SrcPort {
+        t.Errorf("SrcPort got %d, want %d", acctV5List[1].SrcPort, testAcctV5List[1].SrcPort)
+    }
+
+    if acctV5List[1].DstPort != testAcctV5List[1].DstPort {
+        t.Errorf("DstPort got %d, want %d", acctV5List[1].DstPort, testAcctV5List[1].DstPort)
+    }
+
+    if acctV5List[1].IpProto != testAcctV5List[1].IpProto {
+        t.Errorf("IpProto got %s, want %s", acctV5List[1].IpProto, testAcctV5List[1].IpProto)
+    }
+
+    if acctV5List[1].Tos != testAcctV5List[1].Tos {
+        t.Errorf("Tos got %d, want %d", acctV5List[1].Tos, testAcctV5List[1].Tos)
+    }
+
+    if acctV5List[1].Packets != testAcctV5List[1].Packets {
+        t.Errorf("Packets got %d, want %d", acctV5List[1].Packets, testAcctV5List[1].Packets)
+    }
+
+    if acctV5List[1].Bytes != testAcctV5List[1].Bytes {
+        t.Errorf("Bytes got %d, want %d", acctV5List[1].Bytes, testAcctV5List[1].Bytes)
+    }
+
+    if acctV5List[1].Flows != testAcctV5List[1].Flows {
+        t.Errorf("Flows got %d, want %d", acctV5List[1].Flows, testAcctV5List[1].Flows)
+    }
+
+    if acctV5List[1].StampInserted != testAcctV5List[1].StampInserted {
+        t.Errorf("StampInserted got %s, want %s", acctV5List[1].StampInserted, testAcctV5List[1].StampInserted)
+    }
+
+    if acctV5List[1].StampUpdated != testAcctV5List[1].StampUpdated {
+        t.Errorf("StampUpdated got %s, want %s", acctV5List[1].StampUpdated, testAcctV5List[1].StampUpdated)
     }
 
 }
 
 func TestGetAcctV5BySrcIpPort(t *testing.T) {
-    // GetAcctV5 test execute
-    acctV5, err := models.GetAcctV5BySrcIpPort(testAcctV52.IpSrc, testAcctV52.SrcPort)
+    // create search value
+    targetIP := []models.Prefix{}
+    targetPortRange := []models.PortRange{}
+
+    newPrefix1, err := models.NewPrefix("172.168.2.0/24")
     if err != nil {
-        t.Errorf("get acct_v5 err: %s", err)
+        t.Errorf("Prefix data create err: %s", err)
+        return
+    }
+    targetIP = append(targetIP, newPrefix1)
+    newPortRange1 := models.NewPortRange(5600, 5601)
+    targetPortRange = append(targetPortRange, newPortRange1)
+
+    // GetAcctV5 test execute
+    acctV5List, err := models.GetAcctV5BySrcIpPort(targetIP, targetPortRange)
+    if err != nil {
+        t.Errorf("Get acct_v5 err: %s", err)
         return
     }
 
-    if acctV5.AgentId != testAcctV52.AgentId {
-        t.Errorf("AgentId got %d, want %d", acctV5.AgentId, testAcctV52.AgentId)
+    if len(acctV5List) != 2 {
+        t.Errorf("Get record count got %d, want %d", len(acctV5List), 2)
     }
 
-    if acctV5.ClassId != testAcctV52.ClassId {
-        t.Errorf("ClassId got %s, want %s", acctV5.ClassId, testAcctV52.ClassId)
+    if acctV5List[0].AgentId != testAcctV5List[2].AgentId {
+        t.Errorf("AgentId got %d, want %d", acctV5List[0].AgentId, testAcctV5List[2].AgentId)
     }
 
-    if acctV5.MacSrc != testAcctV52.MacSrc {
-        t.Errorf("MacSrc got %s, want %s", acctV5.MacSrc, testAcctV52.MacSrc)
+    if acctV5List[0].ClassId != testAcctV5List[2].ClassId {
+        t.Errorf("ClassId got %s, want %s", acctV5List[0].ClassId, testAcctV5List[2].ClassId)
     }
 
-    if acctV5.MacDst != testAcctV52.MacDst {
-        t.Errorf("MacDst got %s, want %s", acctV5.MacDst, testAcctV52.MacDst)
+    if acctV5List[0].MacSrc != testAcctV5List[2].MacSrc {
+        t.Errorf("MacSrc got %s, want %s", acctV5List[0].MacSrc, testAcctV5List[2].MacSrc)
     }
 
-    if acctV5.Vlan != testAcctV52.Vlan {
-        t.Errorf("Vlan got %d, want %d", acctV5.Vlan, testAcctV52.Vlan)
+    if acctV5List[0].MacDst != testAcctV5List[2].MacDst {
+        t.Errorf("MacDst got %s, want %s", acctV5List[0].MacDst, testAcctV5List[2].MacDst)
     }
 
-    if acctV5.IpSrc != testAcctV52.IpSrc {
-        t.Errorf("IpSrc got %s, want %s", acctV5.IpSrc, testAcctV52.IpSrc)
+    if acctV5List[0].Vlan != testAcctV5List[2].Vlan {
+        t.Errorf("Vlan got %d, want %d", acctV5List[0].Vlan, testAcctV5List[2].Vlan)
     }
 
-    if acctV5.IpDst != testAcctV52.IpDst {
-        t.Errorf("IpDst got %s, want %s", acctV5.IpDst, testAcctV52.IpDst)
+    if acctV5List[0].IpSrc != testAcctV5List[2].IpSrc {
+        t.Errorf("IpSrc got %s, want %s", acctV5List[0].IpSrc, testAcctV5List[2].IpSrc)
     }
 
-    if acctV5.SrcPort != testAcctV52.SrcPort {
-        t.Errorf("SrcPort got %d, want %d", acctV5.SrcPort, testAcctV52.SrcPort)
+    if acctV5List[0].IpDst != testAcctV5List[2].IpDst {
+        t.Errorf("IpDst got %s, want %s", acctV5List[0].IpDst, testAcctV5List[2].IpDst)
     }
 
-    if acctV5.DstPort != testAcctV52.DstPort {
-        t.Errorf("DstPort got %d, want %d", acctV5.DstPort, testAcctV52.DstPort)
+    if acctV5List[0].SrcPort != testAcctV5List[2].SrcPort {
+        t.Errorf("SrcPort got %d, want %d", acctV5List[0].SrcPort, testAcctV5List[2].SrcPort)
     }
 
-    if acctV5.IpProto != testAcctV52.IpProto {
-        t.Errorf("IpProto got %s, want %s", acctV5.IpProto, testAcctV52.IpProto)
+    if acctV5List[0].DstPort != testAcctV5List[2].DstPort {
+        t.Errorf("DstPort got %d, want %d", acctV5List[0].DstPort, testAcctV5List[2].DstPort)
     }
 
-    if acctV5.Tos != testAcctV52.Tos {
-        t.Errorf("Tos got %d, want %d", acctV5.Tos, testAcctV52.Tos)
+    if acctV5List[0].IpProto != testAcctV5List[2].IpProto {
+        t.Errorf("IpProto got %s, want %s", acctV5List[0].IpProto, testAcctV5List[2].IpProto)
     }
 
-    if acctV5.Packets != testAcctV52.Packets {
-        t.Errorf("Packets got %d, want %d", acctV5.Packets, testAcctV52.Packets)
+    if acctV5List[0].Tos != testAcctV5List[2].Tos {
+        t.Errorf("Tos got %d, want %d", acctV5List[0].Tos, testAcctV5List[2].Tos)
     }
 
-    if acctV5.Bytes != testAcctV52.Bytes {
-        t.Errorf("Bytes got %d, want %d", acctV5.Bytes, testAcctV52.Bytes)
+    if acctV5List[0].Packets != testAcctV5List[2].Packets {
+        t.Errorf("Packets got %d, want %d", acctV5List[0].Packets, testAcctV5List[2].Packets)
     }
 
-    if acctV5.Flows != testAcctV52.Flows {
-        t.Errorf("Flows got %d, want %d", acctV5.Flows, testAcctV52.Flows)
+    if acctV5List[0].Bytes != testAcctV5List[2].Bytes {
+        t.Errorf("Bytes got %d, want %d", acctV5List[0].Bytes, testAcctV5List[2].Bytes)
     }
 
-    if acctV5.StampInserted != testAcctV52.StampInserted {
-        t.Errorf("StampInserted got %s, want %s", acctV5.StampInserted, testAcctV52.StampInserted)
+    if acctV5List[0].Flows != testAcctV5List[2].Flows {
+        t.Errorf("Flows got %d, want %d", acctV5List[0].Flows, testAcctV5List[2].Flows)
     }
 
-    if acctV5.StampUpdated != testAcctV52.StampUpdated {
-        t.Errorf("StampUpdated got %s, want %s", acctV5.StampUpdated, testAcctV52.StampUpdated)
+    if acctV5List[0].StampInserted != testAcctV5List[2].StampInserted {
+        t.Errorf("StampInserted got %s, want %s", acctV5List[0].StampInserted, testAcctV5List[2].StampInserted)
+    }
+
+    if acctV5List[0].StampUpdated != testAcctV5List[2].StampUpdated {
+        t.Errorf("StampUpdated got %s, want %s", acctV5List[0].StampUpdated, testAcctV5List[2].StampUpdated)
+    }
+
+    if acctV5List[1].AgentId != testAcctV5List[3].AgentId {
+        t.Errorf("AgentId got %d, want %d", acctV5List[1].AgentId, testAcctV5List[3].AgentId)
+    }
+
+    if acctV5List[1].ClassId != testAcctV5List[3].ClassId {
+        t.Errorf("ClassId got %s, want %s", acctV5List[1].ClassId, testAcctV5List[3].ClassId)
+    }
+
+    if acctV5List[1].MacSrc != testAcctV5List[3].MacSrc {
+        t.Errorf("MacSrc got %s, want %s", acctV5List[1].MacSrc, testAcctV5List[3].MacSrc)
+    }
+
+    if acctV5List[1].MacDst != testAcctV5List[3].MacDst {
+        t.Errorf("MacDst got %s, want %s", acctV5List[1].MacDst, testAcctV5List[3].MacDst)
+    }
+
+    if acctV5List[1].Vlan != testAcctV5List[3].Vlan {
+        t.Errorf("Vlan got %d, want %d", acctV5List[1].Vlan, testAcctV5List[3].Vlan)
+    }
+
+    if acctV5List[1].IpSrc != testAcctV5List[3].IpSrc {
+        t.Errorf("IpSrc got %s, want %s", acctV5List[1].IpSrc, testAcctV5List[3].IpSrc)
+    }
+
+    if acctV5List[1].IpDst != testAcctV5List[3].IpDst {
+        t.Errorf("IpDst got %s, want %s", acctV5List[1].IpDst, testAcctV5List[3].IpDst)
+    }
+
+    if acctV5List[1].SrcPort != testAcctV5List[3].SrcPort {
+        t.Errorf("SrcPort got %d, want %d", acctV5List[1].SrcPort, testAcctV5List[3].SrcPort)
+    }
+
+    if acctV5List[1].DstPort != testAcctV5List[3].DstPort {
+        t.Errorf("DstPort got %d, want %d", acctV5List[1].DstPort, testAcctV5List[3].DstPort)
+    }
+
+    if acctV5List[1].IpProto != testAcctV5List[3].IpProto {
+        t.Errorf("IpProto got %s, want %s", acctV5List[1].IpProto, testAcctV5List[3].IpProto)
+    }
+
+    if acctV5List[1].Tos != testAcctV5List[3].Tos {
+        t.Errorf("Tos got %d, want %d", acctV5List[1].Tos, testAcctV5List[3].Tos)
+    }
+
+    if acctV5List[1].Packets != testAcctV5List[3].Packets {
+        t.Errorf("Packets got %d, want %d", acctV5List[1].Packets, testAcctV5List[3].Packets)
+    }
+
+    if acctV5List[1].Bytes != testAcctV5List[3].Bytes {
+        t.Errorf("Bytes got %d, want %d", acctV5List[1].Bytes, testAcctV5List[3].Bytes)
+    }
+
+    if acctV5List[1].Flows != testAcctV5List[3].Flows {
+        t.Errorf("Flows got %d, want %d", acctV5List[1].Flows, testAcctV5List[3].Flows)
+    }
+
+    if acctV5List[1].StampInserted != testAcctV5List[3].StampInserted {
+        t.Errorf("StampInserted got %s, want %s", acctV5List[1].StampInserted, testAcctV5List[3].StampInserted)
+    }
+
+    if acctV5List[1].StampUpdated != testAcctV5List[3].StampUpdated {
+        t.Errorf("StampUpdated got %s, want %s", acctV5List[1].StampUpdated, testAcctV5List[3].StampUpdated)
     }
 
 }
