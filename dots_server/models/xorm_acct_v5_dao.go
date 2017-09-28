@@ -1,6 +1,7 @@
 package models
 
 import (
+    "time"
     "github.com/nttdots/go-dots/dots_server/db_models"
     log "github.com/sirupsen/logrus"
 )
@@ -11,11 +12,13 @@ import (
  * parameter:
  *  targetIp check dst Ip
  *  targetPortRange check dst Port
+ *  startTime measute start time
+ *  intervalTime interval time(second)
  * return:
  *  acctV5 AcctV5
  *  error error
  */
-func GetAcctV5ByDstIpPort(targetIP []Prefix, targetPortRange []PortRange) (acctV5List []AcctV5, err error) {
+func GetAcctV5ByDstIpPort(targetIP []Prefix, targetPortRange []PortRange, startTime time.Time, intervalTime int64) (acctV5List []AcctV5, err error) {
     // Create database connection
     engine, err := ConnectDB("pmacct")
     if err != nil {
@@ -27,9 +30,9 @@ func GetAcctV5ByDstIpPort(targetIP []Prefix, targetPortRange []PortRange) (acctV
     dbAcctV5List := []db_models.AcctV5{}
     for key, target := range targetIP {
         targetPort := targetPortRange[key]
-
         acctV5 := []db_models.AcctV5{}
-        err := engine.Where("ip_dst = ? AND ? <= dst_port AND dst_port <= ?", target.Addr, targetPort.LowerPort, targetPort.UpperPort).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
+        endTime := AddSecond(startTime, intervalTime)
+        err := engine.Where("ip_dst=? AND (?<=dst_port AND dst_port<=?) AND (?<=stamp_inserted AND stamp_inserted<=?)", target.Addr, targetPort.LowerPort, targetPort.UpperPort, GetMySqlTime(startTime), GetMySqlTime(endTime)).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
         if err != nil {
             return nil, err
         }
@@ -49,11 +52,13 @@ func GetAcctV5ByDstIpPort(targetIP []Prefix, targetPortRange []PortRange) (acctV
  * parameter:
  *  targetIp check src Ip
  *  targetPort check src Port
+ *  startTime measute start time
+ *  intervalTime interval time(second)
  * return:
  *  acctV5 AcctV5
  *  error error
  */
-func GetAcctV5BySrcIpPort(targetIP []Prefix, targetPortRange []PortRange) (acctV5List []AcctV5, err error) {
+func GetAcctV5BySrcIpPort(targetIP []Prefix, targetPortRange []PortRange, startTime time.Time, intervalTime int64) (acctV5List []AcctV5, err error) {
     // create database connection
     engine, err := ConnectDB("pmacct")
     if err != nil {
@@ -67,7 +72,8 @@ func GetAcctV5BySrcIpPort(targetIP []Prefix, targetPortRange []PortRange) (acctV
         targetPort := targetPortRange[key]
 
         acctV5 := []db_models.AcctV5{}
-        err := engine.Where("ip_src = ? AND ? <= src_port AND src_port <= ?", target.Addr, targetPort.LowerPort, targetPort.UpperPort).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
+        endTime := AddSecond(startTime, intervalTime)
+        err := engine.Where("ip_src=? AND (?<=src_port AND src_port<=?) AND (?<=stamp_inserted AND stamp_inserted<=?)", target.Addr, targetPort.LowerPort, targetPort.UpperPort, GetMySqlTime(startTime), GetMySqlTime(endTime)).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
         if err != nil {
             return nil, err
         }

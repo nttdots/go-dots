@@ -304,11 +304,12 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 					pmacct_process_counter++
 					// 指定時間待つ(1分？2分？)
 					// TODO: 待ち時間の確定
+					var measurementStartTime = time.Now()
 					time.Sleep(120 * time.Second)
 
 					// pmacctのデータ取得
-					acctList, e := models.GetAcctV5BySrcIpPort(scopeList.Scope.TargetIP, scopeList.Scope.TargetPortRange)
-					if (err != nil) {
+					acctList, e := models.GetAcctV5BySrcIpPort(scopeList.Scope.TargetIP, scopeList.Scope.TargetPortRange, measurementStartTime, 120)
+					if e != nil {
 						err = e
 					}
 					packets, bytes := models.TotalPacketsBytesCalc(acctList)
@@ -317,6 +318,23 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 					// TODO: しきい値の確定
 					if packets > 10000 || bytes > 10000000 {
 						// しきい値以上であればblackhole行き
+						// register a MitigationScope to a Blocker and receive a Protection
+						p, e := scopeList.Blocker.RegisterProtection(scopeList.Scope)
+						if e != nil {
+							err = e
+						} else {
+							// invoke the protection on the blocker
+							e = scopeList.Blocker.ExecuteProtection(p)
+							if e != nil {
+								err = e
+							} else {
+								// register rollback sequences for the case if
+								// some errors occurred during this MitigationRequest handling.
+								unregisterCommands = append(unregisterCommands, func() {
+									scopeList.Blocker.UnregisterProtection(p)
+								})
+							}
+						}
 					} else {
 						// しきい値以内であれば何もしない（？）
 					}
