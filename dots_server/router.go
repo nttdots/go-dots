@@ -251,7 +251,7 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 
 func (r *Router) authenticate(cn string) bool {
 
-	result, err := r.Authenticator.CheckClient(cn, "", "")
+	result, err := r.Authenticator.CheckClient(cn, "", "", LoginCheck_Administrator)
 	if err != nil {
 		log.WithError(err).Error("authenticate error.")
 		return false

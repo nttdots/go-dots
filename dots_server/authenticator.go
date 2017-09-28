@@ -1,20 +1,31 @@
 package main
 
 import (
-	"strconv"
+	"context"
+	"fmt"
 
-	"github.com/kirves/goradius"
 	"github.com/nttdots/go-dots/dots_server/config"
+
 	log "github.com/sirupsen/logrus"
+	"layeh.com/radius"
+	"layeh.com/radius/rfc2865"
 )
 
 type Authenticator struct {
-	enable              bool
-	radiusAuthenticator *goradius.AuthenticatorT
+	Enable     bool
+	ServerAddr string
+	Secret     string
 }
 
-func (a *Authenticator) CheckClient(clientName, password, nasId string) (bool, error) {
-	if !a.enable {
+type LoginCheckType = uint32
+
+const (
+	LoginCheck_Administrator = uint32(rfc2865.ServiceType_Value_AdministrativeUser)
+	LoginCheck_User          = uint32(rfc2865.ServiceType_Value_LoginUser)
+)
+
+func (a *Authenticator) CheckClient(clientName, password, nasId string, checkType LoginCheckType) (bool, error) {
+	if !a.Enable {
 		return true, nil
 	}
 
@@ -24,20 +35,39 @@ func (a *Authenticator) CheckClient(clientName, password, nasId string) (bool, e
 		"nasId":      nasId,
 	}).Debug("check client")
 
-	return a.radiusAuthenticator.Authenticate(clientName, password, nasId)
+	radiusPacket := radius.New(radius.CodeAccessRequest, []byte(a.Secret))
+	rfc2865.UserName_SetString(radiusPacket, clientName)
+	rfc2865.UserPassword_SetString(radiusPacket, password)
+	rfc2865.ServiceType_Add(radiusPacket, rfc2865.ServiceType(uint32(checkType)))
+
+	response, err := radius.Exchange(context.Background(), radiusPacket, a.ServerAddr)
+	if err != nil {
+		return false, err
+	}
+
+	serviceTypes, err := rfc2865.ServiceType_Gets(response)
+	if err != nil || response.Code != radius.CodeAccessAccept {
+		return false, err
+	}
+
+	for _, a := range serviceTypes {
+		if uint32(a) == uint32(checkType) {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func NewAuthenticator(aaa *config.AAA) *Authenticator {
 	if !aaa.Enable {
 		return &Authenticator{
-			enable:              false,
-			radiusAuthenticator: nil,
+			Enable: false,
 		}
 	}
 
-	radiusAuth := goradius.Authenticator(aaa.Server, strconv.Itoa(aaa.Port), aaa.Secret)
 	return &Authenticator{
-		enable:              true,
-		radiusAuthenticator: radiusAuth,
+		Enable:     true,
+		ServerAddr: fmt.Sprintf("%s:%d", aaa.Server, aaa.Port),
+		Secret:     aaa.Secret,
 	}
 }

@@ -23,6 +23,10 @@ func (t *testConn) GetClientCN() string {
 	return t.commonName
 }
 
+var DummyAuthenticator = &main.Authenticator{
+	Enable: false,
+}
+
 func NewTestConn(conn *net.UDPConn, commonName string) *testConn {
 	return &testConn{
 		conn,
@@ -31,7 +35,7 @@ func NewTestConn(conn *net.UDPConn, commonName string) *testConn {
 }
 
 func Test_Router(t *testing.T) {
-	router := main.NewRouter()
+	router := main.NewRouter(DummyAuthenticator)
 	router.Register(messages.HELLO, &controllers.Hello{}) // messages.MessageTypes is set here
 
 	expectsMap := make(map[string]main.ControllerInfo)
@@ -47,7 +51,7 @@ func Test_Router(t *testing.T) {
  * Case if the CN in the request message is invalid.
  */
 func TestRouter_InvalidCommonName1(t *testing.T) {
-	router := main.NewRouter()
+	router := main.NewRouter(DummyAuthenticator)
 	router.Register(messages.HELLO, &controllers.Hello{}) // messages.MessageTypes is set here
 
 	m := &coap.Message{
@@ -74,7 +78,7 @@ func TestRouter_InvalidCommonName1(t *testing.T) {
  * Case if the CN in the request message is invalid(blank CN).
  */
 func TestRouter_InvalidCommonName2(t *testing.T) {
-	router := main.NewRouter()
+	router := main.NewRouter(DummyAuthenticator)
 	router.Register(messages.HELLO, &controllers.Hello{}) // messages.MessageTypes is set here
 
 	m := &coap.Message{
@@ -101,7 +105,7 @@ func TestRouter_InvalidCommonName2(t *testing.T) {
  * Case if the CN in the request message is invalid(Could not get the CN from the message).
 */
 func TestRouter_InvalidCommonName3(t *testing.T) {
-	router := main.NewRouter()
+	router := main.NewRouter(DummyAuthenticator)
 	router.Register(messages.HELLO, &controllers.Hello{}) // messages.MessageTypes is set here
 
 	m := &coap.Message{
@@ -128,7 +132,7 @@ func TestRouter_InvalidCommonName3(t *testing.T) {
  * Case if the path in the request message is invalid
  */
 func TestRouter_InvalidPath(t *testing.T) {
-	router := main.NewRouter()
+	router := main.NewRouter(DummyAuthenticator)
 	router.Register(messages.HELLO, &controllers.Hello{})
 
 	m := &coap.Message{
@@ -155,7 +159,7 @@ func TestRouter_InvalidPath(t *testing.T) {
  * Case if CoAP request message itself is invalid
  */
 func TestRouter_InvalidMessage(t *testing.T) {
-	router := main.NewRouter()
+	router := main.NewRouter(DummyAuthenticator)
 	router.Register(messages.HELLO, &controllers.Hello{})
 
 	m := &coap.Message{
@@ -183,7 +187,7 @@ func TestRouter_InvalidMessage(t *testing.T) {
  * normal case
  */
 func TestRouter_WithMessage(t *testing.T) {
-	router := main.NewRouter()
+	router := main.NewRouter(DummyAuthenticator)
 	router.Register(messages.HELLO, &controllers.Hello{}) // messages.MessageTypes is set here
 
 	mm := messages.HelloRequest{

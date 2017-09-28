@@ -1,4 +1,12 @@
-client1 Cleartext-Password := "password1"
-client2 Cleartext-Password := "password2"
+client1     Cleartext-Password := "password1"
+            Service-Type = Administrative-User,
+            Service-Type = Login-User
 
-client.sample.example.com Cleartext-Password := ""
+client2     Cleartext-Password := "password2"
+            Service-Type = Login-User
+
+client.sample.example.com   Cleartext-Password := ""
+                            Service-Type = Administrative-User
+
+guest.sample.example.com    Cleartext-Password := ""
+                            Service-Type = Login-User
