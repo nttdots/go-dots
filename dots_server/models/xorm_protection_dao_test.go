@@ -510,3 +510,67 @@ func TestDeleteProtection(t *testing.T) {
 		t.Error("not delete BlockedDataInfo.AverageThroughputData")
 	}
 }
+
+func TestCreateProtectionThresholdValue(t *testing.T) {
+	testProtectionThresholdValue := models.ProtectionThresholdValue{
+		ProtectionId:     testProtectionBase.Id(),
+		ThresholdPackets: 5000,
+		ThresholdBytes:   20000,
+	}
+	err := models.CreateProtectionThresholdValue(&testProtectionThresholdValue)
+	if err != nil {
+		t.Errorf("create protection_threshold_value err: %s", err)
+	}
+
+	engine, err := models.ConnectDB()
+	if err != nil {
+		t.Errorf("database connect error: %s", err)
+	}
+
+	// ProtectionThresholdValue
+	chkProtectionThresholdValue := db_models.ProtectionThresholdValue{}
+	_, err = engine.Where("id=?", testProtectionThresholdValue.Id).Get(&chkProtectionThresholdValue)
+	if err != nil {
+		t.Errorf("select protection_threshold_value err: %s", err)
+	}
+
+	if chkProtectionThresholdValue.ProtectionId != testProtectionThresholdValue.ProtectionId {
+		t.Errorf("ProtectionId got %d, want %d", chkProtectionThresholdValue.ProtectionId, testProtectionThresholdValue.ProtectionId)
+	}
+
+	if chkProtectionThresholdValue.ThresholdPackets != testProtectionThresholdValue.ThresholdPackets {
+		t.Errorf("ThresholdPackets got %d, want %d", chkProtectionThresholdValue.ThresholdPackets, testProtectionThresholdValue.ThresholdPackets)
+	}
+
+	if chkProtectionThresholdValue.ThresholdBytes != testProtectionThresholdValue.ThresholdBytes {
+		t.Errorf("ThresholdBytes got %d, want %d", chkProtectionThresholdValue.ThresholdBytes, testProtectionThresholdValue.ThresholdBytes)
+	}
+
+
+	testProtectionThresholdValue.ThresholdPackets = testProtectionThresholdValue.ThresholdPackets + 12345
+	testProtectionThresholdValue.ThresholdBytes = testProtectionThresholdValue.ThresholdBytes + 987654
+	err = models.CreateProtectionThresholdValue(&testProtectionThresholdValue)
+	if err != nil {
+		t.Errorf("update protection_threshold_value err: %s", err)
+	}
+
+	// ProtectionThresholdValue
+	chkProtectionThresholdValue = db_models.ProtectionThresholdValue{}
+	_, err = engine.Where("id=?", testProtectionThresholdValue.Id).Get(&chkProtectionThresholdValue)
+	if err != nil {
+		t.Errorf("select protection_threshold_value err: %s", err)
+	}
+
+	if chkProtectionThresholdValue.ProtectionId != testProtectionThresholdValue.ProtectionId {
+		t.Errorf("ProtectionId got %d, want %d", chkProtectionThresholdValue.ProtectionId, testProtectionThresholdValue.ProtectionId)
+	}
+
+	if chkProtectionThresholdValue.ThresholdPackets != testProtectionThresholdValue.ThresholdPackets {
+		t.Errorf("ThresholdPackets got %d, want %d", chkProtectionThresholdValue.ThresholdPackets, testProtectionThresholdValue.ThresholdPackets)
+	}
+
+	if chkProtectionThresholdValue.ThresholdBytes != testProtectionThresholdValue.ThresholdBytes {
+		t.Errorf("ThresholdBytes got %d, want %d", chkProtectionThresholdValue.ThresholdBytes, testProtectionThresholdValue.ThresholdBytes)
+	}
+
+}

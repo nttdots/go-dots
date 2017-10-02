@@ -1058,3 +1058,80 @@ ROLLBACK:
 	session.Rollback()
 	return
 }
+
+/*
+ * Stores a ProtectionThresholdValue to the Protection_threshold_value table in the DB.
+ * if the ID of newly created object equals to 0, this function creates a new entry,
+ * otherwise updates the relevant entry.
+ * If it does not find any relevant entry, it just returns.
+ */
+func CreateProtectionThresholdValue(ptv *ProtectionThresholdValue) (err error) {
+	if ptv == nil {
+		return
+	}
+
+	// database connection create
+	engine, err := ConnectDB()
+
+	// transaction start
+	session := engine.NewSession()
+	defer session.Close()
+
+	dptv := db_models.ProtectionThresholdValue{
+		Id:               ptv.Id,
+		ProtectionId:     ptv.ProtectionId,
+		ThresholdPackets: ptv.ThresholdPackets,
+		ThresholdBytes:   ptv.ThresholdBytes,
+	}
+
+	if dptv.Id == 0 {
+		_, err = session.Insert(&dptv)
+		log.WithFields(log.Fields{
+			"data": dptv,
+			"err":  err,
+		}).Debug("insert ProtectionThresholdValue")
+		if err != nil {
+			return
+		}
+		newData, err := loadProtectionThresholdValue(session, dptv.ProtectionId)
+		if err != nil {
+			return
+		}
+		ptv.SetId(newData.Id)
+	} else {
+		_, err = session.Where("id=?", dptv.Id).Cols("threshold_packets", "threshold_bytes").Update(&dptv)
+		log.WithFields(log.Fields{
+			"data": dptv,
+			"err":  err,
+		}).Debug("update ProtectionThresholdValue")
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+/*
+ * Obtains the protection_threshold_value data by ProtectionID.
+ * If there is no entry specified by the ProtectionID, it returns nil.
+ */
+func loadProtectionThresholdValue(session *xorm.Session, id int64) (pptv *ProtectionThresholdValue, err error) {
+	dptv := db_models.ProtectionThresholdValue{}
+
+	_, err = session.Where("protection_id=?", id).Get(&dptv)
+	if err != nil {
+		return
+	}
+	pptv = &ProtectionThresholdValue{
+		Id: dptv.Id,
+		ProtectionId: dptv.ProtectionId,
+		ThresholdPackets: dptv.ThresholdPackets,
+		ThresholdBytes: dptv.ThresholdBytes,
+		Created: dptv.Created,
+		Updated: dptv.Updated,
+	}
+
+	return
+}
+

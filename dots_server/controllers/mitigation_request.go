@@ -291,7 +291,9 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 		counter++
 	}
 
+	// pmacct確認が終わったかどうかのフラグ管理用
 	pmacct_finished := make(chan bool)
+	// pmacct確認処理中のスレッド数
 	pmacct_process_counter := 0
 	// loop until we can obtain just enough blockers for the MitigationScopes
 	for counter > 0 {
@@ -333,6 +335,9 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 								unregisterCommands = append(unregisterCommands, func() {
 									scopeList.Blocker.UnregisterProtection(p)
 								})
+
+								// しきい値判定値を保存
+								models.CreateProtectionThresholdValue(&models.CreateProtectionThresholdValueModel(p, packets, bytes))
 							}
 						}
 					} else {
