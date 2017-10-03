@@ -232,15 +232,16 @@ CREATE TABLE `mitigation_scope` (
   `customer_id` int(11) DEFAULT NULL,
   `mitigation_id` int(11) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
+  `urgent_flag` tinyint(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `mitigation_scope` (`id`, `customer_id`, `mitigation_id`, `lifetime`, `created`, `updated`)
+INSERT INTO `mitigation_scope` (`id`, `customer_id`, `mitigation_id`, `lifetime`, `urgent_flag`, `created`, `updated`)
 VALUES
-  (1,128,12332,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
-  (2,128,12333,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34');
+  (1,128,12332,1000,0,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
+  (2,128,12333,1000,0,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
 # signal_session_configuration

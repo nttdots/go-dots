@@ -1091,11 +1091,11 @@ func CreateProtectionThresholdValue(ptv *ProtectionThresholdValue) (err error) {
 			"err":  err,
 		}).Debug("insert ProtectionThresholdValue")
 		if err != nil {
-			return
+			return err
 		}
 		newData, err := loadProtectionThresholdValue(session, dptv.ProtectionId)
 		if err != nil {
-			return
+			return err
 		}
 		ptv.SetId(newData.Id)
 	} else {
@@ -1105,7 +1105,7 @@ func CreateProtectionThresholdValue(ptv *ProtectionThresholdValue) (err error) {
 			"err":  err,
 		}).Debug("update ProtectionThresholdValue")
 		if err != nil {
-			return
+			return err
 		}
 	}
 

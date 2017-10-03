@@ -337,7 +337,8 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 								})
 
 								// しきい値判定値を保存
-								models.CreateProtectionThresholdValue(&models.CreateProtectionThresholdValueModel(p, packets, bytes))
+								cptvm := models.CreateProtectionThresholdValueModel(p, packets, bytes)
+								models.CreateProtectionThresholdValue(&cptvm)
 							}
 						}
 					} else {

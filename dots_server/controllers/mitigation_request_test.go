@@ -23,7 +23,8 @@ func TestMitigationRequestPost(t *testing.T) {
 			URI:             []string{""},
 			E164:            []string{""},
 			Alias:           []string{""},
-			Lifetime:        0,
+			Lifetime:        1,
+			UrgentFlag:      false,
 		},
 		{
 			MitigationId:    2345678,
@@ -35,7 +36,8 @@ func TestMitigationRequestPost(t *testing.T) {
 			URI:             []string{""},
 			E164:            []string{""},
 			Alias:           []string{""},
-			Lifetime:        0,
+			Lifetime:        1,
+			UrgentFlag:      false,
 		},
 	}
 	request := messages.MitigationRequest{}
