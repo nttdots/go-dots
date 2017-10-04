@@ -512,10 +512,13 @@ func TestDeleteProtection(t *testing.T) {
 }
 
 func TestCreateProtectionThresholdValue(t *testing.T) {
+	nowTime := time.Now()
 	testProtectionThresholdValue := models.ProtectionThresholdValue{
 		ProtectionId:     testProtectionBase.Id(),
 		ThresholdPackets: 5000,
 		ThresholdBytes:   20000,
+		ExaminationStart: nowTime,
+		ExaminationEnd: nowTime.Add(2 * time.Minute),
 	}
 	err := models.CreateProtectionThresholdValue(&testProtectionThresholdValue)
 	if err != nil {
@@ -546,9 +549,18 @@ func TestCreateProtectionThresholdValue(t *testing.T) {
 		t.Errorf("ThresholdBytes got %d, want %d", chkProtectionThresholdValue.ThresholdBytes, testProtectionThresholdValue.ThresholdBytes)
 	}
 
+	if chkProtectionThresholdValue.ExaminationStart != models.GetSysTime(models.GetMySqlTime(testProtectionThresholdValue.ExaminationStart)) {
+		t.Errorf("ExaminationStart got %s, want %s", chkProtectionThresholdValue.ExaminationStart, models.GetSysTime(models.GetMySqlTime(testProtectionThresholdValue.ExaminationStart)))
+	}
+
+	if chkProtectionThresholdValue.ExaminationEnd != models.GetSysTime(models.GetMySqlTime(testProtectionThresholdValue.ExaminationEnd)) {
+		t.Errorf("ExaminationEnd got %s, want %s", chkProtectionThresholdValue.ExaminationEnd, models.GetSysTime(models.GetMySqlTime(testProtectionThresholdValue.ExaminationEnd)))
+	}
 
 	testProtectionThresholdValue.ThresholdPackets = testProtectionThresholdValue.ThresholdPackets + 12345
 	testProtectionThresholdValue.ThresholdBytes = testProtectionThresholdValue.ThresholdBytes + 987654
+	testProtectionThresholdValue.ExaminationStart = nowTime.Add(3 * time.Minute)
+	testProtectionThresholdValue.ExaminationEnd = nowTime.Add(5 * time.Minute)
 	err = models.CreateProtectionThresholdValue(&testProtectionThresholdValue)
 	if err != nil {
 		t.Errorf("update protection_threshold_value err: %s", err)
@@ -571,6 +583,14 @@ func TestCreateProtectionThresholdValue(t *testing.T) {
 
 	if chkProtectionThresholdValue.ThresholdBytes != testProtectionThresholdValue.ThresholdBytes {
 		t.Errorf("ThresholdBytes got %d, want %d", chkProtectionThresholdValue.ThresholdBytes, testProtectionThresholdValue.ThresholdBytes)
+	}
+
+	if chkProtectionThresholdValue.ExaminationStart != models.GetSysTime(models.GetMySqlTime(testProtectionThresholdValue.ExaminationStart)) {
+		t.Errorf("ExaminationStart got %s, want %s", chkProtectionThresholdValue.ExaminationStart, models.GetSysTime(models.GetMySqlTime(testProtectionThresholdValue.ExaminationStart)))
+	}
+
+	if chkProtectionThresholdValue.ExaminationEnd != models.GetSysTime(models.GetMySqlTime(testProtectionThresholdValue.ExaminationEnd)) {
+		t.Errorf("ExaminationEnd got %s, want %s", chkProtectionThresholdValue.ExaminationEnd, models.GetSysTime(models.GetMySqlTime(testProtectionThresholdValue.ExaminationEnd)))
 	}
 
 }

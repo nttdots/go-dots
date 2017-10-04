@@ -429,6 +429,8 @@ CREATE TABLE `protection_threshold_value` (
   `protection_id` BIGINT(20) NOT NULL,
   `threshold_packets` INT(11) NOT NULL,
   `threshold_bytes` BIGINT(20) NOT NULL,
+  `examination_start` datetime DEFAULT NULL,
+  `examination_end` datetime DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)

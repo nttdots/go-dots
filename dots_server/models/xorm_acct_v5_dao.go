@@ -68,21 +68,19 @@ func GetAcctV5BySrcIpPort(targetIP []Prefix, targetPortRange []PortRange, startT
 
     // Get data from the acct_v5 table
     dbAcctV5List := []db_models.AcctV5{}
-    for key, target := range targetIP {
-        targetPort := targetPortRange[key]
+    for _, ip := range targetIP {
+        for _, portRange := range targetPortRange {
+            acctV5 := []db_models.AcctV5{}
+            endTime := AddSecond(startTime, intervalTime)
+            err := engine.Where("ip_src=? AND (?<=src_port AND src_port<=?) AND (?<=stamp_inserted AND stamp_inserted<=?)", ip.Addr, portRange.LowerPort, portRange.UpperPort, GetMySqlTime(startTime), GetMySqlTime(endTime)).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
+            if err != nil {
+                return nil, err
+            }
 
-        acctV5 := []db_models.AcctV5{}
-        endTime := AddSecond(startTime, intervalTime)
-        err := engine.Where("ip_src=? AND (?<=src_port AND src_port<=?) AND (?<=stamp_inserted AND stamp_inserted<=?)", target.Addr, targetPort.LowerPort, targetPort.UpperPort, GetMySqlTime(startTime), GetMySqlTime(endTime)).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
-        if err != nil {
-            return nil, err
+            dbAcctV5List = append(dbAcctV5List, acctV5...)
         }
-
-        dbAcctV5List = append(dbAcctV5List, acctV5...)
     }
 
-    // Change db struct to model struct
     acctV5List = CreateAcctV5Model(dbAcctV5List)
-
     return
 }

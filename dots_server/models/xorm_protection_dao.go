@@ -1082,6 +1082,8 @@ func CreateProtectionThresholdValue(ptv *ProtectionThresholdValue) (err error) {
 		ProtectionId:     ptv.ProtectionId,
 		ThresholdPackets: ptv.ThresholdPackets,
 		ThresholdBytes:   ptv.ThresholdBytes,
+		ExaminationStart: ptv.ExaminationStart,
+		ExaminationEnd:   ptv.ExaminationEnd,
 	}
 
 	if dptv.Id == 0 {
@@ -1099,7 +1101,7 @@ func CreateProtectionThresholdValue(ptv *ProtectionThresholdValue) (err error) {
 		}
 		ptv.SetId(newData.Id)
 	} else {
-		_, err = session.Where("id=?", dptv.Id).Cols("threshold_packets", "threshold_bytes").Update(&dptv)
+		_, err = session.Where("id=?", dptv.Id).Cols("threshold_packets", "threshold_bytes", "examination_start", "examination_end").Update(&dptv)
 		log.WithFields(log.Fields{
 			"data": dptv,
 			"err":  err,

@@ -7,6 +7,8 @@ type ProtectionThresholdValue struct {
 	ProtectionId     int64     `xorm:"'protection_id' not null"`
 	ThresholdPackets int       `xorm:"'threshold_packets' not null"`
 	ThresholdBytes   int64     `xorm:"'threshold_bytes' not null"`
-	Created          time.Time `xorm:"created"`
-	Updated          time.Time `xorm:"updated"`
+	ExaminationStart time.Time `xorm:"'examination_start' not null"`
+	ExaminationEnd   time.Time `xorm:"'examination_end' not null"`
+	Created          time.Time `xorm:"'created'"`
+	Updated          time.Time `xorm:"'updated'"`
 }

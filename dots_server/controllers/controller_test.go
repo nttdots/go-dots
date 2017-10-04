@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/dots_server/models"
+	"github.com/go-xorm/xorm"
 )
 
 /*
@@ -25,9 +26,11 @@ func TestMain(m *testing.M) {
 
 	// test_dump.sql read and execute
 	loadSQL("../db_models/test_dump.sql")
+	loadSQL("../db_models/test_dump_pmacct.sql", "pmacct")
 
 	// execute sql display on
 	models.ShowSQL(true)
+	models.ShowSQL(true, "pmacct")
 
 	// execute Tests
 	code := m.Run()
@@ -39,8 +42,10 @@ func TestMain(m *testing.M) {
 	models.SetTestMode(false)
 }
 
-func loadSQL(filename string) {
 
+func loadSQL(filename string, params ...string) {
+
+	var engine *xorm.Engine
 	var err error
 
 	data, err := ioutil.ReadFile(filename)
@@ -48,7 +53,14 @@ func loadSQL(filename string) {
 		panic(err)
 	}
 
-	engine, err := models.ConnectDB()
+	switch len(params) {
+	case 1:
+		// not dots database setting
+		engine, err = models.ConnectDB(params[0])
+	default:
+		// dots database setting
+		engine, err = models.ConnectDB()
+	}
 	if err != nil {
 		panic(err)
 	}
@@ -73,6 +85,7 @@ Error:
 	session.Close()
 	return
 }
+
 
 /*
  * Load the test server configuration.
@@ -107,11 +120,18 @@ system:
     signalChannelPort: 4646
     dataChannelPort: 4647
   database:
-    username: root
-    protocol: tcp
-    host: db
-    port: 3306
-    databaseName: dots
+    - name: dots
+      username: root
+      protocol: tcp
+      host: db
+      port: 3306
+      databaseName: dots
+    - name: pmacct
+      username: root
+      protocol: tcp
+      host: db
+      port: 3306
+      databaseName: pmacct
 customers:
   - name: isp1
     account: isp1

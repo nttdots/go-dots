@@ -66,6 +66,7 @@ func TestMain(m *testing.M) {
 
 	// execute sql display on
 	models.ShowSQL(true)
+	models.ShowSQL(true, "pmacct")
 
 	startGoBGPServer()
 	defer stopGoBGPServer()

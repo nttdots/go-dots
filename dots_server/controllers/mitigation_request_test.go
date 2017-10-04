@@ -24,7 +24,7 @@ func TestMitigationRequestPost(t *testing.T) {
 			E164:            []string{""},
 			Alias:           []string{""},
 			Lifetime:        1,
-			UrgentFlag:      false,
+			UrgentFlag:      true,
 		},
 		{
 			MitigationId:    2345678,

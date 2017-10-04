@@ -94,6 +94,7 @@ func newMitigationScope(req messages.Scope, c *models.Customer) (m *models.Mitig
 	m.E_164.AddList(req.E164)
 	m.Alias.AddList(req.Alias)
 	m.Lifetime = req.Lifetime
+	m.UrgentFlag = req.UrgentFlag
 	m.TargetIP, err = newTargetIp(req.TargetIp)
 	if err != nil {
 		return
@@ -258,6 +259,9 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 	return
 }
 
+const intervalTime = 120
+const waitingTime = intervalTime * time.Second
+
 /*
  * Invoke mitigations on blockers.
  */
@@ -299,6 +303,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 	for counter > 0 {
 		select {
 		case scopeList := <-ch: // if a blocker is available
+			log.Debugf("urgent_flag:%d", scopeList.Scope.UrgentFlag)
 			if (!scopeList.Scope.UrgentFlag) {
 				// この辺にurgent_flagを見て、処理の振り分けを実装する（？）
 				// goルーチンで実装すれば良さそう
@@ -307,14 +312,20 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 					// 指定時間待つ(1分？2分？)
 					// TODO: 待ち時間の確定
 					var measurementStartTime = time.Now()
-					time.Sleep(120 * time.Second)
+					time.Sleep(waitingTime)
 
 					// pmacctのデータ取得
-					acctList, e := models.GetAcctV5BySrcIpPort(scopeList.Scope.TargetIP, scopeList.Scope.TargetPortRange, measurementStartTime, 120)
+					acctList, e := models.GetAcctV5BySrcIpPort(scopeList.Scope.TargetIP, scopeList.Scope.TargetPortRange, measurementStartTime, intervalTime)
 					if e != nil {
 						err = e
 					}
 					packets, bytes := models.TotalPacketsBytesCalc(acctList)
+					log.WithFields(log.Fields{
+						"targetIP": scopeList.Scope.TargetIP,
+						"targetPortRange": scopeList.Scope.TargetPortRange,
+						"packets": packets,
+						"bytes": bytes,
+					}).Debug("callBlocker")    // Change db struct to model struct
 
 					// しきい値判定
 					// TODO: しきい値の確定
@@ -337,7 +348,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 								})
 
 								// しきい値判定値を保存
-								cptvm := models.CreateProtectionThresholdValueModel(p, packets, bytes)
+								cptvm := models.CreateProtectionThresholdValueModel(p, packets, bytes, measurementStartTime, measurementStartTime.Add(waitingTime))
 								models.CreateProtectionThresholdValue(&cptvm)
 							}
 						}
