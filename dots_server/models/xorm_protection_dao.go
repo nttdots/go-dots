@@ -1126,14 +1126,13 @@ func loadProtectionThresholdValue(session *xorm.Session, id int64) (pptv *Protec
 		return
 	}
 	pptv = &ProtectionThresholdValue{
-		Id: dptv.Id,
-		ProtectionId: dptv.ProtectionId,
+		Id:               dptv.Id,
+		ProtectionId:     dptv.ProtectionId,
 		ThresholdPackets: dptv.ThresholdPackets,
-		ThresholdBytes: dptv.ThresholdBytes,
-		Created: dptv.Created,
-		Updated: dptv.Updated,
+		ThresholdBytes:   dptv.ThresholdBytes,
+		Created:          dptv.Created,
+		Updated:          dptv.Updated,
 	}
 
 	return
 }
-

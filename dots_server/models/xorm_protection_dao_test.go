@@ -518,7 +518,7 @@ func TestCreateProtectionThresholdValue(t *testing.T) {
 		ThresholdPackets: 5000,
 		ThresholdBytes:   20000,
 		ExaminationStart: nowTime,
-		ExaminationEnd: nowTime.Add(2 * time.Minute),
+		ExaminationEnd:   nowTime.Add(2 * time.Minute),
 	}
 	err := models.CreateProtectionThresholdValue(&testProtectionThresholdValue)
 	if err != nil {

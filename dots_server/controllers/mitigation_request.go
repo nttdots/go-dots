@@ -261,6 +261,8 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 
 const intervalTime = 120
 const waitingTime = intervalTime * time.Second
+const packetsThresholdValue = 10000
+const bytesThresholdValue = 10000000
 
 /*
  * Invoke mitigations on blockers.
@@ -303,7 +305,11 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 	for counter > 0 {
 		select {
 		case scopeList := <-ch: // if a blocker is available
-			log.Debugf("urgent_flag:%d", scopeList.Scope.UrgentFlag)
+			log.WithFields(log.Fields{
+				"targetIP": scopeList.Scope.TargetIP,
+				"targetPortRange": scopeList.Scope.TargetPortRange,
+				"urgentFlag": scopeList.Scope.UrgentFlag,
+			}).Debug("callBlocker")    // Change db struct to model struct
 			if (!scopeList.Scope.UrgentFlag) {
 				// この辺にurgent_flagを見て、処理の振り分けを実装する（？）
 				// goルーチンで実装すれば良さそう
@@ -321,15 +327,13 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 					}
 					packets, bytes := models.TotalPacketsBytesCalc(acctList)
 					log.WithFields(log.Fields{
-						"targetIP": scopeList.Scope.TargetIP,
-						"targetPortRange": scopeList.Scope.TargetPortRange,
 						"packets": packets,
 						"bytes": bytes,
 					}).Debug("callBlocker")    // Change db struct to model struct
 
 					// しきい値判定
 					// TODO: しきい値の確定
-					if packets > 10000 || bytes > 10000000 {
+					if packets > packetsThresholdValue || bytes > bytesThresholdValue {
 						// しきい値以上であればblackhole行き
 						// register a MitigationScope to a Blocker and receive a Protection
 						p, e := scopeList.Blocker.RegisterProtection(scopeList.Scope)
@@ -348,7 +352,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 								})
 
 								// しきい値判定値を保存
-								cptvm := models.CreateProtectionThresholdValueModel(p, packets, bytes, measurementStartTime, measurementStartTime.Add(waitingTime))
+								cptvm := models.CreateProtectionThresholdValueModel(p.Id(), packets, bytes, measurementStartTime, measurementStartTime.Add(waitingTime))
 								models.CreateProtectionThresholdValue(&cptvm)
 							}
 						}

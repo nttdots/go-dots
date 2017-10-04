@@ -1,8 +1,7 @@
 package models
 
-import (
-    "time"
-)
+import "time"
+
 
 type ProtectionThresholdValue struct {
 	Id               int64
@@ -29,9 +28,9 @@ func NewProtectionThresholdValue() (s *ProtectionThresholdValue) {
     return
 }
 
-func CreateProtectionThresholdValueModel(p Protection, thresholdPackets int, thresholdBytes int64, examinationStart time.Time, examinationEnd time.Time) (ProtectionThresholdValue) {
+func CreateProtectionThresholdValueModel(pId int64, thresholdPackets int, thresholdBytes int64, examinationStart time.Time, examinationEnd time.Time) (ProtectionThresholdValue) {
     retProtectionThresholdValue := ProtectionThresholdValue{
-        ProtectionId: p.Id(),
+        ProtectionId: pId,
         ThresholdPackets: thresholdPackets,
         ThresholdBytes: thresholdBytes,
         ExaminationStart: examinationStart,
