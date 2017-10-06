@@ -132,6 +132,10 @@ system:
       host: db
       port: 3306
       databaseName: pmacct
+  pmacct:
+    packetsThresholdLowerLimit: 10000
+    bytesThresholdLowerLimit: 10000000
+    samplingTime: 120
 customers:
   - name: isp1
     account: isp1

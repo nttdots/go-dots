@@ -11,6 +11,7 @@ import (
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
 	"time"
+	dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
 
 /*
@@ -259,11 +260,6 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 	return
 }
 
-const intervalTime = 120
-const waitingTime = intervalTime * time.Second
-const packetsThresholdValue = 10000
-const bytesThresholdValue = 10000000
-
 /*
  * Invoke mitigations on blockers.
  */
@@ -306,6 +302,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 		select {
 		case scopeList := <-ch: // if a blocker is available
 			log.WithFields(log.Fields{
+				"MitigationId": scopeList.Scope.MitigationId,
 				"targetIP": scopeList.Scope.TargetIP,
 				"targetPortRange": scopeList.Scope.TargetPortRange,
 				"urgentFlag": scopeList.Scope.UrgentFlag,
@@ -313,15 +310,14 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 			if (!scopeList.Scope.UrgentFlag) {
 				// この辺にurgent_flagを見て、処理の振り分けを実装する（？）
 				// goルーチンで実装すれば良さそう
+				pmacctConf := dots_config.GetServerSystemConfig().Pmacct
 				go func() {
 					pmacct_process_counter++
-					// 指定時間待つ(1分？2分？)
-					// TODO: 待ち時間の確定
 					var measurementStartTime = time.Now()
-					time.Sleep(waitingTime)
+					time.Sleep(time.Duration(pmacctConf.SamplingTime) * time.Second)
 
 					// pmacctのデータ取得
-					acctList, e := models.GetAcctV5BySrcIpPort(scopeList.Scope.TargetIP, scopeList.Scope.TargetPortRange, measurementStartTime, intervalTime)
+					acctList, e := models.GetAcctV5BySrcIpPort(scopeList.Scope.TargetIP, scopeList.Scope.TargetPortRange, measurementStartTime, pmacctConf.SamplingTime)
 					if e != nil {
 						err = e
 					}
@@ -333,7 +329,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 
 					// しきい値判定
 					// TODO: しきい値の確定
-					if packets > packetsThresholdValue || bytes > bytesThresholdValue {
+					if packets > pmacctConf.PacketsThresholdLowerLimit || bytes > pmacctConf.BytesThresholdLowerLimit {
 						// しきい値以上であればblackhole行き
 						// register a MitigationScope to a Blocker and receive a Protection
 						p, e := scopeList.Blocker.RegisterProtection(scopeList.Scope)
@@ -352,7 +348,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 								})
 
 								// しきい値判定値を保存
-								cptvm := models.CreateProtectionThresholdValueModel(p.Id(), packets, bytes, measurementStartTime, measurementStartTime.Add(waitingTime))
+								cptvm := models.CreateProtectionThresholdValueModel(p.Id(), packets, bytes, measurementStartTime, measurementStartTime.Add(time.Duration(pmacctConf.SamplingTime)))
 								models.CreateProtectionThresholdValue(&cptvm)
 							}
 						}
@@ -367,20 +363,19 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 				p, e := scopeList.Blocker.RegisterProtection(scopeList.Scope)
 				if e != nil {
 					err = e
-					break
+				} else {
+					// invoke the protection on the blocker
+					e = scopeList.Blocker.ExecuteProtection(p)
+					if e != nil {
+						err = e
+					} else {
+						// register rollback sequences for the case if
+						// some errors occurred during this MitigationRequest handling.
+						unregisterCommands = append(unregisterCommands, func() {
+							scopeList.Blocker.UnregisterProtection(p)
+						})
+					}
 				}
-				// invoke the protection on the blocker
-				e = scopeList.Blocker.ExecuteProtection(p)
-				if e != nil {
-					err = e
-					break
-				}
-
-				// register rollback sequences for the case if
-				// some errors occurred during this MitigationRequest handling.
-				unregisterCommands = append(unregisterCommands, func() {
-					scopeList.Blocker.UnregisterProtection(p)
-				})
 			}
 			counter--
 		case e := <-errCh: // case if some error occured while we obtain blockers.
@@ -401,5 +396,6 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 			f()
 		}
 	}
+
 	return
 }

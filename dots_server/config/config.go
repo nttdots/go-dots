@@ -96,6 +96,32 @@ type Network struct {
 	DataChannelPort   int
 }
 
+// Pmacct Node
+type PmacctNode struct {
+	PacketsThresholdLowerLimit int   `yaml:"packetsThresholdLowerLimit"`
+	BytesThresholdLowerLimit   int64 `yaml:"bytesThresholdLowerLimit"`
+	SamplingTime               int64 `yaml:"samplingTime"`
+}
+
+func (pmccf PmacctNode) Convert() (interface{}, error) {
+	return &Pmacct{
+		PacketsThresholdLowerLimit: pmccf.PacketsThresholdLowerLimit,
+		BytesThresholdLowerLimit:   pmccf.BytesThresholdLowerLimit,
+		SamplingTime:               pmccf.SamplingTime,
+	}, nil
+}
+
+func (sfpc *Pmacct) Store() {
+	GetServerSystemConfig().setPmacct(*sfpc)
+}
+
+// Pmacct config
+type Pmacct struct {
+	PacketsThresholdLowerLimit int
+	BytesThresholdLowerLimit   int64
+	SamplingTime               int64
+}
+
 // Secure file config
 type SecureFileNode struct {
 	ServerCertFile string `yaml:"serverCertFile"`
@@ -173,6 +199,7 @@ type ServerSystemConfig struct {
 	SecureFile                   *SecureFile
 	Network                      *Network
 	Database                     []Database
+	Pmacct                       *Pmacct
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -182,6 +209,7 @@ func (sc *ServerSystemConfig) Store() {
 	for _, db := range sc.Database {
 		GetServerSystemConfig().setDatabase(db)
 	}
+	GetServerSystemConfig().setPmacct(*sc.Pmacct)
 }
 
 type ServerSystemConfigNode struct {
@@ -189,6 +217,7 @@ type ServerSystemConfigNode struct {
 	SecureFile                   SecureFileNode                   `yaml:"secureFile"`
 	Network                      NetworkNode                      `yaml:"network"`
 	Database                     []DatabaseNode                   `yaml:"database"`
+	Pmacct                       PmacctNode                       `yaml:"pmacct"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -216,11 +245,17 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		databases = append(databases, *db.(*Database))
 	}
 
+	pmacct, err := scn.Pmacct.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		SecureFile:                   secureFilePath.(*SecureFile),
 		Network:                      network.(*Network),
 		Database:                     databases,
+		Pmacct:                       pmacct.(*Pmacct),
 	}, nil
 }
 
@@ -238,6 +273,10 @@ func (sc *ServerSystemConfig) setNetwork(config Network) {
 
 func (sc *ServerSystemConfig) setDatabase(config Database) {
 	sc.Database = append(sc.Database, config)
+}
+
+func (sc *ServerSystemConfig) setPmacct(config Pmacct) {
+	sc.Pmacct = &config
 }
 
 var systemConfigInstance *ServerSystemConfig
