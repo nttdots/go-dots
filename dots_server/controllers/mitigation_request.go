@@ -308,8 +308,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 				"urgentFlag": scopeList.Scope.UrgentFlag,
 			}).Debug("callBlocker")    // Change db struct to model struct
 			if (!scopeList.Scope.UrgentFlag) {
-				// この辺にurgent_flagを見て、処理の振り分けを実装する（？）
-				// goルーチンで実装すれば良さそう
+				// この辺にUrgentFlagを見て、処理の振り分けを実装する
 				pmacctConf := dots_config.GetServerSystemConfig().Pmacct
 				go func() {
 					pmacct_process_counter++
@@ -328,9 +327,9 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 					}).Debug("callBlocker")    // Change db struct to model struct
 
 					// しきい値判定
-					// TODO: しきい値の確定
+					// packetsもしくはbytesの累積が設定値より上回っているかどうか
 					if packets > pmacctConf.PacketsThresholdLowerLimit || bytes > pmacctConf.BytesThresholdLowerLimit {
-						// しきい値以上であればblackhole行き
+						// しきい値以上であればBlackHole行き
 						// register a MitigationScope to a Blocker and receive a Protection
 						p, e := scopeList.Blocker.RegisterProtection(scopeList.Scope)
 						if e != nil {
