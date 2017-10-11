@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl"
+	"github.com/nttdots/go-dots/dots_server/radius"
 	"gopkg.in/yaml.v2"
 )
 
@@ -163,34 +164,41 @@ func (dc *Database) Store() {
 }
 
 type AAANode struct {
-	Enable       string `yaml:"enable"`
-	Server       string `yaml:"server"`
-	Port         int    `yaml:"port"`
-	Secret       string `yaml:"secret"`
-	ClientIPAddr string `yaml:"client_ip_addr"`
+	Enable        string `yaml:"enable"`
+	Server        string `yaml:"server"`
+	Port          int    `yaml:"port"`
+	Secret        string `yaml:"secret"`
+	ClientIPAddr  string `yaml:"client_ip_addr"`
+	CheckUserType string `yaml:"check_user_type"` //
 }
 
 type AAA struct {
-	Enable       bool
-	Server       string
-	Port         int
-	Secret       string
-	ClientIPAddr string
+	Enable        bool
+	Server        string
+	Port          int
+	Secret        string
+	ClientIPAddr  string
+	CheckUserType radius.UserType
 }
 
 func (aaa AAANode) Convert() (interface{}, error) {
 	enable, err := strconv.ParseBool(aaa.Enable)
 	if err == nil && enable {
 		if aaa.Port < 1 || aaa.Port > 65535 {
-			return nil, errors.New("AAA port must be between 1 and 65535")
+			return nil, errors.New("AAA port must be between 1 and 65,535")
+		}
+		ut, err := radius.ParseUserType(aaa.CheckUserType)
+		if err != nil {
+			return nil, errors.New("parse error CheckUserType")
 		}
 
 		return &AAA{
-			Enable:       true,
-			Server:       aaa.Server,
-			Port:         aaa.Port,
-			Secret:       aaa.Secret,
-			ClientIPAddr: aaa.ClientIPAddr,
+			Enable:        true,
+			Server:        aaa.Server,
+			Port:          aaa.Port,
+			Secret:        aaa.Secret,
+			ClientIPAddr:  aaa.ClientIPAddr,
+			CheckUserType: ut,
 		}, nil
 	} else {
 		return &AAA{
