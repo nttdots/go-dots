@@ -11,6 +11,7 @@ func init() {
 	TableLists = append(TableLists, &BlockerParameter{})
 	TableLists = append(TableLists, &Customer{})
 	TableLists = append(TableLists, &CustomerCommonName{})
+	TableLists = append(TableLists, &CustomerRadiusUser{})
 	TableLists = append(TableLists, &Identifier{})
 	TableLists = append(TableLists, &LoginProfile{})
 	TableLists = append(TableLists, &MitigationScope{})

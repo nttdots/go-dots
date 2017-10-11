@@ -96,6 +96,30 @@ VALUES
   (3,128,'client.sample.example.com','2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
+# customer_radius_user
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `customer_radius_user`;
+
+CREATE TABLE `customer_radius_user` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `customer_id` int(11) NOT NULL,
+  `user_name` varchar(255) NOT NULL,
+  `user_realm` varchar(255),
+  `user_password` varchar(255) NOT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `IDX_customer_radius_user_IDX_CUSTOMER_ID` (`customer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT INTO `customer_radius_user` (`id`, `customer_id`, `user_name`, `user_realm`, `user_password`, `created`, `updated`)
+VALUES
+  (1, 123, 'commonName', null, 'password', '2017-04-13 13:44:34','2017-04-13 13:44:34'),
+  (2, 128, 'client.sample', 'example.com', 'password', '2017-04-13 13:44:34','2017-04-13 13:44:34'),
+  (3, 127, 'local-host', null, 'password', '2017-04-13 13:44:34','2017-04-13 13:44:34');
+
+
 # identifier
 # ------------------------------------------------------------
 

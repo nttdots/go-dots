@@ -117,6 +117,30 @@ CREATE TABLE `customer_common_name` (
 #  (3,3,'local-host', '2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
+# customer_radius_user
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `customer_radius_user`;
+
+CREATE TABLE `customer_radius_user` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `customer_id` int(11) NOT NULL,
+  `user_name` varchar(255) NOT NULL,
+  `user_realm` varchar(255),
+  `user_password` varchar(255) NOT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `IDX_customer_radius_user_IDX_CUSTOMER_ID` (`customer_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+### radiusで認証を行う際の、customer毎のuser-name/user-passwordを保持するテーブル.
+#  id: primary key
+#  customer_id: id of the customer this common name corresponds to.
+#  user_name: ユーザー名。radius認証時のuser_nameとして使用する
+#  user_realm: realm. null以外にした場合、radius認証の際のuser-nameとして、<user_name>@<user_realm>を使用する
+#  user_password: パスワード。radius認証時のuser_passwordとして使用する
+
 # identifier
 # ------------------------------------------------------------
 
