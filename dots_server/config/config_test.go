@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+
+	"net"
+
+	"github.com/nttdots/go-dots/dots_server/radius"
 )
 
 func TestParseConfig(t *testing.T) {
@@ -33,11 +37,19 @@ func TestParseConfig(t *testing.T) {
 			Port:         3306,
 			DatabaseName: "dots",
 		},
+		AAA: &AAA{
+			Server:       "127.0.0.1",
+			Port:         1812,
+			Enable:       true,
+			Secret:       "testing123",
+			ServiceType:  radius.Login,
+			ClientIPAddr: net.ParseIP("127.0.0.1").To4(),
+		},
 	}
 
 	cfg, err := ParseServerConfig([]byte(configText))
 	if err != nil {
-		t.Errorf("got parseServerConfig error")
+		t.Errorf("got parseServerConfig error: %s", err)
 	}
 
 	if cfg == nil {
@@ -45,10 +57,31 @@ func TestParseConfig(t *testing.T) {
 	}
 
 	actual := GetServerSystemConfig()
-	if !reflect.DeepEqual(actual, expected) {
-		fmt.Println("system cfg: ", GetServerSystemConfig())
-		t.Errorf("got %v\nexpected %v", actual, expected)
+	if !reflect.DeepEqual(actual.SignalConfigurationParameter, expected.SignalConfigurationParameter) {
+		fmt.Println("system cfg: ", *actual.SignalConfigurationParameter)
+		t.Errorf("got %v\nexpected %v", actual.SignalConfigurationParameter, expected.SignalConfigurationParameter)
 	}
+
+	if !reflect.DeepEqual(actual.SecureFile, expected.SecureFile) {
+		fmt.Println("system cfg: ", *actual.SecureFile)
+		t.Errorf("got %v\nexpected %v", actual.SecureFile, expected.SecureFile)
+	}
+
+	if !reflect.DeepEqual(actual.Network, expected.Network) {
+		fmt.Println("system cfg: ", *actual.Network)
+		t.Errorf("got %v\nexpected %v", actual.Network, expected.Network)
+	}
+
+	if !reflect.DeepEqual(actual.Database, expected.Database) {
+		fmt.Println("system cfg: ", *actual.Database)
+		t.Errorf("got %v\nexpected %v", actual.Database, expected.Database)
+	}
+
+	if !reflect.DeepEqual(actual.AAA, expected.AAA) {
+		fmt.Println("system cfg: ", *actual.AAA)
+		t.Errorf("got %v\nexpected %v", actual.AAA, expected.AAA)
+	}
+
 }
 
 var configText = `
@@ -73,6 +106,12 @@ system:
     host: db
     port: 3306
     databaseName: dots
+  aaa:
+    enable: true
+    server: 127.0.0.1
+    port: 1812
+    secret: testing123
+    serviceType: Login
 customers:
   - name: isp1
     account: isp1

@@ -21,14 +21,14 @@ type Authenticator struct {
 	NASAddress net.IP
 }
 
-func (a *Authenticator) CheckClient(clientName, realm, password string, checkType dots_radius.UserType) (bool, error) {
+func (a *Authenticator) CheckClient(clientName, realm, password string, checkType dots_radius.ServiceType) (bool, error) {
 	if !a.Enable {
 		return true, nil
 	}
 
 	log.WithFields(log.Fields{
 		"clientName": clientName,
-		"realm": realm,
+		"realm":      realm,
 		"password":   password,
 	}).Debug("check client")
 

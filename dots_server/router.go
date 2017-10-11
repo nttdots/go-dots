@@ -233,6 +233,7 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.Unauthorized)
 	}
 
+	// TODO: ここでradius関連テーブルも一緒に取ってくる
 	customer, err := models.GetCustomerByCommonName(commonName)
 	if err != nil || customer.Id == 0 {
 		log.WithFields(log.Fields{
@@ -252,6 +253,7 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 
 func (r *Router) authenticate(cn string) bool {
 
+	// TODO: ユーザー名、パスワードをDBテーブルから取得
 	result, err := r.Authenticator.CheckClient(cn, "", "", radius.Administrative)
 	if err != nil {
 		log.WithError(err).Error("authenticate error.")

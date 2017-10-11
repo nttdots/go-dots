@@ -4,26 +4,28 @@ import (
 	"errors"
 	"regexp"
 	"strings"
+
+	"layeh.com/radius/rfc2865"
 )
 
-type UserType uint32
+type ServiceType uint32
 
-// rfc2865 User Type
+// rfc2865 Service Type
 const (
-	Login                  UserType = iota + 1
-	Framed
-	CallbackLogin
-	CallbackFramed
-	Outbound
-	Administrative
-	NASPrompt
-	AuthenticateOnly
-	CallbackNASPrompt
-	CallCheck
-	CallbackAdministrative
+	Login                  ServiceType = ServiceType(rfc2865.ServiceType_Value_LoginUser)
+	Framed                 ServiceType = ServiceType(rfc2865.ServiceType_Value_FramedUser)
+	CallbackLogin          ServiceType = ServiceType(rfc2865.ServiceType_Value_CallbackLoginUser)
+	CallbackFramed         ServiceType = ServiceType(rfc2865.ServiceType_Value_CallbackFramedUser)
+	Outbound               ServiceType = ServiceType(rfc2865.ServiceType_Value_OutboundUser)
+	Administrative         ServiceType = ServiceType(rfc2865.ServiceType_Value_AdministrativeUser)
+	NASPrompt              ServiceType = ServiceType(rfc2865.ServiceType_Value_NASPromptUser)
+	AuthenticateOnly       ServiceType = ServiceType(rfc2865.ServiceType_Value_AuthenticateOnly)
+	CallbackNASPrompt      ServiceType = ServiceType(rfc2865.ServiceType_Value_CallbackNASPrompt)
+	CallCheck              ServiceType = ServiceType(rfc2865.ServiceType_Value_CallCheck)
+	CallbackAdministrative ServiceType = ServiceType(rfc2865.ServiceType_Value_CallbackAdministrative)
 )
 
-func ParseUserType(s string) (UserType, error) {
+func ParseServiceType(s string) (ServiceType, error) {
 	r := regexp.MustCompile(`[ \-]`)
 	ss := strings.ToUpper(r.ReplaceAllString(s, ""))
 
@@ -52,10 +54,10 @@ func ParseUserType(s string) (UserType, error) {
 		return CallbackAdministrative, nil
 	}
 
-	return 0, errors.New("invalid UserType")
+	return 0, errors.New("invalid ServiceType")
 }
 
-func (ut UserType) String() string {
+func (ut ServiceType) String() string {
 	switch ut {
 	case Login:
 		return "Login"

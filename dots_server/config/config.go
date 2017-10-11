@@ -11,7 +11,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/hcl"
-	"github.com/nttdots/go-dots/dots_server/radius"
+	dots_radius "github.com/nttdots/go-dots/dots_server/radius"
 	"gopkg.in/yaml.v2"
 )
 
@@ -166,21 +166,21 @@ func (dc *Database) Store() {
 }
 
 type AAANode struct {
-	Enable        string `yaml:"enable"`
-	Server        string `yaml:"server"`
-	Port          int    `yaml:"port"`
-	Secret        string `yaml:"secret"`
-	ClientIPAddr  string `yaml:"client_ip_addr"`
-	CheckUserType string `yaml:"check_user_type"`
+	Enable       string `yaml:"enable"`
+	Server       string `yaml:"server"`
+	Port         int    `yaml:"port"`
+	Secret       string `yaml:"secret"`
+	ClientIPAddr string `yaml:"clientIpAddr"`
+	ServiceType  string `yaml:"serviceType"`
 }
 
 type AAA struct {
-	Enable        bool
-	Server        string
-	Port          int
-	Secret        string
-	ClientIPAddr  net.IP
-	CheckUserType radius.UserType
+	Enable       bool
+	Server       string
+	Port         int
+	Secret       string
+	ClientIPAddr net.IP
+	ServiceType  dots_radius.ServiceType
 }
 
 func getClientIPAddr(serverAddr string, serverPort int) (net.IP, error) {
@@ -197,7 +197,6 @@ func getClientIPAddr(serverAddr string, serverPort int) (net.IP, error) {
 
 	localAddr := con.LocalAddr().(*net.UDPAddr)
 	return localAddr.IP, nil
-
 }
 
 func (aaa AAANode) Convert() (interface{}, error) {
@@ -206,9 +205,10 @@ func (aaa AAANode) Convert() (interface{}, error) {
 		if aaa.Port < 1 || aaa.Port > 65535 {
 			return nil, errors.New("AAA port must be between 1 and 65,535")
 		}
-		ut, err := radius.ParseUserType(aaa.CheckUserType)
+
+		st, err := dots_radius.ParseServiceType(aaa.ServiceType)
 		if err != nil {
-			return nil, errors.New("parse error CheckUserType")
+			return nil, errors.New("parse error ServiceType")
 		}
 
 		var ip net.IP
@@ -224,12 +224,12 @@ func (aaa AAANode) Convert() (interface{}, error) {
 		}
 
 		return &AAA{
-			Enable:        true,
-			Server:        aaa.Server,
-			Port:          aaa.Port,
-			Secret:        aaa.Secret,
-			ClientIPAddr:  ip,
-			CheckUserType: ut,
+			Enable:       true,
+			Server:       aaa.Server,
+			Port:         aaa.Port,
+			Secret:       aaa.Secret,
+			ClientIPAddr: ip,
+			ServiceType:  st,
 		}, nil
 	} else {
 		return &AAA{
