@@ -6,6 +6,9 @@ import (
 
 	"github.com/nttdots/go-dots/dots_server/config"
 
+	"net"
+
+	dots_radius "github.com/nttdots/go-dots/dots_server/radius"
 	log "github.com/sirupsen/logrus"
 	"layeh.com/radius"
 	"layeh.com/radius/rfc2865"
@@ -15,29 +18,31 @@ type Authenticator struct {
 	Enable     bool
 	ServerAddr string
 	Secret     string
+	NASAddress net.IP
 }
 
-type LoginCheckType = uint32
-
-const (
-	LoginCheck_Administrator = uint32(rfc2865.ServiceType_Value_AdministrativeUser)
-	LoginCheck_User          = uint32(rfc2865.ServiceType_Value_LoginUser)
-)
-
-func (a *Authenticator) CheckClient(clientName, password, nasId string, checkType LoginCheckType) (bool, error) {
+func (a *Authenticator) CheckClient(clientName, realm, password string, checkType dots_radius.UserType) (bool, error) {
 	if !a.Enable {
 		return true, nil
 	}
 
 	log.WithFields(log.Fields{
 		"clientName": clientName,
+		"realm": realm,
 		"password":   password,
-		"nasId":      nasId,
 	}).Debug("check client")
 
+	var userName string
+	if realm == "" {
+		userName = clientName
+	} else {
+		userName = fmt.Sprintf("%s@%s", clientName, realm)
+	}
+
 	radiusPacket := radius.New(radius.CodeAccessRequest, []byte(a.Secret))
-	rfc2865.UserName_SetString(radiusPacket, clientName)
+	rfc2865.UserName_SetString(radiusPacket, userName)
 	rfc2865.UserPassword_SetString(radiusPacket, password)
+	rfc2865.NASIPAddress_Set(radiusPacket, a.NASAddress)
 	rfc2865.ServiceType_Add(radiusPacket, rfc2865.ServiceType(uint32(checkType)))
 
 	response, err := radius.Exchange(context.Background(), radiusPacket, a.ServerAddr)
@@ -69,5 +74,6 @@ func NewAuthenticator(aaa *config.AAA) *Authenticator {
 		Enable:     true,
 		ServerAddr: fmt.Sprintf("%s:%d", aaa.Server, aaa.Port),
 		Secret:     aaa.Secret,
+		NASAddress: aaa.ClientIPAddr,
 	}
 }

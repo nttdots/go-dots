@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-type UserType uint64
+type UserType uint32
 
 // rfc2865 User Type
 const (

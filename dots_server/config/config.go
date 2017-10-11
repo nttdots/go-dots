@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"fmt"
+
 	"github.com/hashicorp/hcl"
 	"github.com/nttdots/go-dots/dots_server/radius"
 	"gopkg.in/yaml.v2"
@@ -169,7 +171,7 @@ type AAANode struct {
 	Port          int    `yaml:"port"`
 	Secret        string `yaml:"secret"`
 	ClientIPAddr  string `yaml:"client_ip_addr"`
-	CheckUserType string `yaml:"check_user_type"` //
+	CheckUserType string `yaml:"check_user_type"`
 }
 
 type AAA struct {
@@ -177,8 +179,25 @@ type AAA struct {
 	Server        string
 	Port          int
 	Secret        string
-	ClientIPAddr  string
+	ClientIPAddr  net.IP
 	CheckUserType radius.UserType
+}
+
+func getClientIPAddr(serverAddr string, serverPort int) (net.IP, error) {
+	remote, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", serverAddr, serverPort))
+	if err != nil {
+		return nil, err
+	}
+
+	con, err := net.DialUDP("udp", nil, remote)
+	if err != nil {
+		return nil, err
+	}
+	defer con.Close()
+
+	localAddr := con.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP, nil
+
 }
 
 func (aaa AAANode) Convert() (interface{}, error) {
@@ -192,12 +211,24 @@ func (aaa AAANode) Convert() (interface{}, error) {
 			return nil, errors.New("parse error CheckUserType")
 		}
 
+		var ip net.IP
+		switch aaa.ClientIPAddr {
+		case "":
+			ip, _ = getClientIPAddr(aaa.Server, aaa.Port)
+		default:
+			ip = net.ParseIP(aaa.ClientIPAddr)
+		}
+
+		if ip == nil {
+			return nil, errors.New("parse error ClientIPAddr")
+		}
+
 		return &AAA{
 			Enable:        true,
 			Server:        aaa.Server,
 			Port:          aaa.Port,
 			Secret:        aaa.Secret,
-			ClientIPAddr:  aaa.ClientIPAddr,
+			ClientIPAddr:  ip,
 			CheckUserType: ut,
 		}, nil
 	} else {

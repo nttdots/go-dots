@@ -17,6 +17,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/models"
 	dtls "github.com/nttdots/go-dtls"
 	log "github.com/sirupsen/logrus"
+	"github.com/nttdots/go-dots/dots_server/radius"
 )
 
 type ControllerInfo struct {
@@ -251,7 +252,7 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 
 func (r *Router) authenticate(cn string) bool {
 
-	result, err := r.Authenticator.CheckClient(cn, "", "", LoginCheck_Administrator)
+	result, err := r.Authenticator.CheckClient(cn, "", "", radius.Administrative)
 	if err != nil {
 		log.WithError(err).Error("authenticate error.")
 		return false

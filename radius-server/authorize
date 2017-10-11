@@ -5,6 +5,11 @@ client1     Cleartext-Password := "password1"
 client2     Cleartext-Password := "password2"
             Service-Type = Login-User
 
+client3     Cleartext-Password := "password3"
+            Service-Type = Administrative-User,
+            Service-Type = Login-User
+
+
 client.sample.example.com   Cleartext-Password := ""
                             Service-Type = Administrative-User
 

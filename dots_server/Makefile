@@ -19,4 +19,5 @@ test:
 	$(MAKE) -C db_models test
 	$(MAKE) -C models test
 	$(MAKE) -C controllers test
+	$(MAKE) -C radius test
 
