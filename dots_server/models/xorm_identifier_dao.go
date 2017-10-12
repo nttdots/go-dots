@@ -2,11 +2,12 @@ package models
 
 import (
 	"errors"
+	"reflect"
+	"strings"
+
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
-	"reflect"
-	"strings"
 )
 
 /*
@@ -93,19 +94,20 @@ func createParameterValues(session *xorm.Session, identifiers []interface{}, typ
 	// creating new identifiers
 	listLen := len(identifiers)
 	parameterList := make([]db_models.ParameterValue, listLen, listLen)
-	for _, v := range identifiers {
+	for index, v := range identifiers {
 		if isEmptyString(v) {
 			continue
 		}
 		newIdentifier := db_models.CreateParameterValue(v, typeString, identifierId)
-		parameterList = append(parameterList, *newIdentifier)
+		parameterList[index] = *newIdentifier
 	}
+
 	if len(parameterList) == 0 {
 		return nil // no new identifiers created. return here without errors
 	}
 
 	// saving the newly created identifiers to the DB.
-	_, err = session.Insert(parameterList)
+	_, err = session.InsertMulti(parameterList)
 	if err != nil {
 		session.Rollback()
 		log.Infof("%s insert err: %s", typeString, err)
