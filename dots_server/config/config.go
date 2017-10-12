@@ -167,7 +167,7 @@ func (dc *Database) Store() {
 
 type AAANode struct {
 	Enable       string `yaml:"enable"`
-	Server       string `yaml:"server"`
+	Host         string `yaml:"host"`
 	Port         int    `yaml:"port"`
 	Secret       string `yaml:"secret"`
 	ClientIPAddr string `yaml:"clientIpAddr"`
@@ -176,7 +176,7 @@ type AAANode struct {
 
 type AAA struct {
 	Enable       bool
-	Server       string
+	Host         string
 	Port         int
 	Secret       string
 	ClientIPAddr net.IP
@@ -214,7 +214,7 @@ func (aaa AAANode) Convert() (interface{}, error) {
 		var ip net.IP
 		switch aaa.ClientIPAddr {
 		case "":
-			ip, _ = getClientIPAddr(aaa.Server, aaa.Port)
+			ip, _ = getClientIPAddr(aaa.Host, aaa.Port)
 		default:
 			ip = net.ParseIP(aaa.ClientIPAddr)
 		}
@@ -225,7 +225,7 @@ func (aaa AAANode) Convert() (interface{}, error) {
 
 		return &AAA{
 			Enable:       true,
-			Server:       aaa.Server,
+			Host:         aaa.Host,
 			Port:         aaa.Port,
 			Secret:       aaa.Secret,
 			ClientIPAddr: ip,

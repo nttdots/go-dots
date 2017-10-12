@@ -13,7 +13,7 @@ func TestAuthenticator_CheckClient(t *testing.T) {
 
 	aaaConfig := config.AAA{
 		Enable:       true,
-		Server:       "127.0.0.1",
+		Host:         "127.0.0.1",
 		Port:         1812,
 		Secret:       "testing123",
 		ClientIPAddr: net.ParseIP("127.0.0.1"),

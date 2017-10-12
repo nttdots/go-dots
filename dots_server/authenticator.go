@@ -72,7 +72,7 @@ func NewAuthenticator(aaa *config.AAA) *Authenticator {
 
 	return &Authenticator{
 		Enable:     true,
-		ServerAddr: fmt.Sprintf("%s:%d", aaa.Server, aaa.Port),
+		ServerAddr: fmt.Sprintf("%s:%d", aaa.Host, aaa.Port),
 		Secret:     aaa.Secret,
 		NASAddress: aaa.ClientIPAddr,
 	}

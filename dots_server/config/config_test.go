@@ -38,7 +38,7 @@ func TestParseConfig(t *testing.T) {
 			DatabaseName: "dots",
 		},
 		AAA: &AAA{
-			Server:       "127.0.0.1",
+			Host:         "127.0.0.1",
 			Port:         1812,
 			Enable:       true,
 			Secret:       "testing123",

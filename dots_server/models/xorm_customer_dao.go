@@ -516,6 +516,23 @@ func GetCustomerCommonName(commonName string) (customer Customer, err error) {
 		}
 	}
 
+	// radius認証データの取得
+	dbRadiusUser := db_models.CustomerRadiusUser{}
+	chk, err = engine.Where("customer_id = ?", dbCustomer.Id).Get(&dbRadiusUser)
+	if err != nil {
+		log.Errorf("radius identifier select error: %s", err)
+		return
+	}
+
+	if chk {
+		customer.CustomerRadiusIdentifier = new(CustomerRadiusIdentifier)
+		customer.CustomerRadiusIdentifier.UserName = dbRadiusUser.UserName
+		customer.CustomerRadiusIdentifier.Realm = dbRadiusUser.UserRealm
+		customer.CustomerRadiusIdentifier.Password = dbRadiusUser.UserPassword
+	} else {
+		customer.CustomerRadiusIdentifier = nil
+	}
+
 	// create return customer model data
 	CustomerNetworkInformation.AddressRange = AddressRange
 	customer.CustomerNetworkInformation = CustomerNetworkInformation

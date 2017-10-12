@@ -17,6 +17,12 @@ func NewCustomerNetworkInformation() *CustomerNetworkInformation {
 	return c
 }
 
+type CustomerRadiusIdentifier struct {
+	UserName string
+	Realm    string
+	Password string
+}
+
 func (c *Customers) getCustomerByCommonName(commonName string) (*Customer, error) {
 	customer, err := GetCustomerCommonName(commonName)
 	if err != nil {
@@ -49,6 +55,7 @@ type Customer struct {
 	Name                       string
 	CommonName                 SetString
 	CustomerNetworkInformation *CustomerNetworkInformation
+	CustomerRadiusIdentifier   *CustomerRadiusIdentifier
 }
 
 func (c *Customer) GetOngoingProtection() (p []Protection) {
