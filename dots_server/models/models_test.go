@@ -135,7 +135,7 @@ Error:
 func loadTestConfig() {
 	cfg, err := dots_config.ParseServerConfig([]byte(configText))
 	if err != nil {
-		log.Errorf("got parseServerConfig error")
+		log.Errorf("got parseServerConfig error: %s", err)
 	}
 
 	if cfg == nil {
@@ -167,6 +167,12 @@ system:
     host: db
     port: 3306
     databaseName: dots
+  aaa:
+    enable: true
+    host: 127.0.0.1
+    port: 1812
+    secret: testing123
+    serviceType: Login
 customers:
   - name: isp1
     account: isp1

@@ -15,10 +15,11 @@ import (
 )
 
 type Authenticator struct {
-	Enable     bool
-	ServerAddr string
-	Secret     string
-	NASAddress net.IP
+	Enable      bool
+	ServerAddr  string
+	Secret      string
+	NASAddress  net.IP
+	ServiceType dots_radius.ServiceType
 }
 
 func (a *Authenticator) CheckClient(clientName, realm, password string, checkType dots_radius.ServiceType) (bool, error) {
@@ -71,9 +72,10 @@ func NewAuthenticator(aaa *config.AAA) *Authenticator {
 	}
 
 	return &Authenticator{
-		Enable:     true,
-		ServerAddr: fmt.Sprintf("%s:%d", aaa.Host, aaa.Port),
-		Secret:     aaa.Secret,
-		NASAddress: aaa.ClientIPAddr,
+		Enable:      true,
+		ServerAddr:  fmt.Sprintf("%s:%d", aaa.Host, aaa.Port),
+		Secret:      aaa.Secret,
+		NASAddress:  aaa.ClientIPAddr,
+		ServiceType: aaa.ServiceType,
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"fmt"
+
 	"github.com/osrg/gobgp/client"
 	"github.com/osrg/gobgp/packet/bgp"
 	"github.com/osrg/gobgp/table"
@@ -126,15 +127,10 @@ func (g *GoBgpRtbhReceiver) ExecuteProtection(p Protection) (err error) {
 	if err != nil {
 		return err
 	}
-	log.Infof("gobgp client connect[%p]", blockerClient)
-
 	// defer the connection close to gobgp routers.
-	defer func(c *client.Client) {
-		log.WithFields(log.Fields{
-			"client": c,
-		}).Info("gobgp client close")
-		c.Close()
-	}(blockerClient)
+	defer blockerClient.Close()
+
+	log.Infof("gobgp client connect[%p]", blockerClient)
 
 	paths := g.toPath(b)
 	if len(paths) > 0 {

@@ -17,7 +17,6 @@ import (
 	"github.com/nttdots/go-dots/dots_server/models"
 	dtls "github.com/nttdots/go-dtls"
 	log "github.com/sirupsen/logrus"
-	"github.com/nttdots/go-dots/dots_server/radius"
 )
 
 type ControllerInfo struct {
@@ -229,17 +228,16 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.Forbidden)
 	}
 
-	if !r.authenticate(commonName) {
-		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.Unauthorized)
-	}
-
-	// TODO: ここでradius関連テーブルも一緒に取ってくる
 	customer, err := models.GetCustomerByCommonName(commonName)
 	if err != nil || customer.Id == 0 {
 		log.WithFields(log.Fields{
 			"common-name": commonName,
 		}).Error("client does not exist.")
 		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.Forbidden)
+	}
+
+	if !r.authenticate(customer.CustomerRadiusIdentifier) {
+		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.Unauthorized)
 	}
 
 	log.WithFields(log.Fields{
@@ -251,13 +249,27 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 	return r.callController(request, customer)
 }
 
-func (r *Router) authenticate(cn string) bool {
+// radiusサーバーを用いたユーザー/権限チェック
+func (r *Router) authenticate(identifier *models.CustomerRadiusIdentifier) bool {
 
-	// TODO: ユーザー名、パスワードをDBテーブルから取得
-	result, err := r.Authenticator.CheckClient(cn, "", "", radius.Administrative)
+	if !r.Authenticator.Enable {
+		return true
+	}
+
+	if identifier == nil {
+		return false
+	}
+
+	result, err := r.Authenticator.CheckClient(
+		identifier.UserName,
+		identifier.Realm,
+		identifier.Password,
+		r.Authenticator.ServiceType)
+
 	if err != nil {
 		log.WithError(err).Error("authenticate error.")
 		return false
 	}
+
 	return result
 }
