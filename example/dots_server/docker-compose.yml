@@ -2,38 +2,52 @@ version: "2.1"
 
 services:
     dots_server:
-        container_name: dots_server
+        container_name: dots-server
         build: ../../
         image: dots_base
         depends_on:
-          - db
+            - db
         networks:
-          - dots_net
+            - dots_net
         ports:
-          - 4646:4646/udp
-          - 4647:4647/udp
+            - 4646:4646/udp
+            - 4647:4647/udp
         working_dir: /go/src/github.com/nttdots/go-dots/dots_server
         entrypoint: ./entry_point.sh
         volumes:
-          - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
+            - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
         command: dots_server -vv -config /etc/dots_server.yaml
     db:
-      container_name: db
-      image: mysql:5.7
-      networks:
-          - dots_net
-      environment:
-        - MYSQL_DATABASE=dots
-        - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-      volumes:
-        - ../../dots_server/db_models/dump_docker.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+        container_name: dots-db
+        image: mysql:5.7
+        networks:
+            - dots_net
+        environment:
+            - MYSQL_DATABASE=dots
+            - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+        volumes:
+            - ../../dots_server/db_models/dump_docker.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+    radius:
+        container_name: dots-radius
+        build: ../../radius-server
+        environment:
+            - TZ=Asia/Tokyo
+        ports:
+            - "1812:1812/udp"
+            - "1813:1813/udp"
+        hostname: radius
+        domainname: example.com
+        volumes:
+            - ../../radius-server/log:/var/log/radius/
+            - ../../radius-server/radiusd.conf:/etc/raddb/radiusd.conf
+            - ../../radius-server/clients.conf:/etc/raddb/clients.conf
 networks:
-  dots_net:
-    enable_ipv6: true
-    ipam:
-      driver: default
-      config:
-      - subnet: 172.16.239.0/24
-        gateway: 172.16.239.1
-      - subnet: 2001:db8:1::/48
-        gateway: 2001:db8:1::1
+    dots_net:
+        enable_ipv6: true
+        ipam:
+            driver: default
+            config:
+                - subnet: 172.16.230.0/24
+                  gateway: 172.16.230.1
+                - subnet: 2001:db8:1::/48
+                  gateway: 2001:db8:1::1
