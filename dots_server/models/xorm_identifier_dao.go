@@ -91,8 +91,7 @@ func isEmptyString(value interface{}) bool {
 
 func createParameterValues(session *xorm.Session, identifiers []interface{}, typeString string, identifierId int64) (err error) {
 	// creating new identifiers
-	listLen := len(identifiers)
-	parameterList := make([]db_models.ParameterValue, listLen, listLen)
+	parameterList := []db_models.ParameterValue{}
 	for _, v := range identifiers {
 		if isEmptyString(v) {
 			continue
