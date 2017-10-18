@@ -236,7 +236,14 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.Forbidden)
 	}
 
-	if !r.authenticate(customer.CustomerRadiusIdentifier) {
+	authResult, err := r.authenticate(customer.CustomerRadiusIdentifier)
+	if err != nil {
+		log.WithError(err).Error("radius authenticate error")
+		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.InternalServerError)
+	}
+
+	if !authResult {
+		log.WithField("userInfo", customer.CustomerRadiusIdentifier).Error("radius authenticate error")
 		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.Unauthorized)
 	}
 
@@ -250,14 +257,14 @@ func (r *Router) Serve(l net.Conn, a net.Addr, request *coap.Message) *coap.Mess
 }
 
 // radiusサーバーを用いたユーザー/権限チェック
-func (r *Router) authenticate(identifier *models.CustomerRadiusIdentifier) bool {
+func (r *Router) authenticate(identifier *models.CustomerRadiusIdentifier) (bool, error) {
 
 	if !r.Authenticator.Enable {
-		return true
+		return true, nil
 	}
 
 	if identifier == nil {
-		return false
+		return false, nil
 	}
 
 	result, err := r.Authenticator.CheckClient(
@@ -268,8 +275,8 @@ func (r *Router) authenticate(identifier *models.CustomerRadiusIdentifier) bool 
 
 	if err != nil {
 		log.WithError(err).Error("authenticate error.")
-		return false
+		return false, err
 	}
 
-	return result
+	return result, nil
 }

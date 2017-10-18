@@ -3,6 +3,7 @@ package db_models
 import (
 	"os"
 	"testing"
+
 	log "github.com/sirupsen/logrus"
 )
 

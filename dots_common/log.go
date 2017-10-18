@@ -23,6 +23,8 @@ func SetUpLogger() {
 
 	flag.Parse()
 
+	b := true
+	debugLogFlag = &b
 	var ll log.Level
 	switch {
 	case *debugLogFlag:

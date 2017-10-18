@@ -7,11 +7,17 @@ import (
 	"reflect"
 	"testing"
 
+	"context"
+
 	"github.com/gonuts/cbor"
 	"github.com/nttdots/go-dots/coap"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server"
 	"github.com/nttdots/go-dots/dots_server/controllers"
+	dots_radius "github.com/nttdots/go-dots/dots_server/radius"
+	log "github.com/sirupsen/logrus"
+	"layeh.com/radius"
+	"layeh.com/radius/rfc2865"
 )
 
 type testConn struct {
@@ -25,6 +31,14 @@ func (t *testConn) GetClientCN() string {
 
 var DummyAuthenticator = &main.Authenticator{
 	Enable: false,
+}
+
+var TestAuthenticator = &main.Authenticator{
+	Enable:      true,
+	Secret:      "abcdef",
+	ServerAddr:  "localhost:60000",
+	ServiceType: dots_radius.Administrative,
+	NASAddress:  net.ParseIP("127.0.0.1"),
 }
 
 func NewTestConn(conn *net.UDPConn, commonName string) *testConn {
@@ -183,6 +197,90 @@ func TestRouter_InvalidMessage(t *testing.T) {
 	}
 }
 
+func TestRouter_InvalidRadiusAccount(t *testing.T) {
+	server, port, err := startSingleResponseRadiusServer(radius.CodeAccessReject, []byte("abcdef"))
+	if err != nil {
+		t.Errorf("radius server start error. err: %s", err.Error())
+		return
+	}
+	defer server.Shutdown(context.Background())
+
+	TestAuthenticator.ServerAddr = fmt.Sprintf("localhost:%d", port)
+	router := main.NewRouter(TestAuthenticator)
+	router.Register(messages.HELLO, &controllers.Hello{})
+
+	m := &coap.Message{
+		MessageID: 123,
+	}
+	m.SetPathString(".well-known/v1/dots-signal/hello")
+
+	expectMessage := &coap.Message{
+		Type:      coap.NonConfirmable,
+		Code:      coap.Unauthorized,
+		MessageID: 123,
+		Token:     nil,
+		Payload:   nil,
+	}
+	expectMessage.SetOption(coap.ContentFormat, coap.AppCbor)
+
+	ret := router.Serve(NewTestConn(&net.UDPConn{}, "commonName"), &net.UDPAddr{}, m)
+
+	if !reflect.DeepEqual(ret, expectMessage) {
+		t.Errorf("router.ControllerMap got %v, want %v", ret, expectMessage)
+	}
+}
+
+func TestRouter_RadiusAccount(t *testing.T) {
+	server, port, err := startSingleResponseRadiusServer(radius.CodeAccessAccept, []byte("abcdef"))
+	if err != nil {
+		t.Errorf("radius server start error. err: %s", err.Error())
+		return
+	}
+	defer server.Shutdown(context.Background())
+
+	TestAuthenticator.ServerAddr = fmt.Sprintf("localhost:%d", port)
+	router := main.NewRouter(TestAuthenticator)
+	router.Register(messages.HELLO, &controllers.Hello{})
+
+	mm := messages.HelloRequest{
+		Message: "testhello_post",
+	}
+	cborWriter := bytes.NewBuffer(nil)
+
+	e := cbor.NewEncoder(cborWriter)
+	e.Encode(mm)
+
+	m := &coap.Message{
+		MessageID: 123,
+		Payload:   cborWriter.Bytes(),
+		Code:      coap.POST,
+	}
+	m.SetPathString(".well-known/v1/dots-signal/hello")
+
+	rr := messages.HelloResponse{
+		Message: fmt.Sprintf("hello, \"%s\"!", mm.Message),
+	}
+
+	expectCborWriter := bytes.NewBuffer(nil)
+	e = cbor.NewEncoder(expectCborWriter)
+	e.Encode(rr)
+
+	expectMessage := &coap.Message{
+		Code:      coap.Valid,
+		Type:      coap.Acknowledgement,
+		MessageID: 123,
+		Token:     nil,
+		Payload:   expectCborWriter.Bytes(),
+	}
+	expectMessage.SetOption(coap.ContentFormat, coap.AppCbor)
+
+	ret := router.Serve(NewTestConn(&net.UDPConn{}, "commonName"), &net.UDPAddr{}, m)
+
+	if !reflect.DeepEqual(ret, expectMessage) {
+		t.Errorf("router.ControllerMap got %v, want %v", ret, expectMessage)
+	}
+}
+
 /*
  * normal case
  */
@@ -228,4 +326,45 @@ func TestRouter_WithMessage(t *testing.T) {
 		t.Errorf("router.ControllerMap got %s, want %s", ret, expectMessage)
 	}
 
+}
+
+func startSingleResponseRadiusServer(code radius.Code, secret []byte) (*radius.PacketServer, int, error) {
+
+	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", 0))
+	if err != nil {
+		return nil, 0, err
+	}
+
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	port := conn.LocalAddr().(*net.UDPAddr).Port
+
+	server := radius.PacketServer{
+		SecretSource: radius.StaticSecretSource(secret),
+		Handler: radius.HandlerFunc(func(w radius.ResponseWriter, r *radius.Request) {
+			responsePacket := r.Response(code)
+			rfc2865.ServiceType_Set(responsePacket, rfc2865.ServiceType_Value_LoginUser)
+			rfc2865.ServiceType_Add(responsePacket, rfc2865.ServiceType_Value_AdministrativeUser)
+			w.Write(responsePacket)
+		}),
+	}
+
+	go func() {
+		defer func() {
+			err := conn.Close()
+			log.WithError(err).Info("close radius connection")
+		}()
+
+		log.WithField("port", port).Info("start simple radius server")
+		err := server.Serve(conn)
+		if err != nil {
+			return
+		}
+		log.WithField("port", port).Info("stop simple radius server")
+	}()
+
+	return &server, port, nil
 }
