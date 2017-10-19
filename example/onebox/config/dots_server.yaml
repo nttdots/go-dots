@@ -14,9 +14,21 @@ system:
     signalChannelPort: 4646
     dataChannelPort: 4647
   database:
-    username: root
-    password:
-    protocol: tcp
-    host: db
-    port: 3306
-    databaseName: dots
+    - name: dots
+      username: root
+      password:
+      protocol: tcp
+      host: db
+      port: 3306
+      databaseName: dots
+    - name: pmacct
+      username: root
+      password:
+      protocol: tcp
+      host: pmacct_db
+      port: 3306
+      databaseName: pmacct
+  pmacct:
+    packetsThresholdLowerLimit: 10000
+    bytesThresholdLowerLimit: 10000000
+    samplingTime: 120
