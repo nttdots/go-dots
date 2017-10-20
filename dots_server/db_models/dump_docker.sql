@@ -226,7 +226,7 @@ CREATE TABLE `mitigation_scope` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `mitigation_scope` (`id`, `customer_id`, `mitigation_id`, `urgent_flag`, `lifetime`, `created`, `updated`)
+INSERT INTO `mitigation_scope` (`id`, `customer_id`, `mitigation_id`, `lifetime`, `urgent_flag`, `created`, `updated`)
 VALUES
   (1,128,12332,1000,0,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
   (2,128,12333,1000,0,'2017-04-13 13:44:34','2017-04-13 13:44:34');

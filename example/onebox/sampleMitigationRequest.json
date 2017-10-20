@@ -23,7 +23,9 @@
         "target-protocol": [
           6
         ],
-        "urgent-flag": false
+        "urgent-flag": [
+          true
+        ]
       }
     ]
   }
