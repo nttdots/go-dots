@@ -4,7 +4,7 @@
       {
         "mitigation-id": 12345,
         "target-ip": [
-          "172.16.238.100"
+          "172.16.236.100"
         ],
         "target-port-range": [
           {

@@ -6,7 +6,7 @@ services:
         image: dots_base
         networks:
           dots_net:
-            ipv4_address: 172.16.238.10
+            ipv4_address: 172.16.236.10
             ipv6_address: 2001:db8::8
         depends_on:
           - dots_server
@@ -25,7 +25,7 @@ services:
         image: dots_base
         entrypoint: ./entry_point.sh
         depends_on:
-          db:
+          dots_db:
             condition: service_healthy
           gobgp:
             condition: service_started
@@ -33,18 +33,18 @@ services:
             condition: service_healthy
         networks:
           dots_net:
-            ipv4_address: 172.16.238.11
+            ipv4_address: 172.16.236.11
             ipv6_address: 2001:db8::9
         working_dir: /go/src/github.com/nttdots/go-dots/dots_server
         command: dots_server -vv -config /etc/dots_server.yaml
         volumes:
           - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
-    db:
-      container_name: db
+    dots_db:
+      container_name: dots_db
       image: mysql:5.7
       networks:
         dots_net:
-          ipv4_address: 172.16.238.12
+          ipv4_address: 172.16.236.12
           ipv6_address: 2001:db8::a
       restart: always
       environment:
@@ -63,7 +63,7 @@ services:
         service: gobgp
       networks:
         dots_net:
-          ipv4_address: 172.16.238.13
+          ipv4_address: 172.16.236.13
           ipv6_address: 2001:db8::b
     pmacct:
       container_name: pmacct
@@ -126,7 +126,7 @@ networks:
     ipam:
       driver: default
       config:
-      - subnet: 172.16.238.0/24
-        gateway: 172.16.238.1
+      - subnet: 172.16.236.0/24
+        gateway: 172.16.236.1
       - subnet: 2001:db8::/48
         gateway: 2001:db8::1

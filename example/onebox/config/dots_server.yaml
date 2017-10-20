@@ -18,7 +18,7 @@ system:
       username: root
       password:
       protocol: tcp
-      host: db
+      host: dots_db
       port: 3306
       databaseName: dots
     - name: pmacct
