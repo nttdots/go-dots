@@ -70,7 +70,7 @@ services:
       build: ../../pmacct
       networks:
         dots_net:
-          ipv4_address: 172.16.238.14
+          ipv4_address: 172.16.236.14
           ipv6_address: 2001:db8::c
       depends_on:
         pmacct_db:
@@ -82,7 +82,7 @@ services:
       command: ["/usr/sbin/softflowd", "-v", "5", "-m", "1", "-d", "-i", "eth0", "-n", "pmacct:2055"  ]
       networks:
         dots_net:
-          ipv4_address: 172.16.238.15
+          ipv4_address: 172.16.236.15
           ipv6_address: 2001:db8::d
       depends_on:
           pmacct:
@@ -94,7 +94,7 @@ services:
       image: mysql:5.7
       networks:
         dots_net:
-          ipv4_address: 172.16.238.16
+          ipv4_address: 172.16.236.16
           ipv6_address: 2001:db8::e
       restart: always
       ports:
@@ -117,7 +117,7 @@ services:
       image: gophernet/hping
       networks:
         dots_net:
-          ipv4_address: 172.16.238.17
+          ipv4_address: 172.16.236.17
           ipv6_address: 2001:db8::f
       entrypoint: bash -c 'while true; do sleep 1 ; done'
 networks:
