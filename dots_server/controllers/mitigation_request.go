@@ -313,6 +313,9 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 				go func() {
 					pmacct_process_counter++
 					var measurementStartTime = time.Now()
+					log.WithFields(log.Fields{
+						"samplingTime": pmacctConf.SamplingTime,
+					}).Debug("callBlocker UrgentFlag")
 					time.Sleep(time.Duration(pmacctConf.SamplingTime) * time.Second)
 
 					// pmacctのデータ取得
@@ -349,7 +352,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 								})
 
 								// しきい値判定値を保存
-								cptvm := models.CreateProtectionThresholdValueModel(p.Id(), packets, bytes, measurementStartTime, measurementStartTime.Add(time.Duration(pmacctConf.SamplingTime)))
+								cptvm := models.CreateProtectionThresholdValueModel(p.Id(), packets, bytes, measurementStartTime, models.AddSecond(measurementStartTime, pmacctConf.SamplingTime))
 								models.CreateProtectionThresholdValue(&cptvm)
 							}
 						}
