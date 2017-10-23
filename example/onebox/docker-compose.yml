@@ -22,7 +22,7 @@ services:
         image: dots_base
         entrypoint: ./entry_point.sh
         depends_on:
-          - db
+          - dots_db
           - gobgp
         networks:
           dots_net:
@@ -32,8 +32,8 @@ services:
         command: dots_server -vv -config /etc/dots_server.yaml
         volumes:
           - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
-    db:
-      container_name: db
+    dots_db:
+      container_name: dots_db
       image: mysql:5.7
       networks:
         dots_net:
@@ -53,6 +53,14 @@ services:
         dots_net:
           ipv4_address: 172.16.238.13
           ipv6_address: 2001:db8::b
+    radius:
+      extends:
+        file: ../../radius-server/docker-compose.yml
+        service: radius-server
+      networks:
+        dots_net:
+          ipv4_address: 172.16.238.14
+          ipv6_address: 2001:db8::c
 networks:
   dots_net:
     enable_ipv6: true

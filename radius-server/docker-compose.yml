@@ -11,11 +11,7 @@ services:
       - "1813:1813/udp"
     hostname: radius-server
     domainname: example.com
-    networks:
-      - radius
     volumes:
       - ./log:/var/log/radius/
       - ./radiusd.conf:/etc/raddb/radiusd.conf
       - ./clients.conf:/etc/raddb/clients.conf
-networks:
-  radius:
