@@ -14,5 +14,7 @@ RUN apt-get update && \
 COPY start.sh /root
 COPY gobgpd.conf /root
 
+RUN chmod 755 /etc/quagga/init_conf.sh
+
 CMD ["bash", "/root/start.sh"]
 
