@@ -306,7 +306,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 				"targetIP": scopeList.Scope.TargetIP,
 				"targetPortRange": scopeList.Scope.TargetPortRange,
 				"urgentFlag": scopeList.Scope.UrgentFlag,
-			}).Debug("callBlocker")    // Change db struct to model struct
+			}).Debug("callBlocker")
 			if (!scopeList.Scope.UrgentFlag) {
 				// この辺にUrgentFlagを見て、処理の振り分けを実装する
 				pmacctConf := dots_config.GetServerSystemConfig().Pmacct
@@ -325,11 +325,12 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 						"acctList": acctList,
 						"packets": packets,
 						"bytes": bytes,
-					}).Debug("TotalPacketsBytesCalc")    // Change db struct to model struct
+					}).Debug("TotalPacketsBytesCalc")
 
 					// しきい値判定
 					// packetsもしくはbytesの累積が設定値より上回っているかどうか
 					if packets > pmacctConf.PacketsThresholdLowerLimit || bytes > pmacctConf.BytesThresholdLowerLimit {
+						log.Debug("Pmacct check result: Threshold or more")
 						// しきい値以上であればBlackHole行き
 						// register a MitigationScope to a Blocker and receive a Protection
 						p, e := scopeList.Blocker.RegisterProtection(scopeList.Scope)
@@ -353,7 +354,8 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 							}
 						}
 					} else {
-						// しきい値以内であれば何もしない（？）
+						// しきい値以内であれば何もしない
+						log.Debug("Pmacct check result: Below threshold")
 					}
 
 					pmacct_finished <- true
