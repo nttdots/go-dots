@@ -28,16 +28,27 @@ func GetAcctV5ByDstIpPort(targetIP []Prefix, targetPortRange []PortRange, startT
 
     // Get data from the acct_v5 table
     dbAcctV5List := []db_models.AcctV5{}
-    for key, target := range targetIP {
-        targetPort := targetPortRange[key]
-        acctV5 := []db_models.AcctV5{}
-        endTime := AddSecond(startTime, intervalTime)
-        err := engine.Where("ip_dst=? AND (?<=dst_port AND dst_port<=?) AND (?<=stamp_inserted AND stamp_inserted<=?)", target.Addr, targetPort.LowerPort, targetPort.UpperPort, GetMySqlTime(startTime), GetMySqlTime(endTime)).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
-        if err != nil {
-            return nil, err
-        }
+    for _, ip := range targetIP {
+        for _, portRange := range targetPortRange {
+            acctV5 := []db_models.AcctV5{}
+            endTime := AddSecond(startTime, intervalTime)
+            log.WithFields(log.Fields{
+                "Ip": ip.Addr,
+                "LowerPortRange": portRange.LowerPort,
+                "UpperPortRange": portRange.UpperPort,
+                "StartTime": GetMySqlTime(startTime),
+                "EndTime": GetMySqlTime(endTime),
+            }).Debug("GetAcctV5ByDstIpPort")
+            err := engine.Where("ip_dst=? AND (?<=dst_port AND dst_port<=?) AND (?<=stamp_inserted AND stamp_inserted<=?)", ip.Addr, portRange.LowerPort, portRange.UpperPort, GetMySqlTime(startTime), GetMySqlTime(endTime)).Asc("stamp_inserted").Asc("stamp_updated").Find(&acctV5)
+            if err != nil {
+                return nil, err
+            }
 
-        dbAcctV5List = append(dbAcctV5List, acctV5...)
+            log.WithFields(log.Fields{
+                "acctV5": acctV5,
+            }).Debug("GetAcctV5")
+            dbAcctV5List = append(dbAcctV5List, acctV5...)
+        }
     }
 
     // Change db struct to model struct

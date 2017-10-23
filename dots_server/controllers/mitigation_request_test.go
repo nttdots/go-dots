@@ -15,8 +15,8 @@ func TestMitigationRequestPost(t *testing.T) {
 	scopes := []messages.Scope{
 		{
 			MitigationId:    1234567,
-			TargetIp:        []string{"192.168.1.1", "192.168.1.2"},
-			TargetPrefix:    []string{"192.168.1.10/24", "192.168.1.11/32"},
+			TargetIp:        []string{"192.168.1.1"},
+			TargetPrefix:    []string{"192.168.1.10/24"},
 			TargetPortRange: []messages.TargetPortRange{{LowerPort: 8989, UpperPort: 9999}},
 			TargetProtocol:  []int{1, 2},
 			FQDN:            []string{"golang.org"},
@@ -28,8 +28,8 @@ func TestMitigationRequestPost(t *testing.T) {
 		},
 		{
 			MitigationId:    2345678,
-			TargetIp:        []string{"192.168.1.101", "192.168.1.102"},
-			TargetPrefix:    []string{"192.168.1.110/24", "192.168.1.111/24"},
+			TargetIp:        []string{"192.168.1.101"},
+			TargetPrefix:    []string{"192.168.1.110/24"},
 			TargetPortRange: []messages.TargetPortRange{{LowerPort: 8989, UpperPort: 9999}},
 			TargetProtocol:  []int{1, 2},
 			FQDN:            []string{"golang.org"},

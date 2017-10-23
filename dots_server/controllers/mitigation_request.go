@@ -316,15 +316,16 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 					time.Sleep(time.Duration(pmacctConf.SamplingTime) * time.Second)
 
 					// pmacctのデータ取得
-					acctList, e := models.GetAcctV5BySrcIpPort(scopeList.Scope.TargetIP, scopeList.Scope.TargetPortRange, measurementStartTime, pmacctConf.SamplingTime)
+					acctList, e := models.GetAcctV5ByDstIpPort(scopeList.Scope.TargetIP, scopeList.Scope.TargetPortRange, measurementStartTime, pmacctConf.SamplingTime)
 					if e != nil {
 						err = e
 					}
 					packets, bytes := models.TotalPacketsBytesCalc(acctList)
 					log.WithFields(log.Fields{
+						"acctList": acctList,
 						"packets": packets,
 						"bytes": bytes,
-					}).Debug("callBlocker")    // Change db struct to model struct
+					}).Debug("TotalPacketsBytesCalc")    // Change db struct to model struct
 
 					// しきい値判定
 					// packetsもしくはbytesの累積が設定値より上回っているかどうか
