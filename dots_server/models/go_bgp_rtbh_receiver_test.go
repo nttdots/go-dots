@@ -144,14 +144,14 @@ func TestGoBgpRtbhReceiver_ExecuteProtection(t *testing.T) {
 			net.IPv4(192, 168, 7, 0),
 			destinations[0].GetNlri().(*bgp.IPAddrPrefix).Prefix)
 	}
-	if !destinations[0].GetBestPath("192.168.7.100").GetNexthop().Equal(net.IPv4(0, 0, 0, 1)) {
+	if !destinations[0].GetBestPath("192.168.7.100").GetNexthop().Equal(net.IPv4(0, 0, 0, 0)) {
 		t.Errorf("router nextHop error. want:%s, got:%s",
-			net.IPv4(0, 0, 0, 1),
+			net.IPv4(0, 0, 0, 0),
 			destinations[0].GetBestPath("192.168.7.100").GetNexthop())
 	}
-	if !destinations[0].GetBestPath("192.168.8.100").GetNexthop().Equal(net.IPv4(0, 0, 0, 1)) {
+	if !destinations[0].GetBestPath("192.168.8.100").GetNexthop().Equal(net.IPv4(0, 0, 0, 0)) {
 		t.Errorf("router nextHop error. want:%s, got:%s",
-			net.IPv4(0, 0, 0, 1),
+			net.IPv4(0, 0, 0, 0),
 			destinations[0].GetBestPath("192.168.8.100").GetNexthop())
 	}
 

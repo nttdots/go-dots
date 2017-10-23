@@ -336,7 +336,7 @@ type FindStatement struct {
 
 func (fs *FindStatement) Prepare() (session *xorm.Session, err error) {
 	queryString := strings.Join(fs.queryString, " AND ")
-	query := reflect.ValueOf(engine.Where)
+	query := reflect.ValueOf(GetEngine().Where)
 	ret := query.Call(append([]reflect.Value{reflect.ValueOf(queryString)}, fs.arguments...))
 	if len(ret) == 0 {
 		return nil, errors.New("Cannot obtain the session object")

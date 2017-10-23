@@ -29,40 +29,43 @@
                 "lower-port": "integer",
                 "upper-port": "integer"
               }
-            },
-            "target-protocol": {
-              "type": "array",
-              "items": {
-                "type": "integer"
-              }
-            },
-            "FQDN": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "URI": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "E.164": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "alias": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
-            "lifetime": {
+            }
+          },
+          "target-protocol": {
+            "type": "array",
+            "items": {
               "type": "integer"
             }
+          },
+          "FQDN": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "URI": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "E.164": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "alias": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lifetime": {
+            "type": "integer"
+          },
+          "urgent-flag": {
+            "type": "boolean"
           }
         }
       }

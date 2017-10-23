@@ -32,6 +32,8 @@ type Scope struct {
 	Alias []string `json:"alias" cbor:"alias"`
 	// lifetime
 	Lifetime int `json:"lifetime" cbor:"lifetime"`
+	// urgent-flag
+	UrgentFlag bool `json:"urgent-flag" cbor:"urgent-flag"`
 }
 
 type MitigationRequest struct {
@@ -89,6 +91,7 @@ func (m *MitigationRequest) String() (result string) {
 			}
 		}
 		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+		result += fmt.Sprintf("     \"%s\": %t\n", "urgent-flag", scope.UrgentFlag)
 	}
 	return
 }

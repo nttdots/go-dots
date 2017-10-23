@@ -2,7 +2,7 @@ version: "2.1"
 
 services:
     gobgp:
-        container_name: gobgp
+        container_name: gobgp-standalone
         build: .
         privileged: true
         ports:

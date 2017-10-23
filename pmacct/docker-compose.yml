@@ -1,0 +1,42 @@
+version: "2.1"
+
+services:
+  pmacct:
+    container_name: pmacct
+    build: ./
+    depends_on:
+      pmacct_db:
+        condition: service_healthy
+    volumes:
+      - ./nfacctd.conf:/etc/nfacctd.conf:ro
+  sensor:
+    image: ssugar/softflowd
+    command: ["/usr/sbin/softflowd", "-v", "5", "-m", "1", "-d", "-i", "eth0", "-n", "pmacct:2055"  ]
+    depends_on:
+        pmacct:
+          condition: service_started
+    ports:
+      - 9090:9090
+  pmacct_db:
+    container_name: pmacct_db
+    image: mysql:5.7
+    restart: always
+    ports:
+      - 3306:3306
+    environment:
+      - MYSQL_DATABASE=pmacct
+      - MYSQL_USER=pmacct
+      - MYSQL_PASSWORD=arealsmartpwd
+      - MYSQL_ROOT_PASSWORD=arealsmartpwd
+    volumes:
+      - ./initdb.d/grant-db.sql:/docker-entrypoint-initdb.d/grant-db.sql:ro
+      - ./initdb.d/create-db_v5.sql:/docker-entrypoint-initdb.d/create-db_v5.sql:ro
+    healthcheck:
+        test: ["CMD", "mysqladmin", "--user=root", "--password=arealsmartpwd", "ping", "-h", "localhost"]
+        interval: 3s
+        timeout: 1s
+        retries: 5
+  attacker:
+    container_name: attacker
+    image: gophernet/hping
+    entrypoint: bash -c 'while true; do sleep 1 ; done'

@@ -47,7 +47,8 @@
         ],
         "target-protocol": [
           2
-        ]
+        ],
+        "urgent-flag": false
       }
     ]
   }
