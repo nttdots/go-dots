@@ -1,0 +1,11 @@
+# X.509 server certificate options
+
+organization = "dots not_auth client"
+state = "Tokyo"
+country = JP
+cn = "not_auth.client.example.com"
+expiration_days = 365
+
+# X.509 v3 extensions
+signing_key
+encryption_key

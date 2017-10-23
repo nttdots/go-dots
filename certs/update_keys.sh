@@ -20,8 +20,14 @@ $CERTTOOL --generate-request --load-privkey client-key.pem --template template_c
 $CERTTOOL --generate-certificate --load-request client-csr.pem --load-ca-certificate ca-cert.pem --load-ca-privkey ca-key.pem  --template template_client.txt --outfile client-cert.pem
 rm -f client-csr.pem
 
-# update aaa server
-$CERTTOOL --generate-privkey --bits 4096 --outfile aaa-key.pem
-$CERTTOOL --generate-request --load-privkey aaa-key.pem --template template_aaa.txt --outfile aaa-csr.pem
-$CERTTOOL --generate-certificate --load-request aaa-csr.pem --load-ca-certificate ca-cert.pem --load-ca-privkey ca-key.pem  --template template_aaa.txt --outfile aaa-cert.pem
-rm -f aaa-csr.pem
+# update invalid client
+$CERTTOOL --generate-privkey --bits 4096 --outfile invalid_client-key.pem
+$CERTTOOL --generate-request --load-privkey invalid_client-key.pem --template template_invalid_client.txt --outfile invalid_client-csr.pem
+$CERTTOOL --generate-certificate --load-request invalid_client-csr.pem --load-ca-certificate ca-cert.pem --load-ca-privkey ca-key.pem  --template template_invalid_client.txt --outfile invalid_client-cert.pem
+rm -f invalid_client-csr.pem
+
+# update not_auth client
+$CERTTOOL --generate-privkey --bits 4096 --outfile not_auth_client-key.pem
+$CERTTOOL --generate-request --load-privkey not_auth_client-key.pem --template template_not_auth_client.txt --outfile not_auth_client-csr.pem
+$CERTTOOL --generate-certificate --load-request not_auth_client-csr.pem --load-ca-certificate ca-cert.pem --load-ca-privkey ca-key.pem  --template template_not_auth_client.txt --outfile not_auth_client-cert.pem
+rm -f not_auth_client-csr.pem
