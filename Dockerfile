@@ -22,9 +22,11 @@ ENV BRANCH=${BRANCH:-master}
 ADD https://api.github.com/repos/nttdots/go-dots/git/refs/heads/${BRANCH} .
 
 RUN cd ${DOTS_DIR} && \
-    if [ `git rev-parse --abbrev-ref HEAD` != ${BRANCH} ]; then \
+    git fetch origin ${BRANCH} && \
+    if [ `git rev-parse --abbrev-ref HEAD` == ${BRANCH} ]; then \
           git checkout ${BRANCH}; \
-    fi ; \
+    fi; \
+    git merge origin/${BRANCH} && \
     make install
 
 RUN chmod 755 ${DOTS_DIR}/dots_client/entry_point.sh && \
