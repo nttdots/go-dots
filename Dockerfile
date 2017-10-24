@@ -14,6 +14,7 @@ ENV DOTS_DIR /go/src/github.com/nttdots/go-dots
 
 ENV PATH /go/bin:${PATH}
 
+RUN go get "layeh.com/radius"
 RUN go get "github.com/nttdots/go-dots/..."
 
 ARG BRANCH

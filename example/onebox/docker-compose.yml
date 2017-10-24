@@ -2,7 +2,7 @@ version: "2.1"
 
 services:
     dots_client:
-        container_name: dots_client
+        container_name: dots_client-onebox
         image: dots_base
         networks:
           dots_net:
@@ -17,7 +17,7 @@ services:
           - SIGNAL_CHANNEL_PORT=4646
           - DATA_CHANNEL_PORT=4647
     dots_server:
-        container_name: dots_server
+        container_name: dots_server-onebox
         build:
           context: ../../
           args:
@@ -40,7 +40,7 @@ services:
         volumes:
           - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
     dots_db:
-      container_name: dots_db
+      container_name: dots_db-onebox
       image: mysql:5.7
       networks:
         dots_net:
@@ -58,6 +58,7 @@ services:
           timeout: 1s
           retries: 5
     gobgp:
+      container_name: gobgp-onebox
       extends:
         file:  ../../gobgp-server/docker-compose.yml
         service: gobgp
@@ -66,7 +67,7 @@ services:
           ipv4_address: 172.16.236.13
           ipv6_address: 2001:db8::b
     pmacct:
-      container_name: pmacct
+      container_name: pmacct-onebox
       build: ../../pmacct
       networks:
         dots_net:
@@ -78,6 +79,7 @@ services:
       volumes:
         - ../../pmacct/nfacctd.conf:/etc/nfacctd.conf:ro
     sensor:
+      container_name: sensor-onebox
       image: ssugar/softflowd
       command: ["/usr/sbin/softflowd", "-v", "5", "-m", "1", "-d", "-i", "eth0", "-n", "pmacct:2055"  ]
       networks:
@@ -90,15 +92,13 @@ services:
       ports:
         - 9090:9090
     pmacct_db:
-      container_name: pmacct_db
+      container_name: pmacct_db-onebox
       image: mysql:5.7
       networks:
         dots_net:
           ipv4_address: 172.16.236.16
           ipv6_address: 2001:db8::e
       restart: always
-      ports:
-        - 3306:3306
       environment:
         - MYSQL_DATABASE=pmacct
         - MYSQL_USER=pmacct
@@ -113,7 +113,7 @@ services:
           timeout: 1s
           retries: 5
     attacker:
-      container_name: attacker
+      container_name: attacker-onebox
       image: gophernet/hping
       networks:
         dots_net:
@@ -121,6 +121,7 @@ services:
           ipv6_address: 2001:db8::f
       entrypoint: bash -c 'while true; do sleep 1 ; done'
     radius:
+      container_name: radius-onebox
       extends:
         file: ../../radius-server/docker-compose.yml
         service: radius-server
