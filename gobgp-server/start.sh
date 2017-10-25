@@ -1,6 +1,6 @@
 #!/bin/bash
 
-/etc/quagga/init_conf.sh
+bash /etc/quagga/init_conf.sh
 
 ipv4=`ip a show eth0|grep inet |awk '{print $2}' | sed 's/\/.*$//'`
 
