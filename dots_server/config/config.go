@@ -34,6 +34,7 @@ type Storable interface {
 
 type SignalConfigurationParameterNode struct {
 	HeartbeatInterval string `yaml:"heartbeatInterval"`
+	MissingHbAllowed  string `yaml:"missingHbAllowed"`
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
@@ -42,6 +43,7 @@ type SignalConfigurationParameterNode struct {
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	return &SignalConfigurationParameter{
 		HeartbeatInterval: parseParameterRange(scpn.HeartbeatInterval),
+		MissingHbAllowed:  parseParameterRange(scpn.MissingHbAllowed),
 		MaxRetransmit:     parseParameterRange(scpn.MaxRetransmit),
 		AckTimeout:        parseParameterRange(scpn.AckTimeout),
 		AckRandomFactor:   parseParameterRange(scpn.AckRandomFactor),
@@ -395,6 +397,7 @@ func parseParameterRange(input string) *ParameterRange {
 
 type SignalConfigurationParameter struct {
 	HeartbeatInterval *ParameterRange
+	MissingHbAllowed  *ParameterRange
 	MaxRetransmit     *ParameterRange
 	AckTimeout        *ParameterRange
 	AckRandomFactor   *ParameterRange

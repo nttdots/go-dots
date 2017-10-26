@@ -11,6 +11,7 @@ func TestParseConfig(t *testing.T) {
 	expected := &ServerSystemConfig{
 		SignalConfigurationParameter: &SignalConfigurationParameter{
 			&ParameterRange{60, 60},
+			&ParameterRange{5, 5},
 			&ParameterRange{3, 3},
 			&ParameterRange{30, 30},
 			&ParameterRange{8888, 8888},
@@ -55,6 +56,7 @@ var configText = `
 system:
   signalConfigurationParameter:
     heartbeatInterval: 60
+    missingHbAllowed: 5
     maxRetransmit: 3
     ackTimeout: 30
     ackRandomFactor: 8888
