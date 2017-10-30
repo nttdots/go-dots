@@ -30,5 +30,7 @@ RUN cd ${DOTS_DIR} && \
     git merge origin/${BRANCH} && \
     make install
 
+EXPOSE 4646 4647
+
 RUN chmod 755 ${DOTS_DIR}/dots_client/entry_point.sh && \
     chmod 755 ${DOTS_DIR}/dots_server/entry_point.sh
