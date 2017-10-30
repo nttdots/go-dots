@@ -3,11 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-
-	"github.com/nttdots/go-dots/dots_server/config"
-
 	"net"
 
+	"github.com/nttdots/go-dots/dots_server/config"
 	dots_radius "github.com/nttdots/go-dots/dots_server/radius"
 	log "github.com/sirupsen/logrus"
 	"layeh.com/radius"

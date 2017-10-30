@@ -7,12 +7,12 @@ import (
 	"os"
 
 	"github.com/nttdots/go-dots/coap"
-
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/connection"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/dots_server/controllers"
+	"github.com/nttdots/go-dots/dots_server/models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -126,5 +126,30 @@ func main() {
 
 	authenticator := NewAuthenticator(config.AAA)
 
+	err = dbHealthCheck("dots")
+	if err != nil {
+		log.WithField("db", "dots").Error("database connect error.")
+		os.Exit(1)
+	}
+	err = dbHealthCheck("pmacct")
+	if err != nil {
+		log.WithField("db", "pmacct").Error("database connect error.")
+		os.Exit(1)
+	}
+
 	Listen(factory, config.Network.BindAddress, config.Network.SignalChannelPort, config.Network.DataChannelPort, authenticator)
+}
+
+func dbHealthCheck(target string) error {
+
+	engine, err := models.ConnectDB()
+	if err != nil {
+		return err
+	}
+	_, err = engine.Exec("select 1")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

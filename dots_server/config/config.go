@@ -2,13 +2,12 @@ package config
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"reflect"
 	"strconv"
 	"strings"
-
-	"fmt"
 
 	"github.com/hashicorp/hcl"
 	dots_radius "github.com/nttdots/go-dots/dots_server/radius"

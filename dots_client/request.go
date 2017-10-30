@@ -159,6 +159,12 @@ func (r *Request) Send() (err error) {
 		log.Infof("Response payload: %s", recv.Payload)
 	}
 
+	log.WithFields(log.Fields{
+		"type": int(recv.Type),
+		"type-text": recv.Type.String(),
+		"code": int(recv.Code),
+		"code-text": recv.Code.String(),
+	}).Infof("dots server response")
 	return
 }
 

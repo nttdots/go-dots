@@ -7,10 +7,16 @@ export SIGNAL_CHANNEL_PORT=4646
 export DATA_CHANNEL_PORT=4647
 
 set -x
-docker-compose up -d
+#docker-compose up -d
 
+docker container restart dots_server-radius_test
+
+mysql -u root --port 3306 < ../../
 rm /tmp/dots_success_auth.sock
 rm /tmp/dots_invalid_auth.sock
+
+make -C ../../dots_client
+make -C ../../dots_client_controller
 
 # access successfully client --------------------------------------------
 ../../dots_client/dots_client -vv -server $DOTS_SERVER -signalChannelPort $SIGNAL_CHANNEL_PORT -dataChannelPort $DATA_CHANNEL_PORT \
@@ -43,7 +49,7 @@ sleep 1
 
 
 # radius server down ----------------------------------------------------
-docker stop radius-onebox
+docker container pause radius-radius_test
 
 ../../dots_client_controller/dots_client_controller -vv -request hello -method Post \
     -socket /tmp/dots_success_auth.sock \
@@ -52,4 +58,5 @@ docker stop radius-onebox
 kill $SUCCESS_CLIENT_PID
 kill $INVALID_CLIENT_PID
 
-docker-compose stop
+#docker-compose stop
+docker container unpause radius-radius_test

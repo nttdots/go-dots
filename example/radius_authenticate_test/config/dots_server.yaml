@@ -1,0 +1,40 @@
+system:
+  signalConfigurationParameter:
+    heartbeatInterval: 60
+    maxRetransmit: 3
+    ackTimeout: 30
+    ackRandomFactor: 8888
+  secureFile:
+    serverCertFile: ../certs/server-cert.pem
+    serverKeyFile: ../certs/server-key.pem
+    crlFile: ../certs/crl.pem
+    certFile: ../certs/ca-cert.pem
+  network:
+    bindAddress: "::"
+    signalChannelPort: 4646
+    dataChannelPort: 4647
+  database:
+    - name: dots
+      username: root
+      password:
+      protocol: tcp
+      host: dots_db
+      port: 3306
+      databaseName: dots
+    - name: pmacct
+      username: root
+      password: arealsmartpwd
+      protocol: tcp
+      host: pmacct_db
+      port: 3306
+      databaseName: pmacct
+  pmacct:
+    packetsThresholdLowerLimit: 10000
+    bytesThresholdLowerLimit: 10000000
+    samplingTime: 120
+  aaa:
+    enable: true
+    host: 172.16.236.18
+    port: 1812
+    secret: testing123
+    serviceType: Administrative
