@@ -257,6 +257,7 @@ CREATE TABLE `signal_session_configuration` (
   `max_retransmit` int(11) DEFAULT NULL,
   `ack_timeout` int(11) DEFAULT NULL,
   `ack_random_factor` double DEFAULT NULL,
+  `trigger_mitigation` tinyint(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),

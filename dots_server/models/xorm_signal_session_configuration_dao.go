@@ -51,6 +51,7 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 		MaxRetransmit:     signalSessionConfiguration.MaxRetransmit,
 		AckTimeout:        signalSessionConfiguration.AckTimeout,
 		AckRandomFactor:   signalSessionConfiguration.AckRandomFactor,
+		TriggerMitigation: signalSessionConfiguration.TriggerMitigation,
 	}
 	_, err = session.Insert(&newSignalSessionConfiguration)
 	if err != nil {
@@ -109,7 +110,8 @@ func UpdateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 	updSignalSessionConfiguration.MaxRetransmit = signalSessionConfiguration.MaxRetransmit
 	updSignalSessionConfiguration.AckTimeout = signalSessionConfiguration.AckTimeout
 	updSignalSessionConfiguration.AckRandomFactor = signalSessionConfiguration.AckRandomFactor
-	_, err = session.Where("id = ?", updSignalSessionConfiguration.Id).Update(updSignalSessionConfiguration)
+	updSignalSessionConfiguration.TriggerMitigation = signalSessionConfiguration.TriggerMitigation
+	_, err = session.Where("id = ?", updSignalSessionConfiguration.Id).Cols("heartbeat_interval", "missing_hb_allowed", "max_retransmit", "ack_timeout", "ack_random_factor", "trigger_mitigation").Update(updSignalSessionConfiguration)
 	if err != nil {
 		log.Infof("customer update err: %s", err)
 		goto Rollback
@@ -160,6 +162,7 @@ func GetSignalSessionConfiguration(customerId int, sessionId int) (signalSession
 	signalSessionConfiguration.MaxRetransmit = dbSignalSessionConfiguration.MaxRetransmit
 	signalSessionConfiguration.AckTimeout = dbSignalSessionConfiguration.AckTimeout
 	signalSessionConfiguration.AckRandomFactor = dbSignalSessionConfiguration.AckRandomFactor
+	signalSessionConfiguration.TriggerMitigation = dbSignalSessionConfiguration.TriggerMitigation
 
 	return
 

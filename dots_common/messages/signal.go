@@ -111,6 +111,8 @@ type SignalConfig struct {
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
 	AckRandomFactor float64 `json:"ack-random-factor" cbor:"ack-random-factor"`
+	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
+	TriggerMitigation bool `json:"trigger-mitigation" cbor:"trigger-mitigation"`
 }
 
 type HelloRequest struct {
