@@ -38,8 +38,6 @@ type Alias struct {
 	FQDN []string `json:"FQDN" cbor:"FQDN"`
 	// URI
 	URI []string `json:"URI" cbor:"URI"`
-	// E.164";
-	E164 []string `json:"E.164" cbor:"E.164"`
 }
 
 /*
@@ -83,11 +81,6 @@ func (m *CreateIdentifier) String() (result string) {
 		if alias.URI != nil {
 			for k, v := range alias.URI {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "URI", k+1, v)
-			}
-		}
-		if alias.E164 != nil {
-			for k, v := range alias.E164 {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "E.164", k+1, v)
 			}
 		}
 	}

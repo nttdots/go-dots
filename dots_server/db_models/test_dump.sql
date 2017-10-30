@@ -147,7 +147,7 @@ CREATE TABLE `parameter_value` (
   `customer_id` int(11) DEFAULT NULL,
   `identifier_id` bigint(20) DEFAULT NULL,
   `mitigation_scope_id` bigint(20) DEFAULT NULL,
-  `type` enum('TARGET_PROTOCOL','FQDN','URI','E_164','TRAFFIC_PROTOCOL','ALIAS') NOT NULL,
+  `type` enum('TARGET_PROTOCOL','FQDN','URI','TRAFFIC_PROTOCOL','ALIAS') NOT NULL,
   `string_value` varchar(255) DEFAULT NULL,
   `int_value` int(11) DEFAULT NULL,
   `created` datetime DEFAULT NULL,

@@ -48,12 +48,6 @@
                 "type": "string"
               }
             },
-            "E.164": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            },
             "alias": {
               "type": "array",
               "items": {

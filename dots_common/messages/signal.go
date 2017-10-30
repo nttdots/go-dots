@@ -26,8 +26,6 @@ type Scope struct {
 	FQDN []string `json:"FQDN" cbor:"FQDN"`
 	// URI
 	URI []string `json:"URI" cbor:"URI"`
-	// E.164";
-	E164 []string `json:"E.164" cbor:"E.164"`
 	// alias name
 	Alias []string `json:"alias" cbor:"alias"`
 	// lifetime
@@ -76,11 +74,6 @@ func (m *MitigationRequest) String() (result string) {
 		if scope.URI != nil {
 			for k, v := range scope.URI {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "URI", k+1, v)
-			}
-		}
-		if scope.E164 != nil {
-			for k, v := range scope.E164 {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "E.164", k+1, v)
 			}
 		}
 		if scope.Alias != nil {

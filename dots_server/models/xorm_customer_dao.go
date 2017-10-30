@@ -64,7 +64,7 @@ func CreateCustomer(customer Customer) (newCustomer db_models.Customer, err erro
 	if err != nil {
 		return
 	}
-	// Registered FQDN, URI and E_164
+	// Registered FQDN and URI
 	err = createCustomerParameterValue(session, customer, newCustomer.Id)
 	if err != nil {
 		return
@@ -165,25 +165,6 @@ func createCustomerParameterValue(session *xorm.Session, customer Customer, cust
 		if err != nil {
 			session.Rollback()
 			log.Infof("URI insert err: %s", err)
-			return
-		}
-	}
-
-	// E_164 is registered
-	newE164List := []*db_models.ParameterValue{}
-	for _, v := range customer.CustomerNetworkInformation.E_164.List() {
-		if v == "" {
-			continue
-		}
-		newE164 := db_models.CreateE164Param(v)
-		newE164.CustomerId = customerId
-		newE164List = append(newE164List, newE164)
-	}
-	if len(newE164List) > 0 {
-		_, err = session.Insert(newE164List)
-		if err != nil {
-			session.Rollback()
-			log.Infof("E164 insert err: %s", err)
 			return
 		}
 	}
@@ -289,7 +270,7 @@ func UpdateCustomer(customer Customer) (err error) {
 	if err != nil {
 		return
 	}
-	// Registered FQDN, URI and E_164
+	// Registered FQDN and URI
 	err = createCustomerParameterValue(session, customer, updCustomer.Id)
 	if err != nil {
 		return
@@ -376,18 +357,6 @@ func GetCustomer(customerId int) (customer Customer, err error) {
 	if len(dbParameterValueUriList) > 0 {
 		for _, v := range dbParameterValueUriList {
 			CustomerNetworkInformation.URI.Append(db_models.GetUriValue(&v))
-		}
-	}
-
-	// Get E_164 data
-	dbParameterValueE164List := []db_models.ParameterValue{}
-	err = engine.Where("customer_id = ? AND type = ?", dbCustomer.Id, db_models.ParameterValueTypeE164).OrderBy("id ASC").Find(&dbParameterValueE164List)
-	if err != nil {
-		return
-	}
-	if len(dbParameterValueE164List) > 0 {
-		for _, v := range dbParameterValueE164List {
-			CustomerNetworkInformation.E_164.Append(db_models.GetE164Value(&v))
 		}
 	}
 
@@ -487,19 +456,6 @@ func GetCustomerCommonName(commonName string) (customer Customer, err error) {
 	if len(dbParameterValueUriList) > 0 {
 		for _, v := range dbParameterValueUriList {
 			CustomerNetworkInformation.URI.Append(db_models.GetUriValue(&v))
-		}
-	}
-
-	// Get E_164 data
-	dbParameterValueE164List := []db_models.ParameterValue{}
-	err = engine.Where("customer_id = ? AND type = ?", dbCustomer.Id, db_models.ParameterValueTypeE164).OrderBy("id ASC").Find(&dbParameterValueE164List)
-	if err != nil {
-		log.Errorf("parameter_value select error: %s", err)
-		return
-	}
-	if len(dbParameterValueE164List) > 0 {
-		for _, v := range dbParameterValueE164List {
-			CustomerNetworkInformation.E_164.Append(db_models.GetE164Value(&v))
 		}
 	}
 

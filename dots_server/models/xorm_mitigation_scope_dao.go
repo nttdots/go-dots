@@ -78,7 +78,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		session.Rollback()
 		return
 	}
-	// Registering FQDN, URI, E_164, alias and target_protocol
+	// Registering FQDN, URI, alias and target_protocol
 	err = createMitigationScopeParameterValue(session, mitigationScope, newMitigationScope.Id)
 	if err != nil {
 		return
@@ -172,7 +172,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		return
 	}
 
-	// Registered FQDN, URI, E_164, alias and target_protocol
+	// Registered FQDN, URI, alias and target_protocol
 	err = createMitigationScopeParameterValue(session, mitigationScope, dbMitigationScope.Id)
 	if err != nil {
 		return
@@ -239,25 +239,6 @@ func createMitigationScopeParameterValue(session *xorm.Session, mitigationScope 
 		if err != nil {
 			session.Rollback()
 			log.Printf("URI insert err: %s", err)
-			return
-		}
-	}
-
-	// E_164 is registered
-	newE164List := []*db_models.ParameterValue{}
-	for _, v := range mitigationScope.E_164.List() {
-		if v == "" {
-			continue
-		}
-		newE164 := db_models.CreateE164Param(v)
-		newE164.MitigationScopeId = mitigationScopeId
-		newE164List = append(newE164List, newE164)
-	}
-	if len(newE164List) > 0 {
-		_, err = session.Insert(newE164List)
-		if err != nil {
-			session.Rollback()
-			log.Printf("E164 insert err: %s", err)
 			return
 		}
 	}
@@ -441,18 +422,6 @@ func GetMitigationScope(customerId int, mitigationId int) (mitigationScope *Miti
 	if len(dbParameterValueUriList) > 0 {
 		for _, v := range dbParameterValueUriList {
 			mitigationScope.URI.Append(db_models.GetUriValue(&v))
-		}
-	}
-
-	// Get E_164 data
-	dbParameterValueE164List := []db_models.ParameterValue{}
-	err = engine.Where("mitigation_scope_id = ? AND type = ?", dbMitigationScope.Id, db_models.ParameterValueTypeE164).OrderBy("id ASC").Find(&dbParameterValueE164List)
-	if err != nil {
-		return
-	}
-	if len(dbParameterValueE164List) > 0 {
-		for _, v := range dbParameterValueE164List {
-			mitigationScope.E_164.Append(db_models.GetE164Value(&v))
 		}
 	}
 

@@ -19,9 +19,6 @@ func mitigationScopeSampleDataCreate() {
 	testMitigationScope.FQDN.Append("FQDN3")
 	testMitigationScope.URI = models.NewSetString()
 	testMitigationScope.URI.Append("URI1")
-	testMitigationScope.E_164 = models.NewSetString()
-	testMitigationScope.E_164.Append("E_164_1")
-	testMitigationScope.E_164.Append("E_164_3")
 	testMitigationScope.Alias = models.NewSetString()
 	testMitigationScope.Alias.Append("Alias1")
 	testMitigationScope.Alias.Append("Alias2")
@@ -48,9 +45,6 @@ func mitigationScopeSampleDataCreate() {
 	testUpdateMitigationScope.URI.Append("URI11")
 	testUpdateMitigationScope.URI.Append("URI12")
 	testUpdateMitigationScope.URI.Append("URI13")
-	testUpdateMitigationScope.E_164 = models.NewSetString()
-	testUpdateMitigationScope.E_164.Append("E_164_11")
-	testUpdateMitigationScope.E_164.Append("E_164_12")
 	testUpdateMitigationScope.Alias = models.NewSetString()
 	testUpdateMitigationScope.Alias.Append("Alias11")
 	testUpdateMitigationScope.Alias.Append("Alias12")
@@ -104,11 +98,6 @@ func TestGetMitigationScope(t *testing.T) {
 	for _, srcURI := range testMitigationScope.URI.List() {
 		if !mitigationScope.URI.Include(srcURI) {
 			t.Errorf("no URI data: %s", srcURI)
-		}
-	}
-	for _, srcE164 := range testMitigationScope.E_164.List() {
-		if !mitigationScope.E_164.Include(srcE164) {
-			t.Errorf("no E164 data: %s", srcE164)
 		}
 	}
 	for _, srcAlias := range testMitigationScope.Alias.List() {
@@ -194,11 +183,6 @@ func TestUpdateMitigationScope(t *testing.T) {
 	for _, testURI := range testUpdateMitigationScope.URI.List() {
 		if !mitigationScope.URI.Include(testURI) {
 			t.Errorf("no target data: %s", testURI)
-		}
-	}
-	for _, testE164 := range testUpdateMitigationScope.E_164.List() {
-		if !mitigationScope.E_164.Include(testE164) {
-			t.Errorf("no target data: %s", testE164)
 		}
 	}
 	for _, testAlias := range testUpdateMitigationScope.Alias.List() {
