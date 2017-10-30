@@ -130,11 +130,16 @@ func main() {
 	if err != nil {
 		log.WithField("db", "dots").Error("database connect error.")
 		os.Exit(1)
+	} else {
+		log.WithField("db", "dots").Info("db access check ok")
 	}
+
 	err = dbHealthCheck("pmacct")
 	if err != nil {
 		log.WithField("db", "pmacct").Error("database connect error.")
 		os.Exit(1)
+	} else {
+		log.WithField("db", "pmacct").Info("db access check ok")
 	}
 
 	Listen(factory, config.Network.BindAddress, config.Network.SignalChannelPort, config.Network.DataChannelPort, authenticator)
