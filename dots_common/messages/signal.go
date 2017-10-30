@@ -27,7 +27,7 @@ type Scope struct {
 	// URI
 	URI []string `json:"URI" cbor:"URI"`
 	// alias name
-	Alias []string `json:"alias" cbor:"alias"`
+	AliasName []string `json:"alias-name" cbor:"alias-name"`
 	// lifetime
 	Lifetime int `json:"lifetime" cbor:"lifetime"`
 }
@@ -76,9 +76,9 @@ func (m *MitigationRequest) String() (result string) {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "URI", k+1, v)
 			}
 		}
-		if scope.Alias != nil {
-			for k, v := range scope.Alias {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias", k+1, v)
+		if scope.AliasName != nil {
+			for k, v := range scope.AliasName {
+				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
 			}
 		}
 		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)

@@ -19,9 +19,9 @@ func mitigationScopeSampleDataCreate() {
 	testMitigationScope.FQDN.Append("FQDN3")
 	testMitigationScope.URI = models.NewSetString()
 	testMitigationScope.URI.Append("URI1")
-	testMitigationScope.Alias = models.NewSetString()
-	testMitigationScope.Alias.Append("Alias1")
-	testMitigationScope.Alias.Append("Alias2")
+	testMitigationScope.AliasName = models.NewSetString()
+	testMitigationScope.AliasName.Append("AliasName1")
+	testMitigationScope.AliasName.Append("AliasName2")
 	testMitigationScope.TargetProtocol = models.NewSetInt()
 	testMitigationScope.TargetProtocol.Append(101)
 	testMitigationScope.TargetProtocol.Append(102)
@@ -45,10 +45,10 @@ func mitigationScopeSampleDataCreate() {
 	testUpdateMitigationScope.URI.Append("URI11")
 	testUpdateMitigationScope.URI.Append("URI12")
 	testUpdateMitigationScope.URI.Append("URI13")
-	testUpdateMitigationScope.Alias = models.NewSetString()
-	testUpdateMitigationScope.Alias.Append("Alias11")
-	testUpdateMitigationScope.Alias.Append("Alias12")
-	testUpdateMitigationScope.Alias.Append("Alias13")
+	testUpdateMitigationScope.AliasName = models.NewSetString()
+	testUpdateMitigationScope.AliasName.Append("AliasName11")
+	testUpdateMitigationScope.AliasName.Append("AliasName12")
+	testUpdateMitigationScope.AliasName.Append("AliasName13")
 	testUpdateMitigationScope.TargetProtocol = models.NewSetInt()
 	testUpdateMitigationScope.TargetProtocol.Append(111)
 	testUpdateMitigationScope.TargetProtocol.Append(112)
@@ -100,9 +100,9 @@ func TestGetMitigationScope(t *testing.T) {
 			t.Errorf("no URI data: %s", srcURI)
 		}
 	}
-	for _, srcAlias := range testMitigationScope.Alias.List() {
-		if !mitigationScope.Alias.Include(srcAlias) {
-			t.Errorf("no Alias data: %s", srcAlias)
+	for _, srcAliasName := range testMitigationScope.AliasName.List() {
+		if !mitigationScope.AliasName.Include(srcAliasName) {
+			t.Errorf("no AliasName data: %s", srcAliasName)
 		}
 	}
 	for _, srcTargetProtocol := range testMitigationScope.TargetProtocol.List() {
@@ -185,9 +185,9 @@ func TestUpdateMitigationScope(t *testing.T) {
 			t.Errorf("no target data: %s", testURI)
 		}
 	}
-	for _, testAlias := range testUpdateMitigationScope.Alias.List() {
-		if !mitigationScope.Alias.Include(testAlias) {
-			t.Errorf("no target data: %s", testAlias)
+	for _, testAliasName := range testUpdateMitigationScope.AliasName.List() {
+		if !mitigationScope.AliasName.Include(testAliasName) {
+			t.Errorf("no target data: %s", testAliasName)
 		}
 	}
 	for _, testTargetProtocol := range testUpdateMitigationScope.TargetProtocol.List() {

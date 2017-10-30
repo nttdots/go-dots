@@ -78,7 +78,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		session.Rollback()
 		return
 	}
-	// Registering FQDN, URI, alias and target_protocol
+	// Registering FQDN, URI, alias-name and target_protocol
 	err = createMitigationScopeParameterValue(session, mitigationScope, newMitigationScope.Id)
 	if err != nil {
 		return
@@ -172,7 +172,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		return
 	}
 
-	// Registered FQDN, URI, alias and target_protocol
+	// Registered FQDN, URI, alias-name and target_protocol
 	err = createMitigationScopeParameterValue(session, mitigationScope, dbMitigationScope.Id)
 	if err != nil {
 		return
@@ -243,21 +243,21 @@ func createMitigationScopeParameterValue(session *xorm.Session, mitigationScope 
 		}
 	}
 
-	// Alias is registered
-	newAliasList := []*db_models.ParameterValue{}
-	for _, v := range mitigationScope.Alias.List() {
+	// AliasName is registered
+	newAliasNameList := []*db_models.ParameterValue{}
+	for _, v := range mitigationScope.AliasName.List() {
 		if v == "" {
 			continue
 		}
-		newAlias := db_models.CreateAliasParam(v)
-		newAlias.MitigationScopeId = mitigationScopeId
-		newAliasList = append(newAliasList, newAlias)
+		newAliasName := db_models.CreateAliasNameParam(v)
+		newAliasName.MitigationScopeId = mitigationScopeId
+		newAliasNameList = append(newAliasNameList, newAliasName)
 	}
-	if len(newAliasList) > 0 {
-		_, err = session.Insert(newAliasList)
+	if len(newAliasNameList) > 0 {
+		_, err = session.Insert(newAliasNameList)
 		if err != nil {
 			session.Rollback()
-			log.Printf("Alias insert err: %s", err)
+			log.Printf("AliasName insert err: %s", err)
 			return
 		}
 	}
@@ -425,15 +425,15 @@ func GetMitigationScope(customerId int, mitigationId int) (mitigationScope *Miti
 		}
 	}
 
-	// Get Alias data
-	dbParameterValueAliasList := []db_models.ParameterValue{}
-	err = engine.Where("mitigation_scope_id = ? AND type = ?", dbMitigationScope.Id, db_models.ParameterValueTypeAlias).OrderBy("id ASC").Find(&dbParameterValueAliasList)
+	// Get AliasName data
+	dbParameterValueAliasNameList := []db_models.ParameterValue{}
+	err = engine.Where("mitigation_scope_id = ? AND type = ?", dbMitigationScope.Id, db_models.ParameterValueTypeAliasName).OrderBy("id ASC").Find(&dbParameterValueAliasNameList)
 	if err != nil {
 		return
 	}
-	if len(dbParameterValueAliasList) > 0 {
-		for _, v := range dbParameterValueAliasList {
-			mitigationScope.Alias.Append(db_models.GetAliasValue(&v))
+	if len(dbParameterValueAliasNameList) > 0 {
+		for _, v := range dbParameterValueAliasNameList {
+			mitigationScope.AliasName.Append(db_models.GetAliasNameValue(&v))
 		}
 	}
 

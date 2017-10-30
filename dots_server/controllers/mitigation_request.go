@@ -90,7 +90,7 @@ func newMitigationScope(req messages.Scope, c *models.Customer) (m *models.Mitig
 	m.TargetProtocol.AddList(req.TargetProtocol)
 	m.FQDN.AddList(req.FQDN)
 	m.URI.AddList(req.URI)
-	m.Alias.AddList(req.Alias)
+	m.AliasName.AddList(req.AliasName)
 	m.Lifetime = req.Lifetime
 	m.TargetIP, err = newTargetIp(req.TargetIp)
 	if err != nil {

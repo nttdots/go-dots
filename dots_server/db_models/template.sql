@@ -174,7 +174,7 @@ CREATE TABLE `parameter_value` (
   `customer_id` int(11) DEFAULT NULL,
   `identifier_id` bigint(20) DEFAULT NULL,
   `mitigation_scope_id` bigint(20) DEFAULT NULL,
-  `type` enum('TARGET_PROTOCOL','FQDN','URI','TRAFFIC_PROTOCOL','ALIAS') NOT NULL,
+  `type` enum('TARGET_PROTOCOL','FQDN','URI','TRAFFIC_PROTOCOL','ALIAS_NAME') NOT NULL,
   `string_value` varchar(255) DEFAULT NULL,
   `int_value` int(11) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
@@ -189,7 +189,7 @@ CREATE TABLE `parameter_value` (
 #  identifier_id: id of the customer identifier basically set by the system. if this parameter object is not for an identifier, set this field to '0'.
 #  mitigation_scope_id: id of a mitigation scope the customer requested  basically set by the system. if this parameter object is not for a mitigation scope, set this field to '0'. Note that this id is not the 'mitigation_id', but the database id.
 #  type: type of this parameter. these are based on the internet drafts.
-#   'TARGET_PROTOCOL','FQDN','URI','TRAFFIC_PROTOCOL','ALIAS'
+#   'TARGET_PROTOCOL','FQDN','URI','TRAFFIC_PROTOCOL','ALIAS_NAME'
 #  string_value: if this parameter is a type of string parameter, specify the value in the string format.
 #  int_value: if this parameter is a type of int parameter, specify the value in the integer format.
 #

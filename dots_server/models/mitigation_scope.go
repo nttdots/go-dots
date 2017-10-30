@@ -37,7 +37,7 @@ type MitigationScope struct {
 	TargetProtocol  SetInt
 	FQDN            SetString
 	URI             SetString
-	Alias           SetString
+	AliasName       SetString
 	Lifetime        int
 	TargetIP        []Prefix
 	TargetPrefix    []Prefix

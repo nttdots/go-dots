@@ -9,7 +9,7 @@ import (
 const ParameterValueTypeFqdn = "FQDN"
 const ParameterValueTypeUri = "URI"
 const ParameterValueTypeTrafficProtocol = "TRAFFIC_PROTOCOL"
-const ParameterValueTypeAlias = "ALIAS"
+const ParameterValueTypeAliasName = "ALIAS_NAME"
 const ParameterValueTypeTargetProtocol = "TARGET_PROTOCOL"
 
 type ParameterValue struct {
@@ -17,7 +17,7 @@ type ParameterValue struct {
 	CustomerId        int       `xorm:"'customer_id'"`
 	IdentifierId      int64     `xorm:"'identifier_id'"`
 	MitigationScopeId int64     `xorm:"'mitigation_scope_id'"`
-	Type              string    `xorm:"'type' enum('FQDN','URI','TRAFFIC_PROTOCOL','ALIAS','TARGET_PROTOCOL') not null"`
+	Type              string    `xorm:"'type' enum('FQDN','URI','TRAFFIC_PROTOCOL','ALIAS_NAME','TARGET_PROTOCOL') not null"`
 	StringValue       string    `xorm:"'string_value'"`
 	IntValue          int       `xorm:"'int_value'"`
 	Created           time.Time `xorm:"created"`
@@ -87,14 +87,14 @@ func GetTrafficProtocolValue(param *ParameterValue) int {
 	return param.IntValue
 }
 
-func CreateAliasParam(alias string) (param *ParameterValue) {
+func CreateAliasNameParam(aliasName string) (param *ParameterValue) {
 	param = new(ParameterValue)
-	param.Type = ParameterValueTypeAlias
-	param.StringValue = alias
+	param.Type = ParameterValueTypeAliasName
+	param.StringValue = aliasName
 	return
 }
 
-func GetAliasValue(param *ParameterValue) string {
+func GetAliasNameValue(param *ParameterValue) string {
 	return param.StringValue
 }
 
