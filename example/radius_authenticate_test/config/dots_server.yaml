@@ -16,16 +16,16 @@ system:
   database:
     - name: dots
       username: root
-      password:
+      password: dotsroot
       protocol: tcp
-      host: dots_db
+      host: 172.16.236.12
       port: 3306
       databaseName: dots
     - name: pmacct
       username: root
       password: arealsmartpwd
       protocol: tcp
-      host: pmacct_db
+      host: 172.16.236.16
       port: 3306
       databaseName: pmacct
   pmacct:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/nttdots/go-dots/dots_server/config"
 	dots_radius "github.com/nttdots/go-dots/dots_server/radius"
@@ -44,21 +45,40 @@ func (a *Authenticator) CheckClient(clientName, realm, password string, checkTyp
 	rfc2865.NASIPAddress_Set(radiusPacket, a.NASAddress)
 	rfc2865.ServiceType_Add(radiusPacket, rfc2865.ServiceType(uint32(checkType)))
 
-	response, err := radius.Exchange(context.Background(), radiusPacket, a.ServerAddr)
-	if err != nil {
-		return false, err
-	}
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(3*time.Second))
+	defer cancel()
 
-	serviceTypes, err := rfc2865.ServiceType_Gets(response)
-	if err != nil || response.Code != radius.CodeAccessAccept {
-		return false, err
-	}
+	dataCh := make(chan interface{}, 1)
+	defer close(dataCh)
 
-	for _, a := range serviceTypes {
-		if uint32(a) == uint32(checkType) {
-			return true, nil
+	go func() {
+		response, err := radius.Exchange(ctx, radiusPacket, a.ServerAddr)
+		if err != nil {
+			dataCh <- err
+		} else {
+			dataCh <- response
+		}
+	}()
+
+	select {
+	case d := <-dataCh:
+		switch response := d.(type) {
+		case error:
+			return false, response
+		case *radius.Packet:
+			serviceTypes, err := rfc2865.ServiceType_Gets(response)
+			if err != nil || response.Code != radius.CodeAccessAccept {
+				return false, err
+			}
+
+			for _, a := range serviceTypes {
+				if uint32(a) == uint32(checkType) {
+					return true, nil
+				}
+			}
 		}
 	}
+
 	return false, nil
 }
 

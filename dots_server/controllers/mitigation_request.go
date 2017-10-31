@@ -3,15 +3,14 @@ package controllers
 import (
 	"errors"
 	"fmt"
-
 	"net"
-
-	log "github.com/sirupsen/logrus"
-	common "github.com/nttdots/go-dots/dots_common"
-	"github.com/nttdots/go-dots/dots_common/messages"
-	"github.com/nttdots/go-dots/dots_server/models"
 	"time"
+
+	"github.com/nttdots/go-dots/dots_common"
+	"github.com/nttdots/go-dots/dots_common/messages"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
+	"github.com/nttdots/go-dots/dots_server/models"
+	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -53,8 +52,8 @@ func (m *MitigationRequest) Post(request interface{}, customer *models.Customer)
 
 	// return status
 	res = Response{
-		Type: common.NonConfirmable,
-		Code: common.Created,
+		Type: dots_common.NonConfirmable,
+		Code: dots_common.Created,
 		Body: nil,
 	}
 
@@ -73,8 +72,8 @@ func (m *MitigationRequest) Delete(request interface{}, customer *models.Custome
 
 	if err == nil {
 		res = Response{
-			Type: common.NonConfirmable,
-			Code: common.Deleted,
+			Type: dots_common.NonConfirmable,
+			Code: dots_common.Deleted,
 			Body: nil,
 		}
 	} else {
@@ -95,7 +94,7 @@ func newMitigationScope(req messages.Scope, c *models.Customer) (m *models.Mitig
 	m.E_164.AddList(req.E164)
 	m.Alias.AddList(req.Alias)
 	m.Lifetime = req.Lifetime
-	m.UrgentFlag = req.UrgentFlag
+	//m.UrgentFlag = req.UrgentFlag
 	m.TargetIP, err = newTargetIp(req.TargetIp)
 	if err != nil {
 		return
@@ -125,13 +124,13 @@ func newTargetIp(targetIP []string) (prefixes []models.Prefix, err error) {
 		}
 		switch {
 		case ip.To4() != nil: // ipv4
-			prefix, err := models.NewPrefix(ipaddr + common.IPV4_HOST_PREFIX_LEN)
+			prefix, err := models.NewPrefix(ipaddr + dots_common.IPV4_HOST_PREFIX_LEN)
 			if err != nil {
 				return nil, err
 			}
 			prefixes[i] = prefix
 		default: // ipv6
-			prefix, err := models.NewPrefix(ipaddr + common.IPV6_HOST_PREFIX_LEN)
+			prefix, err := models.NewPrefix(ipaddr + dots_common.IPV6_HOST_PREFIX_LEN)
 			if err != nil {
 				return nil, err
 			}
@@ -203,8 +202,8 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 		if messageScope.MitigationId == 0 {
 			log.WithField("mitigation_id", messageScope.MitigationId).Warn("invalid mitigation_id")
 			return Error{
-				Code: common.NotFound,
-				Type: common.NonConfirmable,
+				Code: dots_common.NotFound,
+				Type: dots_common.NonConfirmable,
 			}
 		}
 		s, err := models.GetMitigationScope(customer.Id, messageScope.MitigationId)
@@ -214,8 +213,8 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 		if s == nil {
 			log.WithField("mitigation_id", messageScope.MitigationId).Error("mitigation_scope not found.")
 			return Error{
-				Code: common.NotFound,
-				Type: common.NonConfirmable,
+				Code: dots_common.NotFound,
+				Type: dots_common.NonConfirmable,
 			}
 		}
 		p, err := models.GetProtectionByMitigationId(messageScope.MitigationId, customer.Id)
@@ -225,21 +224,21 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 		if p == nil {
 			log.WithField("mitigation_id", messageScope.MitigationId).Error("protection not found.")
 			return Error{
-				Code: common.NotFound,
-				Type: common.NonConfirmable,
+				Code: dots_common.NotFound,
+				Type: dots_common.NonConfirmable,
 			}
 		}
 		if !p.IsEnabled() {
 			log.WithFields(log.Fields{
-				"mitigation_id":   messageScope.MitigationId,
-				"is_enable":   p.IsEnabled(),
-				"started_at":  p.StartedAt(),
-				"finished_at": p.FinishedAt(),
+				"mitigation_id": messageScope.MitigationId,
+				"is_enable":     p.IsEnabled(),
+				"started_at":    p.StartedAt(),
+				"finished_at":   p.FinishedAt(),
 			}).Error("protection status error.")
 
 			return Error{
-				Code: common.PreconditionFailed,
-				Type: common.NonConfirmable,
+				Code: dots_common.PreconditionFailed,
+				Type: dots_common.NonConfirmable,
 			}
 		}
 		protections = append(protections, p)
@@ -251,8 +250,8 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 		err = blocker.StopProtection(p)
 		if err != nil {
 			return Error{
-				Code: common.BadRequest,
-				Type: common.NonConfirmable,
+				Code: dots_common.BadRequest,
+				Type: dots_common.NonConfirmable,
 			}
 		}
 	}
@@ -302,10 +301,10 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 		select {
 		case scopeList := <-ch: // if a blocker is available
 			log.WithFields(log.Fields{
-				"MitigationId": scopeList.Scope.MitigationId,
-				"targetIP": scopeList.Scope.TargetIP,
+				"MitigationId":    scopeList.Scope.MitigationId,
+				"targetIP":        scopeList.Scope.TargetIP,
 				"targetPortRange": scopeList.Scope.TargetPortRange,
-				"urgentFlag": scopeList.Scope.UrgentFlag,
+				"urgentFlag":      scopeList.Scope.UrgentFlag,
 			}).Debug("callBlocker")
 			if (!scopeList.Scope.UrgentFlag) {
 				// この辺にUrgentFlagを見て、処理の振り分けを実装する
@@ -326,8 +325,8 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 					packets, bytes := models.TotalPacketsBytesCalc(acctList)
 					log.WithFields(log.Fields{
 						"acctList": acctList,
-						"packets": packets,
-						"bytes": bytes,
+						"packets":  packets,
+						"bytes":    bytes,
 					}).Debug("TotalPacketsBytesCalc")
 
 					// しきい値判定

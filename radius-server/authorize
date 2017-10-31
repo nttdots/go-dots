@@ -10,8 +10,11 @@ client3     Cleartext-Password := "password3"
             Service-Type = Login-User
 
 
-client.sample.example.com   Cleartext-Password := ""
-                            Service-Type = Administrative-User
+client.sample   Cleartext-Password := "password"
+                Service-Type = Administrative-User
+
+not_auth        Cleartext-Password := "password"
+                Service-Type = Login-User
 
 guest.sample.example.com    Cleartext-Password := ""
                             Service-Type = Login-User

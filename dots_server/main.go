@@ -126,32 +126,16 @@ func main() {
 
 	authenticator := NewAuthenticator(config.AAA)
 
-	err = dbHealthCheck("dots")
-	if err != nil {
-		log.WithField("db", "dots").Error("database connect error.")
-		os.Exit(1)
-	} else {
-		log.WithField("db", "dots").Info("db access check ok")
-	}
-
-	err = dbHealthCheck("pmacct")
-	if err != nil {
-		log.WithField("db", "pmacct").Error("database connect error.")
-		os.Exit(1)
-	} else {
-		log.WithField("db", "pmacct").Info("db access check ok")
-	}
-
 	Listen(factory, config.Network.BindAddress, config.Network.SignalChannelPort, config.Network.DataChannelPort, authenticator)
 }
 
 func dbHealthCheck(target string) error {
 
-	engine, err := models.ConnectDB()
+	engine, err := models.ConnectDB(target)
 	if err != nil {
 		return err
 	}
-	_, err = engine.Exec("select 1")
+	_, err = engine.Query("select 1")
 	if err != nil {
 		return err
 	}

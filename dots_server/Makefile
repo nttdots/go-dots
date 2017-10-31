@@ -1,8 +1,8 @@
 .PHONY: clean
 
 dots_server: $(wildcard ./*.go) $(wildcard ./**/*.go) $(wildcard ../dots_common/**/*.go) \
-    $(wildcard ../coap/*.go) ../dots_common/bindata.go ../dots_common/*.go
-	go build
+             $(wildcard ../coap/*.go) ../dots_common/bindata.go $(wildcard ../dots_common/*.go)
+	go build -v
 
 ../dots_common/bindata.go:
 	make -C ../dots_common bindata.go

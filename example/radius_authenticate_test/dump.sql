@@ -62,7 +62,8 @@ INSERT INTO `customer` (`id`, `name`, `created`, `updated`)
 VALUES
 (1,'name','2017-04-13 13:44:34','2017-04-13 13:44:34'),
 (2,'localhost','2017-04-13 13:44:34','2017-04-13 13:44:34'),
-(3,'local-host','2017-04-13 13:44:34','2017-04-13 13:44:34');
+(3,'local-host','2017-04-13 13:44:34','2017-04-13 13:44:34'),
+(4,'radius_unregister_user','2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 # customer_common_name
 # ------------------------------------------------------------
@@ -84,7 +85,8 @@ INSERT INTO `customer_common_name` (`id`, `customer_id`, `common_name`, `created
 VALUES
 (1,1,'commonName','2017-04-13 13:44:34','2017-04-13 13:44:34'),
 (2,2,'client.sample.example.com','2017-04-13 13:44:34','2017-04-13 13:44:34'),
-(3,3,'local-host', '2017-04-13 13:44:34','2017-04-13 13:44:34');
+(3,3,'local-host', '2017-04-13 13:44:34','2017-04-13 13:44:34'),
+(4,4,'not_auth.client.example.com', '2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 # customer_radius_user
 # ------------------------------------------------------------
@@ -106,8 +108,9 @@ CREATE TABLE `customer_radius_user` (
 INSERT INTO `customer_radius_user` (`id`, `customer_id`, `user_name`, `user_realm`, `user_password`, `created`, `updated`)
 VALUES
 (1, 1, 'commonName', null, 'password', '2017-04-13 13:44:34','2017-04-13 13:44:34'),
-(2, 2, 'client.sample', 'example.com', 'password', '2017-04-13 13:44:34','2017-04-13 13:44:34'),
-(3, 3, 'local-host', null, 'password', '2017-04-13 13:44:34','2017-04-13 13:44:34');
+(2, 2, 'client.sample', null, 'password', '2017-04-13 13:44:34','2017-04-13 13:44:34'),
+(3, 3, 'local-host', null, 'password', '2017-04-13 13:44:34','2017-04-13 13:44:34'),
+(4, 4, 'not_auth', null, 'password', '2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 # identifier
 # ------------------------------------------------------------

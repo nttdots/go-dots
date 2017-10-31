@@ -51,10 +51,12 @@ services:
         ipv6_address: 2001:db8::a
     restart: always
     ports:
-      - 3306
+      - "3306:3306"
     environment:
       - MYSQL_DATABASE=dots
-      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_USER=dots
+      - MYSQL_PASSWORD=dots
+      - MYSQL_ROOT_PASSWORD=dotsroot
     volumes:
       - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
     healthcheck:
@@ -105,7 +107,7 @@ services:
         ipv6_address: 2001:db8::e
     restart: always
     ports:
-      - 13306:3306
+      - "13306:3306"
     environment:
       - MYSQL_DATABASE=pmacct
       - MYSQL_USER=pmacct
