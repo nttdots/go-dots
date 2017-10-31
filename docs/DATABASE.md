@@ -38,6 +38,7 @@ Our system utilizes the concept of 'customer' to validate (mainly mitigation) re
 
 * 'customer': Basic blocker information
 * 'customer_common_name': customer certificate common names
+* 'customer_radius_user': radius認証に使用するユーザー/パスワード
 * 'parameter_value': message parameters which can be utilized for the message validations
 * 'prefix': IP address prefix information which can be utilized for the message validations
 
@@ -50,6 +51,11 @@ There is no special instruction for this table.
 ### 'customer_common_name' table
 
  To validate each messages, first we check the common name field of the client certificates. To validate the common names, we utilize this table.
+
+### 'customer_radius_user' table
+
+ メッセージの認証にradiusを使用する場合、このテーブルのuser_name, user_passwordフィールドの内容を使用します。
+ user_realmに文字が設定されていた場合、radiusサーバーに送信するユーザー名は、\[user_name\]@\[user_password\] となります。
 
 ### 'parameter_value'
 
