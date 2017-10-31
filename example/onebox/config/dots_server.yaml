@@ -23,7 +23,7 @@ system:
       databaseName: dots
     - name: pmacct
       username: root
-      password: arealsmartpwd
+      password:
       protocol: tcp
       host: pmacct_db
       port: 3306

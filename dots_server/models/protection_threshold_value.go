@@ -16,12 +16,14 @@ type ProtectionThresholdValue struct {
 
 func NewProtectionThresholdValue() (s *ProtectionThresholdValue) {
     s = &ProtectionThresholdValue{
-        Id: 0,
-        ProtectionId: 0,
-        ThresholdPackets: 0,
-        ThresholdBytes: 0,
-        ExaminationStart: time.Unix(0, 0),
-        ExaminationEnd: time.Unix(0, 0),
+        0,
+        0,
+        0,
+        0,
+        time.Unix(0, 0),
+        time.Unix(0, 0),
+        time.Unix(0, 0),
+        time.Unix(0, 0),
     }
     return
 }
