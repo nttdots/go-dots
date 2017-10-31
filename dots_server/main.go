@@ -131,7 +131,7 @@ func main() {
 
 func dbHealthCheck(target string) error {
 
-	engine, err := models.ConnectDB(target)
+	engine, err := models.ConnectDB()
 	if err != nil {
 		return err
 	}
