@@ -10,7 +10,6 @@ import (
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/dots_server/models"
 	log "github.com/sirupsen/logrus"
-	"github.com/go-xorm/xorm"
 )
 
 func initLogger() {
@@ -45,7 +44,6 @@ func TestMain(m *testing.M) {
 	//models.InitTable(true)
 	// test_dump.sql read and execute
 	loadSQL("../db_models/test_dump.sql")
-	loadSQL("../db_models/test_dump_pmacct.sql", "pmacct")
 
 	// customer test data create
 	customerSampleDataCreate()
@@ -61,12 +59,9 @@ func TestMain(m *testing.M) {
 	identifierSampleDataCreate()
 	// access_control_list_entry test data create
 	accessControlListEntrySampleDataCreate()
-	// acct_v5 test data create
-	acctV5SampleDataCreate()
 
 	// execute sql display on
 	models.ShowSQL(true)
-	models.ShowSQL(true, "pmacct")
 
 	startGoBGPServer()
 	defer stopGoBGPServer()
@@ -99,9 +94,8 @@ func stopGoBGPServer() {
 	}
 }
 
-func loadSQL(filename string, params ...string) {
+func loadSQL(filename string) {
 
-	var engine *xorm.Engine
 	var err error
 
 	data, err := ioutil.ReadFile(filename)
@@ -109,14 +103,7 @@ func loadSQL(filename string, params ...string) {
 		panic(err)
 	}
 
-	switch len(params) {
-	case 1:
-		// not dots database setting
-		engine, err = models.ConnectDB(params[0])
-	default:
-		// dots database setting
-		engine, err = models.ConnectDB()
-	}
+	engine, err := models.ConnectDB()
 	if err != nil {
 		panic(err)
 	}
@@ -175,18 +162,11 @@ system:
     signalChannelPort: 4646
     dataChannelPort: 4647
   database:
-    - name: dots
-      username: root
-      protocol: tcp
-      host: db
-      port: 3306
-      databaseName: dots
-    - name: pmacct
-      username: root
-      protocol: tcp
-      host: db
-      port: 3306
-      databaseName: pmacct
+    username: root
+    protocol: tcp
+    host: db
+    port: 3306
+    databaseName: dots
   aaa:
     enable: true
     host: 127.0.0.1

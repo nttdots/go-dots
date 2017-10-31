@@ -3,11 +3,7 @@ version: "2.1"
 services:
     dots_client:
         container_name: dots_client
-        build:
-          context: ../../
-          args:
-            BRANCH: $DOTS_BRANCH
-
+        build: ../../
         image: dots_base
         working_dir: /go/src/github.com/nttdots/go-dots
         entrypoint: ./dots_client/entry_point.sh

@@ -30,23 +30,12 @@ func TestParseConfig(t *testing.T) {
 			SignalChannelPort: 4646,
 			DataChannelPort:   4647,
 		},
-		Database: []Database{
-			{
-				Name:         "dots",
-				Username:     "root",
-				Protocol:     "tcp",
-				Host:         "db",
-				Port:         3306,
-				DatabaseName: "dots",
-			},
-			{
-				Name:         "pmacct",
-				Username:     "root",
-				Protocol:     "tcp",
-				Host:         "db",
-				Port:         3306,
-				DatabaseName: "pmacct",
-			},
+		Database: &Database{
+			Username:     "root",
+			Protocol:     "tcp",
+			Host:         "db",
+			Port:         3306,
+			DatabaseName: "dots",
 		},
 		AAA: &AAA{
 			Host:         "127.0.0.1",
@@ -84,7 +73,7 @@ func TestParseConfig(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(actual.Database, expected.Database) {
-		fmt.Println("system cfg: ", actual.Database)
+		fmt.Println("system cfg: ", *actual.Database)
 		t.Errorf("got %v\nexpected %v", actual.Database, expected.Database)
 	}
 
@@ -112,21 +101,14 @@ system:
     signalChannelPort: 4646
     dataChannelPort: 4647
   database:
-    - name: dots
-      username: root
-      protocol: tcp
-      host: db
-      port: 3306
-      databaseName: dots
-    - name: pmacct
-      username: root
-      protocol: tcp
-      host: db
-      port: 3306
-      databaseName: pmacct
+    username: root
+    protocol: tcp
+    host: db
+    port: 3306
+    databaseName: dots
   aaa:
     enable: true
-    host: 127.0.0.1
+    server: 127.0.0.1
     port: 1812
     secret: testing123
     serviceType: Login

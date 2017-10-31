@@ -2,17 +2,11 @@ version: "2.1"
 
 services:
     dots_server:
-        container_name: dots_server
-        build:
-          context: ../../
-          args:
-            BRANCH: $DOTS_BRANCH
+        container_name: dots-server
+        build: ../../
         image: dots_base
         depends_on:
-          - db
-        depends_on:
-            db:
-                condition: service_healthy
+            - db
         networks:
             - dots_net
         ports:
@@ -24,20 +18,15 @@ services:
             - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
         command: dots_server -vv -config /etc/dots_server.yaml
     db:
-      container_name: dots_db
-      image: mysql:5.7
-      networks:
-          - dots_net
-      environment:
-        - MYSQL_DATABASE=dots
-        - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-      volumes:
-        - ../../dots_server/db_models/dump_docker.sql:/docker-entrypoint-initdb.d/dump.sql:ro
-      healthcheck:
-          test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-          interval: 3s
-          timeout: 1s
-          retries: 5
+        container_name: dots-db
+        image: mysql:5.7
+        networks:
+            - dots_net
+        environment:
+            - MYSQL_DATABASE=dots
+            - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+        volumes:
+            - ../../dots_server/db_models/dump_docker.sql:/docker-entrypoint-initdb.d/dump.sql:ro
     radius:
         container_name: dots-radius
         build: ../../radius-server

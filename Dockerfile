@@ -10,25 +10,16 @@ RUN yum install -y git make gcc gnutls-devel nc which && \
     curl https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh > /usr/bin/wait-for-it.sh && \
     chmod 755  /usr/bin/wait-for-it.sh
 
-ENV DOTS_DIR /go/src/github.com/nttdots/go-dots
+ENV dots_dir /go/src/github.com/nttdots/go-dots
 
 ENV PATH /go/bin:${PATH}
 
 RUN go get "layeh.com/radius"
 RUN go get "github.com/nttdots/go-dots/..."
 
-ARG BRANCH
-ENV BRANCH=${BRANCH:-master}
+ADD https://api.github.com/repos/nttdots/go-dots/git/refs/heads/master .
 
-ADD https://api.github.com/repos/nttdots/go-dots/git/refs/heads/${BRANCH} .
-
-RUN cd ${DOTS_DIR} && \
-    git fetch origin ${BRANCH} && \
-    if [ `git rev-parse --abbrev-ref HEAD` == ${BRANCH} ]; then \
-          git checkout ${BRANCH}; \
-    fi; \
-    git merge origin/${BRANCH} && \
-    make install
+RUN go get "github.com/nttdots/go-dots/..."
 
 EXPOSE 4646 4647
 

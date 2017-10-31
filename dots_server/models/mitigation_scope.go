@@ -40,7 +40,6 @@ type MitigationScope struct {
 	E_164           SetString
 	Alias           SetString
 	Lifetime        int
-	UrgentFlag      bool
 	TargetIP        []Prefix
 	TargetPrefix    []Prefix
 	TargetPortRange []PortRange
@@ -56,7 +55,6 @@ func NewMitigationScope(c *Customer) (s *MitigationScope) {
 		NewSetString(),
 		NewSetString(),
 		0,
-		false,
 		make([]Prefix, 0),
 		make([]Prefix, 0),
 		make([]PortRange, 0),

@@ -7,9 +7,9 @@ import (
 	"os/exec"
 	"testing"
 
+	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_server/models"
-	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -25,14 +25,13 @@ func TestMain(m *testing.M) {
 	models.ReConnectDB()
 
 	// test_dump.sql read and execute
-	loadSQL("dots", "db_models/test_dump.sql")
-	loadSQL("pmacct", "db_models/test_dump_pmacct.sql")
+	loadSQL("db_models/test_dump.sql")
 
 	// execute sql display on
 	models.ShowSQL(true)
 
-	startGoBGPServer()
-	defer stopGoBGPServer()
+	//startGoBGPServer()
+	//defer stopGoBGPServer()
 
 	// execute Tests
 	code := m.Run()
@@ -62,7 +61,7 @@ func stopGoBGPServer() {
 	}
 }
 
-func loadSQL(db, filename string) {
+func loadSQL(filename string) {
 
 	var err error
 
@@ -71,7 +70,7 @@ func loadSQL(db, filename string) {
 		panic(err)
 	}
 
-	engine, err := models.ConnectDB(db)
+	engine, err := models.ConnectDB()
 	if err != nil {
 		panic(err)
 	}

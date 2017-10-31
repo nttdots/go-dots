@@ -303,7 +303,6 @@ CREATE TABLE `mitigation_scope` (
   `customer_id` int(11) DEFAULT NULL,
   `mitigation_id` int(11) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
-  `urgent-flag` tinyint(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -464,22 +463,3 @@ CREATE TABLE `acl_rule_action` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ####### Basically the table 'acl_rule_action' is modified by the system only.
-
-# protection_threshold_value
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `protection_threshold_value`;
-
-CREATE TABLE `protection_threshold_value` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `protection_id` BIGINT(20) NOT NULL,
-  `threshold_packets` INT(11) NOT NULL,
-  `threshold_bytes` BIGINT(20) NOT NULL,
-  `examination_start` datetime DEFAULT NULL,
-  `examination_end` datetime DEFAULT NULL,
-  `created` datetime DEFAULT NULL,
-  `updated` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-####### Basically the table 'protection_threshold_value' is modified by the system only.

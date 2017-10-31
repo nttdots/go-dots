@@ -256,16 +256,15 @@ CREATE TABLE `mitigation_scope` (
   `customer_id` int(11) DEFAULT NULL,
   `mitigation_id` int(11) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
-  `urgent-flag` tinyint(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `mitigation_scope` (`id`, `customer_id`, `mitigation_id`, `lifetime`, `urgent-flag`, `created`, `updated`)
+INSERT INTO `mitigation_scope` (`id`, `customer_id`, `mitigation_id`, `lifetime`, `created`, `updated`)
 VALUES
-  (1,128,12332,1000,0,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
-  (2,128,12333,1000,0,'2017-04-13 13:44:34','2017-04-13 13:44:34');
+  (1,128,12332,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
+  (2,128,12333,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 
 # signal_session_configuration
@@ -441,21 +440,4 @@ CREATE TABLE `acl_rule_action` (
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `IDX_acl_rule_action_idx_access_control_list_entry_id` (`access_control_list_entry_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-# protection_threshold_value
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `protection_threshold_value`;
-
-CREATE TABLE `protection_threshold_value` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `protection_id` BIGINT(20) NOT NULL,
-  `threshold_packets` INT(11) NOT NULL,
-  `threshold_bytes` BIGINT(20) NOT NULL,
-  `examination_start` datetime DEFAULT NULL,
-  `examination_end` datetime DEFAULT NULL,
-  `created` datetime DEFAULT NULL,
-  `updated` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

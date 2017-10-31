@@ -51,7 +51,6 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		CustomerId:   customer.Id,
 		MitigationId: mitigationScope.MitigationId,
 		Lifetime:     mitigationScope.Lifetime,
-		UrgentFlag:   mitigationScope.UrgentFlag,
 	}
 	_, err = session.Insert(&newMitigationScope)
 	if err != nil {

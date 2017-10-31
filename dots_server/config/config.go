@@ -98,32 +98,6 @@ type Network struct {
 	DataChannelPort   int
 }
 
-// Pmacct Node
-type PmacctNode struct {
-	PacketsThresholdLowerLimit int   `yaml:"packetsThresholdLowerLimit"`
-	BytesThresholdLowerLimit   int64 `yaml:"bytesThresholdLowerLimit"`
-	SamplingTime               int64 `yaml:"samplingTime"`
-}
-
-func (pmccf PmacctNode) Convert() (interface{}, error) {
-	return &Pmacct{
-		PacketsThresholdLowerLimit: pmccf.PacketsThresholdLowerLimit,
-		BytesThresholdLowerLimit:   pmccf.BytesThresholdLowerLimit,
-		SamplingTime:               pmccf.SamplingTime,
-	}, nil
-}
-
-func (sfpc *Pmacct) Store() {
-	GetServerSystemConfig().setPmacct(*sfpc)
-}
-
-// Pmacct config
-type Pmacct struct {
-	PacketsThresholdLowerLimit int
-	BytesThresholdLowerLimit   int64
-	SamplingTime               int64
-}
-
 // Secure file config
 type SecureFileNode struct {
 	ServerCertFile string `yaml:"serverCertFile"`
@@ -154,7 +128,6 @@ func (sfpc *SecureFile) Store() {
 
 // Secure file config
 type DatabaseNode struct {
-	Name         string `yaml:"name"`
 	Username     string `yaml:"username"`
 	Password     string `yaml:"password"`
 	Protocol     string `yaml:"protocol"`
@@ -169,7 +142,6 @@ func (dcn DatabaseNode) Convert() (interface{}, error) {
 	}
 
 	return &Database{
-		Name:         dcn.Name,
 		Username:     dcn.Username,
 		Password:     dcn.Password,
 		Protocol:     dcn.Protocol,
@@ -180,7 +152,6 @@ func (dcn DatabaseNode) Convert() (interface{}, error) {
 }
 
 type Database struct {
-	Name         string
 	Username     string
 	Password     string
 	Protocol     string
@@ -273,29 +244,24 @@ type ServerSystemConfig struct {
 	SignalConfigurationParameter *SignalConfigurationParameter
 	SecureFile                   *SecureFile
 	Network                      *Network
-	Database                     []Database
+	Database                     *Database
 	AAA                          *AAA
-	Pmacct                       *Pmacct
 }
 
 func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setSignalConfigurationParameter(*sc.SignalConfigurationParameter)
 	GetServerSystemConfig().setSecureFile(*sc.SecureFile)
 	GetServerSystemConfig().setNetwork(*sc.Network)
+	GetServerSystemConfig().setDatabase(*sc.Database)
 	GetServerSystemConfig().setAAA(*sc.AAA)
-	for _, db := range sc.Database {
-		GetServerSystemConfig().setDatabase(db)
-	}
-	GetServerSystemConfig().setPmacct(*sc.Pmacct)
 }
 
 type ServerSystemConfigNode struct {
 	SignalConfigurationParameter SignalConfigurationParameterNode `yaml:"signalConfigurationParameter"`
 	SecureFile                   SecureFileNode                   `yaml:"secureFile"`
 	Network                      NetworkNode                      `yaml:"network"`
-	Database                     []DatabaseNode                   `yaml:"database"`
+	Database                     DatabaseNode                     `yaml:"database"`
 	AAA                          AAANode                          `yaml:"aaa"`
-	Pmacct                       PmacctNode                       `yaml:"pmacct"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -314,16 +280,7 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
-	var databases []Database
-	for _, database := range scn.Database {
-		db, err := database.Convert()
-		if err != nil {
-			return nil, err
-		}
-		databases = append(databases, *db.(*Database))
-	}
-
-	pmacct, err := scn.Pmacct.Convert()
+	database, err := scn.Database.Convert()
 	if err != nil {
 		return nil, err
 	}
@@ -337,9 +294,8 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		SecureFile:                   secureFilePath.(*SecureFile),
 		Network:                      network.(*Network),
-		Database:                     databases,
+		Database:                     database.(*Database),
 		AAA:                          aaa.(*AAA),
-		Pmacct:                       pmacct.(*Pmacct),
 	}, nil
 }
 
@@ -356,11 +312,7 @@ func (sc *ServerSystemConfig) setNetwork(config Network) {
 }
 
 func (sc *ServerSystemConfig) setDatabase(config Database) {
-	sc.Database = append(sc.Database, config)
-}
-
-func (sc *ServerSystemConfig) setPmacct(config Pmacct) {
-	sc.Pmacct = &config
+	sc.Database = &config
 }
 
 func (sc *ServerSystemConfig) setAAA(config AAA) {

@@ -1,144 +1,73 @@
 version: "2.1"
 
 services:
-  dots_client:
-    container_name: dots_client-onebox
-    image: dots_base
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.10
-        ipv6_address: 2001:db8::8
-    depends_on:
-      - dots_server
-    working_dir: /go/src/github.com/nttdots/go-dots
-    entrypoint: ./dots_client/entry_point.sh
-    environment:
-      - DOTS_SERVER=2001:db8::9
-      - SIGNAL_CHANNEL_PORT=4646
-      - DATA_CHANNEL_PORT=4647
-  dots_server:
-    container_name: dots_server-onebox
-    build:
-      context: ../../
-      args:
-        BRANCH: $DOTS_BRANCH
-    image: dots_base
-    entrypoint: ./entry_point.sh
-    ports:
-      - "4646:4646/udp"
-      - "4647:4647/udp"
-    depends_on:
-      dots_db:
-        condition: service_healthy
-      gobgp:
-        condition: service_started
-      pmacct_db:
-        condition: service_healthy
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.11
-        ipv6_address: 2001:db8::9
-    working_dir: /go/src/github.com/nttdots/go-dots/dots_server
-    command: dots_server -vv -config /etc/dots_server.yaml
-    volumes:
-      - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
-  dots_db:
-    container_name: dots_db-onebox
-    image: mysql:5.7
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.12
-        ipv6_address: 2001:db8::a
-    restart: always
-    environment:
-      - MYSQL_DATABASE=dots
-      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
-    volumes:
-      - ../../dots_server/db_models/template.sql:/docker-entrypoint-initdb.d/dump.sql:ro
-    healthcheck:
-        test: ["CMD", "mysqladmin", "--user=root", "--password=", "ping", "-h", "localhost"]
-        interval: 3s
-        timeout: 1s
-        retries: 5
-  gobgp:
-    container_name: gobgp-onebox
-    extends:
-      file:  ../../gobgp-server/docker-compose.yml
-      service: gobgp
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.13
-        ipv6_address: 2001:db8::b
-  pmacct:
-    container_name: pmacct-onebox
-    build: ../../pmacct
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.14
-        ipv6_address: 2001:db8::c
-    depends_on:
-      pmacct_db:
-        condition: service_healthy
-    volumes:
-      - ../../pmacct/nfacctd.conf:/etc/nfacctd.conf:ro
-  sensor:
-    container_name: sensor-onebox
-    image: ssugar/softflowd
-    command: ["/usr/sbin/softflowd", "-v", "5", "-m", "1", "-d", "-i", "eth0", "-n", "pmacct:2055"  ]
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.15
-        ipv6_address: 2001:db8::d
-    depends_on:
-        pmacct:
-          condition: service_started
-    ports:
-      - 9090:9090
-  pmacct_db:
-    container_name: pmacct_db-onebox
-    image: mysql:5.7
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.16
-        ipv6_address: 2001:db8::e
-    restart: always
-    environment:
-      - MYSQL_DATABASE=pmacct
-      - MYSQL_USER=pmacct
-      - MYSQL_PASSWORD=arealsmartpwd
-      - MYSQL_ROOT_PASSWORD=arealsmartpwd
-    volumes:
-      - ../../pmacct/initdb.d/grant-db.sql:/docker-entrypoint-initdb.d/grant-db.sql:ro
-      - ../../pmacct/initdb.d/create-db_v5.sql:/docker-entrypoint-initdb.d/create-db_v5.sql:ro
-    healthcheck:
-        test: ["CMD", "mysqladmin", "--user=root", "--password=arealsmartpwd", "ping", "-h", "localhost"]
-        interval: 3s
-        timeout: 1s
-        retries: 5
-  attacker:
-    container_name: attacker-onebox
-    image: gophernet/hping
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.17
-        ipv6_address: 2001:db8::f
-    entrypoint: bash -c 'while true; do sleep 1 ; done'
-  radius:
-    container_name: radius-onebox
-    extends:
-      file: ../../radius-server/docker-compose.yml
-      service: radius-server
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.18
-        ipv6_address: 2001:db8::10
+    dots_client:
+        container_name: dots_client
+        image: dots_base
+        networks:
+          dots_net:
+            ipv4_address: 172.16.238.10
+            ipv6_address: 2001:db8::8
+        depends_on:
+          - dots_server
+        working_dir: /go/src/github.com/nttdots/go-dots
+        entrypoint: ./dots_client/entry_point.sh
+        environment:
+          - DOTS_SERVER=2001:db8::9
+          - SIGNAL_CHANNEL_PORT=4646
+          - DATA_CHANNEL_PORT=4647
+    dots_server:
+        container_name: dots_server
+        build: ../../
+        image: dots_base
+        entrypoint: ./entry_point.sh
+        depends_on:
+          - dots_db
+          - gobgp
+        networks:
+          dots_net:
+            ipv4_address: 172.16.238.11
+            ipv6_address: 2001:db8::9
+        working_dir: /go/src/github.com/nttdots/go-dots/dots_server
+        command: dots_server -vv -config /etc/dots_server.yaml
+        volumes:
+          - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
+    dots_db:
+      container_name: dots_db
+      image: mysql:5.7
+      networks:
+        dots_net:
+          ipv4_address: 172.16.238.12
+          ipv6_address: 2001:db8::a
+      restart: always
+      environment:
+        - MYSQL_DATABASE=dots
+        - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      volumes:
+        - ../../dots_server/db_models/template.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+    gobgp:
+      extends:
+        file:  ../../gobgp-server/docker-compose.yml
+        service: gobgp
+      networks:
+        dots_net:
+          ipv4_address: 172.16.238.13
+          ipv6_address: 2001:db8::b
+    radius:
+      extends:
+        file: ../../radius-server/docker-compose.yml
+        service: radius-server
+      networks:
+        dots_net:
+          ipv4_address: 172.16.238.14
+          ipv6_address: 2001:db8::c
 networks:
   dots_net:
     enable_ipv6: true
     ipam:
       driver: default
       config:
-      - subnet: 172.16.236.0/24
-        gateway: 172.16.236.1
+      - subnet: 172.16.238.0/24
+        gateway: 172.16.238.1
       - subnet: 2001:db8::/48
         gateway: 2001:db8::1

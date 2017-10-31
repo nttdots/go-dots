@@ -6,7 +6,7 @@ import (
 )
 
 func createAce(accessControlListId int64, ace Ace) (aclEntry *db_models.AccessControlListEntry, err error) {
-	session := GetEngine().NewSession()
+	session := engine.NewSession()
 	defer session.Close()
 
 	err = session.Begin()
@@ -26,7 +26,7 @@ func createAce(accessControlListId int64, ace Ace) (aclEntry *db_models.AccessCo
 	session.Commit()
 
 	var newAclEntry = db_models.AccessControlListEntry{}
-	_, err = GetEngine().Where("access_control_list_id=? and rule_name=?", accessControlListId, ace.RuleName).Get(&newAclEntry)
+	_, err = engine.Where("access_control_list_id=? and rule_name=?", accessControlListId, ace.RuleName).Get(&newAclEntry)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +35,7 @@ func createAce(accessControlListId int64, ace Ace) (aclEntry *db_models.AccessCo
 }
 
 func createAceNetworkParameters(aceId int64, ace Ace) (err error) {
-	session := GetEngine().NewSession()
+	session := engine.NewSession()
 	defer session.Close()
 
 	newSourceIpv4Network := db_models.CreateSourceIpv4NetworkParam(
@@ -63,7 +63,7 @@ func createAceNetworkParameters(aceId int64, ace Ace) (err error) {
 }
 
 func createAceRuleAction(aceId int64, ace Ace) (err error) {
-	session := GetEngine().NewSession()
+	session := engine.NewSession()
 	defer session.Close()
 
 	newActions := []*db_models.AclRuleAction{}
