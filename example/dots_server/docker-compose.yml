@@ -3,7 +3,10 @@ version: "2.1"
 services:
     dots_server:
         container_name: dots-server
-        build: ../../
+        build:
+          context: ../../
+          args:
+            BRANCH: $DOTS_BRANCH
         image: dots_base
         depends_on:
             - db

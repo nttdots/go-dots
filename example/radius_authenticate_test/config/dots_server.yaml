@@ -14,24 +14,13 @@ system:
     signalChannelPort: 4646
     dataChannelPort: 4647
   database:
-    - name: dots
-      username: root
-      password: dotsroot
-      protocol: tcp
-      host: 172.16.236.12
-      port: 3306
-      databaseName: dots
-    - name: pmacct
-      username: root
-      password: arealsmartpwd
-      protocol: tcp
-      host: 172.16.236.16
-      port: 3306
-      databaseName: pmacct
-  pmacct:
-    packetsThresholdLowerLimit: 10000
-    bytesThresholdLowerLimit: 10000000
-    samplingTime: 120
+    name: dots
+    username: root
+    password: dotsroot
+    protocol: tcp
+    host: 172.16.236.12
+    port: 3306
+    databaseName: dots
   aaa:
     enable: true
     host: 172.16.236.18

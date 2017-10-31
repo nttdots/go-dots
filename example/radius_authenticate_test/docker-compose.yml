@@ -32,8 +32,6 @@ services:
         condition: service_healthy
       gobgp:
         condition: service_started
-      pmacct_db:
-        condition: service_healthy
     networks:
       dots_net:
         ipv4_address: 172.16.236.11
@@ -56,11 +54,11 @@ services:
       - MYSQL_DATABASE=dots
       - MYSQL_USER=dots
       - MYSQL_PASSWORD=dots
-      - MYSQL_ROOT_PASSWORD=dotsroot
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
     volumes:
-      - ./dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+      - "./dump.sql:/docker-entrypoint-initdb.d/dump.sql"
     healthcheck:
-        test: ["CMD", "mysqladmin", "--user=root", "--password=", "ping", "-h", "localhost"]
+        test: ["CMD", "mysqladmin", "--user=dots", "--password=dots", "ping", "-h", "localhost"]
         interval: 3s
         timeout: 1s
         retries: 5
@@ -73,62 +71,6 @@ services:
       dots_net:
         ipv4_address: 172.16.236.13
         ipv6_address: 2001:db8::b
-  pmacct:
-    container_name: pmacct-radius_test
-    build: ../../pmacct
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.14
-        ipv6_address: 2001:db8::c
-    depends_on:
-      pmacct_db:
-        condition: service_healthy
-    volumes:
-      - ../../pmacct/nfacctd.conf:/etc/nfacctd.conf:ro
-  sensor:
-    container_name: sensor-radius_test
-    image: ssugar/softflowd
-    command: ["/usr/sbin/softflowd", "-v", "5", "-m", "1", "-d", "-i", "eth0", "-n", "pmacct:2055"  ]
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.15
-        ipv6_address: 2001:db8::d
-    depends_on:
-        pmacct:
-          condition: service_started
-    ports:
-      - 9090:9090
-  pmacct_db:
-    container_name: pmacct_db-radius_test
-    image: mysql:5.7
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.16
-        ipv6_address: 2001:db8::e
-    restart: always
-    ports:
-      - "13306:3306"
-    environment:
-      - MYSQL_DATABASE=pmacct
-      - MYSQL_USER=pmacct
-      - MYSQL_PASSWORD=arealsmartpwd
-      - MYSQL_ROOT_PASSWORD=arealsmartpwd
-    volumes:
-      - ../../pmacct/initdb.d/grant-db.sql:/docker-entrypoint-initdb.d/grant-db.sql:ro
-      - ../../pmacct/initdb.d/create-db_v5.sql:/docker-entrypoint-initdb.d/create-db_v5.sql:ro
-    healthcheck:
-        test: ["CMD", "mysqladmin", "--user=root", "--password=arealsmartpwd", "ping", "-h", "localhost"]
-        interval: 3s
-        timeout: 1s
-        retries: 5
-  attacker:
-    container_name: attacker-radius_test
-    image: gophernet/hping
-    networks:
-      dots_net:
-        ipv4_address: 172.16.236.17
-        ipv6_address: 2001:db8::f
-    entrypoint: bash -c 'while true; do sleep 1 ; done'
   radius:
     container_name: radius-radius_test
     extends:
