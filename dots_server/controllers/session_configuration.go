@@ -6,6 +6,7 @@ import (
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
+	dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
 
 /*
@@ -13,6 +14,45 @@ import (
  */
 type SessionConfiguration struct {
 	Controller
+}
+
+func (m *SessionConfiguration) Get(request interface{}, customer *models.Customer) (res Response, err error) {
+
+	signalSessionConfiguration, err := models.GetCurrentSignalSessionConfiguration(customer.Id)
+	if err != nil {
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
+	// TODO: check found or not
+
+	config := dots_config.GetServerSystemConfig().SignalConfigurationParameter
+
+	resp := messages.ConfigurationResponse{}
+	resp.HeartbeatInterval.SetMinMax(config.HeartbeatInterval)
+	resp.MissingHbAllowed.SetMinMax(config.MissingHbAllowed)
+	resp.MaxRetransmit.SetMinMax(config.MaxRetransmit)
+	resp.AckTimeout.SetMinMax(config.AckTimeout)
+	resp.AckRandomFactor.SetMinMax(config.AckRandomFactor)
+
+	resp.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
+	resp.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
+	resp.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
+	resp.AckTimeout.CurrentValue        = signalSessionConfiguration.AckTimeout
+	resp.AckRandomFactor.CurrentValue   = signalSessionConfiguration.AckRandomFactor
+	resp.TriggerMitigation.CurrentValue = signalSessionConfiguration.TriggerMitigation
+
+	res = Response{
+			Type: common.NonConfirmable,
+			Code: common.Content,
+			Body: resp,
+	}
+
+	return
 }
 
 /*
@@ -82,6 +122,26 @@ ResponseOK:
 	}
 	return
 }
+
+func (m *SessionConfiguration) Delete(request interface{}, customer *models.Customer) (res Response, err error) {
+	err = models.DeleteSignalSessionConfigurationByCustomerId(customer.Id)
+	if err != nil {
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.InternalServerError,
+			Body: nil,
+		}
+		return
+	}
+
+	res = Response{
+		Type: common.NonConfirmable,
+		Code: common.Deleted,
+		Body: nil,
+	}
+	return
+}
+
 
 /*
  * Parse the request body and display the contents of the messages to stdout.

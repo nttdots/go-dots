@@ -214,3 +214,86 @@ Rollback:
 	session.Rollback()
 	return
 }
+
+
+
+/*
+ * Obtains the current SignalSessionConfiguration by the customer ID.
+ *
+ * parameter:
+ *  customerId id of the customer
+ * return:
+ *  signalSessionConfiguration SignalSessionConfiguration
+ *  error error
+ */
+func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfiguration SignalSessionConfiguration, err error) {
+	// default value setting
+	signalSessionConfiguration = SignalSessionConfiguration{}
+
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+
+	// Get session configuration table data
+	dbSignalSessionConfiguration := db_models.SignalSessionConfiguration{}
+	chk, err := engine.Where("customer_id = ?", customerId).Desc("session_id").Limit(1).Get(&dbSignalSessionConfiguration)
+	if err != nil {
+		return
+	}
+	if !chk {
+		// no data
+		return
+	}
+	signalSessionConfiguration.SessionId = dbSignalSessionConfiguration.SessionId
+	signalSessionConfiguration.HeartbeatInterval = dbSignalSessionConfiguration.HeartbeatInterval
+	signalSessionConfiguration.MissingHbAllowed = dbSignalSessionConfiguration.MissingHbAllowed
+	signalSessionConfiguration.MaxRetransmit = dbSignalSessionConfiguration.MaxRetransmit
+	signalSessionConfiguration.AckTimeout = dbSignalSessionConfiguration.AckTimeout
+	signalSessionConfiguration.AckRandomFactor = dbSignalSessionConfiguration.AckRandomFactor
+	signalSessionConfiguration.TriggerMitigation = dbSignalSessionConfiguration.TriggerMitigation
+
+	return
+
+}
+
+/*
+ * Deletes the SignalSessionConfiguration by the customer ID
+ *
+ * parameter:
+ *  customerId customer ID
+ * return:
+ *  error error
+ */
+func DeleteSignalSessionConfigurationByCustomerId(customerId int) (err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("database connect error: %s", err)
+		return
+	}
+
+	// transaction start
+	session := engine.NewSession()
+	defer session.Close()
+
+	err = session.Begin()
+	if err != nil {
+		return
+	}
+
+	// Delete signalSessionConfiguration table data
+	_, err = session.Delete(db_models.SignalSessionConfiguration{CustomerId: customerId})
+	if err != nil {
+		log.Errorf("delete signalSessionConfiguration error: %s", err)
+		goto Rollback
+	}
+
+	session.Commit()
+	return
+Rollback:
+	session.Rollback()
+	return
+}
