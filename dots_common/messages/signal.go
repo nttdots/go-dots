@@ -26,10 +26,8 @@ type Scope struct {
 	FQDN []string `json:"FQDN" cbor:"FQDN"`
 	// URI
 	URI []string `json:"URI" cbor:"URI"`
-	// E.164";
-	E164 []string `json:"E.164" cbor:"E.164"`
 	// alias name
-	Alias []string `json:"alias" cbor:"alias"`
+	AliasName []string `json:"alias-name" cbor:"alias-name"`
 	// lifetime
 	Lifetime int `json:"lifetime" cbor:"lifetime"`
 }
@@ -78,14 +76,9 @@ func (m *MitigationRequest) String() (result string) {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "URI", k+1, v)
 			}
 		}
-		if scope.E164 != nil {
-			for k, v := range scope.E164 {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "E.164", k+1, v)
-			}
-		}
-		if scope.Alias != nil {
-			for k, v := range scope.Alias {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias", k+1, v)
+		if scope.AliasName != nil {
+			for k, v := range scope.AliasName {
+				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
 			}
 		}
 		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
@@ -100,6 +93,8 @@ type SignalConfig struct {
 	SessionId int `json:"session-id" cbor:"session-id"`
 	// Heartbeat interval to check the DOTS peer health.  This is an optional attribute.
 	HeartbeatInterval int `json:"heartbeat-interval" cbor:"heartbeat-interval"`
+	// Maximum number of missing heartbeat response allowed. This is an optional attribute.
+	MissingHbAllowed int `json:"missing-hb-allowed" cbor:"missing-hb-allowed"`
 	// Maximum number of retransmissions for a message (referred to as MAX_RETRANSMIT parameter in CoAP).
 	// This is an optional attribute.
 	MaxRetransmit int `json:"max-retransmit" cbor:"max-retransmit"`
@@ -109,6 +104,8 @@ type SignalConfig struct {
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
 	AckRandomFactor float64 `json:"ack-random-factor" cbor:"ack-random-factor"`
+	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
+	TriggerMitigation bool `json:"trigger-mitigation" cbor:"trigger-mitigation"`
 }
 
 type HelloRequest struct {

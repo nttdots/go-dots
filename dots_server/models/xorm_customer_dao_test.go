@@ -12,7 +12,6 @@ const CUSTOMER_CUSTOMER_ID = "Id"
 const CUSTOMER_COMMON_NAME = "CommonName"
 const CUSTOMER_FQDN = "FQDN"
 const CUSTOMER_URI = "URI"
-const CUSTOMER_E_164 = "E_164"
 const CUSTOMER_ADDRESS_RANGE = "AddressRange"
 
 var testCustomer models.Customer
@@ -38,10 +37,6 @@ func customerSampleDataCreate() {
 	customerNetworkInformation.FQDN.Append("FQDN2")
 	customerNetworkInformation.URI = models.NewSetString()
 	customerNetworkInformation.URI.Append("URI1")
-	customerNetworkInformation.E_164 = models.NewSetString()
-	customerNetworkInformation.E_164.Append("E_164_1")
-	customerNetworkInformation.E_164.Append("E_164_2")
-	customerNetworkInformation.E_164.Append("E_164_3")
 	customerNetworkInformation.AddressRange = addressRange
 	testCustomer.CustomerNetworkInformation = &customerNetworkInformation
 }
@@ -59,8 +54,6 @@ func getCustomerSampleData(key string) interface{} {
 		return testCustomer.CustomerNetworkInformation.FQDN.List()
 	case CUSTOMER_URI:
 		return testCustomer.CustomerNetworkInformation.URI.List()
-	case CUSTOMER_E_164:
-		return testCustomer.CustomerNetworkInformation.E_164.List()
 	case CUSTOMER_ADDRESS_RANGE:
 		return testCustomer.CustomerNetworkInformation.AddressRange.Prefixes
 	}
@@ -106,11 +99,6 @@ func TestGetCustomer(t *testing.T) {
 			t.Errorf("no target data: %s", srcURI)
 		}
 	}
-	for _, srcE164 := range getCustomerSampleData(CUSTOMER_E_164).([]string) {
-		if !customer.CustomerNetworkInformation.E_164.Include(srcE164) {
-			t.Errorf("no target data: %s", srcE164)
-		}
-	}
 	for i, srcAddressRange := range getCustomerSampleData(CUSTOMER_ADDRESS_RANGE).([]models.Prefix) {
 		cmpAddressRangeList := customer.CustomerNetworkInformation.AddressRange.Prefixes
 		if srcAddressRange.Addr != cmpAddressRangeList[i].Addr {
@@ -152,11 +140,6 @@ func TestGetCustomerCommonName(t *testing.T) {
 		for _, srcURI := range getCustomerSampleData(CUSTOMER_URI).([]string) {
 			if !customer.CustomerNetworkInformation.URI.Include(srcURI) {
 				t.Errorf("no target data: %s", srcURI)
-			}
-		}
-		for _, srcE164 := range getCustomerSampleData(CUSTOMER_E_164).([]string) {
-			if !customer.CustomerNetworkInformation.E_164.Include(srcE164) {
-				t.Errorf("no target data: %s", srcE164)
 			}
 		}
 		for i, srcAddressRange := range getCustomerSampleData(CUSTOMER_ADDRESS_RANGE).([]models.Prefix) {

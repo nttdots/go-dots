@@ -60,7 +60,7 @@ func CreateIdentifier(identifier Identifier, customer Customer) (newIdentifier d
 	engine.Where("customer_id = ? AND alias_name = ?", customer.Id, identifier.AliasName).Get(&newIdentifier)
 
 	session = engine.NewSession()
-	// Registering FQDN, URI, E_164 and TrafficProtocol
+	// Registering FQDN, URI and TrafficProtocol
 	err = createIdentifierParameterValue(session, identifier, newIdentifier.Id)
 	if err != nil {
 		goto Rollback
@@ -116,13 +116,11 @@ func createParameterValues(session *xorm.Session, identifiers []interface{}, typ
 
 const ParameterValueFieldFqdn = "FQDN"
 const ParameterValueFieldUri = "URI"
-const ParameterValueFieldE164 = "E_164"
 const ParameterValueFieldTrafficProtocol = "TrafficProtocol"
 
 var valueTypes = []string{
 	ParameterValueFieldFqdn,
 	ParameterValueFieldUri,
-	ParameterValueFieldE164,
 	ParameterValueFieldTrafficProtocol,
 }
 
@@ -276,7 +274,7 @@ func UpdateIdentifier(identifier Identifier, customer Customer) (err error) {
 		goto Rollback
 	}
 
-	// Registered FQDN, URI, E_164 and TrafficProtocol
+	// Registered FQDN, URI and TrafficProtocol
 	err = createIdentifierParameterValue(session, identifier, updIdentifier.Id)
 	if err != nil {
 		goto Rollback
@@ -411,7 +409,7 @@ func newIdentifierFindDatabaseStatement(identifierId int64, parameterType string
 		if dbType := toDbNetworkParameterType(parameterType); dbType != "" {
 			statement.Append("type = ?", reflect.ValueOf(dbType))
 		}
-	case ParameterValueFieldFqdn, ParameterValueFieldUri, ParameterValueFieldE164, ParameterValueFieldTrafficProtocol:
+	case ParameterValueFieldFqdn, ParameterValueFieldUri, ParameterValueFieldTrafficProtocol:
 		statement.Append("type = ?", reflect.ValueOf(toDbValueType(parameterType)))
 	}
 
@@ -456,7 +454,6 @@ func initIdentifierAttributeLoaders(identifierId int64) []AttributeLoader {
 		*NewAttributeLoader(identifierId, NetworkParamPortRange, portRangeQuery, setPortRangeAttribute),
 		*NewAttributeLoader(identifierId, ParameterValueFieldFqdn, parameterValueQuery, setParameterValueAttribute),
 		*NewAttributeLoader(identifierId, ParameterValueFieldUri, parameterValueQuery, setParameterValueAttribute),
-		*NewAttributeLoader(identifierId, ParameterValueFieldE164, parameterValueQuery, setParameterValueAttribute),
 		*NewAttributeLoader(identifierId, ParameterValueFieldTrafficProtocol, parameterValueQuery, setParameterValueAttribute),
 	}
 }

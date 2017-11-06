@@ -21,8 +21,7 @@ func TestMitigationRequestPost(t *testing.T) {
 			TargetProtocol:  []int{1, 2},
 			FQDN:            []string{"golang.org"},
 			URI:             []string{""},
-			E164:            []string{""},
-			Alias:           []string{""},
+			AliasName:       []string{""},
 			Lifetime:        0,
 		},
 		{
@@ -33,8 +32,7 @@ func TestMitigationRequestPost(t *testing.T) {
 			TargetProtocol:  []int{1, 2},
 			FQDN:            []string{"golang.org"},
 			URI:             []string{""},
-			E164:            []string{""},
-			Alias:           []string{""},
+			AliasName:       []string{""},
 			Lifetime:        0,
 		},
 	}

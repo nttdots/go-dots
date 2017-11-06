@@ -8,6 +8,9 @@
     "heartbeat-interval": {
       "type": "integer"
     },
+    "missing-hb-allowed": {
+      "type": "integer"
+    },
     "max-retransmit": {
       "type": "integer"
     },
@@ -16,6 +19,9 @@
     },
     "ack-random-factor": {
       "type": "number"
+    },
+    "trigger-mitigation": {
+      "type": "boolean"
     }
   }
 }

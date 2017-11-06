@@ -82,44 +82,6 @@ func TestGetUriValue(t *testing.T) {
 
 }
 
-func TestCreateE164Param(t *testing.T) {
-	testValue := "testE164"
-	parameterValue := db_models.CreateE164Param(testValue)
-
-	if parameterValue.Id != 0 {
-		t.Errorf("CreateE164Param.Id error: got %d, want %d", parameterValue.Id, 0)
-	}
-	if parameterValue.CustomerId != 0 {
-		t.Errorf("CreateE164Param.CustomerId error: got %d, want %d", parameterValue.CustomerId, 0)
-	}
-	if parameterValue.MitigationScopeId != 0 {
-		t.Errorf("CreateE164Param.MitigationScopeId error: got %d, want %d", parameterValue.MitigationScopeId, 0)
-	}
-	if parameterValue.IdentifierId != 0 {
-		t.Errorf("CreateE164Param.IdentifierId error: got %d, want %d", parameterValue.IdentifierId, 0)
-	}
-	if parameterValue.Type != db_models.ParameterValueTypeE164 {
-		t.Errorf("CreateE164Param.Type error: got %s, want %s", parameterValue.Type, db_models.ParameterValueTypeE164)
-	}
-	if parameterValue.StringValue != testValue {
-		t.Errorf("CreateE164Param.Type error: got %s, want %s", parameterValue.StringValue, testValue)
-	}
-	if parameterValue.IntValue != 0 {
-		t.Errorf("CreateE164Param.Type error: got %s, want %s", parameterValue.IntValue, 0)
-	}
-}
-
-func TestGetE164Value(t *testing.T) {
-	testValue := "testE164"
-	parameterValue := db_models.CreateE164Param(testValue)
-	tmpE164 := db_models.GetE164Value(parameterValue)
-
-	if tmpE164 != testValue {
-		t.Errorf("GetE164Value error: got %s, want %s", tmpE164, testValue)
-	}
-
-}
-
 func TestCreateTrafficProtocolParam(t *testing.T) {
 	testValue := 123456
 	parameterValue := db_models.CreateTrafficProtocolParam(testValue)
@@ -158,40 +120,40 @@ func TestGetTrafficProtocolValue(t *testing.T) {
 
 }
 
-func TestCreateAliasParam(t *testing.T) {
-	testValue := "testAlias"
-	parameterValue := db_models.CreateAliasParam(testValue)
+func TestCreateAliasNameParam(t *testing.T) {
+	testValue := "testAliasName"
+	parameterValue := db_models.CreateAliasNameParam(testValue)
 
 	if parameterValue.Id != 0 {
-		t.Errorf("CreateAliasParam.Id error: got %d, want %d", parameterValue.Id, 0)
+		t.Errorf("CreateAliasNameParam.Id error: got %d, want %d", parameterValue.Id, 0)
 	}
 	if parameterValue.CustomerId != 0 {
-		t.Errorf("CreateAliasParam.CustomerId error: got %d, want %d", parameterValue.CustomerId, 0)
+		t.Errorf("CreateAliasNameParam.CustomerId error: got %d, want %d", parameterValue.CustomerId, 0)
 	}
 	if parameterValue.MitigationScopeId != 0 {
-		t.Errorf("CreateAliasParam.MitigationScopeId error: got %d, want %d", parameterValue.MitigationScopeId, 0)
+		t.Errorf("CreateAliasNameParam.MitigationScopeId error: got %d, want %d", parameterValue.MitigationScopeId, 0)
 	}
 	if parameterValue.IdentifierId != 0 {
-		t.Errorf("CreateAliasParam.IdentifierId error: got %d, want %d", parameterValue.IdentifierId, 0)
+		t.Errorf("CreateAliasNameParam.IdentifierId error: got %d, want %d", parameterValue.IdentifierId, 0)
 	}
-	if parameterValue.Type != db_models.ParameterValueTypeAlias {
-		t.Errorf("CreateAliasParam.Type error: got %s, want %s", parameterValue.Type, db_models.ParameterValueTypeAlias)
+	if parameterValue.Type != db_models.ParameterValueTypeAliasName {
+		t.Errorf("CreateAliasNameParam.Type error: got %s, want %s", parameterValue.Type, db_models.ParameterValueTypeAliasName)
 	}
 	if parameterValue.StringValue != testValue {
-		t.Errorf("CreateAliasParam.Type error: got %s, want %s", parameterValue.StringValue, testValue)
+		t.Errorf("CreateAliasNameParam.Type error: got %s, want %s", parameterValue.StringValue, testValue)
 	}
 	if parameterValue.IntValue != 0 {
-		t.Errorf("CreateAliasParam.Type error: got %s, want %s", parameterValue.IntValue, 0)
+		t.Errorf("CreateAliasNameParam.Type error: got %s, want %s", parameterValue.IntValue, 0)
 	}
 }
 
-func TestGetAliasValue(t *testing.T) {
-	testValue := "testAlias"
-	parameterValue := db_models.CreateAliasParam(testValue)
-	tmpAlias := db_models.GetAliasValue(parameterValue)
+func TestGetAliasNameValue(t *testing.T) {
+	testValue := "testAliasName"
+	parameterValue := db_models.CreateAliasNameParam(testValue)
+	tmpAliasName := db_models.GetAliasNameValue(parameterValue)
 
-	if tmpAlias != testValue {
-		t.Errorf("GetAliasValue error: got %s, want %s", tmpAlias, testValue)
+	if tmpAliasName != testValue {
+		t.Errorf("GetAliasNameValue error: got %s, want %s", tmpAliasName, testValue)
 	}
 
 }

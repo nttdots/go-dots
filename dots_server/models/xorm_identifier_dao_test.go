@@ -39,10 +39,6 @@ func identifierSampleDataCreate() {
 	testIdentifier.FQDN.Append("FQDN2")
 	testIdentifier.URI = models.NewSetString()
 	testIdentifier.URI.Append("URI1")
-	testIdentifier.E_164 = models.NewSetString()
-	testIdentifier.E_164.Append("E_164_1")
-	testIdentifier.E_164.Append("E_164_2")
-	testIdentifier.E_164.Append("E_164_3")
 
 	// setting identifier update test data
 	testUpdIdentifier.AliasName = "aliasName2"
@@ -70,9 +66,6 @@ func identifierSampleDataCreate() {
 	testUpdIdentifier.URI.Append("URI11")
 	testUpdIdentifier.URI.Append("URI22")
 	testUpdIdentifier.URI.Append("URI33")
-	testUpdIdentifier.E_164 = models.NewSetString()
-	testUpdIdentifier.E_164.Append("E_164_11")
-	testUpdIdentifier.E_164.Append("E_164_22")
 }
 
 func TestCreateIdentifier(t *testing.T) {
@@ -144,11 +137,6 @@ func TestGetIdentifier(t *testing.T) {
 	for _, srcURI := range testIdentifier.URI.List() {
 		if !identifier.URI.Include(srcURI) {
 			t.Errorf("no URI data: %s", srcURI)
-		}
-	}
-	for _, srcE164 := range testIdentifier.E_164.List() {
-		if !identifier.E_164.Include(srcE164) {
-			t.Errorf("no E164 data: %s", srcE164)
 		}
 	}
 	for _, srcTrafficProtocol := range testIdentifier.TrafficProtocol.List() {
@@ -229,11 +217,6 @@ func TestUpdateIdentifier(t *testing.T) {
 	for _, srcURI := range testUpdIdentifier.URI.List() {
 		if !identifier.URI.Include(srcURI) {
 			t.Errorf("no URI data: %s", srcURI)
-		}
-	}
-	for _, srcE164 := range testUpdIdentifier.E_164.List() {
-		if !identifier.E_164.Include(srcE164) {
-			t.Errorf("no E164 data: %s", srcE164)
 		}
 	}
 	for _, srcTrafficProtocol := range testUpdIdentifier.TrafficProtocol.List() {

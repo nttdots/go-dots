@@ -4,6 +4,10 @@
       "min_value": 15,
       "max_value": 60
     },
+    "missing_hb_allowed": {
+      "min_value": 3,
+      "max_value": 9
+    },
     "max_retransmit": {
       "min_value": 3,
       "max_value": 15

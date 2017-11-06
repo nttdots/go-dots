@@ -8,6 +8,7 @@ import (
 type signalConfigurationParameterConfigJson struct {
 	ValidateValue struct {
 		HeartbeatInterval configurationParameterRangeJson `json:"heartbeat_interval"`
+		MissingHbAllowed  configurationParameterRangeJson `json:"missing_hb_allowed"`
 		MaxRetransmit     configurationParameterRangeJson `json:"max_retransmit"`
 		AckTimeout        configurationParameterRangeJson `json:"ack_timeout"`
 		AckRandomFactor   configurationParameterRangeJson `json:"ack_random_factor"`
@@ -36,6 +37,9 @@ func getCompareDataSource() *SignalConfigurationParameter {
 		heartbeat_interval: ConfigurationParameterRange{
 			min_value: float64(config.HeartbeatInterval.Start().(int)),
 			max_value: float64(config.HeartbeatInterval.End().(int))},
+		missing_hb_allowed: ConfigurationParameterRange{
+			min_value: float64(config.MissingHbAllowed.Start().(int)),
+			max_value: float64(config.MissingHbAllowed.End().(int))},
 		max_retransmit: ConfigurationParameterRange{
 			min_value: float64(config.MaxRetransmit.Start().(int)),
 			max_value: float64(config.MaxRetransmit.End().(int))},
@@ -67,6 +71,7 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 		// valid attribute value check
 		if compareSource != nil {
 			if !(compareSource.heartbeat_interval.Includes(float64(sc.HeartbeatInterval)) &&
+				compareSource.missing_hb_allowed.Includes(float64(sc.MissingHbAllowed)) &&
 				compareSource.max_retransmit.Includes(float64(sc.MaxRetransmit)) &&
 				compareSource.ack_timeout.Includes(float64(sc.AckTimeout)) &&
 				compareSource.ack_random_factor.Includes(sc.AckRandomFactor)) {

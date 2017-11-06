@@ -5,7 +5,6 @@ type Customers int
 type CustomerNetworkInformation struct {
 	FQDN         SetString
 	URI          SetString
-	E_164        SetString
 	AddressRange AddressRange
 }
 
@@ -13,7 +12,6 @@ func NewCustomerNetworkInformation() *CustomerNetworkInformation {
 	c := new(CustomerNetworkInformation)
 	c.FQDN = NewSetString()
 	c.URI = NewSetString()
-	c.E_164 = NewSetString()
 	return c
 }
 

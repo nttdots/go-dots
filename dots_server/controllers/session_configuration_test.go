@@ -15,9 +15,11 @@ func TestSessionConfiguration_Post(t *testing.T) {
 	request := messages.SignalConfig{
 		SessionId:         1234567,
 		HeartbeatInterval: 15,
+		MissingHbAllowed:  5,
 		MaxRetransmit:     3,
 		AckTimeout:        1,
 		AckRandomFactor:   1.0,
+		TriggerMitigation: true,
 	}
 	customer := models.Customer{}
 	response, err := sessionConfiguration.Post(&request, &customer)

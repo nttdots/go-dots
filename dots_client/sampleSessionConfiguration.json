@@ -1,7 +1,9 @@
 {
   "session-id": 1234543241,
   "heartbeat-interval": 30,
+  "missing-hb-allowed": 5,
   "max-retransmit": 7,
   "ack-timeout": 50,
-  "ack-random-factor": 1.5
+  "ack-random-factor": 1.5,
+  "trigger-mitigation": true
 }

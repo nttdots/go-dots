@@ -37,8 +37,7 @@ type MitigationScope struct {
 	TargetProtocol  SetInt
 	FQDN            SetString
 	URI             SetString
-	E_164           SetString
-	Alias           SetString
+	AliasName       SetString
 	Lifetime        int
 	TargetIP        []Prefix
 	TargetPrefix    []Prefix
@@ -50,7 +49,6 @@ func NewMitigationScope(c *Customer) (s *MitigationScope) {
 	s = &MitigationScope{
 		0,
 		NewSetInt(),
-		NewSetString(),
 		NewSetString(),
 		NewSetString(),
 		NewSetString(),

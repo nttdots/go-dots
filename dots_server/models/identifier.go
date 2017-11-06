@@ -9,7 +9,6 @@ type Identifier struct {
 	TrafficProtocol SetInt
 	FQDN            SetString
 	URI             SetString
-	E_164           SetString
 	Customer        *Customer
 }
 
@@ -21,7 +20,6 @@ func NewIdentifier(c *Customer) (s *Identifier) {
 		make([]Prefix, 0),
 		make([]PortRange, 0),
 		NewSetInt(),
-		NewSetString(),
 		NewSetString(),
 		NewSetString(),
 		c,

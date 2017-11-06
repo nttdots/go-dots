@@ -33,8 +33,15 @@ func (m *SessionConfiguration) Post(request interface{}, customer *models.Custom
 	sessionConfigurationPayloadDisplay(payload)
 
 	// validate
-	signalSessionConfiguration := models.NewSignalSessionConfiguration(payload.SessionId, payload.HeartbeatInterval,
-		payload.MaxRetransmit, payload.AckTimeout, payload.AckRandomFactor)
+	signalSessionConfiguration := models.NewSignalSessionConfiguration(
+		payload.SessionId,
+		payload.HeartbeatInterval,
+		payload.MissingHbAllowed,
+		payload.MaxRetransmit,
+		payload.AckTimeout,
+		payload.AckRandomFactor,
+		payload.TriggerMitigation,
+	)
 	v := models.SignalConfigurationValidator{}
 	validateResult := v.Validate(signalSessionConfiguration, *customer)
 	if !validateResult {
@@ -75,8 +82,10 @@ func sessionConfigurationPayloadDisplay(data *messages.SignalConfig) {
 	var result string = "\n"
 	result += fmt.Sprintf("   \"%s\": %d\n", "session-id", data.SessionId)
 	result += fmt.Sprintf("   \"%s\": %d\n", "heartbeat-interval", data.HeartbeatInterval)
+	result += fmt.Sprintf("   \"%s\": %d\n", "missing-hb-allowed", data.MissingHbAllowed)
 	result += fmt.Sprintf("   \"%s\": %d\n", "max-retransmit", data.MaxRetransmit)
 	result += fmt.Sprintf("   \"%s\": %d\n", "ack-timeout", data.AckTimeout)
 	result += fmt.Sprintf("   \"%s\": %f\n", "ack-random-factor", data.AckRandomFactor)
+	result += fmt.Sprintf("   \"%s\": %f\n", "trigger-mitigation", data.TriggerMitigation)
 	log.Infoln(result)
 }

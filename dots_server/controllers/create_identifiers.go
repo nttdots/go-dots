@@ -90,7 +90,6 @@ func newIdentifier(req messages.Alias, c *models.Customer) (m *models.Identifier
 	m.TrafficProtocol.AddList(req.TrafficProtocol)
 	m.FQDN.AddList(req.FQDN)
 	m.URI.AddList(req.URI)
-	m.E_164.AddList(req.E164)
 
 	return
 }
