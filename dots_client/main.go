@@ -73,7 +73,11 @@ func serverHandler(w http.ResponseWriter, r *http.Request) {
 
 	buff := new(bytes.Buffer)
 	buff.ReadFrom(r.Body)
-	jsonData := buff.Bytes()
+
+	var jsonData []byte = nil
+	if 0 < buff.Len() {
+		jsonData = buff.Bytes()
+	}
 
 	err := sendRequest(jsonData, requestName, r.Method)
 	if err != nil {
@@ -89,9 +93,11 @@ func serverHandler(w http.ResponseWriter, r *http.Request) {
  * sendRequest is a function that sends requests to the server.
  */
 func sendRequest(jsonData []byte, requestName, method string) (err error) {
-	err = common.ValidateJson(requestName, string(jsonData))
-	if err != nil {
-		return
+	if jsonData != nil {
+		err = common.ValidateJson(requestName, string(jsonData))
+		if err != nil {
+			return
+		}
 	}
 	code := messages.GetCode(requestName)
 	coapType := messages.GetType(requestName)
@@ -113,10 +119,12 @@ func sendRequest(jsonData []byte, requestName, method string) (err error) {
 		return errors.New(errorMsg)
 	}
 
-	err = requestMessage.LoadJson(jsonData)
-	if err != nil {
-		log.Errorf("dots_client.main -- JSON load error: %s", err.Error())
-		return
+	if jsonData != nil {
+		err = requestMessage.LoadJson(jsonData)
+		if err != nil {
+			log.Errorf("dots_client.main -- JSON load error: %s", err.Error())
+			return
+		}
 	}
 
 	requestMessage.CreateRequest(nextMessageId())

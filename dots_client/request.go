@@ -125,10 +125,12 @@ func (r *Request) CreateRequest(messageId uint16) {
 		Type:      r.coapType,
 		Code:      code,
 		MessageID: messageId,
-		Payload:   r.dumpCbor(),
 	}
 
-	r.message.SetOption(coap.ContentFormat, coap.AppCbor)
+	if r.Message != nil {
+		r.message.Payload = r.dumpCbor()
+		r.message.SetOption(coap.ContentFormat, coap.AppCbor)
+	}
 	r.message.SetPathString(r.RequestCode.PathString())
 }
 

@@ -106,6 +106,10 @@ func (r *Router) loadJson(request *coap.Message, messageType reflect.Type) (inte
  */
 func (r *Router) UnmarshalCbor(request *coap.Message, messageType reflect.Type) (interface{}, error) {
 
+	if len(request.Payload) == 0 {
+		return nil, nil
+	}
+
 	m := reflect.New(messageType).Interface()
 	cborReader := bytes.NewReader(request.Payload)
 
