@@ -29,6 +29,15 @@ type CreateIdentifiers struct {
  */
 func (m *CreateIdentifiers) Post(request interface{}, customer *models.Customer) (res Response, err error) {
 
+	if request == nil {
+		res = Response {
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
 	req := request.(*messages.CreateIdentifier)
 	log.WithField("message", req.String()).Debug("[POST] receive message")
 

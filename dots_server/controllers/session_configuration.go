@@ -29,6 +29,15 @@ type SessionConfiguration struct {
  */
 func (m *SessionConfiguration) Post(request interface{}, customer *models.Customer) (res Response, err error) {
 
+	if request == nil {
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
 	payload := request.(*messages.SignalConfig)
 	sessionConfigurationPayloadDisplay(payload)
 

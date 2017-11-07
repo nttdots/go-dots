@@ -20,6 +20,15 @@ type Hello struct {
  */
 func (h *Hello) Post(req interface{}, customer *models.Customer) (res Response, err error) {
 
+	if req == nil {
+		res = Response {
+			Type: dots_common.NonConfirmable,
+			Code: dots_common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
 	hr := req.(*messages.HelloRequest)
 	rr := messages.HelloResponse{
 		Message: fmt.Sprintf("hello, \"%s\"!", hr.Message),

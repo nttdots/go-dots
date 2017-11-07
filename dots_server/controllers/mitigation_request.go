@@ -24,6 +24,15 @@ type MitigationRequest struct {
  */
 func (m *MitigationRequest) Get(request interface{}, customer *models.Customer) (res Response, err error) {
 
+	if request == nil {
+		res = Response {
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
 	req := request.(*messages.MitigationRequest)
 	log.WithField("message", req.String()).Debug("[GET] receive message")
 
@@ -69,6 +78,15 @@ func (m *MitigationRequest) Get(request interface{}, customer *models.Customer) 
  */
 func (m *MitigationRequest) Post(request interface{}, customer *models.Customer) (res Response, err error) {
 
+	if request == nil {
+		res = Response {
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
 	req := request.(*messages.MitigationRequest)
 	log.WithField("message", req.String()).Debug("[POST] receive message")
 
@@ -99,6 +117,16 @@ func (m *MitigationRequest) Post(request interface{}, customer *models.Customer)
  * It terminates all the mitigations invoked by a customer.
  */
 func (m *MitigationRequest) Delete(request interface{}, customer *models.Customer) (res Response, err error) {
+
+	if request == nil {
+		res = Response {
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
 	req := request.(*messages.MitigationRequest)
 	log.WithField("message", req.String()).Debug("[DELETE] receive message")
 
