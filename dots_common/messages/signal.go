@@ -8,7 +8,8 @@ type TargetPortRange struct {
 }
 
 type MitigationScope struct {
-	Scopes []Scope `json:"scope" cbor:"scope"`
+	ClientIdentifiers []string `json:"client-identifier" cbor:"client-identifier"`
+	Scopes            []Scope  `json:"scope"             cbor:"scope"`
 }
 
 type Scope struct {
@@ -43,6 +44,9 @@ type MitigationRequest struct {
  */
 func (m *MitigationRequest) String() (result string) {
 	result = "\n"
+	for key, clientIdentifier := range m.MitigationScope.ClientIdentifiers {
+		result += fmt.Sprintf("   \"%s[%d]\": %s\n", "client-identifier", key+1, clientIdentifier)
+	}
 	for key, scope := range m.MitigationScope.Scopes {
 		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
 		result += fmt.Sprintf("     \"%s\": %d\n", "mitigation-id", scope.MitigationId)
