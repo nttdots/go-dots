@@ -100,6 +100,8 @@ type SignalConfig struct {
 	SessionId int `json:"session-id" cbor:"session-id"`
 	// Heartbeat interval to check the DOTS peer health.  This is an optional attribute.
 	HeartbeatInterval int `json:"heartbeat-interval" cbor:"heartbeat-interval"`
+	// Maximum number of missing heartbeat response allowed. This is an optional attribute.
+	MissingHbAllowed int `json:"missing-hb-allowed" cbor:"missing-hb-allowed"`
 	// Maximum number of retransmissions for a message (referred to as MAX_RETRANSMIT parameter in CoAP).
 	// This is an optional attribute.
 	MaxRetransmit int `json:"max-retransmit" cbor:"max-retransmit"`

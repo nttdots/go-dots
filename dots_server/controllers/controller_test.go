@@ -94,6 +94,7 @@ var configText = `
 system:
   signalConfigurationParameter:
     heartbeatInterval: 15-60
+    missingHbAllowed: 3-9
     maxRetransmit: 3-15
     ackTimeout: 1-30
     ackRandomFactor: 1-4

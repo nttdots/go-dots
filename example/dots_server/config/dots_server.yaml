@@ -1,6 +1,7 @@
 system:
   signalConfigurationParameter:
     heartbeatInterval: 60
+    missingHbAllowed: 5
     maxRetransmit: 3
     ackTimeout: 30
     ackRandomFactor: 8888

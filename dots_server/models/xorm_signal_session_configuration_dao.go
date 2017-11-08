@@ -47,6 +47,7 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 		CustomerId:        customer.Id,
 		SessionId:         signalSessionConfiguration.SessionId,
 		HeartbeatInterval: signalSessionConfiguration.HeartbeatInterval,
+		MissingHbAllowed:  signalSessionConfiguration.MissingHbAllowed,
 		MaxRetransmit:     signalSessionConfiguration.MaxRetransmit,
 		AckTimeout:        signalSessionConfiguration.AckTimeout,
 		AckRandomFactor:   signalSessionConfiguration.AckRandomFactor,
@@ -104,6 +105,7 @@ func UpdateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 	}
 
 	updSignalSessionConfiguration.HeartbeatInterval = signalSessionConfiguration.HeartbeatInterval
+	updSignalSessionConfiguration.MissingHbAllowed = signalSessionConfiguration.MissingHbAllowed
 	updSignalSessionConfiguration.MaxRetransmit = signalSessionConfiguration.MaxRetransmit
 	updSignalSessionConfiguration.AckTimeout = signalSessionConfiguration.AckTimeout
 	updSignalSessionConfiguration.AckRandomFactor = signalSessionConfiguration.AckRandomFactor
@@ -154,6 +156,7 @@ func GetSignalSessionConfiguration(customerId int, sessionId int) (signalSession
 	}
 	signalSessionConfiguration.SessionId = dbSignalSessionConfiguration.SessionId
 	signalSessionConfiguration.HeartbeatInterval = dbSignalSessionConfiguration.HeartbeatInterval
+	signalSessionConfiguration.MissingHbAllowed = dbSignalSessionConfiguration.MissingHbAllowed
 	signalSessionConfiguration.MaxRetransmit = dbSignalSessionConfiguration.MaxRetransmit
 	signalSessionConfiguration.AckTimeout = dbSignalSessionConfiguration.AckTimeout
 	signalSessionConfiguration.AckRandomFactor = dbSignalSessionConfiguration.AckRandomFactor

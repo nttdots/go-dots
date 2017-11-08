@@ -14,6 +14,7 @@ func signalSessionConfigurationSampleDataCreate() {
 	// signal_session_configuration test data setting
 	testSignalSessionConfiguration.SessionId = 987
 	testSignalSessionConfiguration.HeartbeatInterval = 100
+	testSignalSessionConfiguration.MissingHbAllowed = 5
 	testSignalSessionConfiguration.MaxRetransmit = 10
 	testSignalSessionConfiguration.AckTimeout = 90
 	testSignalSessionConfiguration.AckRandomFactor = 99999
@@ -21,6 +22,7 @@ func signalSessionConfigurationSampleDataCreate() {
 	// signal_session_configuration update test data setting
 	testUpdateSignalSessionConfiguration.SessionId = 987
 	testUpdateSignalSessionConfiguration.HeartbeatInterval = 200
+	testUpdateSignalSessionConfiguration.MissingHbAllowed = 4
 	testUpdateSignalSessionConfiguration.MaxRetransmit = 20
 	testUpdateSignalSessionConfiguration.AckTimeout = 40
 	testUpdateSignalSessionConfiguration.AckRandomFactor = 12345
@@ -47,6 +49,10 @@ func TestGetSignalSessionConfiguration(t *testing.T) {
 
 	if signalSessionConfiguration.HeartbeatInterval != testSignalSessionConfiguration.HeartbeatInterval {
 		t.Errorf("got %s, want %s", signalSessionConfiguration.HeartbeatInterval, testSignalSessionConfiguration.HeartbeatInterval)
+	}
+
+	if signalSessionConfiguration.MissingHbAllowed != testSignalSessionConfiguration.MissingHbAllowed {
+		t.Errorf("got %s, want %s", signalSessionConfiguration.MissingHbAllowed, testSignalSessionConfiguration.MissingHbAllowed)
 	}
 
 	if signalSessionConfiguration.MaxRetransmit != testSignalSessionConfiguration.MaxRetransmit {
@@ -81,6 +87,10 @@ func TestUpdateSignalSessionConfiguration(t *testing.T) {
 
 	if signalSessionConfiguration.HeartbeatInterval != testUpdateSignalSessionConfiguration.HeartbeatInterval {
 		t.Errorf("got %s, want %s", signalSessionConfiguration.HeartbeatInterval, testUpdateSignalSessionConfiguration.HeartbeatInterval)
+	}
+
+	if signalSessionConfiguration.MissingHbAllowed != testUpdateSignalSessionConfiguration.MissingHbAllowed {
+		t.Errorf("got %s, want %s", signalSessionConfiguration.MissingHbAllowed, testUpdateSignalSessionConfiguration.MissingHbAllowed)
 	}
 
 	if signalSessionConfiguration.MaxRetransmit != testUpdateSignalSessionConfiguration.MaxRetransmit {

@@ -253,6 +253,7 @@ CREATE TABLE `signal_session_configuration` (
   `customer_id` int(11) NOT NULL,
   `session_id` int(11) NOT NULL,
   `heartbeat_interval` int(11) DEFAULT NULL,
+  `missing_hb_allowed` int(11) DEFAULT NULL,
   `max_retransmit` int(11) DEFAULT NULL,
   `ack_timeout` int(11) DEFAULT NULL,
   `ack_random_factor` double DEFAULT NULL,

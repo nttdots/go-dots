@@ -60,6 +60,7 @@ func NewConfigurationParameterRange(min_value float64, max_value float64) *Confi
 type SignalSessionConfiguration struct {
 	SessionId         int
 	HeartbeatInterval int
+	MissingHbAllowed  int
 	MaxRetransmit     int
 	AckTimeout        int
 	AckRandomFactor   float64
@@ -71,16 +72,18 @@ type SignalSessionConfiguration struct {
  * parameter:
  *  sessionId sessionId
  *  heartbeatInterval heartbeat_interval
+ *  missingHbAllowed missing_hb_allowed
  *  maxRetransmit max_retransmit
  *  ackTimeout ack_timeout
  *  ackRandomFactor ack_random_factor
  * return:
  *  s SignalSessionConfiguration
  */
-func NewSignalSessionConfiguration(sessionId int, heartbeatInterval int, maxRetransmit int, ackTimeout int, ackRandomFactor float64) (s *SignalSessionConfiguration) {
+func NewSignalSessionConfiguration(sessionId int, heartbeatInterval int, missingHbAllowed int, maxRetransmit int, ackTimeout int, ackRandomFactor float64) (s *SignalSessionConfiguration) {
 	s = &SignalSessionConfiguration{
 		SessionId:         sessionId,
 		HeartbeatInterval: heartbeatInterval,
+		MissingHbAllowed:  missingHbAllowed,
 		MaxRetransmit:     maxRetransmit,
 		AckTimeout:        ackTimeout,
 		AckRandomFactor:   ackRandomFactor,
@@ -91,6 +94,7 @@ func NewSignalSessionConfiguration(sessionId int, heartbeatInterval int, maxRetr
 
 type SignalConfigurationParameter struct {
 	heartbeat_interval ConfigurationParameterRange
+	missing_hb_allowed ConfigurationParameterRange
 	max_retransmit     ConfigurationParameterRange
 	ack_timeout        ConfigurationParameterRange
 	ack_random_factor  ConfigurationParameterRange
