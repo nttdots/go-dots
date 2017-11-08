@@ -3,6 +3,12 @@
   "type": "object",
   "properties": {
     "mitigation-scope": {
+      "client-identifier": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
       "scope": {
         "type": "array",
         "items": {
