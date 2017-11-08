@@ -9,7 +9,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/models"
 )
 
-func TestSessionConfiguration_Post(t *testing.T) {
+func TestSessionConfiguration_Put(t *testing.T) {
 	sessionConfiguration := controllers.SessionConfiguration{}
 
 	request := messages.SignalConfig{
@@ -22,7 +22,7 @@ func TestSessionConfiguration_Post(t *testing.T) {
 		TriggerMitigation: true,
 	}
 	customer := models.Customer{}
-	response, err := sessionConfiguration.Post(&request, &customer)
+	response, err := sessionConfiguration.Put(&request, &customer)
 	if err != nil {
 		t.Errorf("post method return error: %s", err.Error())
 		return

@@ -56,7 +56,7 @@ func (m *SessionConfiguration) Get(request interface{}, customer *models.Custome
 }
 
 /*
- * Handles session_configuration POST requests and start the mitigation.
+ * Handles session_configuration PUT requests and start the mitigation.
  *  1. Validate the received session configuration requests.
  *  2. return the validation results.
  *
@@ -67,7 +67,7 @@ func (m *SessionConfiguration) Get(request interface{}, customer *models.Custome
  *  res response message
  *  err error
  */
-func (m *SessionConfiguration) Post(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *SessionConfiguration) Put(request interface{}, customer *models.Customer) (res Response, err error) {
 
 	if request == nil {
 		res = Response{

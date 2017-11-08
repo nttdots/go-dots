@@ -9,7 +9,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/models"
 )
 
-func TestMitigationRequestPost(t *testing.T) {
+func TestMitigationRequestPut(t *testing.T) {
 	mitigationRequest := controllers.MitigationRequest{}
 
 	scopes := []messages.Scope{
@@ -44,7 +44,7 @@ func TestMitigationRequestPost(t *testing.T) {
 		t.Errorf("get customer data error: %s", err.Error())
 		return
 	}
-	response, err := mitigationRequest.Post(&request, customer)
+	response, err := mitigationRequest.Put(&request, customer)
 
 	if err != nil {
 		t.Errorf("post method return error: %s", err.Error())
