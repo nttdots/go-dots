@@ -7,85 +7,44 @@ import (
 	"github.com/nttdots/go-dots/dots_server/models"
 )
 
+func assertDeepEqual(t *testing.T, msg string, actual interface{}, expected interface{}) {
+	if !reflect.DeepEqual(actual, expected) {
+		t.Error("%s got %s, want %s", msg, actual, expected)
+	}
+}
+
 func TestNewSetInt(t *testing.T) {
 	setInt := models.NewSetInt()
 
 	setInt.Append(1)
 
-	var expects interface{}
-
-	expects = []int{1}
-
-	if !reflect.DeepEqual(setInt.List(), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setInt.Include(1), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
-
-	expects = false
-
-	if !reflect.DeepEqual(setInt.Include(2), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
+	assertDeepEqual(t, "setInt.List()", setInt.List(), []int{1})
+	assertDeepEqual(t, "setInt.Include(1)", setInt.Include(1), true)
+	assertDeepEqual(t, "setInt.Include(2)", setInt.Include(2), false)
 
 	setInt.Append(2)
 
-	expects = []int{1, 2}
+	{
+		actual := setInt.List()
+		expected1 := []int{1, 2}
+		expected2 := []int{2, 1}
 
-	if !reflect.DeepEqual(setInt.List(), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
+		if !reflect.DeepEqual(actual, expected1) && !reflect.DeepEqual(actual, expected2) {
+			t.Errorf("setInt.List() got %s, want %s or %s", actual, expected1, expected2)
+		}
 	}
 
-	expects = true
-
-	if !reflect.DeepEqual(setInt.Include(2), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setInt.Include(2), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setInt.Include(2), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
-
-	expects = false
+	assertDeepEqual(t, "setInt.Include(2)", setInt.Include(2), true)
 
 	setInt.Delete(1)
 
-	if !reflect.DeepEqual(setInt.Include(1), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
-
-	expects = true
+	assertDeepEqual(t, "setInt.Include(1)", setInt.Include(1), false)
 
 	setInt.AddList([]int{3, 4, 5})
 
-	if !reflect.DeepEqual(setInt.Include(3), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setInt.Include(4), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setInt.Include(5), expects) {
-		t.Errorf("setInt.List() got %s, want %s", setInt.List(), expects)
-	}
-
+	assertDeepEqual(t, "setInt.Include(3)", setInt.Include(3), true)
+	assertDeepEqual(t, "setInt.Include(4)", setInt.Include(4), true)
+	assertDeepEqual(t, "setInt.Include(5)", setInt.Include(5), true)
 }
 
 func TestNewSetString(t *testing.T) {
@@ -93,79 +52,31 @@ func TestNewSetString(t *testing.T) {
 
 	setString.Append("abc")
 
-	var expects interface{}
-
-	expects = []string{"abc"}
-
-	if !reflect.DeepEqual(setString.List(), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setString.Include("abc"), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
-
-	expects = false
-
-	if !reflect.DeepEqual(setString.Include("def"), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
+	assertDeepEqual(t, "setString.List()", setString.List(), []string{"abc"})
+	assertDeepEqual(t, "setString.Include(\"abc\")", setString.Include("abc"), true)
+	assertDeepEqual(t, "setString.Include(\"def\")", setString.Include("def"), false)
 
 	setString.Append("def")
 
-	expects = []string{"abc", "def"}
+	{
+		actual := setString.List()
+		expected1 := []string{"abc", "def"}
+		expected2 := []string{"def", "abc"}
 
-	if !reflect.DeepEqual(setString.List(), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-		return
+		if !reflect.DeepEqual(actual, expected1) && !reflect.DeepEqual(actual, expected2) {
+			t.Errorf("setString.List() got %s, want %s or %s", actual, expected1, expected2)
+		}
 	}
 
-	expects = true
-
-	if !reflect.DeepEqual(setString.Include("def"), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setString.Include("def"), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setString.Include("def"), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
-
-	expects = false
+	assertDeepEqual(t, "setString.Include(\"def\")", setString.Include("def"), true)
 
 	setString.Delete("abc")
 
-	if !reflect.DeepEqual(setString.Include("abc"), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
-
-	expects = true
+	assertDeepEqual(t, "setString.Include(\"abc\")", setString.Include("abc"), false)
 
 	setString.AddList([]string{"g", "h", "i"})
 
-	if !reflect.DeepEqual(setString.Include("g"), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setString.Include("h"), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
-
-	expects = true
-
-	if !reflect.DeepEqual(setString.Include("i"), expects) {
-		t.Errorf("setString.List() got %s, want %s", setString.List(), expects)
-	}
-
+	assertDeepEqual(t, "setString.Include(\"g\")", setString.Include("g"), true)
+	assertDeepEqual(t, "setString.Include(\"h\")", setString.Include("h"), true)
+	assertDeepEqual(t, "setString.Include(\"i\")", setString.Include("i"), true)
 }
