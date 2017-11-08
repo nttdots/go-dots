@@ -27,6 +27,15 @@ type InstallFilteringRule struct {
  */
 func (m *InstallFilteringRule) Post(request interface{}, customer *models.Customer) (res Response, err error) {
 
+	if request == nil {
+		res = Response {
+			Type: dots_common.NonConfirmable,
+			Code: dots_common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
 	req := request.(*messages.InstallFilteringRule)
 	log.WithField("message", req.String()).Debug("[POST] receive message")
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -88,11 +89,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	if jsonFilePath == "" {
-		fmt.Println("  -json option is required")
-		os.Exit(1)
-	}
-
 	common.SetUpLogger()
 	log.Infof("method: %s, requestName: %s", requestMethod, requestName)
 
@@ -115,12 +111,17 @@ func main() {
 
 	contentType := "application/json"
 	u.Path = path.Join(u.Path, "server", requestName)
-	jsonData, err := readJsonFile(jsonFilePath)
-	if err != nil {
-		os.Exit(1)
+
+	var body io.Reader
+	if jsonFilePath != "" {
+		jsonData, err := readJsonFile(jsonFilePath)
+		if err != nil {
+			os.Exit(1)
+		}
+		body = bytes.NewBuffer(jsonData)
 	}
 
-	request, err := http.NewRequest(strings.ToUpper(requestMethod), u.String(), bytes.NewBuffer(jsonData))
+	request, err := http.NewRequest(strings.ToUpper(requestMethod), u.String(), body)
 	if err != nil {
 		fmt.Printf("request message building error. %s", err.Error())
 		os.Exit(1)
