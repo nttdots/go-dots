@@ -78,7 +78,7 @@ func (m *SessionConfiguration) Post(request interface{}, customer *models.Custom
 		return
 	}
 
-	payload := request.(*messages.SignalConfig)
+	payload := &request.(*messages.SignalConfigRequest).SignalConfig
 	sessionConfigurationPayloadDisplay(payload)
 
 	// validate

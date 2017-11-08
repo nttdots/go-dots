@@ -2,26 +2,31 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "session-id": {
-      "type": "integer"
-    },
-    "heartbeat-interval": {
-      "type": "integer"
-    },
-    "missing-hb-allowed": {
-      "type": "integer"
-    },
-    "max-retransmit": {
-      "type": "integer"
-    },
-    "ack-timeout": {
-      "type": "integer"
-    },
-    "ack-random-factor": {
-      "type": "number"
-    },
-    "trigger-mitigation": {
-      "type": "boolean"
+    "signal-config": {
+      "type": "object",
+      "properties": {
+        "session-id": {
+          "type": "integer"
+        },
+        "heartbeat-interval": {
+          "type": "integer"
+        },
+        "missing-hb-allowed": {
+          "type": "integer"
+        },
+        "max-retransmit": {
+          "type": "integer"
+        },
+        "ack-timeout": {
+          "type": "integer"
+        },
+        "ack-random-factor": {
+          "type": "number"
+        },
+        "trigger-mitigation": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }
