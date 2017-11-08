@@ -64,6 +64,7 @@ type SignalSessionConfiguration struct {
 	MaxRetransmit     int
 	AckTimeout        int
 	AckRandomFactor   float64
+	TriggerMitigation bool
 }
 
 /*
@@ -76,10 +77,11 @@ type SignalSessionConfiguration struct {
  *  maxRetransmit max_retransmit
  *  ackTimeout ack_timeout
  *  ackRandomFactor ack_random_factor
+ *  triggerMitigation trigger_mitigation
  * return:
  *  s SignalSessionConfiguration
  */
-func NewSignalSessionConfiguration(sessionId int, heartbeatInterval int, missingHbAllowed int, maxRetransmit int, ackTimeout int, ackRandomFactor float64) (s *SignalSessionConfiguration) {
+func NewSignalSessionConfiguration(sessionId int, heartbeatInterval int, missingHbAllowed int, maxRetransmit int, ackTimeout int, ackRandomFactor float64, triggerMitigation bool) (s *SignalSessionConfiguration) {
 	s = &SignalSessionConfiguration{
 		SessionId:         sessionId,
 		HeartbeatInterval: heartbeatInterval,
@@ -87,7 +89,9 @@ func NewSignalSessionConfiguration(sessionId int, heartbeatInterval int, missing
 		MaxRetransmit:     maxRetransmit,
 		AckTimeout:        ackTimeout,
 		AckRandomFactor:   ackRandomFactor,
+		TriggerMitigation: triggerMitigation,
 	}
+
 
 	return
 }

@@ -18,6 +18,7 @@ func signalSessionConfigurationSampleDataCreate() {
 	testSignalSessionConfiguration.MaxRetransmit = 10
 	testSignalSessionConfiguration.AckTimeout = 90
 	testSignalSessionConfiguration.AckRandomFactor = 99999
+	testSignalSessionConfiguration.TriggerMitigation = true
 
 	// signal_session_configuration update test data setting
 	testUpdateSignalSessionConfiguration.SessionId = 987
@@ -26,6 +27,7 @@ func signalSessionConfigurationSampleDataCreate() {
 	testUpdateSignalSessionConfiguration.MaxRetransmit = 20
 	testUpdateSignalSessionConfiguration.AckTimeout = 40
 	testUpdateSignalSessionConfiguration.AckRandomFactor = 12345
+	testUpdateSignalSessionConfiguration.TriggerMitigation = false
 
 }
 
@@ -67,6 +69,10 @@ func TestGetSignalSessionConfiguration(t *testing.T) {
 		t.Errorf("got %s, want %s", signalSessionConfiguration.AckRandomFactor, testSignalSessionConfiguration.AckRandomFactor)
 	}
 
+	if signalSessionConfiguration.TriggerMitigation != testSignalSessionConfiguration.TriggerMitigation {
+		t.Errorf("got %s, want %s", signalSessionConfiguration.TriggerMitigation, testSignalSessionConfiguration.TriggerMitigation)
+	}
+
 }
 
 func TestUpdateSignalSessionConfiguration(t *testing.T) {
@@ -103,6 +109,10 @@ func TestUpdateSignalSessionConfiguration(t *testing.T) {
 
 	if signalSessionConfiguration.AckRandomFactor != testUpdateSignalSessionConfiguration.AckRandomFactor {
 		t.Errorf("got %s, want %s", signalSessionConfiguration.AckRandomFactor, testUpdateSignalSessionConfiguration.AckRandomFactor)
+	}
+
+	if signalSessionConfiguration.TriggerMitigation != testUpdateSignalSessionConfiguration.TriggerMitigation {
+		t.Errorf("got %s, want %s", signalSessionConfiguration.TriggerMitigation, testUpdateSignalSessionConfiguration.TriggerMitigation)
 	}
 
 }

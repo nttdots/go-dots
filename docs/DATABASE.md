@@ -59,7 +59,6 @@ The types of parameters for the validation use are below.
 
 * FQDN: valid FQDN(s) for the customer
 * URI: valid URI(s) for the customer
-* E_164: valid E.164 nubmers for the cusotmer
 
 ### 'prefix'
 

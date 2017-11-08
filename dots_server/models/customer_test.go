@@ -51,7 +51,6 @@ func TestNewCustomer(t *testing.T) {
 	c.Name = "Name"
 	c.CommonName.Append("CommonName")
 	c.Id = 1234
-	c.CustomerNetworkInformation.E_164.Append("E164")
 	c.CustomerNetworkInformation.URI.Append("/")
 	c.CustomerNetworkInformation.FQDN.Append("golang.org")
 	prefix, _ := models.NewPrefix("192.168.0.0/25")

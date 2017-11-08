@@ -19,6 +19,9 @@
     },
     "ack-random-factor": {
       "type": "number"
+    },
+    "trigger-mitigation": {
+      "type": "boolean"
     }
   }
 }

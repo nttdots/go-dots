@@ -21,7 +21,6 @@ func TestCreateIdentifiers_Post(t *testing.T) {
 			TrafficProtocol: []int{1, 2},
 			FQDN:            []string{"golang.org"},
 			URI:             []string{""},
-			E164:            []string{""},
 		},
 		{
 			AliasName:       "test_alias2",
@@ -31,7 +30,6 @@ func TestCreateIdentifiers_Post(t *testing.T) {
 			TrafficProtocol: []int{6},
 			FQDN:            []string{"golang.org"},
 			URI:             []string{""},
-			E164:            []string{"E164test"},
 		},
 	}
 	request := messages.CreateIdentifier{}
