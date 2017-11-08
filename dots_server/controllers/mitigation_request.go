@@ -20,7 +20,7 @@ type MitigationRequest struct {
 }
 
 /*
- * Handles mitigationRequest POST requests and start the mitigation.
+ * Handles mitigationRequest PUT requests and start the mitigation.
  *  1. receive a blocker object from the blockerservice
  *  2. register a mitigation scope to the blocker and receive the protection object generated from the scope.
  *  3. invoke the mitigation process by passsing the protection object to the same blocker object.
@@ -32,10 +32,10 @@ type MitigationRequest struct {
  *  res response message
  *  err error
  */
-func (m *MitigationRequest) Post(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) (res Response, err error) {
 
 	req := request.(*messages.MitigationRequest)
-	log.WithField("message", req.String()).Debug("[POST] receive message")
+	log.WithField("message", req.String()).Debug("[PUT] receive message")
 
 	err = createMitigationScope(req, customer)
 	if err != nil {

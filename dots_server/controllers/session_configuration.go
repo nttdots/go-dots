@@ -16,7 +16,7 @@ type SessionConfiguration struct {
 }
 
 /*
- * Handles session_configuration POST requests and start the mitigation.
+ * Handles session_configuration PUT requests and start the mitigation.
  *  1. Validate the received session configuration requests.
  *  2. return the validation results.
  *
@@ -27,7 +27,7 @@ type SessionConfiguration struct {
  *  res response message
  *  err error
  */
-func (m *SessionConfiguration) Post(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *SessionConfiguration) Put(request interface{}, customer *models.Customer) (res Response, err error) {
 
 	payload := request.(*messages.SignalConfig)
 	sessionConfigurationPayloadDisplay(payload)
