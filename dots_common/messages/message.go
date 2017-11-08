@@ -75,8 +75,8 @@ func register(code Code, role Role, coapType coap.COAPType, channelType ChannelT
  * Register supported message types to the message map.
  */
 func init() {
-	register(MITIGATION_REQUEST, REQUEST, coap.NonConfirmable, SIGNAL, "mitigation_request", ".well-known/v1/dots-signal/signal", MitigationRequest{})
-	register(SESSION_CONFIGURATION, REQUEST, coap.NonConfirmable, SIGNAL, "session_configuration", ".well-known/v1/dots-signal/config", SignalConfig{})
+	register(MITIGATION_REQUEST, REQUEST, coap.Confirmable, SIGNAL, "mitigation_request", ".well-known/v1/dots-signal/signal", MitigationRequest{})
+	register(SESSION_CONFIGURATION, REQUEST, coap.Confirmable, SIGNAL, "session_configuration", ".well-known/v1/dots-signal/config", SignalConfig{})
 
 	register(CREATE_IDENTIFIERS, REQUEST, coap.NonConfirmable, DATA, "create_identifiers", ".well-known/v1/dots-data/create_identifiers", CreateIdentifier{})
 	register(INSTALL_FILTERING_RULE, REQUEST, coap.NonConfirmable, DATA, "install_filtering_rule", ".well-known/v1/dots-data/install_filtering_rule", InstallFilteringRule{})

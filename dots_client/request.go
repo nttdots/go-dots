@@ -152,16 +152,35 @@ func (r *Request) Send() (err error) {
 
 	recv, err := coap.Send(conn, r.message)
 	if err != nil {
+		log.Warnf("Send() => %s", err)
 		return
 	}
 
-	if recv.Payload != nil {
-		log.Infof("Response payload: %s", recv.Payload)
-	}
+	logMessage(recv)
 
 	return
 }
 
 func (r *Request) Close() {
 	r.connectionFactory.Close()
+}
+
+func logMessage(msg coap.Message) {
+	log.Infof("Message Code: %s (%d)", msg.Code, msg.Code)
+
+	if msg.Payload == nil {
+		return
+	}
+
+	log.Infof("        Raw payload: %s", msg.Payload)
+
+	var v interface {}
+	dec := cbor.NewDecoder(bytes.NewReader(msg.Payload))
+	err := dec.Decode(&v)
+	if err != nil {
+		log.WithError(err).Warn("CBOR Decode failed.")
+		return
+	}
+
+	log.Infof("        CBOR decoded: %s", v)
 }

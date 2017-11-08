@@ -20,6 +20,41 @@ type MitigationRequest struct {
 }
 
 /*
+ * Handles mitigationRequest GET requests.
+ */
+func (m *MitigationRequest) Get(request interface{}, customer *models.Customer) (res Response, err error) {
+
+	req := request.(*messages.MitigationRequest)
+	log.WithField("message", req.String()).Debug("[GET] receive message")
+
+	mpp, err := loadMitigations(req, customer)
+	if err != nil {
+		log.WithError(err).Error("loadMitigation failed.")
+	}
+
+	scopes := make([]messages.ScopeStatus, 0)
+
+	for _, mp := range mpp {
+		id := mp.mitigation.MitigationId
+		lifetime := mp.mitigation.Lifetime
+
+		var startedAt int64
+		if mp.protection != nil {
+			startedAt = mp.protection.StartedAt().Unix()
+		}
+		scopes = append(scopes, messages.ScopeStatus { id, lifetime, startedAt })
+	}
+
+	res = Response{
+		Type: common.NonConfirmable,
+		Code: common.Content,
+		Body: messages.MitigationResponse { messages.MitigationScopeStatus { scopes }},
+	}
+
+	return
+}
+
+/*
  * Handles mitigationRequest POST requests and start the mitigation.
  *  1. receive a blocker object from the blockerservice
  *  2. register a mitigation scope to the blocker and receive the protection object generated from the scope.
@@ -185,6 +220,39 @@ func createMitigationScope(req *messages.MitigationRequest, customer *models.Cus
 		}
 	}
 	return
+}
+
+
+type mpPair struct {
+	mitigation *models.MitigationScope
+	protection models.Protection
+}
+
+/*
+ * load mitigation and protection
+ */
+func loadMitigations(req *messages.MitigationRequest, customer *models.Customer) ([]mpPair, error) {
+
+	r := make([]mpPair, 0)
+
+	for _, messageScope := range req.MitigationScope.Scopes {
+		s, err := models.GetMitigationScope(customer.Id, messageScope.MitigationId)
+		if err != nil {
+			return nil, err
+		}
+		if s == nil {
+			log.WithField("mitigation_id", messageScope.MitigationId).Warn("mitigation_scope not found.")
+			continue
+		}
+
+		p, err := models.GetProtectionByMitigationId(messageScope.MitigationId, customer.Id)
+		if err != nil {
+			return nil, err
+		}
+		r = append(r, mpPair {s, p})
+	}
+
+	return r, nil
 }
 
 /*
