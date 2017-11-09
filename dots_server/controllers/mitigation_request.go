@@ -221,10 +221,17 @@ func newTargetPrefix(targetPrefix []string) (prefixes []models.Prefix, err error
 func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges []models.PortRange, err error) {
 	portRanges = make([]models.PortRange, len(targetPortRange))
 	for i, r := range targetPortRange {
-		if r.LowerPort > r.UpperPort || r.LowerPort < 0 || r.UpperPort > 0xffff {
+		if r.LowerPort < 0 || 0xffff < r.LowerPort || r.UpperPort < 0 || 0xffff < r.UpperPort {
 			return nil, errors.New(fmt.Sprintf("invalid port number. lower:%d, upper:%d", r.LowerPort, r.UpperPort))
 		}
-		portRanges[i] = models.NewPortRange(r.LowerPort, r.UpperPort)
+		// TODO: optional int
+		if r.UpperPort == 0 {
+			portRanges[i] = models.NewPortRange(r.LowerPort, r.LowerPort)
+		} else if r.LowerPort <= r.UpperPort {
+			portRanges[i] = models.NewPortRange(r.LowerPort, r.UpperPort)
+		} else {
+			return nil, errors.New(fmt.Sprintf("invalid port number. lower:%d, upper:%d", r.LowerPort, r.UpperPort))
+		}
 	}
 	return
 }
