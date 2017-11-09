@@ -12,7 +12,7 @@ import (
 func TestSessionConfiguration_Post(t *testing.T) {
 	sessionConfiguration := controllers.SessionConfiguration{}
 
-	request := messages.SignalConfig{
+	request := messages.SignalConfigRequest{ messages.SignalConfig{
 		SessionId:         1234567,
 		HeartbeatInterval: 15,
 		MissingHbAllowed:  5,
@@ -20,7 +20,7 @@ func TestSessionConfiguration_Post(t *testing.T) {
 		AckTimeout:        1,
 		AckRandomFactor:   1.0,
 		TriggerMitigation: true,
-	}
+	} }
 	customer := models.Customer{}
 	response, err := sessionConfiguration.Post(&request, &customer)
 	if err != nil {
