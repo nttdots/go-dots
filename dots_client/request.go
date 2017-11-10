@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -130,6 +131,7 @@ func (r *Request) CreateRequest(messageId uint16) {
 	if r.Message != nil {
 		r.message.Payload = r.dumpCbor()
 		r.message.SetOption(coap.ContentFormat, coap.AppCbor)
+		log.Debugf("hex dump cbor request:\n%s", hex.Dump(r.message.Payload))
 	}
 	r.message.SetPathString(r.RequestCode.PathString())
 }
@@ -175,6 +177,7 @@ func logMessage(msg coap.Message) {
 	}
 
 	log.Infof("        Raw payload: %s", msg.Payload)
+	log.Infof("        Raw payload hex: \n%s", hex.Dump(msg.Payload))
 
 	var v interface {}
 	dec := cbor.NewDecoder(bytes.NewReader(msg.Payload))

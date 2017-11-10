@@ -60,6 +60,7 @@ func Send(conn net.Conn, message Message) (recv Message, err error) {
 		if err != nil {
 			return
 		}
+		recvBuffer = recvBuffer[:n]
 		return ParseMessage(recvBuffer)
 	}
 	return Message{}, nil
