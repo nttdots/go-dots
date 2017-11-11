@@ -4,7 +4,7 @@ import "fmt"
 
 type TargetPortRange struct {
 	LowerPort int `json:"lower-port" codec:"6"`
-	UpperPort int `json:"upper-port" codec:"7"`
+	UpperPort int `json:"upper-port" codec:"7,omitempty"`
 }
 
 type MitigationScope struct {
