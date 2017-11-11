@@ -110,9 +110,9 @@ func sendRequest(jsonData []byte, requestName, method string) (err error) {
 
 	switch messages.GetChannelType(requestName) {
 	case messages.SIGNAL:
-		requestMessage = NewRequest(code, coapType, signalChannelAddress, method, connectionFactory)
+		requestMessage = NewRequest(code, coapType, signalChannelAddress, method, RequestTypeMitigationRequest, connectionFactory)
 	case messages.DATA:
-		requestMessage = NewRequest(code, coapType, dataChannelAddress, method, connectionFactory)
+		requestMessage = NewRequest(code, coapType, dataChannelAddress, method, RequestTypeSessingConfig, connectionFactory)
 	default:
 		errorMsg := fmt.Sprintf("unknown channel type error: %s", requestName)
 		log.Errorf("dots_client.main -- %s", errorMsg)

@@ -10,6 +10,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/gonuts/cbor"
+	"github.com/ugorji/go/codec"
 	"github.com/nttdots/go-dots/coap"
 	"github.com/nttdots/go-dots/dots_common/connection"
 	"github.com/nttdots/go-dots/dots_common/messages"
@@ -21,6 +22,12 @@ type RequestInterface interface {
 	Send() error
 }
 
+type RequestType int
+const(
+	RequestTypeMitigationRequest RequestType = iota
+	RequestTypeSessingConfig
+)
+
 /*
  * Dots requests
  */
@@ -31,6 +38,7 @@ type Request struct {
 	coapType    coap.COAPType
 	address     string
 	method      string
+	requestType RequestType
 
 	connectionFactory connection.ClientConnectionFactory
 }
@@ -38,7 +46,7 @@ type Request struct {
 /*
  * Request constructor.
  */
-func NewRequest(code messages.Code, coapType coap.COAPType, address, method string, factory connection.ClientConnectionFactory) *Request {
+func NewRequest(code messages.Code, coapType coap.COAPType, address, method string, requestType RequestType, factory connection.ClientConnectionFactory) *Request {
 	return &Request{
 		nil,
 		code,
@@ -46,6 +54,7 @@ func NewRequest(code messages.Code, coapType coap.COAPType, address, method stri
 		coapType,
 		address,
 		method,
+		requestType,
 		factory,
 	}
 }
@@ -160,7 +169,7 @@ func (r *Request) Send() (err error) {
 		return
 	}
 
-	logMessage(recv)
+	r.logMessage(recv)
 
 	return
 }
@@ -169,7 +178,7 @@ func (r *Request) Close() {
 	r.connectionFactory.Close()
 }
 
-func logMessage(msg coap.Message) {
+func (r *Request) logMessage(msg coap.Message) {
 	log.Infof("Message Code: %s (%d)", msg.Code, msg.Code)
 
 	if msg.Payload == nil {
@@ -179,13 +188,26 @@ func logMessage(msg coap.Message) {
 	log.Infof("        Raw payload: %s", msg.Payload)
 	log.Infof("        Raw payload hex: \n%s", hex.Dump(msg.Payload))
 
-	var v interface {}
-	dec := cbor.NewDecoder(bytes.NewReader(msg.Payload))
-	err := dec.Decode(&v)
+	cborDecHandle := new(codec.CborHandle)
+	cborDecHandle.SetUseIntElmOfStruct(true)
+	dec := codec.NewDecoder(bytes.NewReader(msg.Payload), cborDecHandle)
+
+	var err error
+	var logStr string
+
+	switch r.requestType {
+	case RequestTypeMitigationRequest:
+		var v messages.MitigationRequest
+		err = dec.Decode(&v)
+		logStr = v.String()
+	case RequestTypeSessingConfig:
+		var v messages.SignalConfigRequest
+		err = dec.Decode(&v)
+		logStr = fmt.Sprintf("%+v", v)
+	}
 	if err != nil {
 		log.WithError(err).Warn("CBOR Decode failed.")
 		return
 	}
-
-	log.Infof("        CBOR decoded: %s", v)
+	log.Infof("        CBOR decoded: %s", logStr)
 }
