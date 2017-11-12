@@ -195,9 +195,15 @@ func (r *Request) logMessage(msg coap.Message) {
 		err = dec.Decode(&v)
 		logStr = v.String()
 	case "session_configuration":
-		var v messages.ConfigurationResponse
-		err = dec.Decode(&v)
-		logStr = fmt.Sprintf("%+v", v)
+		if r.method == "Get" {
+			var v messages.ConfigurationResponse
+			err = dec.Decode(&v)
+			logStr = fmt.Sprintf("%+v", v)
+		} else {
+			var v messages.SignalConfigRequest
+			err = dec.Decode(&v)
+			logStr = fmt.Sprintf("%+v", v)
+		}
 	}
 	if err != nil {
 		log.WithError(err).Warn("CBOR Decode failed.")
