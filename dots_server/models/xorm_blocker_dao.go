@@ -156,7 +156,10 @@ func GetLowestLoadBlocker() (blocker db_models.Blocker, err error) {
 		return
 	}
 
-	ok, err := engine.Where("`load` < `capacity`").OrderBy("`load`, `capacity` desc").Get(&blocker)
+
+	// ok, err := engine.Where("`load` < `capacity`").OrderBy("`load`, `capacity` desc").Get(&blocker)
+	// get first blocker
+	ok, err := engine.OrderBy("`id` asc").Get(&blocker)
 	if err != nil {
 		return
 	}
