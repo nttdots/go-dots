@@ -195,7 +195,7 @@ func (r *Request) logMessage(msg coap.Message) {
 		err = dec.Decode(&v)
 		logStr = v.String()
 	case "session_configuration":
-		var v messages.SignalConfigRequest
+		var v messages.ConfigurationResponse
 		err = dec.Decode(&v)
 		logStr = fmt.Sprintf("%+v", v)
 	}
