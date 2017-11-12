@@ -22,12 +22,6 @@ type RequestInterface interface {
 	Send() error
 }
 
-type RequestType int
-const(
-	RequestTypeMitigationRequest RequestType = iota
-	RequestTypeSessingConfig
-)
-
 /*
  * Dots requests
  */
@@ -38,7 +32,7 @@ type Request struct {
 	coapType    coap.COAPType
 	address     string
 	method      string
-	requestType RequestType
+	requestName string
 
 	connectionFactory connection.ClientConnectionFactory
 }
@@ -46,7 +40,7 @@ type Request struct {
 /*
  * Request constructor.
  */
-func NewRequest(code messages.Code, coapType coap.COAPType, address, method string, requestType RequestType, factory connection.ClientConnectionFactory) *Request {
+func NewRequest(code messages.Code, coapType coap.COAPType, address, method string, requestName string, factory connection.ClientConnectionFactory) *Request {
 	return &Request{
 		nil,
 		code,
@@ -54,7 +48,7 @@ func NewRequest(code messages.Code, coapType coap.COAPType, address, method stri
 		coapType,
 		address,
 		method,
-		requestType,
+		requestName,
 		factory,
 	}
 }
@@ -195,12 +189,12 @@ func (r *Request) logMessage(msg coap.Message) {
 	var err error
 	var logStr string
 
-	switch r.requestType {
-	case RequestTypeMitigationRequest:
+	switch r.requestName {
+	case "mitigation_request":
 		var v messages.MitigationRequest
 		err = dec.Decode(&v)
 		logStr = v.String()
-	case RequestTypeSessingConfig:
+	case "session_configuration":
 		var v messages.SignalConfigRequest
 		err = dec.Decode(&v)
 		logStr = fmt.Sprintf("%+v", v)
