@@ -12,7 +12,7 @@ func Test_Mesasge(t *testing.T) {
 	var expects interface{}
 	requests := messages.SupportRequest()
 	sort.Strings(requests)
-	expectsStrings := []string{"mitigation_request", "session_configuration", "hello", "hello_data"}
+	expectsStrings := []string{"mitigation_request", "session_configuration", "create_identifiers", "install_filtering_rule", "hello", "hello_data"}
 	sort.Strings(expectsStrings)
 	if ! reflect.DeepEqual(requests, expectsStrings) {
 		t.Errorf("SupportRequest got %s, want %s", requests, expectsStrings)
