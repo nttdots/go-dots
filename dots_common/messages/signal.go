@@ -4,7 +4,7 @@ import "fmt"
 
 type TargetPortRange struct {
 	LowerPort int `json:"lower-port" codec:"6"`
-	UpperPort int `json:"upper-port" codec:"7"`
+	UpperPort int `json:"upper-port" codec:"7,omitempty"`
 }
 
 type MitigationScope struct {
@@ -62,7 +62,9 @@ func (m *MitigationRequest) String() (result string) {
 			for k, v := range scope.TargetPortRange {
 				result += fmt.Sprintf("     \"%s[%d]\":\n", "target-port-range", k+1)
 				result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", v.LowerPort)
-				result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", v.UpperPort)
+				if (v.UpperPort > 0) {
+					result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", v.UpperPort)
+				}
 			}
 		}
 		if scope.TargetProtocol != nil {

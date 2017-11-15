@@ -5,44 +5,44 @@ import (
 )
 
 type MitigationResponse struct {
-	MitigationScope MitigationScopeStatus `json:"mitigation-scope" cbor:"mitigation-scope"`
+	MitigationScope MitigationScopeStatus `json:"mitigation-scope" codec:"1"`
 }
 
 type MitigationScopeStatus struct {
-	Scopes []ScopeStatus `json:"scope" cbor:"scope"`
+	Scopes []ScopeStatus `json:"scope" codec:"2"`
 }
 
 type ScopeStatus struct {
-	MitigationId    int   `json:"mitigation-id"    cbor:"mitigation-id"`
-	Lifetime        int   `json:"lifetime"         cbor:"lifetime"`
-	MitigationStart int64 `json:"mitigation-start" cbor:"mitigation-start"`
+	MitigationId    int   `json:"mitigation-id"    codec:"3"`
+	Lifetime        int   `json:"lifetime"         codec:"12"`
+	MitigationStart int64 `json:"mitigation-start" codec:"30"`
 
 	//TODO: bytes-dropped, etc.
 }
 
 type BoolCurrent struct {
-	CurrentValue bool `json:"CurrentValue" cbor:"CurrentValue"`
+	CurrentValue bool `json:"CurrentValue" codec:"29"`
 }
 
 type IntCurrentMinMax struct {
-	CurrentValue int `json:"CurrentValue" cbor:"CurrentValue"`
-	MinValue     int `json:"MinValue"     cbor:"MinValue"`
-	MaxValue     int `json:"MaxValue"     cbor:"MaxValue"`
+	CurrentValue int `json:"CurrentValue" codec:"29"`
+	MinValue     int `json:"MinValue"     codec:"19"`
+	MaxValue     int `json:"MaxValue"     codec:"20"`
 }
 
 type FloatCurrentMinMax struct {
-	CurrentValue float64 `json:"CurrentValue" cbor:"CurrentValue"`
-	MinValue     float64 `json:"MinValue"     cbor:"MinValue"`
-	MaxValue     float64 `json:"MaxValue"     cbor:"MaxValue"`
+	CurrentValue float64 `json:"CurrentValue" codec:"29"`
+	MinValue     float64 `json:"MinValue"     codec:"19"`
+	MaxValue     float64 `json:"MaxValue"     codec:"20"`
 }
 
 type ConfigurationResponse struct {
-	HeartbeatInterval IntCurrentMinMax   `json:"heartbeat-interval" cbor:"heartbeat-interval"`
-	MissingHbAllowed  IntCurrentMinMax   `json:"missing-hb-allowed" cbor:"missing-hb-allowed"`
-	MaxRetransmit     IntCurrentMinMax   `json:"max-retransmit"     cbor:"max-retransmit"`
-	AckTimeout        IntCurrentMinMax   `json:"ack-timeout"        cbor:"ack-timeout"`
-	AckRandomFactor   FloatCurrentMinMax `json:"ack-random-factor"  cbor:"ack-random-factor"`
-	TriggerMitigation BoolCurrent        `json:"trigger-mitigation" cbor:"trigger-mitigation"`
+	HeartbeatInterval IntCurrentMinMax   `json:"heartbeat-interval" codec:"15"`
+	MissingHbAllowed  IntCurrentMinMax   `json:"missing-hb-allowed" codec:"28"`
+	MaxRetransmit     IntCurrentMinMax   `json:"max-retransmit"     codec:"16"`
+	AckTimeout        IntCurrentMinMax   `json:"ack-timeout"        codec:"17"`
+	AckRandomFactor   FloatCurrentMinMax `json:"ack-random-factor"  codec:"18"`
+	TriggerMitigation BoolCurrent        `json:"trigger-mitigation" codec:"27"`
 }
 
 func (v *IntCurrentMinMax) SetMinMax(pr *config.ParameterRange) {

@@ -106,7 +106,7 @@ func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) 
 	res = Response{
 		Type: common.NonConfirmable,
 		Code: common.Created,
-		Body: nil,
+		Body: req,
 	}
 
 	return

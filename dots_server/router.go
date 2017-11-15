@@ -11,6 +11,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/gonuts/cbor"
+	"github.com/ugorji/go/codec"
 	"github.com/nttdots/go-dots/coap"
 	"github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
@@ -113,7 +114,9 @@ func (r *Router) UnmarshalCbor(request *coap.Message, messageType reflect.Type) 
 	m := reflect.New(messageType).Interface()
 	cborReader := bytes.NewReader(request.Payload)
 
-	d := cbor.NewDecoder(cborReader)
+	cborDecHandle := new(codec.CborHandle)
+	cborDecHandle.SetUseIntElmOfStruct(true)
+	d := codec.NewDecoder(cborReader, cborDecHandle)
 	err := d.Decode(m)
 
 	return m, err
@@ -158,6 +161,7 @@ func (r *Router) createResponse(request *coap.Message, controllerResponse []byte
 func (r *Router) callController(request *coap.Message, customer *models.Customer) *coap.Message {
 
 	controllerInfo, ok := r.ControllerMap[request.PathString()]
+	log.Debugf("callController -in. path=%s, ok=%v\n", request.PathString(), ok)
 	if !ok {
 		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.MethodNotAllowed)
 	}
