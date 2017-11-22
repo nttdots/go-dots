@@ -122,7 +122,7 @@ func TestEnqueue(t *testing.T) {
 		close(errCh)
 	}()
 	customer, _ := models.GetCustomer(123)
-	scope := models.NewMitigationScope(&customer)
+	scope := models.NewMitigationScope(&customer, "")
 
 	models.BlockerSelectionService.Enqueue(scope, ch, errCh)
 
