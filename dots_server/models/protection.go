@@ -20,8 +20,8 @@ func toProtectionParameters(obj Protection, protectionId int64) []db_models.Prot
 			//ProtectionId: obj.Id(),
 			ProtectionId: protectionId,
 			Key:          RTBH_PROTECTION_CUSTOMER_ID,
-			Value:        strconv.Itoa(t.customerId)})
-		for _, target := range t.Targets() {
+			Value:        strconv.Itoa(t.rtbhCustomerId)})
+		for _, target := range t.RtbhTargets() {
 			result = append(result, db_models.ProtectionParameter{
 				//ProtectionId: obj.Id(),
 				ProtectionId: protectionId,

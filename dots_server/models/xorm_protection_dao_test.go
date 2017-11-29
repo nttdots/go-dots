@@ -270,16 +270,16 @@ func TestGetProtectionParameters(t *testing.T) {
 		t.Errorf("protectionParameters record count got %d, want 1", len(protectionParameters))
 	}
 
-	if protectionParameters[0].Key != "customerId" {
-		t.Errorf("got %s, want %s", protectionParameters[0].Key, "customerId")
+	if protectionParameters[0].Key != models.RTBH_PROTECTION_CUSTOMER_ID {
+		t.Errorf("got %s, want %s", protectionParameters[0].Key, models.RTBH_PROTECTION_CUSTOMER_ID)
 	}
 
 	if protectionParameters[0].Value != strconv.Itoa(testParam1) {
 		t.Errorf("got %s, want %s", protectionParameters[0].Value, strconv.Itoa(testParam1))
 	}
 
-	if protectionParameters[1].Key != "target" {
-		t.Errorf("got %s, want %s", protectionParameters[1].Key, "target")
+	if protectionParameters[1].Key != models.RTBH_PROTECTION_TARGET {
+		t.Errorf("got %s, want %s", protectionParameters[1].Key, models.RTBH_PROTECTION_TARGET)
 	}
 
 	if protectionParameters[1].Value != testParam2 {
@@ -361,16 +361,16 @@ func TestUpdateProtection(t *testing.T) {
 		t.Errorf("protectionParameters record count got %d, want 1", len(protectionParameters))
 	}
 
-	if protectionParameters[0].Key != "customerId" {
-		t.Errorf("got %s, want %s", protectionParameters[0].Key, "customerId")
+	if protectionParameters[0].Key != models.RTBH_PROTECTION_CUSTOMER_ID {
+		t.Errorf("got %s, want %s", protectionParameters[0].Key, models.RTBH_PROTECTION_CUSTOMER_ID)
 	}
 
 	if protectionParameters[0].Value != strconv.Itoa(testUpdParam1) {
 		t.Errorf("got %s, want %s", protectionParameters[0].Value, strconv.Itoa(testUpdParam1))
 	}
 
-	if protectionParameters[1].Key != "target" {
-		t.Errorf("got %s, want %s", protectionParameters[1].Key, "target")
+	if protectionParameters[1].Key != models.RTBH_PROTECTION_TARGET {
+		t.Errorf("got %s, want %s", protectionParameters[1].Key, models.RTBH_PROTECTION_TARGET)
 	}
 
 	if protectionParameters[1].Value != testUpdParam2 {
