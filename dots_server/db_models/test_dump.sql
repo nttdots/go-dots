@@ -274,6 +274,8 @@ DROP TABLE IF EXISTS `protection`;
 
 CREATE TABLE `protection` (
   `id`                     BIGINT(20)   NOT NULL AUTO_INCREMENT,
+  `customer_id`            INT(11)      NOT NULL,
+  `client_identifier`      VARCHAR(255) NOT NULL,
   `mitigation_id`          INT(11)      NOT NULL,
   `is_enabled`             TINYINT(1)   NOT NULL,
   `type`                   VARCHAR(255) NOT NULL,
@@ -291,10 +293,10 @@ CREATE TABLE `protection` (
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
 
-insert into `protection` (id, mitigation_id, is_enabled, `type`, target_blocker_id, started_at, finished_at, record_time, forwarded_data_info_id, blocked_data_info_id, `created`, `updated`)
+insert into `protection` (id, customer_id, client_identifier, mitigation_id, is_enabled, `type`, target_blocker_id, started_at, finished_at, record_time, forwarded_data_info_id, blocked_data_info_id, `created`, `updated`)
 VALUES
-(100, 1, false, 'RTBH', 1, null, null, null, 1, 2, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-(101, 2, false, 'RTBH', 1, null, null, null, 3, 4, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+(100, 123, '', 1, false, 'RTBH', 1, null, null, null, 1, 2, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+(101, 123, '', 2, false, 'RTBH', 1, null, null, null, 3, 4, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 # protection_parameter
 # ------------------------------------------------------------

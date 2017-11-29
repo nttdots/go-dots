@@ -262,6 +262,8 @@ DROP TABLE IF EXISTS `protection`;
 
 CREATE TABLE `protection` (
   `id`                     BIGINT(20)   NOT NULL AUTO_INCREMENT,
+  `customer_id`            INT(11)      NOT NULL,
+  `client_identifier`      VARCHAR(255) NOT NULL,
   `mitigation_id`          INT(11)      NOT NULL,
   `is_enabled`             TINYINT(1)   NOT NULL,
   `type`                   VARCHAR(255) NOT NULL,

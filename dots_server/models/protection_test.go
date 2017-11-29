@@ -14,6 +14,8 @@ func TestProtections_toProtectionParameters_RTBH(t *testing.T) {
 
 	base := models.NewProtectionBase(
 		0,
+		testCustomerId,
+		testClientIdentifier,
 		1272,
 		true,
 		time.Unix(82635252, 122),

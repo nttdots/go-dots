@@ -18,6 +18,9 @@ type testProtectionStruct struct {
 	TestParam2 string
 }
 
+var testCustomerId = 1
+var testClientIdentifier = ""
+
 var testProtectionBase models.ProtectionBase
 var testForwardedDataInfo, testBlockedDataInfo *models.ProtectionStatus
 var testForwardedPeakThroughput, testForwardedAverageThroughput *models.ThroughputData
@@ -44,6 +47,8 @@ func protectionSampleDataCreate() {
 
 	testProtectionBase = models.NewProtectionBase(
 		0,
+		testCustomerId,
+		testClientIdentifier,
 		111222,
 		true,
 		time.Date(2017, 1, 2, 10, 00, 00, 0, loc),
@@ -65,6 +70,8 @@ func protectionSampleDataCreate() {
 	testUpdBlockedDataInfo = models.NewProtectionStatus(0, 20009, 30009, testUpdBlockedPeakThroughput, testUpdBlockedAverageThroughput)
 	testUpdProtectionBase = models.NewProtectionBase(
 		0,
+		testCustomerId,
+		testClientIdentifier,
 		111222,
 		false,
 		time.Date(2010, 11, 12, 10, 00, 00, 0, loc),
@@ -98,6 +105,8 @@ func TestCreateProtection2(t *testing.T) {
 
 	testProtectionBase = models.NewProtectionBase(
 		np.Id(),
+		np.CustomerId(),
+		np.ClientIdentifier(),
 		np.MitigationId(),
 		np.IsEnabled(),
 		np.StartedAt(),
@@ -171,7 +180,7 @@ func TestDeleteProtectionById(t *testing.T) {
 }
 
 func TestGetProtectionBase(t *testing.T) {
-	protection, err := models.GetProtectionBase(testProtectionBase.MitigationId())
+	protection, err := models.GetProtectionBase(testProtectionBase.CustomerId(), testProtectionBase.ClientIdentifier(), testProtectionBase.MitigationId())
 	if err != nil {
 		t.Errorf("get protection err: %s", err)
 	}
@@ -257,7 +266,7 @@ func TestGetProtectionParameters(t *testing.T) {
 	}
 
 	protection := db_models.Protection{}
-	_, err = engine.Where("mitigation_id = ?", testProtectionBase.MitigationId()).Get(&protection)
+	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", testProtectionBase.CustomerId(), testProtectionBase.ClientIdentifier(), testProtectionBase.MitigationId()).Get(&protection)
 	if err != nil {
 		t.Errorf("get protection err: %s", err)
 	}
@@ -289,7 +298,7 @@ func TestGetProtectionParameters(t *testing.T) {
 }
 func TestUpdateProtection(t *testing.T) {
 	// CreateData id setting
-	p, err := models.GetProtectionBase(testProtectionBase.MitigationId())
+	p, err := models.GetProtectionBase(testProtectionBase.CustomerId(), testProtectionBase.ClientIdentifier(), testProtectionBase.MitigationId())
 	if err != nil {
 		t.Errorf("get protection err: %s", err)
 		return
@@ -304,6 +313,8 @@ func TestUpdateProtection(t *testing.T) {
 	rtbhProtection := models.NewRTBHProtection(
 		models.NewProtectionBase(
 			testProtectionBase.Id(),
+			testProtectionBase.CustomerId(),
+			testProtectionBase.ClientIdentifier(),
 			testUpdProtectionBase.MitigationId(),
 			testUpdProtectionBase.IsEnabled(),
 			testUpdProtectionBase.StartedAt(),
@@ -325,7 +336,7 @@ func TestUpdateProtection(t *testing.T) {
 		return
 	}
 
-	protection, err := models.GetProtectionBase(testUpdProtectionBase.MitigationId())
+	protection, err := models.GetProtectionBase(testUpdProtectionBase.CustomerId(), testUpdProtectionBase.ClientIdentifier(), testUpdProtectionBase.MitigationId())
 	if err != nil {
 		t.Errorf("get protection err: %s", err)
 		return
@@ -430,7 +441,7 @@ func TestUpdateProtection(t *testing.T) {
 }
 
 func TestDeleteProtection(t *testing.T) {
-	err := models.DeleteProtection(testProtectionBase.MitigationId())
+	err := models.DeleteProtection(testCustomerId, testClientIdentifier, testProtectionBase.MitigationId())
 	if err != nil {
 		t.Errorf("delete protection err: %s", err)
 	}

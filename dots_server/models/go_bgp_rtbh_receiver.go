@@ -268,6 +268,8 @@ func (g *GoBgpRtbhReceiver) RegisterProtection(m *MitigationScope) (p Protection
 
 	base := ProtectionBase{
 		0,
+		m.Customer.Id,
+		m.ClientIdentifier,
 		m.MitigationId,
 		g,
 		false,
