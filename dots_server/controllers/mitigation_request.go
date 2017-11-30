@@ -308,6 +308,7 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 		}
 		s, err := models.GetMitigationScope(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
 		if err != nil {
+			log.WithError(err).Error("models.GetMitigationScope()")
 			return err
 		}
 		if s == nil {
@@ -319,6 +320,7 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 		}
 		p, err := models.GetProtectionByMitigationId(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
 		if err != nil {
+			log.WithError(err).Error("models.GetProtectionByMitigationId()")
 			return err
 		}
 		if p == nil {
