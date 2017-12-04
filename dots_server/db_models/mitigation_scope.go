@@ -3,7 +3,7 @@ package db_models
 import "time"
 
 type MitigationScope struct {
-	Id               int64     `xorm:"'id'"`
+	Id               int64     `xorm:"'id' pk autoincr"`
 	CustomerId       int       `xorm:"'customer_id'"`
 	ClientIdentifier string    `xorm:"'client_identifier'"`
 	MitigationId     int       `xorm:"'mitigation_id'"`

@@ -17,7 +17,7 @@ const PrefixTypeSourceIpv4Network = "SOURCE_IPV4_NETWORK"
 const PrefixTypeDestinationIpv4Network = "DESTINATION_IPV4_NETWORK"
 
 type Prefix struct {
-	Id                       int64     `xorm:"'id'"`
+	Id                       int64     `xorm:"'id' pk autoincr"`
 	CustomerId               int       `xorm:"'customer_id'"`
 	IdentifierId             int64     `xorm:"'identifier_id'"`
 	MitigationScopeId        int64     `xorm:"'mitigation_scope_id'"`

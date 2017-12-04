@@ -7,7 +7,7 @@ import (
 )
 
 type PortRange struct {
-	Id                int64     `xorm:"'id'"`
+	Id                int64     `xorm:"'id' pk autoincr"`
 	IdentifierId      int64     `xorm:"'identifier_id'"`
 	MitigationScopeId int64     `xorm:"'mitigation_scope_id'"`
 	LowerPort         int       `xorm:"'lower_port'"`

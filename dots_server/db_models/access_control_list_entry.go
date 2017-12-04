@@ -7,7 +7,7 @@ import (
 )
 
 type AccessControlListEntry struct {
-	Id                  int64     `xorm:"'id'"`
+	Id                  int64     `xorm:"'id' pk autoincr"`
 	AccessControlListId int64     `xorm:"'access_control_list_id' not null index(idx_access_control_list_id)"`
 	RuleName            string    `xorm:"'rule_name' not null"`
 	Created             time.Time `xorm:"created"`

@@ -11,7 +11,7 @@ const AclRuleActionPermit = "PERMIT"
 const AclRuleActionRateLimit = "RATE_LIMIT"
 
 type AclRuleAction struct {
-	Id                       int64     `xorm:"'id'"`
+	Id                       int64     `xorm:"'id' pk autoincr"`
 	AccessControlListEntryId int64     `xorm:"'access_control_list_entry_id' not null index(idx_access_control_list_entry_id)"`
 	Type                     string    `xorm:"'type' enum('DENY','PERMIT','RATE_LIMIT') not null"`
 	Action                   string    `xorm:"'action' not null"`
