@@ -57,7 +57,6 @@ func CreateIdentifier(identifier Identifier, customer Customer) (newIdentifier d
 		goto Rollback
 	}
 	session.Commit()
-	engine.Where("customer_id = ? AND alias_name = ?", customer.Id, identifier.AliasName).Get(&newIdentifier)
 
 	session = engine.NewSession()
 	// Registering FQDN, URI and TrafficProtocol

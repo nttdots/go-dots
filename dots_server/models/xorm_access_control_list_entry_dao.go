@@ -25,13 +25,7 @@ func createAce(accessControlListId int64, ace Ace) (aclEntry *db_models.AccessCo
 	}
 	session.Commit()
 
-	var newAclEntry = db_models.AccessControlListEntry{}
-	_, err = engine.Where("access_control_list_id=? and rule_name=?", accessControlListId, ace.RuleName).Get(&newAclEntry)
-	if err != nil {
-		return nil, err
-	}
-
-	return &newAclEntry, nil
+	return aclEntry, nil
 }
 
 func createAceNetworkParameters(aceId int64, ace Ace) (err error) {
@@ -127,7 +121,6 @@ func createAccessControlListEntryDB(accessControlListId int64, accessControlList
  *  err error
  */
 func CreateAccessControlList(accessControlListEntry *AccessControlListEntry, customer *Customer) (newAccessControlList db_models.AccessControlList, err error) {
-	var acl = db_models.AccessControlList{}
 
 	// create database connection
 	engine, err := ConnectDB()
@@ -172,13 +165,6 @@ func CreateAccessControlList(accessControlListEntry *AccessControlListEntry, cus
 		goto Rollback
 	}
 
-	_, err = engine.Where("customer_id=? AND name=? AND type=?",
-		customer.Id,
-		accessControlListEntry.AclName,
-		accessControlListEntry.AclType).Get(&acl)
-	if err != nil {
-		return
-	}
 	err = createAccessControlListEntryDB(newAccessControlList.Id, accessControlListEntry)
 	return
 Rollback:

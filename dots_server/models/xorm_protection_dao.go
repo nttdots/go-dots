@@ -191,7 +191,6 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	var protectionParameters []db_models.ProtectionParameter
 	var forwardedDataInfo, blockedDataInfo *db_models.ProtectionStatus
 	var blockerId int64
-	var storedProtection []db_models.Protection
 
 	// database connection create
 	engine, err := ConnectDB()
@@ -320,22 +319,16 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	session = engine.NewSession()
 	defer session.Close()
 
-	// obtain the new protection stored in the DB for update the id.
-	storedProtection = make([]db_models.Protection, 0)
-	if err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", newProtection.CustomerId, newProtection.ClientIdentifier, newProtection.MitigationId).Find(&storedProtection); err != nil {
-		goto Rollback
-	}
-
 	log.WithFields(log.Fields{
 		"protection": newProtection,
 	}).Debug("create new protection")
 
 	// Registering ProtectionParameters
-	protectionParameters = toProtectionParameters(protection, storedProtection[0].Id)
+	protectionParameters = toProtectionParameters(protection, newProtection.Id)
 	if len(protectionParameters) > 0 {
 		/*
 			for idx := range protectionParameters {
-				protectionParameters[idx].ProtectionId = storedProtection[0].Id
+				protectionParameters[idx].ProtectionId = newProtection.Id
 			}
 		*/
 
@@ -355,15 +348,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// add Commit() after all actions
 	err = session.Commit()
 
-	// obtain the new protection stored in the DB for update the id.
-	/*
-		storedProtection = make([]db_models.Protection, 0)
-		if err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", newProtection.CustomerId, newProtection.ClientIdentifier, newProtection.MitigationId).Find(&storedProtection); err == nil {
-			return storedProtection[0], nil
-		}
-	*/
-
-	return storedProtection[0], nil
+	return newProtection, nil
 
 Rollback:
 	session.Rollback()
