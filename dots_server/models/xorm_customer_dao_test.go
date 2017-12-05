@@ -208,7 +208,7 @@ func TestDeleteCustomer(t *testing.T) {
 	}
 
 	tmpCustomer := db_models.Customer{}
-	_, err = engine.Where("id = ?", customer.Id).Get(&tmpCustomer)
+	_, err = engine.Id(customer.Id).Get(&tmpCustomer)
 	if err != nil {
 		t.Errorf("get customer err: %s", err)
 		return

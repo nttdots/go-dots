@@ -111,7 +111,7 @@ func UpdateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 	updSignalSessionConfiguration.AckTimeout = signalSessionConfiguration.AckTimeout
 	updSignalSessionConfiguration.AckRandomFactor = signalSessionConfiguration.AckRandomFactor
 	updSignalSessionConfiguration.TriggerMitigation = signalSessionConfiguration.TriggerMitigation
-	_, err = session.Where("id = ?", updSignalSessionConfiguration.Id).Cols("heartbeat_interval", "missing_hb_allowed", "max_retransmit", "ack_timeout", "ack_random_factor", "trigger_mitigation").Update(updSignalSessionConfiguration)
+	_, err = session.Id(updSignalSessionConfiguration.Id).Cols("heartbeat_interval", "missing_hb_allowed", "max_retransmit", "ack_timeout", "ack_random_factor", "trigger_mitigation").Update(updSignalSessionConfiguration)
 	if err != nil {
 		log.Infof("customer update err: %s", err)
 		goto Rollback

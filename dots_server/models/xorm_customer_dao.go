@@ -27,7 +27,7 @@ func CreateCustomer(customer Customer) (newCustomer db_models.Customer, err erro
 
 	// same customer_id data check
 	c := new(db_models.Customer)
-	_, err = engine.Where("id = ?", customer.Id).Get(c)
+	_, err = engine.Id(customer.Id).Get(c)
 	if err != nil {
 		return
 	}
@@ -230,7 +230,7 @@ func UpdateCustomer(customer Customer) (err error) {
 	// customer data update
 	// for customer
 	updCustomer := new(db_models.Customer)
-	_, err = session.Where("id = ?", customer.Id).Get(updCustomer)
+	_, err = session.Id(customer.Id).Get(updCustomer)
 	if err != nil {
 		return
 	}
@@ -244,7 +244,7 @@ func UpdateCustomer(customer Customer) (err error) {
 	// for customer
 	updCustomer.Id = customer.Id
 	updCustomer.Name = customer.Name
-	_, err = session.Where("id = ?", updCustomer.Id).Update(updCustomer)
+	_, err = session.Id(updCustomer.Id).Update(updCustomer)
 	if err != nil {
 		session.Rollback()
 		log.Infof("customer update err: %s", err)
@@ -310,7 +310,7 @@ func GetCustomer(customerId int) (customer Customer, err error) {
 
 	// Get customer table data
 	dbCustomer := db_models.Customer{}
-	chk, err := engine.Where("id = ?", customerId).Get(&dbCustomer)
+	chk, err := engine.Id(customerId).Get(&dbCustomer)
 	if err != nil {
 		return
 	}
@@ -416,7 +416,7 @@ func GetCustomerCommonName(commonName string) (customer Customer, err error) {
 
 	// Get customer table data
 	dbCustomer := db_models.Customer{}
-	chk, err = engine.Where("id = ?", dbCommonName.CustomerId).Get(&dbCustomer)
+	chk, err = engine.Id(dbCommonName.CustomerId).Get(&dbCustomer)
 	if err != nil {
 		log.Errorf("customer select error: %s", err)
 		return

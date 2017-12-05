@@ -250,7 +250,7 @@ func UpdateIdentifier(identifier Identifier, customer Customer) (err error) {
 
 	// identifier data settings
 	updIdentifier.AliasName = identifier.AliasName
-	_, err = session.Where("id = ?", updIdentifier.Id).Update(updIdentifier)
+	_, err = session.Id(updIdentifier.Id).Update(updIdentifier)
 	if err != nil {
 		log.Infof("identifier update err: %s", err)
 		goto Rollback

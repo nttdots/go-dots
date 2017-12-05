@@ -143,7 +143,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	updMitigationScope := db_models.MitigationScope{
 		Lifetime: mitigationScope.Lifetime,
 	}
-	_, err = session.Where("id = ?", dbMitigationScope.Id).Update(updMitigationScope)
+	_, err = session.Id(dbMitigationScope.Id).Update(updMitigationScope)
 	if err != nil {
 		session.Rollback()
 		log.Errorf("mitigationScope update err: %s", err)
