@@ -147,8 +147,8 @@ func (m *MitigationRequest) Delete(request interface{}, customer *models.Custome
 /*
  * Create MitigationScope objects based on the mitigationRequest request messages.
  */
-func newMitigationScope(req messages.Scope, c *models.Customer) (m *models.MitigationScope, err error) {
-	m = models.NewMitigationScope(c)
+func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier string) (m *models.MitigationScope, err error) {
+	m = models.NewMitigationScope(c, clientIdentifier)
 	m.MitigationId = req.MitigationId
 	m.TargetProtocol.AddList(req.TargetProtocol)
 	m.FQDN.AddList(req.FQDN)
@@ -241,7 +241,7 @@ func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges 
  */
 func createMitigationScope(req *messages.MitigationRequest, customer *models.Customer) (err error) {
 	for _, messageScope := range req.MitigationScope.Scopes {
-		scope, err := newMitigationScope(messageScope, customer)
+		scope, err := newMitigationScope(messageScope, customer, req.EffectiveClientIdentifier())
 		if err != nil {
 			return err
 		}
@@ -271,7 +271,7 @@ func loadMitigations(req *messages.MitigationRequest, customer *models.Customer)
 	r := make([]mpPair, 0)
 
 	for _, messageScope := range req.MitigationScope.Scopes {
-		s, err := models.GetMitigationScope(customer.Id, messageScope.MitigationId)
+		s, err := models.GetMitigationScope(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
 		if err != nil {
 			return nil, err
 		}
@@ -280,7 +280,7 @@ func loadMitigations(req *messages.MitigationRequest, customer *models.Customer)
 			continue
 		}
 
-		p, err := models.GetProtectionByMitigationId(messageScope.MitigationId, customer.Id)
+		p, err := models.GetProtectionByMitigationId(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
 		if err != nil {
 			return nil, err
 		}
@@ -306,8 +306,9 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 				Type: common.NonConfirmable,
 			}
 		}
-		s, err := models.GetMitigationScope(customer.Id, messageScope.MitigationId)
+		s, err := models.GetMitigationScope(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
 		if err != nil {
+			log.WithError(err).Error("models.GetMitigationScope()")
 			return err
 		}
 		if s == nil {
@@ -317,8 +318,9 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 				Type: common.NonConfirmable,
 			}
 		}
-		p, err := models.GetProtectionByMitigationId(messageScope.MitigationId, customer.Id)
+		p, err := models.GetProtectionByMitigationId(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
 		if err != nil {
+			log.WithError(err).Error("models.GetProtectionByMitigationId()")
 			return err
 		}
 		if p == nil {
@@ -378,7 +380,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 	// retrieve scope objects from the request, then validate it.
 	// obtain an appropriate blocker from the blocker selection service if the validation succeeded.
 	for _, messageScope := range data.MitigationScope.Scopes {
-		scope, err := newMitigationScope(messageScope, c)
+		scope, err := newMitigationScope(messageScope, c, data.EffectiveClientIdentifier())
 		if err != nil {
 			return err
 		}

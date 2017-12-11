@@ -21,7 +21,7 @@ func TestMitigationScopeValidator_Validate_WrongType(t *testing.T) {
 func TestMitigationScopeValidator_Validate_WrongTargetIP(t *testing.T) {
 	c, _ := models.GetCustomerByCommonName("local-host")
 
-	scope := models.NewMitigationScope(c)
+	scope := models.NewMitigationScope(c, "")
 	scope.MitigationId = 2736
 	scope.TargetIP = make([]models.Prefix, 1)
 	scope.TargetIP[0], _ = models.NewPrefix("192.168.0.10/32")
@@ -35,7 +35,7 @@ func TestMitigationScopeValidator_Validate_WrongTargetIP(t *testing.T) {
 func TestMitigationScopeValidator_Validate_TargetIP(t *testing.T) {
 	c, _ := models.GetCustomerByCommonName("local-host")
 
-	scope := models.NewMitigationScope(c)
+	scope := models.NewMitigationScope(c, "")
 	scope.MitigationId = 2736
 	scope.TargetIP = make([]models.Prefix, 2)
 	scope.TargetIP[0], _ = models.NewPrefix("129.0.0.1/32")
@@ -51,7 +51,7 @@ func TestMitigationScopeValidator_Validate_TargetIP(t *testing.T) {
 func TestMitigationScopeValidator_Validate_WrongTargetPrefix(t *testing.T) {
 	c, _ := models.GetCustomerByCommonName("local-host")
 
-	scope := models.NewMitigationScope(c)
+	scope := models.NewMitigationScope(c, "")
 	scope.MitigationId = 2736
 	scope.TargetPrefix = make([]models.Prefix, 1)
 	scope.TargetPrefix[0], _ = models.NewPrefix("192.168.0.20/24")
@@ -65,7 +65,7 @@ func TestMitigationScopeValidator_Validate_WrongTargetPrefix(t *testing.T) {
 func TestMitigationScopeValidator_Validate_TargetPrefix(t *testing.T) {
 	c, _ := models.GetCustomerByCommonName("local-host")
 
-	scope := models.NewMitigationScope(c)
+	scope := models.NewMitigationScope(c, "")
 	scope.MitigationId = 2736
 	scope.TargetPrefix = make([]models.Prefix, 2)
 	scope.TargetPrefix[0], _ = models.NewPrefix("129.0.0.1/32")

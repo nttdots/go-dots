@@ -38,6 +38,18 @@ type MitigationRequest struct {
 }
 
 /*
+ * get last client-identifier
+ */
+func (m *MitigationRequest) EffectiveClientIdentifier() string {
+	ss := m.MitigationScope.ClientIdentifiers
+	if 0 < len(ss) {
+		return ss[len(ss) - 1]
+	} else {
+		return ""
+	}
+}
+
+/*
  * Convert MitigationRequests to strings
  */
 func (m *MitigationRequest) String() (result string) {

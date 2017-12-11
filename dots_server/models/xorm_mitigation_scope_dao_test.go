@@ -76,7 +76,7 @@ func TestCreateMitigationScope(t *testing.T) {
 }
 
 func TestGetMitigationScope(t *testing.T) {
-	mitigationScope, err := models.GetMitigationScope(123, testMitigationScope.MitigationId)
+	mitigationScope, err := models.GetMitigationScope(123, "", testMitigationScope.MitigationId)
 	if err != nil {
 		t.Errorf("get MitigationScope err: %s", err)
 		return
@@ -161,7 +161,7 @@ func TestUpdateMitigationScope(t *testing.T) {
 		t.Errorf("UpdateMitigationScope err: %s", err)
 	}
 
-	mitigationScope, err := models.GetMitigationScope(123, testUpdateMitigationScope.MitigationId)
+	mitigationScope, err := models.GetMitigationScope(123, "", testUpdateMitigationScope.MitigationId)
 	if err != nil {
 		t.Errorf("get SignalSessionConfiguration err: %s", err)
 		return
@@ -249,7 +249,7 @@ func TestDeleteMitigationScope(t *testing.T) {
 		return
 	}
 
-	err = models.DeleteMitigationScope(123, testMitigationScope.MitigationId)
+	err = models.DeleteMitigationScope(123, "", testMitigationScope.MitigationId)
 	if err != nil {
 		t.Errorf("delete customer err: %s", err)
 		return

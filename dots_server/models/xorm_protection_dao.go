@@ -297,6 +297,8 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// Registered protection
 	newProtection = db_models.Protection{
 		Type:                string(protection.Type()),
+		CustomerId:          protection.CustomerId(),
+		ClientIdentifier:    protection.ClientIdentifier(),
 		MitigationId:        protection.MitigationId(),
 		TargetBlockerId:     blockerId,
 		IsEnabled:           protection.IsEnabled(),
@@ -320,7 +322,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 
 	// obtain the new protection stored in the DB for update the id.
 	storedProtection = make([]db_models.Protection, 0)
-	if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err != nil {
+	if err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", newProtection.CustomerId, newProtection.ClientIdentifier, newProtection.MitigationId).Find(&storedProtection); err != nil {
 		goto Rollback
 	}
 
@@ -356,7 +358,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// obtain the new protection stored in the DB for update the id.
 	/*
 		storedProtection = make([]db_models.Protection, 0)
-		if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err == nil {
+		if err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", newProtection.CustomerId, newProtection.ClientIdentifier, newProtection.MitigationId).Find(&storedProtection); err == nil {
 			return storedProtection[0], nil
 		}
 	*/
@@ -539,7 +541,7 @@ Rollback:
 /*
 
  */
-func GetProtectionByMitigationId(mitigationId int, companyId int) (p Protection, err error) {
+func GetProtectionByMitigationId(customerId int, clientIdentifier string, mitigationId int) (p Protection, err error) {
 
 	engine, err := ConnectDB()
 	if err != nil {
@@ -548,7 +550,7 @@ func GetProtectionByMitigationId(mitigationId int, companyId int) (p Protection,
 	}
 
 	var ps []db_models.Protection
-	err = engine.Where("mitigation_id = ?", mitigationId).Find(&ps)
+	err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Find(&ps)
 	if err != nil {
 		return nil, err
 	}
@@ -630,6 +632,8 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 
 	pb := ProtectionBase{
 		dbp.Id,
+		dbp.CustomerId,
+		dbp.ClientIdentifier,
 		dbp.MitigationId,
 		blocker,
 		dbp.IsEnabled,
@@ -670,7 +674,7 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
  *  protection Protection
  *  error error
  */
-func GetProtectionBase(mitigationId int) (protection ProtectionBase, err error) {
+func GetProtectionBase(customerId int, clientIdentifier string, mitigationId int) (protection ProtectionBase, err error) {
 	// default value setting
 	dbProtection := db_models.Protection{}
 
@@ -684,7 +688,7 @@ func GetProtectionBase(mitigationId int) (protection ProtectionBase, err error) 
 	}
 
 	// Get protection
-	ok, err := engine.Where("mitigation_id = ?", mitigationId).Get(&dbProtection)
+	ok, err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&dbProtection)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"MitigationId": mitigationId,
@@ -878,7 +882,7 @@ Error:
  * return:
  *  error error
  */
-func DeleteProtection(mitigationId int) (err error) {
+func DeleteProtection(customerId int, clientIdentifier string, mitigationId int) (err error) {
 	var protection db_models.Protection
 	var chk bool
 
@@ -905,11 +909,13 @@ func DeleteProtection(mitigationId int) (err error) {
 
 	// Get Protection
 	protection = db_models.Protection{}
-	chk, err = session.Where("mitigation_id = ?", mitigationId).Get(&protection)
+	chk, err = session.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&protection)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"MitigationId": mitigationId,
-			"Err":          err,
+			"CustomerId":       customerId,
+			"ClientIdentifier": clientIdentifier,
+			"MitigationId":     mitigationId,
+			"Err":              err,
 		}).Error("select Protection error")
 		goto Rollback
 	}

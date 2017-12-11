@@ -4,6 +4,8 @@ import "time"
 
 type Protection struct {
 	Id                  int64     `xorm:"'id'"`
+	CustomerId          int       `xorm:"'customer_id'"`
+	ClientIdentifier    string    `xorm:"'client_identifier'"`
 	MitigationId        int       `xorm:"'mitigation_id' not null index(idx_mitigation_id)"`
 	IsEnabled           bool      `xorm:"'is_enabled' not null"`
 	Type                string    `xorm:"'type' not null"`

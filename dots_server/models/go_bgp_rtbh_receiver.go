@@ -118,7 +118,7 @@ func (g *GoBgpRtbhReceiver) ExecuteProtection(p Protection) (err error) {
 	}
 
 	log.WithFields(log.Fields{
-		"customer.id":   b.customerId,
+		"customer.id":   b.rtbhCustomerId,
 		"mitigation.id": b.mitigationId,
 	}).Info("GoBgpRtbhReceiver.ExecuteProtection")
 
@@ -174,7 +174,7 @@ func (g *GoBgpRtbhReceiver) StopProtection(p Protection) (err error) {
 	}
 
 	log.WithFields(log.Fields{
-		"customer.id":   b.CustomerId(),
+		"customer.id":   b.RtbhCustomerId(),
 		"mitigation.id": b.MitigationId(),
 		"load":          g.Load(),
 	}).Infof("GoBgpRtbhReceiver.StopProtection")
@@ -247,7 +247,7 @@ func (g *GoBgpRtbhReceiver) toPath(b *RTBH) []*table.Path {
 
 	paths := make([]*table.Path, 0)
 
-	for _, prefix := range b.targets {
+	for _, prefix := range b.rtbhTargets {
 		bgpPrefix := toBgpPrefix(prefix)
 		paths = append(paths, table.NewPath(nil, bgpPrefix, false, attrs, time.Now(), false))
 	}
@@ -268,6 +268,8 @@ func (g *GoBgpRtbhReceiver) RegisterProtection(m *MitigationScope) (p Protection
 
 	base := ProtectionBase{
 		0,
+		m.Customer.Id,
+		m.ClientIdentifier,
 		m.MitigationId,
 		g,
 		false,
@@ -313,23 +315,23 @@ func (g *GoBgpRtbhReceiver) UnregisterProtection(p Protection) (err error) {
 
 const PROTECTION_TYPE_RTBH = "RTBH"
 const (
-	RTBH_PROTECTION_CUSTOMER_ID = "customerId"
-	RTBH_PROTECTION_TARGET      = "target"
+	RTBH_PROTECTION_CUSTOMER_ID = "rtbhCustomerId"
+	RTBH_PROTECTION_TARGET      = "rtbhTarget"
 )
 
 // implements Protection
 type RTBH struct {
 	ProtectionBase
-	customerId int
-	targets    []string
+	rtbhCustomerId int
+	rtbhTargets    []string
 }
 
-func (r *RTBH) CustomerId() int {
-	return r.customerId
+func (r *RTBH) RtbhCustomerId() int {
+	return r.rtbhCustomerId
 }
 
-func (r *RTBH) Targets() []string {
-	return r.targets
+func (r *RTBH) RtbhTargets() []string {
+	return r.rtbhTargets
 }
 
 func (r RTBH) Type() ProtectionType {
