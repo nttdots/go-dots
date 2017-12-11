@@ -57,7 +57,6 @@ func CreateIdentifier(identifier Identifier, customer Customer) (newIdentifier d
 		goto Rollback
 	}
 	session.Commit()
-	engine.Where("customer_id = ? AND alias_name = ?", customer.Id, identifier.AliasName).Get(&newIdentifier)
 
 	session = engine.NewSession()
 	// Registering FQDN, URI and TrafficProtocol
@@ -251,7 +250,7 @@ func UpdateIdentifier(identifier Identifier, customer Customer) (err error) {
 
 	// identifier data settings
 	updIdentifier.AliasName = identifier.AliasName
-	_, err = session.Where("id = ?", updIdentifier.Id).Update(updIdentifier)
+	_, err = session.Id(updIdentifier.Id).Update(updIdentifier)
 	if err != nil {
 		log.Infof("identifier update err: %s", err)
 		goto Rollback

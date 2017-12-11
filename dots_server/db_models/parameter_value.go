@@ -13,7 +13,7 @@ const ParameterValueTypeAliasName = "ALIAS_NAME"
 const ParameterValueTypeTargetProtocol = "TARGET_PROTOCOL"
 
 type ParameterValue struct {
-	Id                int64     `xorm:"'id'"`
+	Id                int64     `xorm:"'id' pk autoincr"`
 	CustomerId        int       `xorm:"'customer_id'"`
 	IdentifierId      int64     `xorm:"'identifier_id'"`
 	MitigationScopeId int64     `xorm:"'mitigation_scope_id'"`

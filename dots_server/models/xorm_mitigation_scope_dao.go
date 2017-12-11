@@ -67,11 +67,6 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		return
 	}
 	session.Close()
-	if _, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customer.Id, clientIdentifier, mitigationScope.MitigationId).Get(&newMitigationScope); err != nil {
-		session.Rollback()
-		log.Errorf("mitigationScope renew err: %s", err)
-		return
-	}
 
 	session = engine.NewSession()
 	defer session.Close()
@@ -148,7 +143,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	updMitigationScope := db_models.MitigationScope{
 		Lifetime: mitigationScope.Lifetime,
 	}
-	_, err = session.Where("id = ?", dbMitigationScope.Id).Update(updMitigationScope)
+	_, err = session.Id(dbMitigationScope.Id).Update(updMitigationScope)
 	if err != nil {
 		session.Rollback()
 		log.Errorf("mitigationScope update err: %s", err)

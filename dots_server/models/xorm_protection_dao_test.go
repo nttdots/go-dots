@@ -122,7 +122,7 @@ func TestDeleteProtectionById(t *testing.T) {
 	// preparing for the test
 	engine, _ := models.ConnectDB()
 	var p db_models.Protection
-	ok, _ := engine.Where("id=?", 100).Get(&p)
+	ok, _ := engine.Id(100).Get(&p)
 	if !ok {
 		t.Errorf("protection id error: %d", 100)
 		return
@@ -453,7 +453,7 @@ func TestDeleteProtection(t *testing.T) {
 
 	// Protection
 	chkProtection := db_models.Protection{}
-	_, err = engine.Where("id=?", testProtectionBase.Id()).Get(&chkProtection)
+	_, err = engine.Id(testProtectionBase.Id()).Get(&chkProtection)
 	if err != nil {
 		t.Errorf("select protection err: %s", err)
 	}
@@ -463,7 +463,7 @@ func TestDeleteProtection(t *testing.T) {
 
 	// ForwardedDataInfo
 	chkProtectionStatus := db_models.ProtectionStatus{}
-	_, err = engine.Where("id=?", testProtectionBase.ForwardedDataInfo().Id()).Get(&chkProtectionStatus)
+	_, err = engine.Id(testProtectionBase.ForwardedDataInfo().Id()).Get(&chkProtectionStatus)
 	if err != nil {
 		t.Errorf("select ForwardedDataInfo err: %s", err)
 	}
@@ -473,7 +473,7 @@ func TestDeleteProtection(t *testing.T) {
 
 	// BlockedDataInfo
 	chkProtectionStatus = db_models.ProtectionStatus{}
-	_, err = engine.Where("id=?", testProtectionBase.BlockedDataInfo().Id()).Get(&chkProtectionStatus)
+	_, err = engine.Id(testProtectionBase.BlockedDataInfo().Id()).Get(&chkProtectionStatus)
 	if err != nil {
 		t.Errorf("select BlockedDataInfo err: %s", err)
 	}
@@ -483,7 +483,7 @@ func TestDeleteProtection(t *testing.T) {
 
 	// ForwardedDataInfo -> PeakThroughputData
 	chkThroughputData := db_models.ThroughputData{}
-	_, err = engine.Where("id=?", testProtectionBase.ForwardedDataInfo().PeakThroughput().Id()).Get(&chkThroughputData)
+	_, err = engine.Id(testProtectionBase.ForwardedDataInfo().PeakThroughput().Id()).Get(&chkThroughputData)
 	if err != nil {
 		t.Errorf("select ForwardedDataInfo().PeakThroughputData err: %s", err)
 	}
@@ -493,7 +493,7 @@ func TestDeleteProtection(t *testing.T) {
 
 	// ForwardedDataInfo -> AverageThroughputData
 	chkThroughputData = db_models.ThroughputData{}
-	_, err = engine.Where("id=?", testProtectionBase.ForwardedDataInfo().AverageThroughput().Id()).Get(&chkThroughputData)
+	_, err = engine.Id(testProtectionBase.ForwardedDataInfo().AverageThroughput().Id()).Get(&chkThroughputData)
 	if err != nil {
 		t.Errorf("select ForwardedDataInfo().AverageThroughputData err: %s", err)
 	}
@@ -503,7 +503,7 @@ func TestDeleteProtection(t *testing.T) {
 
 	// BlockedDataInfo -> PeakThroughputData
 	chkThroughputData = db_models.ThroughputData{}
-	_, err = engine.Where("id=?", testProtectionBase.BlockedDataInfo().PeakThroughput().Id()).Get(&chkThroughputData)
+	_, err = engine.Id(testProtectionBase.BlockedDataInfo().PeakThroughput().Id()).Get(&chkThroughputData)
 	if err != nil {
 		t.Errorf("select BlockedDataInfo.PeakThroughputData err: %s", err)
 	}
@@ -513,7 +513,7 @@ func TestDeleteProtection(t *testing.T) {
 
 	// BlockedDataInfo -> AverageThroughputData
 	chkThroughputData = db_models.ThroughputData{}
-	_, err = engine.Where("id=?", testProtectionBase.BlockedDataInfo().AverageThroughput().Id()).Get(&chkThroughputData)
+	_, err = engine.Id(testProtectionBase.BlockedDataInfo().AverageThroughput().Id()).Get(&chkThroughputData)
 	if err != nil {
 		t.Errorf("select BlockedDataInfo.AverageThroughputData err: %s", err)
 	}
