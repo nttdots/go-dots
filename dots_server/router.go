@@ -173,6 +173,9 @@ func (r *Router) callController(request *coap.Message, customer *models.Customer
 	log.WithFields(log.Fields{
 		"method": method,
 	}).Debug("method decided.")
+	if err != nil {
+		return r.createResponse(request, nil, dots_common.NonConfirmable, dots_common.InternalServerError)
+	}
 
 	requestStructure, err := r.UnmarshalCbor(request, controllerInfo.RequestMessageType)
 	if err != nil {

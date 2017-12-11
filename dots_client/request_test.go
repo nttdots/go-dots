@@ -25,7 +25,7 @@ func TestRequest(t *testing.T) {
 	var expects interface{}
 	var ret interface{}
 
-	r := main.NewRequest(messages.HELLO, messages.GetType("HELLO"),"", "Post", &testConnectionFactory{})
+	r := main.NewRequest(messages.HELLO, messages.GetType("HELLO"),"", "Post", "", &testConnectionFactory{})
 	defer r.Close()
 
 	testJson := "{\"message\": \"dots_client\""
