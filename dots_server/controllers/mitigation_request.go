@@ -280,7 +280,7 @@ func loadMitigations(req *messages.MitigationRequest, customer *models.Customer)
 			continue
 		}
 
-		p, err := models.GetProtectionByMitigationId(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
+		p, err := models.GetActiveProtectionByMitigationId(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
 		if err != nil {
 			return nil, err
 		}
@@ -318,9 +318,9 @@ func cancelMitigation(req *messages.MitigationRequest, customer *models.Customer
 				Type: common.NonConfirmable,
 			}
 		}
-		p, err := models.GetProtectionByMitigationId(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
+		p, err := models.GetActiveProtectionByMitigationId(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
 		if err != nil {
-			log.WithError(err).Error("models.GetProtectionByMitigationId()")
+			log.WithError(err).Error("models.GetActiveProtectionByMitigationId()")
 			return err
 		}
 		if p == nil {

@@ -518,7 +518,7 @@ Rollback:
 /*
 
  */
-func GetProtectionByMitigationId(customerId int, clientIdentifier string, mitigationId int) (p Protection, err error) {
+func GetActiveProtectionByMitigationId(customerId int, clientIdentifier string, mitigationId int) (p Protection, err error) {
 
 	engine, err := ConnectDB()
 	if err != nil {
@@ -527,7 +527,7 @@ func GetProtectionByMitigationId(customerId int, clientIdentifier string, mitiga
 	}
 
 	var ps []db_models.Protection
-	err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Find(&ps)
+	err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ? AND is_enabled = 1", customerId, clientIdentifier, mitigationId).Find(&ps)
 	if err != nil {
 		return nil, err
 	}
