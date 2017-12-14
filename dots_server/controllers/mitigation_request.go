@@ -183,15 +183,19 @@ func (m *MitigationRequest) Delete(request interface{}, customer *models.Custome
 	log.WithField("message", req.String()).Debug("[DELETE] receive message")
 
 	err = cancelMitigationByMessage(req, customer)
+	if err != nil {
+		return
+	}
 
-	if err == nil {
-		res = Response{
-			Type: common.NonConfirmable,
-			Code: common.Deleted,
-			Body: nil,
-		}
-	} else {
-		return Response{}, err
+	err = deleteMitigationByMessage(req, customer)
+	if err != nil {
+		return
+	}
+
+	res = Response{
+		Type: common.NonConfirmable,
+		Code: common.Deleted,
+		Body: nil,
 	}
 	return
 }
@@ -340,6 +344,19 @@ func loadMitigations(req *messages.MitigationRequest, customer *models.Customer)
 	}
 
 	return r, nil
+}
+
+/*
+ * delete mitigations
+ */
+func deleteMitigationByMessage(req *messages.MitigationRequest, customer *models.Customer) (err error) {
+	for _, scope := range req.MitigationScope.Scopes {
+		err = models.DeleteMitigationScope(customer.Id, req.EffectiveClientIdentifier(), scope.MitigationId)
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 /*
