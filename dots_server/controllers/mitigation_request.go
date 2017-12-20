@@ -90,74 +90,77 @@ func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) 
 	req := request.(*messages.MitigationRequest)
 	log.WithField("message", req.String()).Debug("[PUT] receive message")
 
-	currentScopes := make([]*models.MitigationScope, 0)
-	for _, messageScope := range req.MitigationScope.Scopes {
-		s, err := models.GetMitigationScope(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
-		if err != nil {
-			log.WithError(err).Error("MitigationScope load error.")
-			return Response{}, err
-		}
-		if s.MitigationId != 0 {
-			currentScopes = append(currentScopes, s)
-		}
-	}
+	if len(req.MitigationScope.Scopes) != 1 {
 
-	if len(currentScopes) == 0 {
-		// Create New
-
-		err = createMitigationScope(req, customer)
-		if err != nil {
-			log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
-			return
-		}
-
-		err = callBlocker(req, customer)
-		if err != nil {
-			log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
-			return
-		}
-
-		// return status
-		res = Response{
-			Type: common.NonConfirmable,
-			Code: common.Created,
-			Body: req,
-		}
-	} else if len(currentScopes) == len(req.MitigationScope.Scopes) {
-		// Update all
-
-		// Cannot rollback :P
-		err = cancelMitigationByModels(currentScopes, req.EffectiveClientIdentifier(), customer)
-		if err != nil {
-			log.WithError(err).Error("MitigationRequest.Put")
-			return
-		}
-
-		err = createMitigationScope(req, customer)
-		if err != nil {
-			log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
-			return
-		}
-
-		err = callBlocker(req, customer)
-		if err != nil {
-			log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
-			return
-		}
-
-		res = Response{
-			Type: common.NonConfirmable,
-			Code: common.Changed,
-			Body: nil,
-		}
-
-	} else {
-		// Mixed
-
+		// Zero or multiple scope
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
 			Body: nil,
+		}
+
+	} else {
+
+		reqScope := req.MitigationScope.Scopes[0]
+
+		var currentScope *models.MitigationScope
+		currentScope, err = models.GetMitigationScope(customer.Id, req.EffectiveClientIdentifier(), reqScope.MitigationId)
+		if err != nil {
+			log.WithError(err).Error("MitigationScope load error.")
+			return Response{}, err
+		}
+
+		if currentScope.MitigationId == 0 {
+
+			// Create New
+
+			err = createMitigationScope(req, customer)
+			if err != nil {
+				log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
+				return
+			}
+
+			err = callBlocker(req, customer)
+			if err != nil {
+				log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
+				return
+			}
+
+			// return status
+			res = Response{
+				Type: common.NonConfirmable,
+				Code: common.Created,
+				Body: req,
+			}
+
+		} else  {
+
+			// Update
+
+			// Cannot rollback :P
+			err = cancelMitigationByModel(currentScope, req.EffectiveClientIdentifier(), customer)
+			if err != nil {
+				log.WithError(err).Error("MitigationRequest.Put")
+				return
+			}
+
+			err = createMitigationScope(req, customer)
+			if err != nil {
+				log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
+				return
+			}
+
+			err = callBlocker(req, customer)
+			if err != nil {
+				log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
+				return
+			}
+
+			res = Response{
+				Type: common.NonConfirmable,
+				Code: common.Changed,
+				Body: req,
+			}
 		}
 	}
 
@@ -373,11 +376,9 @@ func cancelMitigationByMessage(req *messages.MitigationRequest, customer *models
 /*
  * Terminate the mitigation.
  */
-func cancelMitigationByModels(scopes []*models.MitigationScope, clientIdentifier string, customer *models.Customer) error {
-	ids := make([]int, len(scopes))
-	for i, scope := range scopes {
-		ids[i] = scope.MitigationId
-	}
+func cancelMitigationByModel(scope *models.MitigationScope, clientIdentifier string, customer *models.Customer) error {
+	ids := make([]int, 1)
+	ids[0] = scope.MitigationId
 	return cancelMitigationByIds(ids, clientIdentifier, customer)
 }
 
