@@ -61,3 +61,39 @@ func (v *FloatCurrentMinMax) SetMinMax(pr *config.ParameterRange) {
 	v.MinValue = float64(pr.Start().(int))
 	v.MaxValue = float64(pr.End().(int))
 }
+
+type MitigationResponsePut struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	MitigationScope MitigationScopePut `json:"mitigation-scope" codec:"1"`
+}
+
+type MitigationScopePut struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	ClientIdentifiers []string `json:"client-identifier" codec:"36"`
+	Scopes            []ScopePut  `json:"scope"             codec:"2"`
+}
+
+type ScopePut struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	// Identifier for the mitigation request
+	MitigationId int `json:"mitigation-id" codec:"3"`
+	// lifetime
+	Lifetime int `json:"lifetime" codec:"12,omitempty"`
+}
+
+func NewMitigationResponsePut(req *MitigationRequest) MitigationResponsePut {
+	res := MitigationResponsePut{}
+	res.MitigationScope = MitigationScopePut{}
+	if req.MitigationScope.ClientIdentifiers != nil {
+		res.MitigationScope.ClientIdentifiers = make([]string, len(req.MitigationScope.ClientIdentifiers))
+		copy(res.MitigationScope.ClientIdentifiers, req.MitigationScope.ClientIdentifiers)
+	}
+	if req.MitigationScope.Scopes != nil {
+		res.MitigationScope.Scopes = make([]ScopePut, len(req.MitigationScope.Scopes))
+		for i := range req.MitigationScope.Scopes {
+			res.MitigationScope.Scopes[i] = ScopePut{ MitigationId: req.MitigationScope.Scopes[i].MitigationId, Lifetime: req.MitigationScope.Scopes[i].Lifetime }
+		}
+	}
+
+	return res
+}

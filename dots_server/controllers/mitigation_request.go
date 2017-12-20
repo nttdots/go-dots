@@ -104,7 +104,7 @@ func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) 
 	res = Response{
 		Type: common.NonConfirmable,
 		Code: common.Created,
-		Body: req,
+		Body: messages.NewMitigationResponsePut(req),
 	}
 
 	return
@@ -205,7 +205,11 @@ func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges 
  * Create MitigationScope objects based on received mitigation requests, and store the scopes into the database.
  */
 func createMitigationScope(req *messages.MitigationRequest, customer *models.Customer) (err error) {
-	for _, messageScope := range req.MitigationScope.Scopes {
+	for i, messageScope := range req.MitigationScope.Scopes {
+		// defaults value of lifetime
+		if messageScope.Lifetime <= 0 {
+			req.MitigationScope.Scopes[i].Lifetime = common.DEFAULT_SIGNAL_MITIGATE_LIFETIME  // TODO: return 4.00 if Lifetime is 0
+		}
 		scope, err := newMitigationScope(messageScope, customer, req.EffectiveClientIdentifier())
 		if err != nil {
 			return err
