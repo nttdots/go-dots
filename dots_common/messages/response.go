@@ -5,14 +5,17 @@ import (
 )
 
 type MitigationResponse struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationScope MitigationScopeStatus `json:"mitigation-scope" codec:"1"`
 }
 
 type MitigationScopeStatus struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	Scopes []ScopeStatus `json:"scope" codec:"2"`
 }
 
 type ScopeStatus struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mitigation-id"    codec:"3"`
 	Lifetime        int   `json:"lifetime"         codec:"12"`
 	MitigationStart int64 `json:"mitigation-start" codec:"30"`
@@ -21,22 +24,26 @@ type ScopeStatus struct {
 }
 
 type BoolCurrent struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	CurrentValue bool `json:"CurrentValue" codec:"29"`
 }
 
 type IntCurrentMinMax struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	CurrentValue int `json:"CurrentValue" codec:"29"`
 	MinValue     int `json:"MinValue"     codec:"19"`
 	MaxValue     int `json:"MaxValue"     codec:"20"`
 }
 
 type FloatCurrentMinMax struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	CurrentValue float64 `json:"CurrentValue" codec:"29"`
 	MinValue     float64 `json:"MinValue"     codec:"19"`
 	MaxValue     float64 `json:"MaxValue"     codec:"20"`
 }
 
 type ConfigurationResponse struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	HeartbeatInterval IntCurrentMinMax   `json:"heartbeat-interval" codec:"15"`
 	MissingHbAllowed  IntCurrentMinMax   `json:"missing-hb-allowed" codec:"28"`
 	MaxRetransmit     IntCurrentMinMax   `json:"max-retransmit"     codec:"16"`

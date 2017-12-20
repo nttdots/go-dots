@@ -115,7 +115,6 @@ func (r *Router) UnmarshalCbor(request *coap.Message, messageType reflect.Type) 
 	cborReader := bytes.NewReader(request.Payload)
 
 	cborDecHandle := new(codec.CborHandle)
-	cborDecHandle.SetUseIntElmOfStruct(true)
 	d := codec.NewDecoder(cborReader, cborDecHandle)
 	err := d.Decode(m)
 

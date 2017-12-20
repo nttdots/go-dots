@@ -51,13 +51,13 @@ func (m *MitigationRequest) Get(request interface{}, customer *models.Customer) 
 		if mp.protection != nil {
 			startedAt = mp.protection.StartedAt().Unix()
 		}
-		scopes = append(scopes, messages.ScopeStatus { id, lifetime, startedAt })
+		scopes = append(scopes, messages.ScopeStatus { MitigationId: id, Lifetime: lifetime, MitigationStart: startedAt })
 	}
 
 	res = Response{
 		Type: common.NonConfirmable,
 		Code: common.Content,
-		Body: messages.MitigationResponse { messages.MitigationScopeStatus { scopes }},
+		Body: messages.MitigationResponse { MitigationScope: messages.MitigationScopeStatus { Scopes: scopes }},
 	}
 
 	return

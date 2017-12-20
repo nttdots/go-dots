@@ -183,7 +183,6 @@ func (r *Request) logMessage(msg coap.Message) {
 	log.Infof("        Raw payload hex: \n%s", hex.Dump(msg.Payload))
 
 	cborDecHandle := new(codec.CborHandle)
-	cborDecHandle.SetUseIntElmOfStruct(true)
 	dec := codec.NewDecoder(bytes.NewReader(msg.Payload), cborDecHandle)
 
 	var err error
