@@ -49,7 +49,20 @@ func (m *MitigationRequest) Get(request interface{}, customer *models.Customer) 
 		if mp.protection != nil {
 			startedAt = mp.protection.StartedAt().Unix()
 		}
-		scopes = append(scopes, messages.ScopeStatus { MitigationId: id, Lifetime: lifetime, MitigationStart: startedAt })
+		scopeStates := messages.ScopeStatus {
+			MitigationId: id,
+			MitigationStart: startedAt,
+			Lifetime: lifetime,
+			Status: 2,        // Just dummy for interop
+			BytesDropped: 0,  // Just dummy for interop
+			BpsDropped: 0,    // Just dummy for interop
+			PktsDropped: 0,   // Just dummy for interop
+			PpsDropped: 0 }   // Just dummy for interop
+		scopeStates.TargetProtocol = make([]int, 0, len(mp.mitigation.TargetProtocol))
+		for k := range mp.mitigation.TargetProtocol {
+			scopeStates.TargetProtocol = append(scopeStates.TargetProtocol, k)
+		}
+		scopes = append(scopes, scopeStates)
 	}
 
 	res = Response{
@@ -238,6 +251,23 @@ type mpPair struct {
 func loadMitigations(req *messages.MitigationRequest, customer *models.Customer) ([]mpPair, error) {
 
 	r := make([]mpPair, 0)
+
+	// if scope is empty, get all DOTS mitigation request
+	if req.MitigationScope.Scopes == nil {
+		mitigationIds, err := models.GetMitigationIds(customer.Id, req.EffectiveClientIdentifier())
+		if err != nil {
+			return nil, err
+		}
+		if mitigationIds == nil {
+			log.WithField("ClientIdentifiers", req.MitigationScope.ClientIdentifiers).Warn("mitigation id not found in this client identifiers.")
+			return nil, errors.New("mitigation id not found in this client identifiers.")
+		}
+		log.WithField("list of mitigation id", mitigationIds).Info("found mitigation ids.")
+		req.MitigationScope.Scopes = make([]messages.Scope, len(mitigationIds))
+		for i, mitigationId := range mitigationIds {
+			req.MitigationScope.Scopes[i].MitigationId = mitigationId
+		}
+	}
 
 	for _, messageScope := range req.MitigationScope.Scopes {
 		s, err := models.GetMitigationScope(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)

@@ -17,10 +17,14 @@ type MitigationScopeStatus struct {
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mitigation-id"    codec:"3"`
-	Lifetime        int   `json:"lifetime"         codec:"12"`
 	MitigationStart int64 `json:"mitigation-start" codec:"34"`
-
-	//TODO: bytes-dropped, etc.
+	TargetProtocol []int  `json:"target-protocol"   codec:"8"`
+	Lifetime        int   `json:"lifetime"         codec:"12"`
+	Status          int   `json:"status"           codec:"21"`
+	BytesDropped    int   `json:"bytes-dropped"    codec:"26"`
+	BpsDropped      int   `json:"bps-dropped"      codec:"27"`
+	PktsDropped     int   `json:"pkts-dropped"     codec:"28"`
+	PpsDropped      int   `json:"pps-dropped"      codec:"29"`
 }
 
 type BoolCurrent struct {

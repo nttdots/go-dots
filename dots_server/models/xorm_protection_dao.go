@@ -536,9 +536,10 @@ func GetProtectionByMitigationId(customerId int, clientIdentifier string, mitiga
 		return nil, nil
 	}
 
-	if len(ps) != 1 {
-		return nil, errors.New("duplicate mitigationId.")
-	}
+	// TODO: later merge branch "protection-handling"
+//	if len(ps) != 1 {
+//		return nil, errors.New("duplicate mitigationId.")
+//	}
 
 	return toProtection(engine, ps[0])
 }
@@ -630,6 +631,8 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		p = nil
 		err = errors.New(fmt.Sprintf("invalid protection type: %s", dbp.Type))
 	}
+
+	log.Infof("toProtection. found protection. p=%+v\n", p)
 
 	return
 

@@ -190,11 +190,22 @@ func (r *Request) logMessage(msg coap.Message) {
 
 	switch r.requestName {
 	case "mitigation_request":
-		var v messages.MitigationRequest
-		err = dec.Decode(&v)
-		logStr = v.String()
+		switch r.method {
+		case "GET":
+			var v messages.MitigationResponse
+			err = dec.Decode(&v)
+			logStr = fmt.Sprintf("%+v", v)
+		case "PUT":
+			var v messages.MitigationResponsePut
+			err = dec.Decode(&v)
+			logStr = fmt.Sprintf("%+v", v)
+		default:
+			var v messages.MitigationRequest
+			err = dec.Decode(&v)
+			logStr = v.String()
+		}
 	case "session_configuration":
-		if r.method == "Get" {
+		if r.method == "GET" {
 			var v messages.ConfigurationResponse
 			err = dec.Decode(&v)
 			logStr = fmt.Sprintf("%+v", v)
