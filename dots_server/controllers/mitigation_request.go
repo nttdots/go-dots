@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"net"
-
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
@@ -155,10 +153,6 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	m.URI.AddList(req.URI)
 	m.AliasName.AddList(req.AliasName)
 	m.Lifetime = req.Lifetime
-	m.TargetIP, err = newTargetIp(req.TargetIp)
-	if err != nil {
-		return
-	}
 	m.TargetPrefix, err = newTargetPrefix(req.TargetPrefix)
 	if err != nil {
 		return
@@ -168,35 +162,6 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 		return
 	}
 
-	return
-}
-
-/*
- * Parse the 'targetIp' field in a mitigationScope and return a list of Prefix objects.
- */
-func newTargetIp(targetIP []string) (prefixes []models.Prefix, err error) {
-	prefixes = make([]models.Prefix, len(targetIP))
-
-	for i, ipaddr := range targetIP {
-		ip := net.ParseIP(ipaddr)
-		if ip == nil {
-			return nil, errors.New(fmt.Sprintf("scope.TargetIp format error. input: %s", ipaddr))
-		}
-		switch {
-		case ip.To4() != nil: // ipv4
-			prefix, err := models.NewPrefix(ipaddr + common.IPV4_HOST_PREFIX_LEN)
-			if err != nil {
-				return nil, err
-			}
-			prefixes[i] = prefix
-		default: // ipv6
-			prefix, err := models.NewPrefix(ipaddr + common.IPV6_HOST_PREFIX_LEN)
-			if err != nil {
-				return nil, err
-			}
-			prefixes[i] = prefix
-		}
-	}
 	return
 }
 
