@@ -221,7 +221,9 @@ func createMitigationScope(req *messages.MitigationRequest, customer *models.Cus
 	for i, messageScope := range req.MitigationScope.Scopes {
 		// defaults value of lifetime
 		if messageScope.Lifetime <= 0 {
-			req.MitigationScope.Scopes[i].Lifetime = common.DEFAULT_SIGNAL_MITIGATE_LIFETIME  // TODO: return 4.00 if Lifetime is 0
+			// TODO: return 4.00 if Lifetime is 0
+			req.MitigationScope.Scopes[i].Lifetime = common.DEFAULT_SIGNAL_MITIGATE_LIFETIME
+			messageScope.Lifetime = common.DEFAULT_SIGNAL_MITIGATE_LIFETIME
 		}
 		scope, err := newMitigationScope(messageScope, customer, req.EffectiveClientIdentifier())
 		if err != nil {
