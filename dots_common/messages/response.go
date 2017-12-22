@@ -17,7 +17,7 @@ type MitigationScopeStatus struct {
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mitigation-id"    codec:"3"`
-	MitigationStart int64 `json:"mitigation-start" codec:"34"`
+	MitigationStart float64 `json:"mitigation-start" codec:"34"`
 	TargetProtocol []int  `json:"target-protocol"   codec:"8"`
 	Lifetime        int   `json:"lifetime"         codec:"12"`
 	Status          int   `json:"status"           codec:"21"`

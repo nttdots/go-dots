@@ -51,7 +51,7 @@ func (m *MitigationRequest) Get(request interface{}, customer *models.Customer) 
 		}
 		scopeStates := messages.ScopeStatus {
 			MitigationId: id,
-			MitigationStart: startedAt,
+			MitigationStart: float64(startedAt),
 			Lifetime: lifetime,
 			Status: 2,        // Just dummy for interop
 			BytesDropped: 0,  // Just dummy for interop
