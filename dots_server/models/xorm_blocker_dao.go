@@ -156,7 +156,10 @@ func GetLowestLoadBlocker() (blocker db_models.Blocker, err error) {
 		return
 	}
 
-	ok, err := engine.Where("`load` < `capacity`").OrderBy("`load`, `capacity` desc").Get(&blocker)
+
+	// ok, err := engine.Where("`load` < `capacity`").OrderBy("`load`, `capacity` desc").Get(&blocker)
+	// get first blocker
+	ok, err := engine.OrderBy("`id` asc").Get(&blocker)
 	if err != nil {
 		return
 	}
@@ -271,8 +274,7 @@ func DeleteBlockerById(blockerId int64) (err error) {
 	}
 
 	// Delete blocker table data
-	//_, err = session.ID(blockerId).Delete(db_models.Blocker{})
-	_, err = session.Where("id=?", blockerId).Delete(db_models.Blocker{})
+	_, err = session.Id(blockerId).Delete(db_models.Blocker{})
 	if err != nil {
 		log.Errorf("delete blocker error: %s", err)
 		goto Rollback
@@ -291,21 +293,12 @@ func GetBlockerById(blockerId int64) (blocker db_models.Blocker, err error) {
 		return
 	}
 
-	blockers := []db_models.Blocker{}
-	err = engine.Where("id=?", blockerId).Find(&blockers)
-	if len(blockers) == 0 {
+	ok, err := engine.Id(blockerId).Get(&blocker)
+	if !ok {
 		return db_models.Blocker{}, nil
 	} else {
-		return blockers[0], nil
+		return
 	}
-	/*
-		ok, err := engine.Id(blockerId).Get(&blocker)
-		if !ok {
-			return db_models.Blocker{}, nil
-		} else {
-			return
-		}
-	*/
 }
 
 /*
@@ -330,14 +323,14 @@ func UpdateBlockerLoad(blockerId int64, diff int) (err error) {
 	}
 	blocker := db_models.Blocker{}
 
-	ok, err := session.Where("id = ?", blockerId).Get(&blocker)
+	ok, err := session.Id(blockerId).Get(&blocker)
 	if err != nil {
 		goto Rollback
 	}
 
 	if ok {
 		blocker.Load += diff
-		_, err = session.Where("id = ?", blockerId).Cols("Load").Update(&blocker)
+		_, err = session.Id(blockerId).Cols("Load").Update(&blocker)
 		if err != nil {
 			goto Rollback
 		}

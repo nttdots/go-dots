@@ -14,6 +14,8 @@ func TestProtections_toProtectionParameters_RTBH(t *testing.T) {
 
 	base := models.NewProtectionBase(
 		0,
+		testCustomerId,
+		testClientIdentifier,
 		1272,
 		true,
 		time.Unix(82635252, 122),
@@ -25,8 +27,8 @@ func TestProtections_toProtectionParameters_RTBH(t *testing.T) {
 	)
 
 	params := make(map[string][]string)
-	params["customerId"] = []string{"655"}
-	params["target"] = []string{"120.5.5.7", "76.66.32.23"}
+	params[models.RTBH_PROTECTION_CUSTOMER_ID] = []string{"655"}
+	params[models.RTBH_PROTECTION_TARGET] = []string{"120.5.5.7", "76.66.32.23"}
 	rtbh := models.NewRTBHProtection(base, params)
 
 	pparams := models.ToProtectionParameters(rtbh)

@@ -5,7 +5,7 @@ import (
 )
 
 type ProtectionStatus struct {
-	Id                  int64     `xorm:"'id'"`
+	Id                  int64     `xorm:"'id' pk autoincr"`
 	TotalPackets        int       `xorm:"'total_packets'"`
 	TotalBits           int       `xorm:"'total_bits'"`
 	PeakThroughputId    int64     `xorm:"'peak_throughput_id'"`

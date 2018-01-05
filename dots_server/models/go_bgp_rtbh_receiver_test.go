@@ -91,7 +91,7 @@ func TestGoBgpRtbhReceiver_ExecuteProtection(t *testing.T) {
 	}
 	// check the contents of the Protection object.
 	dp1 := db_models.Protection{}
-	engine.Where("id = ?", p1.Id()).Get(&dp1)
+	engine.Id(p1.Id()).Get(&dp1)
 	if dp1.Id != p1.Id() {
 		t.Errorf("register protection %s error. want: %v, got: %v", "id", p1.Id(), dp1.Id)
 		return
@@ -116,7 +116,7 @@ func TestGoBgpRtbhReceiver_ExecuteProtection(t *testing.T) {
 	}
 	// Is the protection object properly inserted into the DB?
 	dp1 = db_models.Protection{}
-	engine.Where("id=?", p1.Id()).Get(&dp1)
+	engine.Id(p1.Id()).Get(&dp1)
 	if !dp1.IsEnabled {
 		t.Errorf("register protection update %s error. want: %v, got: %v", "isEnable", true, dp1.IsEnabled)
 		return

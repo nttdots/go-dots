@@ -38,7 +38,7 @@ func storeThroughputData(session *xorm.Session, td *ThroughputData) (err error) 
 		}
 		td.SetId(dtp.Id)
 	} else {
-		_, err = session.Where("id=?", dtp.Id).Cols("pps", "bps").Update(&dtp)
+		_, err = session.Id(dtp.Id).Cols("pps", "bps").Update(&dtp)
 		log.WithFields(log.Fields{
 			"data":  dtp,
 			"error": err,
@@ -60,18 +60,14 @@ func storeThroughputData(session *xorm.Session, td *ThroughputData) (err error) 
 func loadProtectionStatus(engine *xorm.Engine, id int64) (pps *ProtectionStatus, err error) {
 	dps := db_models.ProtectionStatus{}
 
-	protectionStatus := []db_models.ProtectionStatus{} // Todo: query(...).first()
-	err = engine.Where("id=?", id).Find(&protectionStatus)
-	//	ok, err := engine.ID(id).Get(&dps)
+	ok, err := engine.Id(id).Get(&dps)
 	if err != nil {
 		return
 	}
-	/*
-		if !ok {
-			pps = nil
-			return
-		}
-	*/
+	if !ok {
+		pps = nil
+		return
+	}
 
 	/*
 		peak, err := loadThroughput(engine, dps.PeakThroughputId)
@@ -99,19 +95,15 @@ func loadProtectionStatus(engine *xorm.Engine, id int64) (pps *ProtectionStatus,
 func loadThroughput(engine *xorm.Engine, id int64) (ptd *ThroughputData, err error) {
 	dtd := db_models.ThroughputData{}
 
-	throughputData := []db_models.ThroughputData{}
-	err = engine.Where("id=?", id).Find(&throughputData)
-	//	ok, err := engine.ID(id).Get(&dtd)
+	ok, err := engine.Id(id).Get(&dtd)
 	if err != nil {
 		return
 	}
-	/*
-		if !ok {
-			ptd = nil
-			return
-		}
-	*/
-	dtd = throughputData[0]
+	if !ok {
+		ptd = nil
+		return
+	}
+
 	ptd = &ThroughputData{
 		id:  dtd.Id,
 		bps: dtd.Bps,
@@ -134,13 +126,13 @@ func storeProtectionStatus(session *xorm.Session, ps *ProtectionStatus) (err err
 
 	peakId := ps.PeakThroughput().Id()
 	// check if there is already an entry with this ID.
-	if count, err := session.Where("id=?", peakId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
+	if count, err := session.Id(peakId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
 		peakId = 0
 	}
 
 	averageId := ps.AverageThroughput().Id()
 	// check if there is already an entry with this ID.
-	if count, err := session.Where("id=?", averageId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
+	if count, err := session.Id(averageId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
 		averageId = 0
 	}
 
@@ -163,7 +155,7 @@ func storeProtectionStatus(session *xorm.Session, ps *ProtectionStatus) (err err
 		}
 		ps.SetId(dps.Id)
 	} else {
-		_, err = session.Where("id=?", dps.Id).Cols("total_bits", "total_packets", "peak_throughput_id", "averate_throughput_id").Update(&dps)
+		_, err = session.Id(dps.Id).Cols("total_bits", "total_packets", "peak_throughput_id", "averate_throughput_id").Update(&dps)
 		log.WithFields(log.Fields{
 			"data": dps,
 			"err":  err,
@@ -191,7 +183,6 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	var protectionParameters []db_models.ProtectionParameter
 	var forwardedDataInfo, blockedDataInfo *db_models.ProtectionStatus
 	var blockerId int64
-	var storedProtection []db_models.Protection
 
 	// database connection create
 	engine, err := ConnectDB()
@@ -297,6 +288,8 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// Registered protection
 	newProtection = db_models.Protection{
 		Type:                string(protection.Type()),
+		CustomerId:          protection.CustomerId(),
+		ClientIdentifier:    protection.ClientIdentifier(),
 		MitigationId:        protection.MitigationId(),
 		TargetBlockerId:     blockerId,
 		IsEnabled:           protection.IsEnabled(),
@@ -318,22 +311,16 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	session = engine.NewSession()
 	defer session.Close()
 
-	// obtain the new protection stored in the DB for update the id.
-	storedProtection = make([]db_models.Protection, 0)
-	if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err != nil {
-		goto Rollback
-	}
-
 	log.WithFields(log.Fields{
 		"protection": newProtection,
 	}).Debug("create new protection")
 
 	// Registering ProtectionParameters
-	protectionParameters = toProtectionParameters(protection, storedProtection[0].Id)
+	protectionParameters = toProtectionParameters(protection, newProtection.Id)
 	if len(protectionParameters) > 0 {
 		/*
 			for idx := range protectionParameters {
-				protectionParameters[idx].ProtectionId = storedProtection[0].Id
+				protectionParameters[idx].ProtectionId = newProtection.Id
 			}
 		*/
 
@@ -353,15 +340,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// add Commit() after all actions
 	err = session.Commit()
 
-	// obtain the new protection stored in the DB for update the id.
-	/*
-		storedProtection = make([]db_models.Protection, 0)
-		if err := engine.Where("mitigation_id = ?", newProtection.MitigationId).Find(&storedProtection); err == nil {
-			return storedProtection[0], nil
-		}
-	*/
-
-	return storedProtection[0], nil
+	return newProtection, nil
 
 Rollback:
 	session.Rollback()
@@ -420,7 +399,7 @@ func UpdateProtection(protection Protection) (err error) {
 
 	// Updated protection
 	updProtection = &db_models.Protection{}
-	chk, err = session.Where("id=?", protection.Id()).Get(updProtection)
+	chk, err = session.Id(protection.Id()).Get(updProtection)
 
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -443,7 +422,7 @@ func UpdateProtection(protection Protection) (err error) {
 	updProtection.StartedAt = protection.StartedAt()
 	updProtection.FinishedAt = protection.FinishedAt()
 	updProtection.RecordTime = protection.RecordTime()
-	_, err = session.Where("id=?", updProtection.Id).Cols("is_enabled", "started_at", "finished_at", "record_time").Update(updProtection)
+	_, err = session.Id(updProtection.Id).Cols("is_enabled", "started_at", "finished_at", "record_time").Update(updProtection)
 
 	if err != nil {
 		log.WithFields(log.Fields{
@@ -539,7 +518,7 @@ Rollback:
 /*
 
  */
-func GetProtectionByMitigationId(mitigationId int, companyId int) (p Protection, err error) {
+func GetActiveProtectionByMitigationId(customerId int, clientIdentifier string, mitigationId int) (p Protection, err error) {
 
 	engine, err := ConnectDB()
 	if err != nil {
@@ -548,7 +527,7 @@ func GetProtectionByMitigationId(mitigationId int, companyId int) (p Protection,
 	}
 
 	var ps []db_models.Protection
-	err = engine.Where("mitigation_id = ?", mitigationId).Find(&ps)
+	err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ? AND is_enabled = 1", customerId, clientIdentifier, mitigationId).Find(&ps)
 	if err != nil {
 		return nil, err
 	}
@@ -557,9 +536,10 @@ func GetProtectionByMitigationId(mitigationId int, companyId int) (p Protection,
 		return nil, nil
 	}
 
-	if len(ps) != 1 {
-		return nil, errors.New("duplicate mitigationId.")
-	}
+	// TODO: later merge branch "protection-handling"
+//	if len(ps) != 1 {
+//		return nil, errors.New("duplicate mitigationId.")
+//	}
 
 	return toProtection(engine, ps[0])
 }
@@ -573,15 +553,15 @@ func GetProtectionById(id int64) (p Protection, err error) {
 		return
 	}
 
-	// FIXME: codes below does not work properly... maybe aroud the database schema
-	//ok, err := engine.Id(id).Get(&dbp)
-	protections := []db_models.Protection{} // Todo: query(...).first()
-	err = engine.Where("id=?", id).Find(&protections)
+	ok, err := engine.Id(id).Get(&dbp)
 	if err != nil {
+		log.WithField("id", id).Warnf("GetProtectionById: get error.", err)
+		return nil, err
+	}
+	if !ok {
 		log.WithField("id", id).Warnf("GetProtectionById: protection not found.", err)
 		return nil, nil
 	}
-	dbp = protections[0]
 
 	p, err = toProtection(engine, dbp)
 
@@ -606,30 +586,25 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 	if dbp.TargetBlockerId == 0 {
 		blocker = nil
 	} else {
-		// var dbl db_models.Blocker
-		// ok, err := engine.ID(dbp.TargetBlockerId).Get(&dbl)
-		blockers := []db_models.Blocker{} // Todo: query(...).first()
-		err = engine.Where("id=?", dbp.TargetBlockerId).Find(&blockers)
+		var dbl db_models.Blocker
+		ok, err := engine.Id(dbp.TargetBlockerId).Get(&dbl)
 		if err != nil {
 			return nil, err
 		}
-		if len(blockers) == 0 {
+		if !ok {
 			blocker = nil
-		}
-		dbl := blockers[0]
-		/*
-			if !ok {
-				blocker = nil
+		} else {
+			blocker, err = toBlocker(dbl)
+			if err != nil {
+				return nil, err
 			}
-		*/
-		blocker, err = toBlocker(dbl)
-		if err != nil {
-			return nil, err
 		}
 	}
 
 	pb := ProtectionBase{
 		dbp.Id,
+		dbp.CustomerId,
+		dbp.ClientIdentifier,
 		dbp.MitigationId,
 		blocker,
 		dbp.IsEnabled,
@@ -657,6 +632,8 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		err = errors.New(fmt.Sprintf("invalid protection type: %s", dbp.Type))
 	}
 
+	log.Infof("toProtection. found protection. p=%+v\n", p)
+
 	return
 
 }
@@ -670,7 +647,7 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
  *  protection Protection
  *  error error
  */
-func GetProtectionBase(mitigationId int) (protection ProtectionBase, err error) {
+func GetProtectionBase(customerId int, clientIdentifier string, mitigationId int) (protection ProtectionBase, err error) {
 	// default value setting
 	dbProtection := db_models.Protection{}
 
@@ -684,7 +661,7 @@ func GetProtectionBase(mitigationId int) (protection ProtectionBase, err error) 
 	}
 
 	// Get protection
-	ok, err := engine.Where("mitigation_id = ?", mitigationId).Get(&dbProtection)
+	ok, err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&dbProtection)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"MitigationId": mitigationId,
@@ -785,7 +762,7 @@ func GetProtectionParameters(protectionId int64) (protectionParameters []db_mode
 func deleteProtection(session *xorm.Session, protection db_models.Protection) (err error) {
 
 	forwardInfo := db_models.ProtectionStatus{}
-	ok, err := session.Where("id=?", protection.ForwardedDataInfoId).Get(&forwardInfo)
+	ok, err := session.Id(protection.ForwardedDataInfoId).Get(&forwardInfo)
 	if ok {
 		err = deleteProtectionStatus(session, forwardInfo)
 		if err != nil {
@@ -794,7 +771,7 @@ func deleteProtection(session *xorm.Session, protection db_models.Protection) (e
 	}
 
 	blockedInfo := db_models.ProtectionStatus{}
-	ok, err = session.Where("id=?", protection.BlockedDataInfoId).Get(&blockedInfo)
+	ok, err = session.Id(protection.BlockedDataInfoId).Get(&blockedInfo)
 	if ok {
 		err = deleteProtectionStatus(session, blockedInfo)
 		if err != nil {
@@ -848,7 +825,7 @@ func DeleteProtectionById(id int64) (err error) {
 	}
 
 	p := db_models.Protection{}
-	ok, err := session.Where("id=?", id).Get(&p)
+	ok, err := session.Id(id).Get(&p)
 	if err != nil {
 		goto Error
 	}
@@ -878,7 +855,7 @@ Error:
  * return:
  *  error error
  */
-func DeleteProtection(mitigationId int) (err error) {
+func DeleteProtection(customerId int, clientIdentifier string, mitigationId int) (err error) {
 	var protection db_models.Protection
 	var chk bool
 
@@ -905,11 +882,13 @@ func DeleteProtection(mitigationId int) (err error) {
 
 	// Get Protection
 	protection = db_models.Protection{}
-	chk, err = session.Where("mitigation_id = ?", mitigationId).Get(&protection)
+	chk, err = session.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&protection)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"MitigationId": mitigationId,
-			"Err":          err,
+			"CustomerId":       customerId,
+			"ClientIdentifier": clientIdentifier,
+			"MitigationId":     mitigationId,
+			"Err":              err,
 		}).Error("select Protection error")
 		goto Rollback
 	}
@@ -982,7 +961,7 @@ func StartProtection(p Protection, b Blocker) (err error) {
 	start := time.Now()
 
 	// protection is_enabled -> true, start_at -> now
-	count, err := session.Where("id=?", p.Id()).Cols("is_enabled", "started_at").Update(&db_models.Protection{IsEnabled: true, StartedAt: start})
+	count, err := session.Id(p.Id()).Cols("is_enabled", "started_at").Update(&db_models.Protection{IsEnabled: true, StartedAt: start})
 	log.WithFields(
 		log.Fields{"id": p.Id(), "blockerId": b.Id(), "count": count},
 	).WithError(err).Debug("update protection. is_enable -> true, start_at -> now")
@@ -991,14 +970,14 @@ func StartProtection(p Protection, b Blocker) (err error) {
 	}
 
 	// blocker load + 1
-	count, err = session.Where("id=?", b.Id()).Incr("load", 1).Update(&dbb)
+	count, err = session.Id(b.Id()).Incr("load", 1).Update(&dbb)
 	log.WithFields(
 		log.Fields{"id": p.Id(), "count": count},
 	).WithError(err).Debug("update blocker. load = load + 1")
 	if count != 1 || err != nil {
 		goto ROLLBACK
 	}
-	_, err = session.Where("id = ?", b.Id()).Get(&dbb)
+	_, err = session.Id(b.Id()).Get(&dbb)
 	if err != nil {
 		goto ROLLBACK
 	}
@@ -1035,7 +1014,7 @@ func StopProtection(p Protection, b Blocker) (err error) {
 	defer session.Close()
 
 	// protection is_enabled -> true, start_at -> now
-	count, err := session.Where("id = ?", p.Id()).Cols("is_enabled", "finished_at").Update(&db_models.Protection{IsEnabled: false, FinishedAt: time.Now()})
+	count, err := session.Id(p.Id()).Cols("is_enabled", "finished_at").Update(&db_models.Protection{IsEnabled: false, FinishedAt: time.Now()})
 	log.WithFields(
 		log.Fields{"id": p.Id(), "count": count},
 	).WithError(err).Debug("update protection. is_enable -> false, finished_at -> now")
@@ -1044,7 +1023,7 @@ func StopProtection(p Protection, b Blocker) (err error) {
 	}
 
 	// blocker load - 1
-	count, err = session.Where("id = ?", b.Id()).Incr("load", -1).Update(&db_models.Blocker{})
+	count, err = session.Id(b.Id()).Incr("load", -1).Update(&db_models.Blocker{})
 	log.WithFields(
 		log.Fields{"id": p.Id(), "count": count},
 	).WithError(err).Debug("update blocker. load = load - 1")

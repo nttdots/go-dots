@@ -5,7 +5,7 @@ import (
 )
 
 type Blocker struct {
-	Id       int64     `xorm:"'id'"`
+	Id       int64     `xorm:"'id' pk autoincr"`
 	Type     string    `xorm:"'type' not null"`
 	Capacity int       `xorm:"'capacity' not null"`
 	Load     int       `xorm:"'load' not null index(idx_load)"`

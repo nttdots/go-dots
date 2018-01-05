@@ -1,0 +1,30 @@
+{
+  "mitigation-scope": {
+    "client-identifier": [
+     "dz6pHjaADkaFTbjr0JGBpw"
+   ],
+    "scope": [
+      {
+        "mitigation-id": 12332,
+        "target-prefix": [
+         "2001:db8:6401::1/128",
+         "2001:db8:6401::2/128"
+        ],
+        "target-port-range": [
+          {
+            "lower-port": 80
+          },
+          {
+            "lower-port": 443
+          },
+          {
+           "lower-port": 8080
+          }
+        ],
+        "target-protocol": [
+         6
+        ]
+      }
+    ]
+  }
+}

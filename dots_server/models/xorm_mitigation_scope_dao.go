@@ -26,7 +26,8 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 
 	// same data check
 	dbMitigationScope := new(db_models.MitigationScope)
-	_, err = engine.Where("customer_id = ? AND mitigation_id = ?", customer.Id, mitigationScope.MitigationId).Get(dbMitigationScope)
+	clientIdentifier := mitigationScope.ClientIdentifier
+	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customer.Id, clientIdentifier, mitigationScope.MitigationId).Get(dbMitigationScope)
 	if err != nil {
 		log.Errorf("mitigation_scope select error: %s", err)
 		return
@@ -48,9 +49,10 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	// registration data settings
 	// for customer
 	newMitigationScope = db_models.MitigationScope{
-		CustomerId:   customer.Id,
-		MitigationId: mitigationScope.MitigationId,
-		Lifetime:     mitigationScope.Lifetime,
+		CustomerId:       customer.Id,
+		ClientIdentifier: clientIdentifier,
+		MitigationId:     mitigationScope.MitigationId,
+		Lifetime:         mitigationScope.Lifetime,
 	}
 	_, err = session.Insert(&newMitigationScope)
 	if err != nil {
@@ -65,11 +67,6 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		return
 	}
 	session.Close()
-	if _, err = engine.Where("customer_id=? and mitigation_id=?", customer.Id, mitigationScope.MitigationId).Get(&newMitigationScope); err != nil {
-		session.Rollback()
-		log.Errorf("mitigationScope renew err: %s", err)
-		return
-	}
 
 	session = engine.NewSession()
 	defer session.Close()
@@ -130,7 +127,8 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	// customer data update
 	// for customer
 	dbMitigationScope := new(db_models.MitigationScope)
-	_, err = engine.Where("customer_id = ? AND mitigation_id = ?", customer.Id, mitigationScope.MitigationId).Get(dbMitigationScope)
+	clientIdentifier := mitigationScope.ClientIdentifier
+	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customer.Id, clientIdentifier, mitigationScope.MitigationId).Get(dbMitigationScope)
 	if err != nil {
 		return
 	}
@@ -145,7 +143,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	updMitigationScope := db_models.MitigationScope{
 		Lifetime: mitigationScope.Lifetime,
 	}
-	_, err = session.Where("id = ?", dbMitigationScope.Id).Update(updMitigationScope)
+	_, err = session.Id(dbMitigationScope.Id).Update(updMitigationScope)
 	if err != nil {
 		session.Rollback()
 		log.Errorf("mitigationScope update err: %s", err)
@@ -360,6 +358,33 @@ func createMitigationScopePortRange(session *xorm.Session, mitigationScope Mitig
 }
 
 /*
+ * Find all mitigationId by a customerId.
+ *
+ * parameter:
+ *  customerId id of the Customer
+ * return:
+ *  mitigationIds list of mitigation id
+ *  error error
+ */
+func GetMitigationIds(customerId int, clientIdentifier string) (mitigationIds []int, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+
+	// Get customer table data
+	err = engine.Table("mitigation_scope").Where("customer_id = ? AND client_identifier = ?", customerId, clientIdentifier).Cols("mitigation_id").Find(&mitigationIds)
+	if err != nil {
+		log.Printf("find mitigation ids error: %s\n", err)
+		return
+	}
+
+	return
+}
+
+/*
  * Obtains a mitigation scope object by a customerId and a mitigationId.
  *
  * parameter:
@@ -369,7 +394,7 @@ func createMitigationScopePortRange(session *xorm.Session, mitigationScope Mitig
  *  mitigationScope mitigation-scope
  *  error error
  */
-func GetMitigationScope(customerId int, mitigationId int) (mitigationScope *MitigationScope, err error) {
+func GetMitigationScope(customerId int, clientIdentifier string, mitigationId int) (mitigationScope *MitigationScope, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -384,11 +409,11 @@ func GetMitigationScope(customerId int, mitigationId int) (mitigationScope *Miti
 	}
 
 	// default value setting
-	mitigationScope = NewMitigationScope(&customer)
+	mitigationScope = NewMitigationScope(&customer, clientIdentifier)
 
 	// Get customer table data
 	dbMitigationScope := db_models.MitigationScope{}
-	chk, err := engine.Where("customer_id = ? AND mitigation_id = ?", customerId, mitigationId).Get(&dbMitigationScope)
+	chk, err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&dbMitigationScope)
 	if err != nil {
 		return
 	}
@@ -506,7 +531,7 @@ func GetMitigationScope(customerId int, mitigationId int) (mitigationScope *Miti
  *  mitigationScope mitigation-scope
  *  error error
  */
-func DeleteMitigationScope(customerId int, mitigationId int) (err error) {
+func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId int) (err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -526,7 +551,7 @@ func DeleteMitigationScope(customerId int, mitigationId int) (err error) {
 
 	// Get mitigation_scope table data
 	dbMitigationScope := db_models.MitigationScope{}
-	_, err = engine.Where("customer_id = ? AND mitigation_id = ?", customerId, mitigationId).Get(&dbMitigationScope)
+	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&dbMitigationScope)
 	if err != nil {
 		session.Rollback()
 		log.Errorf("get mitigationScope err: %s", err)

@@ -3,56 +3,65 @@ package messages
 import "fmt"
 
 type TargetPortRange struct {
-	LowerPort int `json:"lower-port" cbor:"lower-port"`
-	UpperPort int `json:"upper-port" cbor:"upper-port"`
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	LowerPort int `json:"lower-port" codec:"6"`
+	UpperPort int `json:"upper-port" codec:"7,omitempty"`
 }
 
 type MitigationScope struct {
-	ClientIdentifiers []string `json:"client-identifier" cbor:"client-identifier"`
-	Scopes            []Scope  `json:"scope"             cbor:"scope"`
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	ClientIdentifiers []string `json:"client-identifier" codec:"36,omitempty"`
+	Scopes            []Scope  `json:"scope"             codec:"2"`
 }
 
 type Scope struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	// Identifier for the mitigation request
-	MitigationId int `json:"mitigation-id" cbor:"mitigation-id"`
-	// IP address
-	TargetIp []string `json:"target-ip" cbor:"target-ip"`
+	MitigationId int `json:"mitigation-id" codec:"3"`
 	// prefix
-	TargetPrefix []string `json:"target-prefix" cbor:"target-prefix"`
+	TargetPrefix []string `json:"target-prefix" codec:"35,omitempty"`
 	// lower-port upper-port
-	TargetPortRange []TargetPortRange `json:"target-port-range" cbor:"target-port-range"`
+	TargetPortRange []TargetPortRange `json:"target-port-range" codec:"5"`
 	// Internet Protocol number
-	TargetProtocol []int `json:"target-protocol" cbor:"target-protocol"`
+	TargetProtocol []int `json:"target-protocol" codec:"8"`
 	// FQDN
-	FQDN []string `json:"FQDN" cbor:"FQDN"`
+	FQDN []string `json:"target-fqdn" codec:"9,omitempty"`
 	// URI
-	URI []string `json:"URI" cbor:"URI"`
+	URI []string `json:"target-uri" codec:"10,omitempty"`
 	// alias name
-	AliasName []string `json:"alias-name" cbor:"alias-name"`
+	AliasName []string `json:"alias-name" codec:"11,omitempty"`
 	// lifetime
-	Lifetime int `json:"lifetime" cbor:"lifetime"`
+	Lifetime int `json:"lifetime" codec:"12,omitempty"`
 }
 
 type MitigationRequest struct {
-	MitigationScope MitigationScope `json:"mitigation-scope" cbor:"mitigation-scope"`
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	MitigationScope MitigationScope `json:"mitigation-scope" codec:"1"`
+}
+
+/*
+ * get last client-identifier
+ */
+func (m *MitigationRequest) EffectiveClientIdentifier() string {
+	ss := m.MitigationScope.ClientIdentifiers
+	if 0 < len(ss) {
+		return ss[len(ss) - 1]
+	} else {
+		return ""
+	}
 }
 
 /*
  * Convert MitigationRequests to strings
  */
 func (m *MitigationRequest) String() (result string) {
-	result = "\n"
+	result = "\n \"mitigation-scope\":\n"
 	for key, clientIdentifier := range m.MitigationScope.ClientIdentifiers {
 		result += fmt.Sprintf("   \"%s[%d]\": %s\n", "client-identifier", key+1, clientIdentifier)
 	}
 	for key, scope := range m.MitigationScope.Scopes {
 		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
 		result += fmt.Sprintf("     \"%s\": %d\n", "mitigation-id", scope.MitigationId)
-		if scope.TargetIp != nil {
-			for k, v := range scope.TargetIp {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-ip", k+1, v)
-			}
-		}
 		if scope.TargetPrefix != nil {
 			for k, v := range scope.TargetPrefix {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-prefix", k+1, v)
@@ -62,7 +71,9 @@ func (m *MitigationRequest) String() (result string) {
 			for k, v := range scope.TargetPortRange {
 				result += fmt.Sprintf("     \"%s[%d]\":\n", "target-port-range", k+1)
 				result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", v.LowerPort)
-				result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", v.UpperPort)
+				if (v.UpperPort > 0) {
+					result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", v.UpperPort)
+				}
 			}
 		}
 		if scope.TargetProtocol != nil {
@@ -72,12 +83,12 @@ func (m *MitigationRequest) String() (result string) {
 		}
 		if scope.FQDN != nil {
 			for k, v := range scope.FQDN {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "FQDN", k+1, v)
+				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-fqdn", k+1, v)
 			}
 		}
 		if scope.URI != nil {
 			for k, v := range scope.URI {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "URI", k+1, v)
+				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-uri", k+1, v)
 			}
 		}
 		if scope.AliasName != nil {
@@ -85,35 +96,39 @@ func (m *MitigationRequest) String() (result string) {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
 			}
 		}
-		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+		if scope.Lifetime != 0 {
+			result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+		}
 	}
 	return
 }
 
 type SignalConfigRequest struct {
-	SignalConfig SignalConfig `json:"signal-config" cbor:"signal-config"`
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	SignalConfig SignalConfig `json:"signal-config" codec:"14"`
 }
 
 type SignalConfig struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	// Identifier for the DOTS signal channel session configuration data represented as an integer.
 	// This identifier MUST be generated by the DOTS client.  This document does not make any assumption about how this
 	// identifier is generated. This is a mandatory attribute.
-	SessionId int `json:"session-id" cbor:"session-id"`
+	SessionId int `json:"session-id" codec:"30"`
 	// Heartbeat interval to check the DOTS peer health.  This is an optional attribute.
-	HeartbeatInterval int `json:"heartbeat-interval" cbor:"heartbeat-interval"`
+	HeartbeatInterval int `json:"heartbeat-interval" codec:"15"`
 	// Maximum number of missing heartbeat response allowed. This is an optional attribute.
-	MissingHbAllowed int `json:"missing-hb-allowed" cbor:"missing-hb-allowed"`
+	MissingHbAllowed int `json:"missing-hb-allowed" codec:"32"`
 	// Maximum number of retransmissions for a message (referred to as MAX_RETRANSMIT parameter in CoAP).
 	// This is an optional attribute.
-	MaxRetransmit int `json:"max-retransmit" cbor:"max-retransmit"`
+	MaxRetransmit int `json:"max-retransmit" codec:"16"`
 	// Timeout value in seconds used to calculate the initial retransmission timeout value (referred to as ACK_TIMEOUT
 	// parameter in CoAP). This is an optional attribute.
-	AckTimeout int `json:"ack-timeout" cbor:"ack-timeout"`
+	AckTimeout int `json:"ack-timeout" codec:"17"`
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
-	AckRandomFactor float64 `json:"ack-random-factor" cbor:"ack-random-factor"`
+	AckRandomFactor float64 `json:"ack-random-factor" codec:"18"`
 	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
-	TriggerMitigation bool `json:"trigger-mitigation" cbor:"trigger-mitigation"`
+	TriggerMitigation bool `json:"trigger-mitigation" codec:"31"`
 }
 
 type HelloRequest struct {

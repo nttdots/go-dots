@@ -3,7 +3,7 @@ package db_models
 import "time"
 
 type SignalSessionConfiguration struct {
-	Id                int64     `xorm:"'id'"`
+	Id                int64     `xorm:"'id' pk autoincr"`
 	CustomerId        int       `xorm:"'customer_id' not null index(idx_customer_id)"`
 	SessionId         int       `xorm:"'session_id' not null index(idx_session_id)"`
 	HeartbeatInterval int       `xorm:"'heartbeat_interval'"`

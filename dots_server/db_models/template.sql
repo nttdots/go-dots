@@ -52,7 +52,7 @@ CREATE TABLE `blocker_parameter` (
 # example query:
 #  INSERT INTO `blocker_parameter` (`id`, `blocker_id`, `key`, `value`, `created`, `updated`)
 #  VALUES
-#  (1, 1, 'nextHop', '0.0.0.0','2017-04-13 13:44:34','2017-04-13 13:44:34'),
+#  (1, 1, 'nextHop', '0.0.0.1','2017-04-13 13:44:34','2017-04-13 13:44:34'),
 #  (2, 1, 'host', '127.0.0.1','2017-04-13 13:44:34','2017-04-13 13:44:34'),
 #  (3, 1, 'port', '50051','2017-04-13 13:44:34','2017-04-13 13:44:34'),
 #  (4, 2, 'nextHop', '0.0.0.1','2017-04-13 13:44:34','2017-04-13 13:44:34'),
@@ -277,6 +277,7 @@ DROP TABLE IF EXISTS `mitigation_scope`;
 CREATE TABLE `mitigation_scope` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `customer_id` int(11) DEFAULT NULL,
+  `client_identifier` varchar(255) DEFAULT NULL,
   `mitigation_id` int(11) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
@@ -319,6 +320,8 @@ DROP TABLE IF EXISTS `protection`;
 
 CREATE TABLE `protection` (
   `id`                     BIGINT(20)   NOT NULL AUTO_INCREMENT,
+  `customer_id`            INT(11)      NOT NULL,
+  `client_identifier`      VARCHAR(255) NOT NULL,
   `mitigation_id`          INT(11)      NOT NULL,
   `is_enabled`             TINYINT(1)   NOT NULL,
   `type`                   VARCHAR(255) NOT NULL,

@@ -3,7 +3,9 @@ package db_models
 import "time"
 
 type Protection struct {
-	Id                  int64     `xorm:"'id'"`
+	Id                  int64     `xorm:"'id' pk autoincr"`
+	CustomerId          int       `xorm:"'customer_id'"`
+	ClientIdentifier    string    `xorm:"'client_identifier'"`
 	MitigationId        int       `xorm:"'mitigation_id' not null index(idx_mitigation_id)"`
 	IsEnabled           bool      `xorm:"'is_enabled' not null"`
 	Type                string    `xorm:"'type' not null"`
