@@ -6,11 +6,11 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-architecture-04 
+* draft-ietf-dots-signal-channel-11
 * draft-ietf-dots-data-channel-02 
-* draft-ietf-dots-requirements-06 
-* draft-ietf-dots-signal-channel-02 
-* draft-ietf-dots-use-cases-06 
+* draft-ietf-dots-architecture-05 
+* draft-ietf-dots-requirements-11 
+* draft-ietf-dots-use-cases-09 
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
@@ -47,6 +47,10 @@ To install go-dots source codes and command line programs, use the following com
 
     $ go get -u github.com/nttdots/go-dots/...
 
+
+# How to use (In Japanese)
+
+* [qiita](https://qiita.com/__kaname__/items/774819444de2a12d99b9)
 
 # How it works
 
