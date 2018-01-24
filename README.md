@@ -48,7 +48,7 @@ To install go-dots source codes and command line programs, use the following com
     $ go get -u github.com/nttdots/go-dots/...
 
 
-# How to use (In Japanese)
+# How to install (In Japanese)
 
 * [qiita](https://qiita.com/__kaname__/items/774819444de2a12d99b9)
 
