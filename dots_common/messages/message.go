@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"github.com/nttdots/go-dots/coap"
+	"github.com/nttdots/go-dots/libcoap"
 )
 
 type Code int
@@ -50,6 +51,7 @@ type Message struct {
 	Role        Role
 	ChannelType ChannelType
 	CoapType    coap.COAPType
+	LibCoapType libcoap.Type
 	Name        string
 	Path        string
 	Type        reflect.Type
@@ -60,12 +62,13 @@ var MessageTypes = make(map[Code]Message)
 /*
  * Register Message structures to the map based on their message codes.
  */
-func register(code Code, role Role, coapType coap.COAPType, channelType ChannelType, name string, path string, message interface{}) {
+func register(code Code, role Role, coapType coap.COAPType, libcoapType libcoap.Type, channelType ChannelType, name string, path string, message interface{}) {
 	messageType := reflect.TypeOf(message)
 	MessageTypes[code] = Message{
 		role,
 		channelType,
 		coapType,
+		libcoapType,
 		name,
 		path,
 		messageType}
@@ -75,15 +78,15 @@ func register(code Code, role Role, coapType coap.COAPType, channelType ChannelT
  * Register supported message types to the message map.
  */
 func init() {
-	register(MITIGATION_REQUEST, REQUEST, coap.Confirmable, SIGNAL, "mitigation_request", ".well-known/dots/v1/mitigate", MitigationRequest{})
-	register(SESSION_CONFIGURATION, REQUEST, coap.Confirmable, SIGNAL, "session_configuration", ".well-known/dots/v1/config", SignalConfigRequest{})
+	register(MITIGATION_REQUEST, REQUEST, coap.Confirmable, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/v1/mitigate", MitigationRequest{})
+	register(SESSION_CONFIGURATION, REQUEST, coap.Confirmable, libcoap.TypeNon, SIGNAL, "session_configuration", ".well-known/dots/v1/config", SignalConfigRequest{})
 
-	register(CREATE_IDENTIFIERS, REQUEST, coap.NonConfirmable, DATA, "create_identifiers", ".well-known/v1/dots-data/create_identifiers", CreateIdentifier{})
-	register(INSTALL_FILTERING_RULE, REQUEST, coap.NonConfirmable, DATA, "install_filtering_rule", ".well-known/v1/dots-data/install_filtering_rule", InstallFilteringRule{})
+	register(CREATE_IDENTIFIERS, REQUEST, coap.NonConfirmable, libcoap.TypeNon, DATA, "create_identifiers", ".well-known/v1/dots-data/create_identifiers", CreateIdentifier{})
+	register(INSTALL_FILTERING_RULE, REQUEST, coap.NonConfirmable, libcoap.TypeNon, DATA, "install_filtering_rule", ".well-known/v1/dots-data/install_filtering_rule", InstallFilteringRule{})
 
 	// for test
-	register(HELLO, REQUEST, coap.Confirmable, SIGNAL, "hello", ".well-known/v1/dots-signal/hello", HelloRequest{})
-	register(HELLO_DATA, REQUEST, coap.Confirmable, DATA, "hello_data", ".well-known/v1/dots-data/hello_data", HelloRequest{})
+	register(HELLO, REQUEST, coap.Confirmable, libcoap.TypeCon, SIGNAL, "hello", ".well-known/v1/dots-signal/hello", HelloRequest{})
+	register(HELLO_DATA, REQUEST, coap.Confirmable, libcoap.TypeCon, DATA, "hello_data", ".well-known/v1/dots-data/hello_data", HelloRequest{})
 }
 
 /*
@@ -130,6 +133,15 @@ func GetType(message string) coap.COAPType {
 		}
 	}
 	return coap.COAPType(255)
+}
+
+func GetLibCoapType(message string) libcoap.Type {
+	for _, value := range MessageTypes {
+		if value.Name == message {
+			return value.LibCoapType
+		}
+	}
+	return libcoap.Type(255)
 }
 
 /*
