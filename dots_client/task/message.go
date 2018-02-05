@@ -2,7 +2,6 @@ package task
 
 import "time"
 import "github.com/nttdots/go-dots/libcoap"
-import log "github.com/sirupsen/logrus"
 
 type ResponseHandler func(*MessageTask, *libcoap.Pdu)
 type TimeoutHandler  func(*MessageTask)
