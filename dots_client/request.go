@@ -7,19 +7,20 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/gonuts/cbor"
 	"github.com/ugorji/go/codec"
-	"github.com/nttdots/go-dots/coap"
-	"github.com/nttdots/go-dots/dots_common/connection"
 	"github.com/nttdots/go-dots/dots_common/messages"
+	"github.com/nttdots/go-dots/dots_client/task"
+	"github.com/nttdots/go-dots/libcoap"
 )
 
 type RequestInterface interface {
 	LoadJson([]byte) error
-	CreateRequest(messageId uint16)
-	Send() error
+	CreateRequest()
+	Send()
 }
 
 /*
@@ -28,28 +29,26 @@ type RequestInterface interface {
 type Request struct {
 	Message     interface{}
 	RequestCode messages.Code
-	message     coap.Message
-	coapType    coap.COAPType
-	address     string
+	pdu         *libcoap.Pdu
+	coapType    libcoap.Type
 	method      string
 	requestName string
 
-	connectionFactory connection.ClientConnectionFactory
+	env         *task.Env
 }
 
 /*
  * Request constructor.
  */
-func NewRequest(code messages.Code, coapType coap.COAPType, address, method string, requestName string, factory connection.ClientConnectionFactory) *Request {
+func NewRequest(code messages.Code, coapType libcoap.Type, method string, requestName string, env *task.Env) *Request {
 	return &Request{
 		nil,
 		code,
-		coap.Message{},
+		nil,
 		coapType,
-		address,
 		method,
 		requestName,
-		factory,
+		env,
 	}
 }
 
@@ -73,7 +72,6 @@ func (r *Request) dumpCbor() []byte {
 		log.Errorf("Error decoding %s", err)
 	}
 	return cborWriter.Bytes()
-
 }
 
 /*
@@ -109,81 +107,69 @@ func (r *Request) pathString() {
 /*
  * Create CoAP requests.
  */
-func (r *Request) CreateRequest(messageId uint16) {
-	var code coap.COAPCode
+func (r *Request) CreateRequest() {
+	var code libcoap.Code
 
 	switch strings.ToUpper(r.method) {
 	case "GET":
-		code = coap.GET
+		code = libcoap.RequestGet
 	case "PUT":
-		code = coap.PUT
+		code = libcoap.RequestPut
 	case "POST":
-		code = coap.POST
+		code = libcoap.RequestPost
 	case "DELETE":
-		code = coap.DELETE
+		code = libcoap.RequestDelete
 	default:
 		log.WithField("method", r.method).Error("invalid request method.")
 	}
 
-	r.message = coap.Message{
-		Type:      r.coapType,
-		Code:      code,
-		MessageID: messageId,
-	}
+	r.pdu = &libcoap.Pdu{}
+	r.pdu.Type = r.coapType
+	r.pdu.Code = code
+	r.pdu.MessageID = r.env.CoapSession().NewMessageID()
+	r.pdu.Options = make([]libcoap.Option, 0)
 
 	if r.Message != nil {
-		r.message.Payload = r.dumpCbor()
-		r.message.SetOption(coap.ContentFormat, coap.AppCbor)
-		log.Debugf("hex dump cbor request:\n%s", hex.Dump(r.message.Payload))
+		r.pdu.Data = r.dumpCbor()
+		r.pdu.Options = append(r.pdu.Options, libcoap.OptionContentFormat.Uint16(60))
+		log.Debugf("hex dump cbor request:\n%s", hex.Dump(r.pdu.Data))
 	}
-	r.message.SetPathString(r.RequestCode.PathString())
+	r.pdu.SetPathString(r.RequestCode.PathString())
 }
 
-/*
- * Set the certificate common name to the CoAP request messages.
- */
-func (r *Request) SetCommonName(commonName string) {
-	r.message.SetOption(coap.CommonName, commonName)
+func handleTimeout(task *task.MessageTask) {
+  log.Info("<<< handleTimeout >>>")
 }
 
 /*
  * Send the request to the server.
 */
-func (r *Request) Send() (err error) {
-	conn, err := r.connectionFactory.Connect(r.address)
-	if err != nil {
-		log.WithError(err).Error("dtls connect error.")
-		return err
-	}
-	defer conn.Close()
+func (r *Request) Send() {
+	task := task.NewMessageTask(
+		r.pdu,
+		time.Duration(2) * time.Second,
+		2,
+		time.Duration(10) * time.Second,
+		func (_ *task.MessageTask, response *libcoap.Pdu) {
+			r.logMessage(response)
+		},
+		handleTimeout)
 
-	recv, err := coap.Send(conn, r.message)
-	if err != nil {
-		log.Warnf("Send() => %s", err)
+	r.env.Run(task)
+}
+
+func (r *Request) logMessage(pdu *libcoap.Pdu) {
+	log.Infof("Message Code: %v", pdu.Code)
+
+	if pdu.Data == nil {
 		return
 	}
 
-	r.logMessage(recv)
-
-	return
-}
-
-func (r *Request) Close() {
-	r.connectionFactory.Close()
-}
-
-func (r *Request) logMessage(msg coap.Message) {
-	log.Infof("Message Code: %s (%d)", msg.Code, msg.Code)
-
-	if msg.Payload == nil {
-		return
-	}
-
-	log.Infof("        Raw payload: %s", msg.Payload)
-	log.Infof("        Raw payload hex: \n%s", hex.Dump(msg.Payload))
+	log.Infof("        Raw payload: %s", pdu.Data)
+	log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
 
 	cborDecHandle := new(codec.CborHandle)
-	dec := codec.NewDecoder(bytes.NewReader(msg.Payload), cborDecHandle)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), cborDecHandle)
 
 	var err error
 	var logStr string

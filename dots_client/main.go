@@ -13,13 +13,13 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
-	"github.com/nttdots/go-dots/dots_common/connection"
 	"github.com/nttdots/go-dots/dots_common/messages"
-	"math/rand"
-	"time"
+	"github.com/nttdots/go-dots/dots_client/task"
+	"github.com/nttdots/go-dots/libcoap"
 )
 
 const (
@@ -28,6 +28,7 @@ const (
 
 var (
 	server            string
+	serverIP          net.IP
 	signalChannelPort int
 	dataChannelPort   int
 	socket            string
@@ -57,42 +58,93 @@ func init() {
 var signalChannelAddress string
 var dataChannelAddress string
 
+func connectSignalChannel() (env *task.Env, err error) {
+	var ctx *libcoap.Context
+	var sess *libcoap.Session
+	var addr libcoap.Address
+
+	libcoap.Startup()
+
+	dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile }
+	ctx = libcoap.NewContextDtls(nil, &dtlsParam)
+	if ctx == nil {
+		log.Error("NewContextDtls() -> nil")
+		err = errors.New("NewContextDtls() -> nil")
+		goto error
+	}
+
+	addr, err = libcoap.AddressOf(serverIP, uint16(signalChannelPort))
+	if err != nil {
+		log.WithError(err).Error("AddressOf() failed")
+		goto error
+	}
+
+	sess = ctx.NewClientSessionDTLS(addr, libcoap.ProtoDtls, nil)
+	if sess == nil {
+		log.Error("NewClientSession() -> nil")
+		err = errors.New("NewClientSession() -> nil")
+		goto error
+	}
+
+	env = task.NewEnv(ctx, sess)
+	ctx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
+		env.HandleResponse(received)
+	})
+	return
+
+error:
+	cleanupSignalChannel(ctx, sess)
+	return
+}
+
+func cleanupSignalChannel(ctx *libcoap.Context, sess *libcoap.Session) {
+	if sess != nil {
+		sess.SessionRelease()
+	}
+	if ctx != nil {
+		ctx.FreeContext()
+	}
+	libcoap.Cleanup()
+}
+
 /*
  * serverHandler is a request handler function to the servers.
  */
-func serverHandler(w http.ResponseWriter, r *http.Request) {
-	_, requestName := path.Split(r.URL.Path)
-	if requestName == "" || !messages.IsRequest(requestName) {
-		fmt.Printf("dots_client.serverHandler -- %s is invalid request name \n", requestName)
-		fmt.Printf("support messages: %s \n", messages.SupportRequest())
-		errMessage := fmt.Sprintf("%s is invalid request name \n", requestName)
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(errMessage))
-		return
+func makeServerHandler(env *task.Env) http.HandlerFunc {
+	return func (w http.ResponseWriter, r *http.Request) {
+		_, requestName := path.Split(r.URL.Path)
+		if requestName == "" || !messages.IsRequest(requestName) {
+			fmt.Printf("dots_client.serverHandler -- %s is invalid request name \n", requestName)
+			fmt.Printf("support messages: %s \n", messages.SupportRequest())
+			errMessage := fmt.Sprintf("%s is invalid request name \n", requestName)
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(errMessage))
+			return
+		}
+
+		buff := new(bytes.Buffer)
+		buff.ReadFrom(r.Body)
+
+		var jsonData []byte = nil
+		if 0 < buff.Len() {
+			jsonData = buff.Bytes()
+		}
+
+		err := sendRequest(jsonData, requestName, r.Method, env)
+		if err != nil {
+			fmt.Printf("dots_client.serverHandler -- %s", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(err.Error()))
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
-
-	buff := new(bytes.Buffer)
-	buff.ReadFrom(r.Body)
-
-	var jsonData []byte = nil
-	if 0 < buff.Len() {
-		jsonData = buff.Bytes()
-	}
-
-	err := sendRequest(jsonData, requestName, r.Method)
-	if err != nil {
-		fmt.Printf("dots_client.serverHandler -- %s", err.Error())
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
-	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 /*
  * sendRequest is a function that sends requests to the server.
  */
-func sendRequest(jsonData []byte, requestName, method string) (err error) {
+func sendRequest(jsonData []byte, requestName, method string, env *task.Env) (err error) {
 	if jsonData != nil {
 		err = common.ValidateJson(requestName, string(jsonData))
 		if err != nil {
@@ -100,22 +152,19 @@ func sendRequest(jsonData []byte, requestName, method string) (err error) {
 		}
 	}
 	code := messages.GetCode(requestName)
-	coapType := messages.GetType(requestName)
+	libCoapType := messages.GetLibCoapType(requestName)
 
 	var requestMessage RequestInterface
-	connectionFactory, err := connection.NewDTLSConnectionFactory(certFile, clientCertFile, clientKeyFile)
-	if err != nil {
-		return nil
-	}
-
 	switch messages.GetChannelType(requestName) {
 	case messages.SIGNAL:
-		requestMessage = NewRequest(code, coapType, signalChannelAddress, method, requestName, connectionFactory)
+		requestMessage = NewRequest(code, libCoapType, method, requestName, env)
 	case messages.DATA:
-		requestMessage = NewRequest(code, coapType, dataChannelAddress, method, requestName, connectionFactory)
+		errorMsg := fmt.Sprintf("unsupported channel type error: %s", requestName)
+		log.Errorf("dots_client.sendRequest -- %s", errorMsg)
+		return errors.New(errorMsg)
 	default:
 		errorMsg := fmt.Sprintf("unknown channel type error: %s", requestName)
-		log.Errorf("dots_client.main -- %s", errorMsg)
+		log.Errorf("dots_client.sendRequest -- %s", errorMsg)
 		return errors.New(errorMsg)
 	}
 
@@ -127,32 +176,15 @@ func sendRequest(jsonData []byte, requestName, method string) (err error) {
 		}
 	}
 
-	requestMessage.CreateRequest(nextMessageId())
+	requestMessage.CreateRequest()
 	log.Infof("dots_client.main -- request message: %+v", requestMessage)
 
-	err = requestMessage.Send()
-	if err != nil {
-		log.Fatal(err)
-	}
+	requestMessage.Send()
 	return
 }
 
 var activeConWg sync.WaitGroup
 var numberOfActive = 0
-var messageId uint16 = 0
-var messageIdMutex = sync.Mutex{}
-
-func nextMessageId() uint16 {
-	messageIdMutex.Lock()
-	defer messageIdMutex.Unlock()
-
-	if messageId == 0xffff {
-		messageId = 0
-	} else {
-		messageId++
-	}
-	return messageId
-}
 
 /*
  * connectionStateChange is a function to monitor the server connecion status.
@@ -178,6 +210,14 @@ func getDefaultCertPath(path string) string {
 	return packageRootPath + "certs/"
 }
 
+func pingResponseHandler(_ *task.PingTask, pdu *libcoap.Pdu) {
+	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("Ping Ack")
+}
+
+func pingTimeoutHandler(*task.PingTask) {
+	log.Info("Ping Timeout")
+}
+
 func main() {
 
 	log.Debug("parse arguments")
@@ -185,7 +225,7 @@ func main() {
 
 	common.SetUpLogger()
 
-	serverIP := net.ParseIP(server)
+	serverIP = net.ParseIP(server)
 	if serverIP == nil {
 		fmt.Println("  -server option is invalid")
 		os.Exit(1)
@@ -211,13 +251,15 @@ func main() {
 		exists(filePath)
 	}
 
-	rand.Seed(time.Now().UnixNano())
-	messageId = uint16(rand.Uint32() >> 16)
-	log.WithField("messageId", messageId).Debug("initial messageId has determined.")
+	env, err := connectSignalChannel()
+	if err != nil {
+		log.WithError(err).Errorf("connectSignalChannel() failed")
+		os.Exit(1)
+	}
 
 	log.Debugln("set http handler")
 
-	http.HandleFunc("/server/", serverHandler)
+	http.HandleFunc("/server/", makeServerHandler(env))
 
 	log.Infof("open unix domain socket on %s", socket)
 	l, err := net.Listen("unix", socket)
@@ -228,6 +270,7 @@ func main() {
 	defer l.Close()
 
 	// Interruption handling
+	stop := make(chan int, 1)
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
@@ -238,8 +281,26 @@ func main() {
 			log.Errorf("error: %v", err)
 			os.Exit(1)
 		}
+		stop <- 0
 	}()
 
 	srv := &http.Server{Handler: nil, ConnState: connectionStateChange}
-	srv.Serve(l)
+	go srv.Serve(l)
+
+	env.Run(task.NewPingTask(
+		time.Duration(3) * time.Second,
+		pingResponseHandler,
+		pingTimeoutHandler))
+loop:
+	for {
+		select {
+		case e := <- env.EventChannel():
+			e.Handle(env)
+		case <- stop:
+			break loop
+		default:
+			env.CoapContext().RunOnce(time.Duration(100) * time.Millisecond)
+		}
+	}
+	cleanupSignalChannel(env.CoapContext(), env.CoapSession())
 }
