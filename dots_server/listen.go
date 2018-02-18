@@ -119,6 +119,7 @@ func addHandler(ctx *libcoap.Context, code messages.Code, controller controllers
 }
 
 func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libcoap.Context, err error) {
+    log.Debugf("listen.go, listen -in. address=%+v, port=%+v", address, port)
     ip := net.ParseIP(address)
     if ip == nil {
         err = errors.New("net.ParseIP() -> nil")
@@ -129,6 +130,7 @@ func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libco
     if err != nil {
         return
     }
+    log.Debugf("addr=%+v", addr)
 
     ctx := libcoap.NewContextDtls(nil, dtlsParam)
     if ctx == nil {

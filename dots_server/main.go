@@ -30,6 +30,7 @@ func main() {
 		os.Exit(1)
 	}
 	config := dots_config.GetServerSystemConfig()
+	log.Debugf("dots server starting with config: %# v", config)
 
 	libcoap.Startup()
 	defer libcoap.Cleanup()
@@ -41,6 +42,7 @@ func main() {
 		&config.SecureFile.ServerKeyFile,
 	}
 
+	log.Debug("listen Signal with DTLS param: %# v", dtlsParam)
 	signalCtx, err := listenSignal(config.Network.BindAddress, uint16(config.Network.SignalChannelPort), &dtlsParam)
 	if err != nil {
 		log.Error(err)
