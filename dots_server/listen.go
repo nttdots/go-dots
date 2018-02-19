@@ -52,6 +52,7 @@ func addHandler(ctx *libcoap.Context, code messages.Code, controller controllers
 
     path := "/" + msg.Path
     resource := libcoap.ResourceInit(&path, 0)
+    log.Debugf("listen.go: addHandler, msg=%+v, path=%+v", msg, path)
     var toMethodHandler = func(method DotsServiceMethod) libcoap.MethodHandler {
         return func(context  *libcoap.Context,
                     resource *libcoap.Resource,

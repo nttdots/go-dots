@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -112,7 +112,24 @@ func cleanupSignalChannel(ctx *libcoap.Context, sess *libcoap.Session) {
  */
 func makeServerHandler(env *task.Env) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
-		_, requestName := path.Split(r.URL.Path)
+		// _, requestName := path.Split(r.URL.Path)
+		// Split requestName and QueryParam
+		tmpPaths := strings.Split(r.URL.Path, "/")
+		var requestName = ""
+		var tmpPath string
+		var requestQuerys []string
+		for i := len(tmpPaths) - 1; i >=0; i-- {
+			tmpPath = tmpPaths[i]
+			// if include =, use for QueryParam and check previous path
+			if strings.Contains(tmpPath, "=") {
+				continue
+			}
+			requestName = tmpPath
+			requestQuerys = tmpPaths[i+1:]
+			break
+		}
+		log.Debugf("Parsed URI, requestName=%+v, requestQuerys=%+v", requestName, requestQuerys)
+
 		if requestName == "" || !messages.IsRequest(requestName) {
 			fmt.Printf("dots_client.serverHandler -- %s is invalid request name \n", requestName)
 			fmt.Printf("support messages: %s \n", messages.SupportRequest())
@@ -130,7 +147,7 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			jsonData = buff.Bytes()
 		}
 
-		err := sendRequest(jsonData, requestName, r.Method, env)
+		err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env)
 		if err != nil {
 			fmt.Printf("dots_client.serverHandler -- %s", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -144,7 +161,7 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 /*
  * sendRequest is a function that sends requests to the server.
  */
-func sendRequest(jsonData []byte, requestName, method string, env *task.Env) (err error) {
+func sendRequest(jsonData []byte, requestName, method string, queryParams []string, env *task.Env) (err error) {
 	if jsonData != nil {
 		err = common.ValidateJson(requestName, string(jsonData))
 		if err != nil {
@@ -157,7 +174,7 @@ func sendRequest(jsonData []byte, requestName, method string, env *task.Env) (er
 	var requestMessage RequestInterface
 	switch messages.GetChannelType(requestName) {
 	case messages.SIGNAL:
-		requestMessage = NewRequest(code, libCoapType, method, requestName, env)
+		requestMessage = NewRequest(code, libCoapType, method, requestName, queryParams, env)
 	case messages.DATA:
 		errorMsg := fmt.Sprintf("unsupported channel type error: %s", requestName)
 		log.Errorf("dots_client.sendRequest -- %s", errorMsg)

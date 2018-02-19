@@ -320,7 +320,7 @@ func loadMitigations(req *messages.MitigationRequest, customer *models.Customer)
 			return nil, err
 		}
 		if mitigationIds == nil {
-			log.WithField("ClientIdentifiers", req.MitigationScope.ClientIdentifiers).Warn("mitigation id not found in this client identifiers.")
+			log.WithField("ClientIdentifiers", req.MitigationScope.Scopes[0].ClientIdentifier).Warn("mitigation id not found in this client identifiers.")
 			return nil, errors.New("mitigation id not found in this client identifiers.")
 		}
 		log.WithField("list of mitigation id", mitigationIds).Info("found mitigation ids.")

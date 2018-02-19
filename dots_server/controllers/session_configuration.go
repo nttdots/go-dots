@@ -44,7 +44,7 @@ func (m *SessionConfiguration) Get(request interface{}, customer *models.Custome
 	resp.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
 	resp.AckTimeout.CurrentValue        = signalSessionConfiguration.AckTimeout
 	resp.AckRandomFactor.CurrentValue   = signalSessionConfiguration.AckRandomFactor
-	resp.TriggerMitigation.CurrentValue = signalSessionConfiguration.TriggerMitigation
+	resp.TriggerMitigation              = signalSessionConfiguration.TriggerMitigation
 
 	res = Response{
 			Type: common.NonConfirmable,

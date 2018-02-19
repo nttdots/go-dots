@@ -33,6 +33,7 @@ type Request struct {
 	coapType    libcoap.Type
 	method      string
 	requestName string
+	queryParams []string
 
 	env         *task.Env
 }
@@ -40,7 +41,7 @@ type Request struct {
 /*
  * Request constructor.
  */
-func NewRequest(code messages.Code, coapType libcoap.Type, method string, requestName string, env *task.Env) *Request {
+func NewRequest(code messages.Code, coapType libcoap.Type, method string, requestName string, queryParams []string, env *task.Env) *Request {
 	return &Request{
 		nil,
 		code,
@@ -48,6 +49,7 @@ func NewRequest(code messages.Code, coapType libcoap.Type, method string, reques
 		coapType,
 		method,
 		requestName,
+		queryParams,
 		env,
 	}
 }
@@ -135,6 +137,10 @@ func (r *Request) CreateRequest() {
 		log.Debugf("hex dump cbor request:\n%s", hex.Dump(r.pdu.Data))
 	}
 	r.pdu.SetPathString(r.RequestCode.PathString())
+	// append path + queryParams as Slice
+	tmpPathWithQuery := r.RequestCode.PathString() + "/" + strings.Join(r.queryParams, "/")
+	r.pdu.SetPathString(tmpPathWithQuery)
+	log.Debugf("SetPathString=%+v", tmpPathWithQuery)
 }
 
 func handleTimeout(task *task.MessageTask) {

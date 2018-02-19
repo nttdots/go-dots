@@ -25,6 +25,8 @@ var contexts = make(map[*C.coap_context_t] *Context)
 
 func Startup() {
     C.coap_startup()
+    C.coap_dtls_set_log_level(C.LOG_DEBUG)
+    C.coap_set_log_level(C.LOG_DEBUG)
 }
 
 func Cleanup() {

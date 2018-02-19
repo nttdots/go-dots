@@ -6,54 +6,49 @@ import (
 
 type MitigationResponse struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	MitigationScope MitigationScopeStatus `json:"mitigation-scope" codec:"1"`
+	MitigationScope MitigationScopeStatus `json:"ietf-dots-signal-channel:mitigation-scope" codec:"1"`
 }
 
 type MitigationScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	Scopes []ScopeStatus `json:"scope" codec:"2"`
+	Scopes []ScopeStatus `json:"scope" codec:"3"`
 }
 
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	MitigationId    int   `json:"mitigation-id"    codec:"3"`
-	MitigationStart float64 `json:"mitigation-start" codec:"34"`
-	TargetProtocol []int  `json:"target-protocol"   codec:"8"`
-	Lifetime        int   `json:"lifetime"         codec:"12"`
-	Status          int   `json:"status"           codec:"21"`
-	BytesDropped    int   `json:"bytes-dropped"    codec:"26"`
-	BpsDropped      int   `json:"bps-dropped"      codec:"27"`
-	PktsDropped     int   `json:"pkts-dropped"     codec:"28"`
-	PpsDropped      int   `json:"pps-dropped"      codec:"29"`
-}
-
-type BoolCurrent struct {
-	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue bool `json:"current-value" codec:"33"`
+	MitigationId    int   `json:"mid"    codec:"5"`
+	MitigationStart float64 `json:"mitigation-start" codec:"15"`
+	TargetProtocol []int  `json:"target-protocol"   codec:"10"`
+	Lifetime        int   `json:"lifetime"         codec:"14"`
+	Status          int   `json:"status"           codec:"16"`
+	BytesDropped    int   `json:"bytes-dropped"    codec:"25"`
+	BpsDropped      int   `json:"bps-dropped"      codec:"26"`
+	PktsDropped     int   `json:"pkts-dropped"     codec:"27"`
+	PpsDropped      int   `json:"pps-dropped"      codec:"28"`
 }
 
 type IntCurrentMinMax struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue int `json:"current-value" codec:"33"`
-	MinValue     int `json:"min-value"     codec:"19"`
-	MaxValue     int `json:"max-value"     codec:"20"`
+	CurrentValue int `json:"current-value" codec:"36"`
+	MinValue     int `json:"min-value"     codec:"35"`
+	MaxValue     int `json:"max-value"     codec:"34"`
 }
 
 type FloatCurrentMinMax struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue float64 `json:"current-value" codec:"33"`
-	MinValue     float64 `json:"min-value"     codec:"19"`
-	MaxValue     float64 `json:"max-value"     codec:"20"`
+	CurrentValue float64 `json:"current-value-decimal" codec:"43"`
+	MinValue     float64 `json:"min-value-decimal"     codec:"42"`
+	MaxValue     float64 `json:"max-value-decimal"     codec:"41"`
 }
 
 type ConfigurationResponse struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	HeartbeatInterval IntCurrentMinMax   `json:"heartbeat-interval" codec:"15"`
-	MissingHbAllowed  IntCurrentMinMax   `json:"missing-hb-allowed" codec:"32"`
-	MaxRetransmit     IntCurrentMinMax   `json:"max-retransmit"     codec:"16"`
-	AckTimeout        IntCurrentMinMax   `json:"ack-timeout"        codec:"17"`
-	AckRandomFactor   FloatCurrentMinMax `json:"ack-random-factor"  codec:"18"`
-	TriggerMitigation BoolCurrent        `json:"trigger-mitigation" codec:"31"`
+	HeartbeatInterval IntCurrentMinMax   `json:"heartbeat-interval" codec:"33"`
+	MissingHbAllowed  IntCurrentMinMax   `json:"missing-hb-allowed" codec:"37"`
+	MaxRetransmit     IntCurrentMinMax   `json:"max-retransmit"     codec:"38"`
+	AckTimeout        IntCurrentMinMax   `json:"ack-timeout"        codec:"39"`
+	AckRandomFactor   FloatCurrentMinMax `json:"ack-random-factor"  codec:"40"`
+	TriggerMitigation bool               `json:"trigger-mitigation" codec:"45"`
 }
 
 func (v *IntCurrentMinMax) SetMinMax(pr *config.ParameterRange) {
@@ -68,30 +63,25 @@ func (v *FloatCurrentMinMax) SetMinMax(pr *config.ParameterRange) {
 
 type MitigationResponsePut struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	MitigationScope MitigationScopePut `json:"mitigation-scope" codec:"1"`
+	MitigationScope MitigationScopePut `json:"ietf-dots-signal-channel:mitigation-scope" codec:"1"`
 }
 
 type MitigationScopePut struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	ClientIdentifiers []string `json:"client-identifier" codec:"36"`
-	Scopes            []ScopePut  `json:"scope"             codec:"2"`
+	Scopes            []ScopePut  `json:"scope"             codec:"3"`
 }
 
 type ScopePut struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	// Identifier for the mitigation request
-	MitigationId int `json:"mitigation-id" codec:"3"`
+	MitigationId int `json:"mid" codec:"5"`
 	// lifetime
-	Lifetime int `json:"lifetime" codec:"12,omitempty"`
+	Lifetime int `json:"lifetime" codec:"14,omitempty"`
 }
 
 func NewMitigationResponsePut(req *MitigationRequest) MitigationResponsePut {
 	res := MitigationResponsePut{}
 	res.MitigationScope = MitigationScopePut{}
-	if req.MitigationScope.ClientIdentifiers != nil {
-		res.MitigationScope.ClientIdentifiers = make([]string, len(req.MitigationScope.ClientIdentifiers))
-		copy(res.MitigationScope.ClientIdentifiers, req.MitigationScope.ClientIdentifiers)
-	}
 	if req.MitigationScope.Scopes != nil {
 		res.MitigationScope.Scopes = make([]ScopePut, len(req.MitigationScope.Scopes))
 		for i := range req.MitigationScope.Scopes {

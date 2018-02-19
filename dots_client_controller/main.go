@@ -21,6 +21,8 @@ import (
 var (
 	requestName   string
 	requestMethod string
+	cuid          string
+	mid           string
 	jsonFilePath  string
 	socket        string
 )
@@ -30,6 +32,9 @@ func init() {
 
 	flag.StringVar(&requestName, "request", defaultValue, "Request Name")
 	flag.StringVar(&requestMethod, "method", defaultValue, "Request Method(Get/Post/Put/Delete)")
+	flag.StringVar(&cuid, "cuid", defaultValue, "Client Unique Identifier on Uri-Path. mandatory in Put/Get/Delete")
+	// TODO: cdid for gateway
+	flag.StringVar(&mid, "mid", defaultValue, "Identifier for the mitigation request on Uri-Path. mandatory in Put/Delete")
 	flag.StringVar(&jsonFilePath, "json", defaultValue, "Request Json file")
 	flag.StringVar(&socket, "socket", common.DEFAULT_CLIENT_SOCKET_FILE, "dots client socket")
 }
@@ -90,7 +95,7 @@ func main() {
 	}
 
 	common.SetUpLogger()
-	log.Infof("method: %s, requestName: %s", requestMethod, requestName)
+	log.Infof("method: %s, requestName: %s, cuid: %s, mid: %s", requestMethod, requestName, cuid, mid)
 
 	err := socketExist(socket)
 	if err != nil {
@@ -110,7 +115,11 @@ func main() {
 	u, err := url.Parse("http://dots_client/server")
 
 	contentType := "application/json"
-	u.Path = path.Join(u.Path, "server", requestName)
+	if mid == "" {
+		u.Path = path.Join(u.Path, "server", requestName) + "/cuid=" + cuid
+	} else {
+		u.Path = path.Join(u.Path, "server", requestName) + "/cuid=" + cuid + "/mid=" + mid
+	}
 
 	var body io.Reader
 	if jsonFilePath != "" {
@@ -121,6 +130,7 @@ func main() {
 		body = bytes.NewBuffer(jsonData)
 	}
 
+	log.Debugf("NewRequest requestMethod=%+v, u=%+v, body=%+v", requestMethod, u, body)
 	request, err := http.NewRequest(strings.ToUpper(requestMethod), u.String(), body)
 	if err != nil {
 		fmt.Printf("request message building error. %s", err.Error())
