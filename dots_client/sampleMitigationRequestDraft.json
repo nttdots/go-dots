@@ -1,11 +1,7 @@
 {
-  "mitigation-scope": {
-    "client-identifier": [
-     "dz6pHjaADkaFTbjr0JGBpw"
-   ],
+  "ietf-dots-signal-channel:mitigation-scope": {
     "scope": [
       {
-        "mitigation-id": 12332,
         "target-prefix": [
          "2001:db8:6401::1/128",
          "2001:db8:6401::2/128"
