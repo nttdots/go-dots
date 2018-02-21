@@ -78,8 +78,9 @@ func (m *SessionConfiguration) Put(request interface{}, customer *models.Custome
 		return
 	}
 
-	payload := &request.(*messages.SignalConfigRequest).SignalConfig
+	payload := &request.(*messages.SignalConfigRequest).SignalConfigs.MitigationConfig
 	sessionConfigurationPayloadDisplay(payload)
+	// TODO: support IdleConfig, draft-17+
 
 	// validate
 	signalSessionConfiguration := models.NewSignalSessionConfiguration(
