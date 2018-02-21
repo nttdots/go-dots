@@ -45,6 +45,17 @@ type FloatCurrentMinMax struct {
 
 type ConfigurationResponse struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	SignalConfigs ConfigurationResponseConfigs `json:"ietf-dots-signal-channel:signal-config" codec:"30"`
+}
+
+type ConfigurationResponseConfigs struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	MitigationConfig ConfigurationResponseConfig `json:"mitigating-config" codec:"32"`
+	IdleConfig ConfigurationResponseConfig `json:"mitigating-config" codec:"44"`
+}
+
+type ConfigurationResponseConfig struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	HeartbeatInterval IntCurrentMinMax   `json:"heartbeat-interval" codec:"33"`
 	MissingHbAllowed  IntCurrentMinMax   `json:"missing-hb-allowed" codec:"37"`
 	MaxRetransmit     IntCurrentMinMax   `json:"max-retransmit"     codec:"38"`

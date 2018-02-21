@@ -33,19 +33,22 @@ func (m *SessionConfiguration) Get(request interface{}, customer *models.Custome
 	config := dots_config.GetServerSystemConfig().SignalConfigurationParameter
 
 	resp := messages.ConfigurationResponse{}
-	resp.HeartbeatInterval.SetMinMax(config.HeartbeatInterval)
-	resp.MissingHbAllowed.SetMinMax(config.MissingHbAllowed)
-	resp.MaxRetransmit.SetMinMax(config.MaxRetransmit)
-	resp.AckTimeout.SetMinMax(config.AckTimeout)
-	resp.AckRandomFactor.SetMinMax(config.AckRandomFactor)
+	resp.SignalConfigs = messages.ConfigurationResponseConfigs{}
+	resp.SignalConfigs.MitigationConfig = messages.ConfigurationResponseConfig{}
+	resp.SignalConfigs.MitigationConfig.HeartbeatInterval.SetMinMax(config.HeartbeatInterval)
+	resp.SignalConfigs.MitigationConfig.MissingHbAllowed.SetMinMax(config.MissingHbAllowed)
+	resp.SignalConfigs.MitigationConfig.MaxRetransmit.SetMinMax(config.MaxRetransmit)
+	resp.SignalConfigs.MitigationConfig.AckTimeout.SetMinMax(config.AckTimeout)
+	resp.SignalConfigs.MitigationConfig.AckRandomFactor.SetMinMax(config.AckRandomFactor)
 
-	resp.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
-	resp.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
-	resp.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
-	resp.AckTimeout.CurrentValue        = signalSessionConfiguration.AckTimeout
-	resp.AckRandomFactor.CurrentValue   = signalSessionConfiguration.AckRandomFactor
-	resp.TriggerMitigation              = signalSessionConfiguration.TriggerMitigation
+	resp.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
+	resp.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
+	resp.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
+	resp.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue        = signalSessionConfiguration.AckTimeout
+	resp.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue   = signalSessionConfiguration.AckRandomFactor
+	resp.SignalConfigs.MitigationConfig.TriggerMitigation              = signalSessionConfiguration.TriggerMitigation
 
+	// TODO: support Idle-Config
 	res = Response{
 			Type: common.NonConfirmable,
 			Code: common.Content,
