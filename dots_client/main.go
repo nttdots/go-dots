@@ -305,7 +305,7 @@ func main() {
 	go srv.Serve(l)
 
 	env.Run(task.NewPingTask(
-		time.Duration(3) * time.Second,
+		time.Duration(30) * time.Second,
 		pingResponseHandler,
 		pingTimeoutHandler))
 loop:
