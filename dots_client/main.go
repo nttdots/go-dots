@@ -35,6 +35,9 @@ var (
 	certFile          string
 	clientCertFile    string
 	clientKeyFile     string
+
+	identity          string
+	psk               string
 )
 
 func init() {
@@ -52,6 +55,9 @@ func init() {
 	flag.StringVar(&certFile, "certFile", defaultCertFile, "cert file path")
 	flag.StringVar(&clientCertFile, "clientCertFile", defaultClientCertFile, "client cert file path")
 	flag.StringVar(&clientKeyFile, "clientKeyFile", defaultClientKeyFile, "client key file path")
+
+	flag.StringVar(&identity, "identity", "", "identity for DTLS PSK")
+	flag.StringVar(&psk, "psk", "", "DTLS PSK")
 }
 
 // These variables hold the server connection configurations.
@@ -65,25 +71,44 @@ func connectSignalChannel() (env *task.Env, err error) {
 
 	libcoap.Startup()
 
-	dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile }
-	ctx = libcoap.NewContextDtls(nil, &dtlsParam)
-	if ctx == nil {
-		log.Error("NewContextDtls() -> nil")
-		err = errors.New("NewContextDtls() -> nil")
-		goto error
-	}
-
 	addr, err = libcoap.AddressOf(serverIP, uint16(signalChannelPort))
 	if err != nil {
 		log.WithError(err).Error("AddressOf() failed")
 		goto error
 	}
 
-	sess = ctx.NewClientSessionDTLS(addr, libcoap.ProtoDtls, nil)
-	if sess == nil {
-		log.Error("NewClientSession() -> nil")
-		err = errors.New("NewClientSession() -> nil")
-		goto error
+	if 0 < len(psk) {
+		log.WithField("identity", identity).WithField("psk", psk).Info("Using PSK")
+
+		ctx = libcoap.NewContext(nil)
+		if ctx == nil {
+			log.Error("NewContext() -> nil")
+			err = errors.New("NewContext() -> nil")
+			goto error
+		}
+
+		sess = ctx.NewClientSessionPSK(addr, libcoap.ProtoDtls, identity, []byte(psk))
+		if sess == nil {
+			log.Error("NewClientSessionPSK() -> nil")
+			err = errors.New("NewClientSessionPSK() -> nil")
+			goto error
+		}
+
+	} else {
+		dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile }
+		ctx = libcoap.NewContextDtls(nil, &dtlsParam)
+		if ctx == nil {
+			log.Error("NewContextDtls() -> nil")
+			err = errors.New("NewContextDtls() -> nil")
+			goto error
+		}
+
+		sess = ctx.NewClientSessionDTLS(addr, libcoap.ProtoDtls, nil)
+		if sess == nil {
+			log.Error("NewClientSessionDTLS() -> nil")
+			err = errors.New("NewClientSessionDTLS() -> nil")
+			goto error
+		}
 	}
 
 	env = task.NewEnv(ctx, sess)
