@@ -124,7 +124,9 @@ func main() {
 			u.Path = path.Join(u.Path, "server", requestName) + "/cuid=" + cuid + "/mid=" + mid
 		}
 	} else if sid != "" {
-			u.Path = path.Join(u.Path, "server", requestName) + "/sid=" + sid
+		u.Path = path.Join(u.Path, "server", requestName) + "/sid=" + sid
+	} else {
+		u.Path = path.Join(u.Path, "server", requestName)
 	}
 	var body io.Reader
 	if jsonFilePath != "" {
