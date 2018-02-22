@@ -87,9 +87,11 @@ func (m *MitigationRequest) Get(request interface{}, customer *models.Customer) 
  *  res response message
  *  err error
  */
-func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer) (res Response, err error) {
 
-	if request == nil {
+	log.WithField("request", request).Debug("HandlePut")
+
+	if request.Body == nil {
 		res = Response {
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -98,10 +100,10 @@ func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) 
 		return
 	}
 
-	req := request.(*messages.MitigationRequest)
-	log.WithField("message", req.String()).Debug("[PUT] receive message")
+	body := request.Body.(*messages.MitigationRequest)
+	log.WithField("message", body.String()).Debug("[PUT] receive message")
 
-	if len(req.MitigationScope.Scopes) != 1 {
+	if len(body.MitigationScope.Scopes) != 1 {
 
 		// Zero or multiple scope
 		res = Response{
@@ -112,10 +114,10 @@ func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) 
 
 	} else {
 
-		reqScope := req.MitigationScope.Scopes[0]
+		reqScope := body.MitigationScope.Scopes[0]
 
 		var currentScope *models.MitigationScope
-		currentScope, err = models.GetMitigationScope(customer.Id, req.EffectiveClientIdentifier(), reqScope.MitigationId)
+		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(), reqScope.MitigationId)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope load error.")
 			return Response{}, err
@@ -125,13 +127,13 @@ func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) 
 
 			// Create New
 
-			err = createMitigationScope(req, customer)
+			err = createMitigationScope(body, customer)
 			if err != nil {
 				log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
 				return
 			}
 
-			err = callBlocker(req, customer)
+			err = callBlocker(body, customer)
 			if err != nil {
 				log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
 				return
@@ -141,7 +143,7 @@ func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) 
 			res = Response{
 				Type: common.NonConfirmable,
 				Code: common.Created,
-				Body: messages.NewMitigationResponsePut(req),
+				Body: messages.NewMitigationResponsePut(body),
 			}
 
 		} else  {
@@ -149,19 +151,19 @@ func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) 
 			// Update
 
 			// Cannot rollback :P
-			err = cancelMitigationByModel(currentScope, req.EffectiveClientIdentifier(), customer)
+			err = cancelMitigationByModel(currentScope, body.EffectiveClientIdentifier(), customer)
 			if err != nil {
 				log.WithError(err).Error("MitigationRequest.Put")
 				return
 			}
 
-			err = createMitigationScope(req, customer)
+			err = createMitigationScope(body, customer)
 			if err != nil {
 				log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
 				return
 			}
 
-			err = callBlocker(req, customer)
+			err = callBlocker(body, customer)
 			if err != nil {
 				log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
 				return
@@ -170,7 +172,7 @@ func (m *MitigationRequest) Put(request interface{}, customer *models.Customer) 
 			res = Response{
 				Type: common.NonConfirmable,
 				Code: common.Changed,
-				Body: messages.NewMitigationResponsePut(req),
+				Body: messages.NewMitigationResponsePut(body),
 			}
 		}
 	}

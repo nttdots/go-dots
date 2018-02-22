@@ -49,6 +49,10 @@ func (context *Context) AddResource(resource *Resource) {
     C.coap_add_resource(context.ptr, resource.ptr)
 }
 
+func (context *Context) AddResourceUnknown(resource *Resource) {
+    C.coap_add_resource_unknown(context.ptr, resource.ptr)
+}
+
 func (context *Context) DeleteResource(resource *Resource) {
     ptr := resource.ptr
     delete(resources, ptr)
