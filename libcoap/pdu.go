@@ -195,3 +195,13 @@ func (pdu *Pdu) SetPath(path []string) {
 func (pdu *Pdu) SetPathString(path string) {
     pdu.SetPath(strings.Split(path, "/"))
 }
+
+func (pdu *Pdu) Queries() []string {
+    ret := make([]string, 0)
+    for _, o := range pdu.Options {
+        if o.Key == OptionUriQuery {
+            ret = append(ret, o.String())
+        }
+    }
+    return ret
+}
