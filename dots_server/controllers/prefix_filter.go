@@ -34,8 +34,12 @@ func (p *PrefixFilter) forward(req Request, customer *models.Customer, method Se
         return true
     }
 
+    req2 := req
+    req2.PathInfo = req2.Uri[len(p.prefix):]
+
     if startsWith(req.Uri, p.prefix) {
-        return method(req, customer)
+        return method(req2, customer)
+
     } else {
         return Response{
             Code: dots_common.NotFound,

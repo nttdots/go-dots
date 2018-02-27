@@ -20,9 +20,11 @@ type MitigationRequest struct {
 /*
  * Handles mitigationRequest GET requests.
  */
-func (m *MitigationRequest) Get(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer) (res Response, err error) {
 
-	if request == nil {
+	body := request.Body
+
+	if body == nil {
 		res = Response {
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -31,7 +33,7 @@ func (m *MitigationRequest) Get(request interface{}, customer *models.Customer) 
 		return
 	}
 
-	req := request.(*messages.MitigationRequest)
+	req := body.(*messages.MitigationRequest)
 	log.WithField("message", req.String()).Debug("[GET] receive message")
 
 	mpp, err := loadMitigations(req, customer)
@@ -184,9 +186,11 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
  * Handles createIdentifiers DELETE requests.
  * It terminates all the mitigations invoked by a customer.
  */
-func (m *MitigationRequest) Delete(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *MitigationRequest) HandleDelete(request Request, customer *models.Customer) (res Response, err error) {
 
-	if request == nil {
+	body := request.Body
+
+	if body == nil {
 		res = Response {
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -195,7 +199,7 @@ func (m *MitigationRequest) Delete(request interface{}, customer *models.Custome
 		return
 	}
 
-	req := request.(*messages.MitigationRequest)
+	req := body.(*messages.MitigationRequest)
 	log.WithField("message", req.String()).Debug("[DELETE] receive message")
 
 	err = cancelMitigationByMessage(req, customer)
