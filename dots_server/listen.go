@@ -45,7 +45,7 @@ func marshalCbor(msg interface{}) ([]byte, error) {
     return writer.Bytes(), nil
 }
 
-func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface, codes []libcoap.Code) *libcoap.Resource {
+func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface) *libcoap.Resource {
 
     resource := libcoap.ResourceInit(&path, 0)
     log.Debugf("listen.go: createResource, path=%+v", path)
@@ -116,38 +116,26 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
         }
     }
 
-    if len(codes) == 0 {
-        codes = []libcoap.Code{ libcoap.RequestGet, libcoap.RequestPut, libcoap.RequestPost, libcoap.RequestDelete }
-    }
-
-    for _, c := range codes {
-        switch c {
-        case libcoap.RequestGet:
-            resource.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet))
-        case libcoap.RequestPut:
-            resource.RegisterHandler(libcoap.RequestPut,    toMethodHandler(controller.HandlePut))
-        case libcoap.RequestPost:
-            resource.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost))
-        case libcoap.RequestDelete:
-            resource.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete))
-        }
-    }
+    resource.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet))
+    resource.RegisterHandler(libcoap.RequestPut,    toMethodHandler(controller.HandlePut))
+    resource.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost))
+    resource.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete))
     return resource
 }
 
-func addHandler(ctx *libcoap.Context, code messages.Code, controller controllers.ControllerInterface, codes ...libcoap.Code) {
+func addHandler(ctx *libcoap.Context, code messages.Code, controller controllers.ControllerInterface) {
     msg := messages.MessageTypes[code]
     path := "/" + msg.Path
 
-    ctx.AddResource(createResource(ctx, path, msg.Type, controller, codes))
+    ctx.AddResource(createResource(ctx, path, msg.Type, controller))
 }
 
-func addPrefixHandler(ctx *libcoap.Context, code messages.Code, controller controllers.ControllerInterface, codes ...libcoap.Code) {
+func addPrefixHandler(ctx *libcoap.Context, code messages.Code, controller controllers.ControllerInterface) {
     msg := messages.MessageTypes[code]
     path := "/" + msg.Path
 
     filter := controllers.NewPrefixFilter(path, controller)
-    ctx.AddResourceUnknown(createResource(ctx, "dummy for unknown", msg.Type, filter, codes))
+    ctx.AddResourceUnknown(createResource(ctx, "dummy for unknown", msg.Type, filter))
 }
 
 func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libcoap.Context, err error) {
@@ -195,10 +183,9 @@ func listenSignal(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ 
     }
 
     addHandler(ctx, messages.HELLO,                 &controllers.Hello{})
-    addHandler(ctx, messages.MITIGATION_REQUEST,    &controllers.MitigationRequest{}, libcoap.RequestGet, libcoap.RequestPost, libcoap.RequestDelete)
     addHandler(ctx, messages.SESSION_CONFIGURATION, &controllers.SessionConfiguration{})
 
-    addPrefixHandler(ctx, messages.MITIGATION_REQUEST, &controllers.MitigationRequest{}, libcoap.RequestPut)
+    addPrefixHandler(ctx, messages.MITIGATION_REQUEST, &controllers.MitigationRequest{})
 
     return ctx, nil
 }

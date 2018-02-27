@@ -14,11 +14,13 @@ import (
  * It provides function interfaces correspondent to CoAP methods.
  */
 type ControllerInterface interface {
+	// Service methods
 	HandleGet(Request, *models.Customer) (Response, error)
 	HandlePost(Request, *models.Customer) (Response, error)
 	HandleDelete(Request, *models.Customer) (Response, error)
 	HandlePut(Request, *models.Customer) (Response, error)
 
+	// Legacy service methods, for backward compatibility only.
 	Get(interface{}, *models.Customer) (Response, error)
 	Post(interface{}, *models.Customer) (Response, error)
 	Delete(interface{}, *models.Customer) (Response, error)
@@ -93,11 +95,12 @@ func (c *Controller) Put(interface{}, *models.Customer) (Response, error) {
  * Regular API request
  */
 type Request struct {
-	Code    libcoap.Code
-	Type    libcoap.Type
-	Uri     []string
-	Queries []string
-	Body    interface{}
+	Code     libcoap.Code
+	Type     libcoap.Type
+	Uri      []string     // Full request URI
+	PathInfo []string     // URI-Paths after with prefix
+	Queries  []string     // Uri-Queries
+	Body     interface{}
 }
 
 /*
@@ -105,7 +108,7 @@ type Request struct {
  */
 type Response struct {
 	Code dots_common.Code
-	Type dots_common.Type
+	Type dots_common.Type // not used
 	Body interface{}
 }
 
