@@ -7,9 +7,9 @@ import (
     "reflect"
 
     log "github.com/sirupsen/logrus"
-    "github.com/gonuts/cbor"
     "github.com/ugorji/go/codec"
 
+    "github.com/nttdots/go-dots/dots_common"
     "github.com/nttdots/go-dots/dots_common/messages"
     "github.com/nttdots/go-dots/dots_server/controllers"
     "github.com/nttdots/go-dots/dots_server/models"
@@ -24,8 +24,7 @@ func unmarshalCbor(pdu *libcoap.Pdu, typ reflect.Type) (interface{}, error) {
     m := reflect.New(typ).Interface()
     reader := bytes.NewReader(pdu.Data)
 
-    handle := new(codec.CborHandle)
-    d := codec.NewDecoder(reader, handle)
+    d := codec.NewDecoder(reader, dots_common.NewCborHandle())
     err := d.Decode(m)
 
     if err != nil {
@@ -35,14 +34,14 @@ func unmarshalCbor(pdu *libcoap.Pdu, typ reflect.Type) (interface{}, error) {
 }
 
 func marshalCbor(msg interface{}) ([]byte, error) {
-    writer := bytes.NewBuffer(nil)
-    e := cbor.NewEncoder(writer)
+    var buf []byte
+    e := codec.NewEncoderBytes(&buf, dots_common.NewCborHandle())
 
     err := e.Encode(msg)
     if err != nil {
         return nil, err
     }
-    return writer.Bytes(), nil
+    return buf, nil
 }
 
 func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface) *libcoap.Resource {

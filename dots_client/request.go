@@ -10,8 +10,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/gonuts/cbor"
 	"github.com/ugorji/go/codec"
+	"github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_client/task"
 	"github.com/nttdots/go-dots/libcoap"
@@ -65,15 +65,14 @@ func (r *Request) LoadMessage(message interface{}) {
  * convert this Request into the Cbor format.
  */
 func (r *Request) dumpCbor() []byte {
-
-	cborWriter := bytes.NewBuffer(nil)
-	e := cbor.NewEncoder(cborWriter)
+	var buf []byte
+	e := codec.NewEncoderBytes(&buf, dots_common.NewCborHandle())
 
 	err := e.Encode(r.Message)
 	if err != nil {
 		log.Errorf("Error decoding %s", err)
 	}
-	return cborWriter.Bytes()
+	return buf
 }
 
 /*
@@ -185,8 +184,7 @@ func (r *Request) logMessage(pdu *libcoap.Pdu) {
 	log.Infof("        Raw payload: %s", pdu.Data)
 	log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
 
-	cborDecHandle := new(codec.CborHandle)
-	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), cborDecHandle)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 
 	var err error
 	var logStr string
