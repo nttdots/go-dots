@@ -25,7 +25,9 @@ type InstallFilteringRule struct {
  *  res response message
  *  err error
  */
-func (m *InstallFilteringRule) Post(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *InstallFilteringRule) HandlePost(newRequest Request, customer *models.Customer) (res Response, err error) {
+
+	request := newRequest.Body
 
 	if request == nil {
 		res = Response {

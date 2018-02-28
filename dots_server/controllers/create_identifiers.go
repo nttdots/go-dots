@@ -27,7 +27,9 @@ type CreateIdentifiers struct {
  *  res response message
  *  err error
  */
-func (m *CreateIdentifiers) Post(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *CreateIdentifiers) HandlePost(newRequest Request, customer *models.Customer) (res Response, err error) {
+
+	request := newRequest.Body
 
 	if request == nil {
 		res = Response {

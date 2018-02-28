@@ -18,7 +18,9 @@ type Hello struct {
 /*
  * Handles Hello POST requests.
  */
-func (h *Hello) Post(req interface{}, customer *models.Customer) (res Response, err error) {
+func (h *Hello) HandlePost(newReq Request, customer *models.Customer) (res Response, err error) {
+
+	req := newReq.Body
 
 	if req == nil {
 		res = Response {

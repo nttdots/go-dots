@@ -13,7 +13,7 @@ func TestHello_Post(t *testing.T) {
 	m := messages.HelloRequest{
 		Message: "testhello_post",
 	}
-	actual, err := hello.Post(&m, &models.Customer{})
+	actual, err := hello.HandlePost(Request{Body: &m}, &models.Customer{})
 	if err != nil {
 		t.Errorf("post method return error: %s", err.Error())
 		return

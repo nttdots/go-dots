@@ -70,7 +70,9 @@ func (m *SessionConfiguration) Get(request interface{}, customer *models.Custome
  *  res response message
  *  err error
  */
-func (m *SessionConfiguration) Put(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Customer) (res Response, err error) {
+
+	request := newRequest.Body
 
 	if request == nil {
 		res = Response{
@@ -127,7 +129,7 @@ ResponseOK:
 	return
 }
 
-func (m *SessionConfiguration) Delete(request interface{}, customer *models.Customer) (res Response, err error) {
+func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models.Customer) (res Response, err error) {
 	err = models.DeleteSignalSessionConfigurationByCustomerId(customer.Id)
 	if err != nil {
 		res = Response{
