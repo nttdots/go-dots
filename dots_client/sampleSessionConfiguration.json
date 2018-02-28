@@ -1,11 +1,13 @@
 {
-  "signal-config": {
-    "session-id": 1234543241,
-    "heartbeat-interval": 30,
-    "missing-hb-allowed": 5,
-    "max-retransmit": 7,
-    "ack-timeout": 50,
-    "ack-random-factor": 1.5,
-    "trigger-mitigation": true
+  "ietf-dots-signal-channel:signal-config": {
+    "mitigating-config": {
+      "session-id": 1234543241,
+      "heartbeat-interval": 30,
+      "missing-hb-allowed": 5,
+      "max-retransmit": 7,
+      "ack-timeout": 50,
+      "ack-random-factor": 1.5,
+      "trigger-mitigation": true
+    }
   }
 }

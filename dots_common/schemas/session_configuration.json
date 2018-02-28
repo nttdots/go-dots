@@ -2,29 +2,60 @@
   "$schema": "http://json-schema.org/draft-04/schema#",
   "type": "object",
   "properties": {
-    "signal-config": {
+    "ietf-dots-signal-channel:signal-config": {
       "type": "object",
       "properties": {
-        "session-id": {
-          "type": "integer"
+        "mitigating-config": {
+          "type": "object",
+          "properties": {
+            "session-id": {
+              "type": "integer"
+            },
+            "heartbeat-interval": {
+              "type": "integer"
+            },
+            "missing-hb-allowed": {
+              "type": "integer"
+            },
+            "max-retransmit": {
+              "type": "integer"
+            },
+            "ack-timeout": {
+              "type": "integer"
+            },
+            "ack-random-factor": {
+              "type": "number"
+            },
+            "trigger-mitigation": {
+              "type": "boolean"
+            }
+          }
         },
-        "heartbeat-interval": {
-          "type": "integer"
-        },
-        "missing-hb-allowed": {
-          "type": "integer"
-        },
-        "max-retransmit": {
-          "type": "integer"
-        },
-        "ack-timeout": {
-          "type": "integer"
-        },
-        "ack-random-factor": {
-          "type": "number"
-        },
-        "trigger-mitigation": {
-          "type": "boolean"
+        "idle-config": {
+          "type": "object",
+          "properties": {
+            "session-id": {
+              "type": "integer"
+            },
+            "heartbeat-interval": {
+              "type": "integer"
+            },
+            "missing-hb-allowed": {
+              "type": "integer"
+            },
+            "max-retransmit": {
+              "type": "integer"
+            },
+            "ack-timeout": {
+              "type": "integer"
+            },
+            "ack-random-factor": {
+              "type": "number"
+            },
+            "trigger-mitigation": {
+              "type": "boolean"
+            }
+          }
         }
       }
     }

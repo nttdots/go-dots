@@ -2,7 +2,9 @@ package controllers
 
 import (
 	"fmt"
+	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
+
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
@@ -45,7 +47,7 @@ func (m *SessionConfiguration) Get(request interface{}, customer *models.Custome
 	resp.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
 	resp.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
 	resp.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue        = signalSessionConfiguration.AckTimeout
-	resp.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue   = signalSessionConfiguration.AckRandomFactor
+	resp.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactor)
 	resp.SignalConfigs.MitigationConfig.TriggerMitigation              = signalSessionConfiguration.TriggerMitigation
 
 	// TODO: support Idle-Config
@@ -87,6 +89,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 	sessionConfigurationPayloadDisplay(payload)
 	// TODO: support IdleConfig, draft-17+
 
+	ackRandomFactor, _ := payload.AckRandomFactor.Float64()
 	// validate
 	signalSessionConfiguration := models.NewSignalSessionConfiguration(
 		payload.SessionId,
@@ -94,7 +97,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 		payload.MissingHbAllowed,
 		payload.MaxRetransmit,
 		payload.AckTimeout,
-		payload.AckRandomFactor,
+		ackRandomFactor,
 		payload.TriggerMitigation,
 	)
 	v := models.SignalConfigurationValidator{}

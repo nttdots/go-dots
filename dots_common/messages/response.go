@@ -2,6 +2,7 @@ package messages
 
 import (
 	config "github.com/nttdots/go-dots/dots_server/config"
+	"github.com/shopspring/decimal"
 )
 
 type MitigationResponse struct {
@@ -36,11 +37,11 @@ type IntCurrentMinMax struct {
 	MaxValue     int `json:"max-value"     codec:"34"`
 }
 
-type FloatCurrentMinMax struct {
+type DecimalCurrentMinMax struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue float64 `json:"current-value-decimal" codec:"43"`
-	MinValue     float64 `json:"min-value-decimal"     codec:"42"`
-	MaxValue     float64 `json:"max-value-decimal"     codec:"41"`
+	CurrentValue decimal.Decimal `json:"current-value-decimal" codec:"43"`
+	MinValue     decimal.Decimal `json:"min-value-decimal"     codec:"42"`
+	MaxValue     decimal.Decimal `json:"max-value-decimal"     codec:"41"`
 }
 
 type ConfigurationResponse struct {
@@ -51,17 +52,17 @@ type ConfigurationResponse struct {
 type ConfigurationResponseConfigs struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationConfig ConfigurationResponseConfig `json:"mitigating-config" codec:"32"`
-	IdleConfig ConfigurationResponseConfig `json:"mitigating-config" codec:"44"`
+	IdleConfig ConfigurationResponseConfig       `json:"idle-config"       codec:"44"`
 }
 
 type ConfigurationResponseConfig struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	HeartbeatInterval IntCurrentMinMax   `json:"heartbeat-interval" codec:"33"`
-	MissingHbAllowed  IntCurrentMinMax   `json:"missing-hb-allowed" codec:"37"`
-	MaxRetransmit     IntCurrentMinMax   `json:"max-retransmit"     codec:"38"`
-	AckTimeout        IntCurrentMinMax   `json:"ack-timeout"        codec:"39"`
-	AckRandomFactor   FloatCurrentMinMax `json:"ack-random-factor"  codec:"40"`
-	TriggerMitigation bool               `json:"trigger-mitigation" codec:"45"`
+	HeartbeatInterval IntCurrentMinMax     `json:"heartbeat-interval" codec:"33"`
+	MissingHbAllowed  IntCurrentMinMax     `json:"missing-hb-allowed" codec:"37"`
+	MaxRetransmit     IntCurrentMinMax     `json:"max-retransmit"     codec:"38"`
+	AckTimeout        IntCurrentMinMax     `json:"ack-timeout"        codec:"39"`
+	AckRandomFactor   DecimalCurrentMinMax `json:"ack-random-factor"  codec:"40"`
+	TriggerMitigation bool                 `json:"trigger-mitigation" codec:"45"`
 }
 
 func (v *IntCurrentMinMax) SetMinMax(pr *config.ParameterRange) {
@@ -69,9 +70,9 @@ func (v *IntCurrentMinMax) SetMinMax(pr *config.ParameterRange) {
 	v.MaxValue = pr.End().(int)
 }
 
-func (v *FloatCurrentMinMax) SetMinMax(pr *config.ParameterRange) {
-	v.MinValue = float64(pr.Start().(int))
-	v.MaxValue = float64(pr.End().(int))
+func (v *DecimalCurrentMinMax) SetMinMax(pr *config.ParameterRange) {
+	v.MinValue = decimal.New(int64(pr.Start().(int)), 0)
+	v.MaxValue = decimal.New(int64(pr.End().(int)),   0)
 }
 
 type MitigationResponsePut struct {

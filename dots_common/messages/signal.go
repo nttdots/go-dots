@@ -1,6 +1,7 @@
 package messages
 
 import "fmt"
+import "github.com/shopspring/decimal"
 
 type TargetPortRange struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
@@ -104,7 +105,7 @@ type SignalConfigRequest struct {
 type SignalConfigs struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationConfig SignalConfig `json:"mitigating-config" codec:"32"`
-	IdleConfig SignalConfig `json:"mitigating-config" codec:"44"`
+	IdleConfig SignalConfig       `json:"idle-config"       codec:"44"`
 }
 
 type SignalConfig struct {
@@ -125,7 +126,7 @@ type SignalConfig struct {
 	AckTimeout int `json:"ack-timeout" codec:"39"`
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
-	AckRandomFactor float64 `json:"ack-random-factor" codec:"40"`
+	AckRandomFactor decimal.Decimal `json:"ack-random-factor" codec:"40"`
 	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
 	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
 }
