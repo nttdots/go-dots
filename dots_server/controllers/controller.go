@@ -19,12 +19,6 @@ type ControllerInterface interface {
 	HandlePost(Request, *models.Customer) (Response, error)
 	HandleDelete(Request, *models.Customer) (Response, error)
 	HandlePut(Request, *models.Customer) (Response, error)
-
-	// Legacy service methods, for backward compatibility only.
-	Get(interface{}, *models.Customer) (Response, error)
-	Post(interface{}, *models.Customer) (Response, error)
-	Delete(interface{}, *models.Customer) (Response, error)
-	Put(interface{}, *models.Customer) (Response, error)
 }
 
 type ServiceMethod func(req Request, customer *models.Customer) (Response, error)
@@ -35,26 +29,10 @@ type ServiceMethod func(req Request, customer *models.Customer) (Response, error
 type Controller struct {
 }
 
-func (c *Controller) HandleGet(req Request, customer *models.Customer) (Response, error) {
-	return c.Get(req.Body, customer)
-}
-
-func (c *Controller) HandlePost(req Request, customer *models.Customer) (Response, error) {
-	return c.Post(req.Body, customer)
-}
-
-func (c *Controller) HandleDelete(req Request, customer *models.Customer) (Response, error) {
-	return c.Delete(req.Body, customer)
-}
-
-func (c *Controller) HandlePut(req Request, customer *models.Customer) (Response, error) {
-	return c.Put(req.Body, customer)
-}
-
 /*
  * Handles CoAP Get requests.
  */
-func (c *Controller) Get(interface{}, *models.Customer) (Response, error) {
+func (c *Controller) HandleGet(req Request, customer *models.Customer) (Response, error) {
 	return Response{
 		Code: dots_common.MethodNotAllowed,
 		Type: dots_common.NonConfirmable,
@@ -64,7 +42,7 @@ func (c *Controller) Get(interface{}, *models.Customer) (Response, error) {
 /*
  * Handles CoAP Post requests.
  */
-func (c *Controller) Post(interface{}, *models.Customer) (Response, error) {
+func (c *Controller) HandlePost(req Request, customer *models.Customer) (Response, error) {
 	return Response{
 		Code: dots_common.MethodNotAllowed,
 		Type: dots_common.NonConfirmable,
@@ -74,7 +52,7 @@ func (c *Controller) Post(interface{}, *models.Customer) (Response, error) {
 /*
  * Handles CoAP Delete requests.
  */
-func (c *Controller) Delete(interface{}, *models.Customer) (Response, error) {
+func (c *Controller) HandleDelete(req Request, customer *models.Customer) (Response, error) {
 	return Response{
 		Code: dots_common.MethodNotAllowed,
 		Type: dots_common.NonConfirmable,
@@ -84,7 +62,7 @@ func (c *Controller) Delete(interface{}, *models.Customer) (Response, error) {
 /*
  * Handles CoAP Put requests.
  */
-func (c *Controller) Put(interface{}, *models.Customer) (Response, error) {
+func (c *Controller) HandlePut(req Request, customer *models.Customer) (Response, error) {
 	return Response{
 		Code: dots_common.MethodNotAllowed,
 		Type: dots_common.NonConfirmable,

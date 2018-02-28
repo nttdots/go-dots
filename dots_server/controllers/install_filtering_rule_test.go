@@ -56,7 +56,7 @@ func TestInstallFilteringRule_Post(t *testing.T) {
 		t.Errorf("get customer data error: %s", err.Error())
 		return
 	}
-	response, err := installFilteringRule.Post(&request, customer)
+	response, err := installFilteringRule.HandlePost(controllers.Request{ Body: &request }, customer)
 
 	if err != nil {
 		t.Errorf("post method return error: %s", err.Error())

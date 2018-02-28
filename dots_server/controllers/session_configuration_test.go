@@ -2,6 +2,7 @@ package controllers_test
 
 import (
 	"testing"
+	"github.com/shopspring/decimal"
 
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
@@ -12,17 +13,19 @@ import (
 func TestSessionConfiguration_Put(t *testing.T) {
 	sessionConfiguration := controllers.SessionConfiguration{}
 
-	request := messages.SignalConfigRequest{ messages.SignalConfig{
-		SessionId:         1234567,
-		HeartbeatInterval: 15,
-		MissingHbAllowed:  5,
-		MaxRetransmit:     3,
-		AckTimeout:        1,
-		AckRandomFactor:   1.0,
-		TriggerMitigation: true,
-	} }
+	request := messages.SignalConfigRequest{
+		SignalConfigs: messages.SignalConfigs{
+			MitigationConfig: messages.SignalConfig{
+				SessionId:         1234567,
+				HeartbeatInterval: 15,
+				MissingHbAllowed:  5,
+				MaxRetransmit:     3,
+				AckTimeout:        1,
+				AckRandomFactor:   decimal.NewFromFloat(1.0),
+				TriggerMitigation: true,
+	} } }
 	customer := models.Customer{}
-	response, err := sessionConfiguration.Put(&request, &customer)
+	response, err := sessionConfiguration.HandlePut(controllers.Request{ Body: &request }, &customer)
 	if err != nil {
 		t.Errorf("post method return error: %s", err.Error())
 		return
