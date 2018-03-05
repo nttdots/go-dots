@@ -267,11 +267,12 @@ func main() {
 
 	common.SetUpLogger()
 
-	serverIP = net.ParseIP(server)
-	if serverIP == nil {
-		fmt.Println("  -server option is invalid")
+	serverIPs, err := net.LookupIP(server)
+	if err != nil {
+		log.Fatalf("Name Resolution failed: %s", server)
 		os.Exit(1)
 	}
+	serverIP = serverIPs[0]
 
 	if serverIP.To4() == nil {
 		signalChannelAddress = fmt.Sprintf("[%s]:%d", server, signalChannelPort)
@@ -282,7 +283,7 @@ func main() {
 	}
 
 	exists := func(filePath string) {
-		_, err := os.Stat(filePath)
+		_, err = os.Stat(filePath)
 		if err != nil {
 			log.Fatalf("dots_client.main --  file not found : %s", err.Error())
 			os.Exit(1)
