@@ -119,13 +119,9 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	}
 
 	// Get cuid, mid from Uri-Path
-	cuidPath, midPath := request.PathInfo[0], request.PathInfo[1]
-	var cuid, mid = cuidPath[strings.Index(cuidPath, "=")+1:], midPath[strings.Index(midPath, "=")+1:]
-	log.Infof("Cuid: %s, Mid: %s", cuid, mid)
-	midValue, err := strconv.Atoi(mid)
-
-	if err != nil {
-		log.Errorf("Mid is not integer data type.")
+	cuid, mid, err := parseUriPath(request.PathInfo)
+	if(err != nil){
+		log.Errorf("Fail to parse UriPath, error: %s", err)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -136,9 +132,9 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 	// update cuid, mid to body
 	body.UpdateClientIdentifier(cuid)
-	body.UpdateMitigationId(midValue)
+	body.UpdateMitigationId(mid)
 
-	if len(body.MitigationScope.Scopes) != 1 || midValue == 0 || cuid == "" {
+	if len(body.MitigationScope.Scopes) != 1 || mid == 0 || cuid == "" {
 
 		// Zero or multiple scope
 		res = Response{
@@ -150,7 +146,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	} else {
 
 		var currentScope *models.MitigationScope
-		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(), body.EffectiveMitigationId())
+		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(), mid)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope load error.")
 			return Response{}, err
@@ -558,5 +554,27 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 			f()
 		}
 	}
+	return
+}
+
+/*
+*  Parse Uri-Path to cuid & mid
+*/
+func parseUriPath(uriPath []string) (cuid string, mid int, err error){
+	// Get cuid, mid from Uri-Path
+	for _, uriPath := range uriPath{
+		if(strings.HasPrefix(uriPath, "cuid")){
+			cuid = uriPath[strings.Index(uriPath, "=")+1:]
+		} else if(strings.HasPrefix(uriPath, "mid")){
+			midStr := uriPath[strings.Index(uriPath, "=")+1:]
+			midValue, err := strconv.Atoi(midStr)
+			if err != nil {
+				log.Errorf("Mid is not integer data type.")
+				return cuid, mid, err
+			}
+			mid = midValue
+		}
+	}
+	log.Infof("Cuid: %s, Mid: %s", cuid, mid)
 	return
 }

@@ -49,13 +49,6 @@ func (m *MitigationRequest) EffectiveClientIdentifier() string {
 }
 
 /*
- * get last mitigation-id
- */
-func (m *MitigationRequest) EffectiveMitigationId() int {
-	return m.MitigationScope.Scopes[0].MitigationId
-}
-
-/*
  * set client-identifier
  */
 func (m *MitigationRequest) UpdateClientIdentifier(cuid string) {
