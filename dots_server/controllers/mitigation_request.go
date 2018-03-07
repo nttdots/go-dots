@@ -107,17 +107,6 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	body := request.Body.(*messages.MitigationRequest)
 	log.WithField("message", body.String()).Debug("[PUT] receive message")
 
-	// cuid, mid are required Uri-Paths
-	if len(request.PathInfo) < 2 {
-		log.Errorf("Missing required Uri-Path Parameter(cuid, mid).")
-		res = Response{
-			Type: common.NonConfirmable,
-			Code: common.BadRequest,
-			Body: nil,
-		}
-		return
-	}
-
 	// Get cuid, mid from Uri-Path
 	cuid, mid, err := parseUriPath(request.PathInfo)
 	if(err != nil){
@@ -127,14 +116,22 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			Code: common.BadRequest,
 			Body: nil,
 		}
-		return
+		return	
 	}
 
-	// update cuid, mid to body
-	body.UpdateClientIdentifier(cuid)
-	body.UpdateMitigationId(mid)
+	// cuid, mid are required Uri-Paths
+	if  mid == 0 || cuid == "" {
+		log.Errorf("Missing required Uri-Path Parameter(cuid, mid).")
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+	
 
-	if len(body.MitigationScope.Scopes) != 1 || mid == 0 || cuid == "" {
+	if len(body.MitigationScope.Scopes) != 1  {
 
 		// Zero or multiple scope
 		res = Response{
@@ -144,6 +141,10 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		}
 
 	} else {
+
+		// Update cuid, mid to body
+		body.UpdateClientIdentifier(cuid)
+		body.UpdateMitigationId(mid)
 
 		var currentScope *models.MitigationScope
 		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(), mid)
