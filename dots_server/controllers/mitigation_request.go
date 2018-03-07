@@ -26,7 +26,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 
 	log.WithField("request", request).Debug("[GET] receive message")
 
-	// Get cuid, mid from Uri-Path
+	// Get cuid, mid from Uri-Queries
 	cuid, mid, err := parseURIPath(request.Queries)
 	if err != nil {
 		log.Errorf("Failed to parse Uri-Query, error: %s", err)
@@ -38,7 +38,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		return
 	}
 
-	// cuid are required Uri-Paths
+	// cuid is required Uri-Query
 	if cuid == "" {
 		log.Errorf("Missing required Uri-Query Parameter: cuid")
 		res = Response{
@@ -240,7 +240,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 
 	log.WithField("request", request).Debug("[DELETE] receive message")
 
-	// Get cuid, mid from Uri-Path
+	// Get cuid, mid from Uri-Query
 	cuid, mid, err := parseURIPath(request.Queries)
 	if err != nil {
 		log.Errorf("Failed to parse Uri-Query, error: %s", err)
@@ -252,7 +252,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		return
 	}
 
-	// cuid, mid are required Uri-Paths
+	// cuid, mid are required Uri-Queries
 	if mid == 0 || cuid == "" {
 		log.Errorf("Missing required Uri-Query Parameter(cuid, mid).")
 		res = Response{
