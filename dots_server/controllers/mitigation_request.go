@@ -82,7 +82,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 
 	// Return error when there is no Mitigation matched
 	if len(scopes) == 0 {
-		log.Errorf("Not found any Mitigation with cuid: %s, mid: %v", cuid, mid)
+		log.Infof("Not found any mitigations with cuid: %s, mid: %v", cuid, mid)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.NotFound,
@@ -392,11 +392,12 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 			return nil, err
 		}
 		if mids == nil {
-			log.WithField("ClientIdentifiers", clientIdentifier).Warn("mitigation id not found in this client identifiers.")
-			return nil, errors.New("mitigation id not found in this client identifiers.")
+			log.WithField("ClientIdentifiers", clientIdentifier).Warn("mitigation id not found for this client identifiers.")		
+		} else {
+			log.WithField("list of mitigation id", mids).Info("found mitigation ids.")
+			mitigationIds = mids
 		}
-		log.WithField("list of mitigation id", mids).Info("found mitigation ids.")
-		mitigationIds = mids
+		
 	} else {
 		mitigationIds = append(mitigationIds, mitigationId)
 	}
