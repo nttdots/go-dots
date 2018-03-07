@@ -175,7 +175,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			return Response{}, err
 		}
 
-		if currentScope.MitigationId == 0 {
+		if currentScope == nil || currentScope.MitigationId == 0 {
 
 			// Create New
 
