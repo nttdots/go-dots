@@ -3,6 +3,8 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
@@ -105,7 +107,38 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	body := request.Body.(*messages.MitigationRequest)
 	log.WithField("message", body.String()).Debug("[PUT] receive message")
 
-	if len(body.MitigationScope.Scopes) != 1 {
+	// cuid, mid are required Uri-Paths
+	if len(request.PathInfo) < 2 {
+		log.Errorf("Missing required Uri-Path Parameter(cuid, mid).")
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
+	// Get cuid, mid from Uri-Path
+	cuidPath, midPath := request.PathInfo[0], request.PathInfo[1]
+	var cuid, mid = cuidPath[strings.Index(cuidPath, "=")+1:], midPath[strings.Index(midPath, "=")+1:]
+	log.Infof("Cuid: %s, Mid: %s", cuid, mid)
+	midValue, err := strconv.Atoi(mid)
+
+	if err != nil {
+		log.Errorf("Mid is not integer data type.")
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
+	// update cuid, mid to body
+	body.UpdateClientIdentifier(cuid)
+	body.UpdateMitigationId(midValue)
+
+	if len(body.MitigationScope.Scopes) != 1 || midValue == 0 || cuid == "" {
 
 		// Zero or multiple scope
 		res = Response{
@@ -116,10 +149,8 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 	} else {
 
-		reqScope := body.MitigationScope.Scopes[0]
-
 		var currentScope *models.MitigationScope
-		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(), reqScope.MitigationId)
+		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(), body.EffectiveMitigationId())
 		if err != nil {
 			log.WithError(err).Error("MitigationScope load error.")
 			return Response{}, err

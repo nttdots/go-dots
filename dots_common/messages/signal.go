@@ -49,6 +49,27 @@ func (m *MitigationRequest) EffectiveClientIdentifier() string {
 }
 
 /*
+ * get last mitigation-id
+ */
+func (m *MitigationRequest) EffectiveMitigationId() int {
+	return m.MitigationScope.Scopes[0].MitigationId
+}
+
+/*
+ * set client-identifier
+ */
+func (m *MitigationRequest) UpdateClientIdentifier(cuid string) {
+	m.MitigationScope.Scopes[0].ClientIdentifier = cuid
+}
+
+/*
+ * set mitigation-id
+ */
+func (m *MitigationRequest) UpdateMitigationId(mid int) {
+	m.MitigationScope.Scopes[0].MitigationId = mid
+}
+
+/*
  * Convert MitigationRequests to strings
  */
 func (m *MitigationRequest) String() (result string) {
