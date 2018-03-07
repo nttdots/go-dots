@@ -24,10 +24,13 @@ type MitigationRequest struct {
  */
 func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer) (res Response, err error) {
 
-	body := request.Body
+	log.WithField("request", request).Debug("[GET] receive message")
 
-	if body == nil {
-		res = Response {
+	// Get cuid, mid from Uri-Path
+	cuid, mid, err := parseURIPath(request.Queries)
+	if err != nil {
+		log.Errorf("Failed to parse Uri-Query, error: %s", err)
+		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
 			Body: nil,
@@ -35,10 +38,18 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		return
 	}
 
-	req := body.(*messages.MitigationRequest)
-	log.WithField("message", req.String()).Debug("[GET] receive message")
+	// cuid are required Uri-Paths
+	if cuid == "" {
+		log.Errorf("Missing required Uri-Query Parameter: cuid")
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
 
-	mpp, err := loadMitigations(req, customer)
+	mpp, err := loadMitigations(customer, cuid, mid)
 	if err != nil {
 		log.WithError(err).Error("loadMitigation failed.")
 	}
@@ -67,6 +78,17 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			scopeStates.TargetProtocol = append(scopeStates.TargetProtocol, k)
 		}
 		scopes = append(scopes, scopeStates)
+	}
+
+	// Return error when there is no Mitigation matched
+	if len(scopes) == 0 {
+		log.Errorf("Not found any Mitigation with cuid: %s, mid: %v", cuid, mid)
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.NotFound,
+			Body: nil,
+		}
+		return
 	}
 
 	res = Response{
@@ -110,7 +132,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	// Get cuid, mid from Uri-Path
 	cuid, mid, err := parseURIPath(request.PathInfo)
 	if(err != nil){
-		log.Errorf("Fail to parse UriPath, error: %s", err)
+		log.Errorf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -221,7 +243,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 	// Get cuid, mid from Uri-Path
 	cuid, mid, err := parseURIPath(request.Queries)
 	if err != nil {
-		log.Errorf("Fail to parse UriPath, error: %s", err)
+		log.Errorf("Failed to parse Uri-Query, error: %s", err)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -232,7 +254,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 
 	// cuid, mid are required Uri-Paths
 	if mid == 0 || cuid == "" {
-		log.Errorf("Missing required Uri-Path Parameter(cuid, mid).")
+		log.Errorf("Missing required Uri-Query Parameter(cuid, mid).")
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -358,44 +380,44 @@ type mpPair struct {
 /*
  * load mitigation and protection
  */
-func loadMitigations(req *messages.MitigationRequest, customer *models.Customer) ([]mpPair, error) {
+func loadMitigations(customer *models.Customer, clientIdentifier string, mitigationId int) ([]mpPair, error) {
 
 	r := make([]mpPair, 0)
+	var mitigationIds []int
 
-	// if scope is empty, get all DOTS mitigation request
-	if req.MitigationScope.Scopes == nil {
-		mitigationIds, err := models.GetMitigationIds(customer.Id, req.EffectiveClientIdentifier())
+	// if Uri-Query mid is empty, get all DOTS mitigation request
+	if mitigationId == 0 {
+		mids, err := models.GetMitigationIds(customer.Id, clientIdentifier)
 		if err != nil {
 			return nil, err
 		}
-		if mitigationIds == nil {
-			log.WithField("ClientIdentifiers", req.MitigationScope.Scopes[0].ClientIdentifier).Warn("mitigation id not found in this client identifiers.")
+		if mids == nil {
+			log.WithField("ClientIdentifiers", clientIdentifier).Warn("mitigation id not found in this client identifiers.")
 			return nil, errors.New("mitigation id not found in this client identifiers.")
 		}
-		log.WithField("list of mitigation id", mitigationIds).Info("found mitigation ids.")
-		req.MitigationScope.Scopes = make([]messages.Scope, len(mitigationIds))
-		for i, mitigationId := range mitigationIds {
-			req.MitigationScope.Scopes[i].MitigationId = mitigationId
-		}
+		log.WithField("list of mitigation id", mids).Info("found mitigation ids.")
+		mitigationIds = mids
+	} else {
+		mitigationIds = append(mitigationIds, mitigationId)
 	}
 
-	for _, messageScope := range req.MitigationScope.Scopes {
-		s, err := models.GetMitigationScope(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
+	for _, mid := range mitigationIds {
+		s, err := models.GetMitigationScope(customer.Id, clientIdentifier, mid)
 		if err != nil {
 			return nil, err
 		}
 		if s == nil {
-			log.WithField("mitigation_id", messageScope.MitigationId).Warn("mitigation_scope not found.")
+			log.WithField("mitigation_id", mid).Warn("mitigation_scope not found.")
 			continue
 		}
 
-		p, err := models.GetActiveProtectionByMitigationId(customer.Id, req.EffectiveClientIdentifier(), messageScope.MitigationId)
+		p, err := models.GetActiveProtectionByMitigationId(customer.Id, clientIdentifier, mid)
 		if err != nil {
 			return nil, err
 		}
-		r = append(r, mpPair {s, p})
-	}
+		r = append(r, mpPair{s, p})
 
+	}
 	return r, nil
 }
 
@@ -586,7 +608,7 @@ func parseURIPath(uriPath []string) (cuid string, mid int, err error){
 			midStr := uriPath[strings.Index(uriPath, "=")+1:]
 			midValue, err := strconv.Atoi(midStr)
 			if err != nil {
-				log.Errorf("Mid is not integer data type.")
+				log.Errorf("Mid is not integer type.")
 				return cuid, mid, err
 			}
 			mid = midValue

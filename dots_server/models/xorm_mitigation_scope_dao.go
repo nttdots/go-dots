@@ -408,9 +408,6 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 		return
 	}
 
-	// default value setting
-	mitigationScope = NewMitigationScope(&customer, clientIdentifier)
-
 	// Get customer table data
 	dbMitigationScope := db_models.MitigationScope{}
 	chk, err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&dbMitigationScope)
@@ -421,6 +418,9 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 		// no data
 		return
 	}
+
+	// default value setting
+	mitigationScope = NewMitigationScope(&customer, clientIdentifier)
 
 	// Get mitigationId and Lifetime
 	mitigationScope.MitigationId = dbMitigationScope.MitigationId
