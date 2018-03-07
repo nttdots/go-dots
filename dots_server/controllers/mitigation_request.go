@@ -108,7 +108,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	log.WithField("message", body.String()).Debug("[PUT] receive message")
 
 	// Get cuid, mid from Uri-Path
-	cuid, mid, err := parseUriPath(request.PathInfo)
+	cuid, mid, err := parseURIPath(request.PathInfo)
 	if(err != nil){
 		log.Errorf("Fail to parse UriPath, error: %s", err)
 		res = Response{
@@ -216,10 +216,13 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
  */
 func (m *MitigationRequest) HandleDelete(request Request, customer *models.Customer) (res Response, err error) {
 
-	body := request.Body
+	log.WithField("request", request).Debug("[DELETE] receive message")
 
-	if body == nil {
-		res = Response {
+	// Get cuid, mid from Uri-Path
+	cuid, mid, err := parseURIPath(request.Queries)
+	if err != nil {
+		log.Errorf("Fail to parse UriPath, error: %s", err)
+		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
 			Body: nil,
@@ -227,15 +230,27 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		return
 	}
 
-	req := body.(*messages.MitigationRequest)
-	log.WithField("message", req.String()).Debug("[DELETE] receive message")
+	// cuid, mid are required Uri-Paths
+	if mid == 0 || cuid == "" {
+		log.Errorf("Missing required Uri-Path Parameter(cuid, mid).")
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
 
-	err = cancelMitigationByMessage(req, customer)
+	// Cancel mitigations
+	ids := make([]int, 1)
+	ids[0] = mid
+	err = cancelMitigationByIds(ids, cuid, customer)
 	if err != nil {
 		return
 	}
 
-	err = deleteMitigationByMessage(req, customer)
+	// Delete mitigations
+	err = models.DeleteMitigationScope(customer.Id, cuid, mid)
 	if err != nil {
 		return
 	}
@@ -559,9 +574,10 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 }
 
 /*
-*  Parse Uri-Path to cuid & mid
+*  Get cuid, mid value from URI-Path/URI-Queries
 */
-func parseUriPath(uriPath []string) (cuid string, mid int, err error){
+func parseURIPath(uriPath []string) (cuid string, mid int, err error){
+	log.Debugf("Parsing URI-Path : %+v", uriPath)
 	// Get cuid, mid from Uri-Path
 	for _, uriPath := range uriPath{
 		if(strings.HasPrefix(uriPath, "cuid")){
@@ -576,6 +592,6 @@ func parseUriPath(uriPath []string) (cuid string, mid int, err error){
 			mid = midValue
 		}
 	}
-	log.Infof("Cuid: %s, Mid: %s", cuid, mid)
+	log.Debugf("Parsing URI-Path result : cuid=%+v, mid=%+v", cuid, mid)
 	return
 }
