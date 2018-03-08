@@ -5,6 +5,7 @@ import (
     "errors"
     "net"
     "reflect"
+    "encoding/hex"
 
     log "github.com/sirupsen/logrus"
     "github.com/ugorji/go/codec"
@@ -79,6 +80,7 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
                 return
             }
 
+            log.Debugf("request.Data=\n%s", hex.Dump(request.Data))
             body, err := unmarshalCbor(request, typ)
             if err != nil {
                 log.WithError(err).Error("unmarshalCbor failed.")
@@ -112,6 +114,7 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
 
             response.Code = libcoap.Code(res.Code)
             response.Data = payload
+            log.Debugf("response.Data=\n%s", hex.Dump(payload))
             // add content type cbor
             response.Options = append(response.Options, libcoap.OptionContentType.Uint16(60))
 
