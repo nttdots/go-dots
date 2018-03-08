@@ -18,8 +18,8 @@ type SessionConfiguration struct {
 	Controller
 }
 
-func (m *SessionConfiguration) Get(request interface{}, customer *models.Customer) (res Response, err error) {
-
+func (m *SessionConfiguration) HandleGet(request Request, customer *models.Customer) (res Response, err error) {
+        log.Debugf("[GET]SessionConfig customer.Id=%+v", customer.Id)
 	signalSessionConfiguration, err := models.GetCurrentSignalSessionConfiguration(customer.Id)
 	if err != nil {
 		res = Response{
@@ -89,14 +89,14 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 	sessionConfigurationPayloadDisplay(payload)
 	// TODO: support IdleConfig, draft-17+
 
-	ackRandomFactor, _ := payload.AckRandomFactor.Float64()
+	ackRandomFactor, _ := payload.AckRandomFactor.CurrentValue.Float64()
 	// validate
 	signalSessionConfiguration := models.NewSignalSessionConfiguration(
 		payload.SessionId,
-		payload.HeartbeatInterval,
-		payload.MissingHbAllowed,
-		payload.MaxRetransmit,
-		payload.AckTimeout,
+		payload.HeartbeatInterval.CurrentValue,
+		payload.MissingHbAllowed.CurrentValue,
+		payload.MaxRetransmit.CurrentValue,
+		payload.AckTimeout.CurrentValue,
 		ackRandomFactor,
 		payload.TriggerMitigation,
 	)

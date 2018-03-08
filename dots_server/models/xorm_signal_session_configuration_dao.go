@@ -26,6 +26,7 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 	dbSignalSessionConfiguration := new(db_models.SignalSessionConfiguration)
 	_, err = engine.Where("customer_id = ? AND session_id = ?", customer.Id, signalSessionConfiguration.SessionId).Get(dbSignalSessionConfiguration)
 	if err != nil {
+		log.Errorf("database query error: %s", err)
 		return
 	}
 	if dbSignalSessionConfiguration.Id != 0 {

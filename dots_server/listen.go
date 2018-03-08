@@ -93,6 +93,7 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
                 Queries: request.Queries(),
                 Body:    body,
             }
+            log.Debugf("req=%+v", req)
 
             res, err := method(req, customer)
             if err != nil {
@@ -100,7 +101,7 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
                 response.Code = libcoap.ResponseInternalServerError
                 return
             }
-
+            log.Debugf("res=%+v", res)
             payload, err := marshalCbor(res.Body)
             if err != nil {
                 log.WithError(err).Error("marshalCbor failed.")

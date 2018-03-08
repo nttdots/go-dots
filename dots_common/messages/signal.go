@@ -122,6 +122,16 @@ type SignalConfigs struct {
 	IdleConfig SignalConfig       `json:"idle-config"       codec:"44"`
 }
 
+type IntCurrent struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	CurrentValue int `json:"current-value" codec:"36"`
+}
+
+type DecimalCurrent struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	CurrentValue decimal.Decimal `json:"current-value-decimal" codec:"43"`
+}
+
 type SignalConfig struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	// Identifier for the DOTS signal channel session configuration data represented as an integer.
@@ -129,18 +139,18 @@ type SignalConfig struct {
 	// identifier is generated. This is a mandatory attribute.
 	SessionId int `json:"sid" codec:"31,omitempty"`
 	// Heartbeat interval to check the DOTS peer health.  This is an optional attribute.
-	HeartbeatInterval int `json:"heartbeat-interval" codec:"33"`
+	HeartbeatInterval IntCurrent `json:"heartbeat-interval" codec:"33"`
 	// Maximum number of missing heartbeat response allowed. This is an optional attribute.
-	MissingHbAllowed int `json:"missing-hb-allowed" codec:"37"`
+	MissingHbAllowed IntCurrent `json:"missing-hb-allowed" codec:"37"`
 	// Maximum number of retransmissions for a message (referred to as MAX_RETRANSMIT parameter in CoAP).
 	// This is an optional attribute.
-	MaxRetransmit int `json:"max-retransmit" codec:"38"`
+	MaxRetransmit IntCurrent `json:"max-retransmit" codec:"38"`
 	// Timeout value in seconds used to calculate the initial retransmission timeout value (referred to as ACK_TIMEOUT
 	// parameter in CoAP). This is an optional attribute.
-	AckTimeout int `json:"ack-timeout" codec:"39"`
+	AckTimeout IntCurrent `json:"ack-timeout" codec:"39"`
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
-	AckRandomFactor decimal.Decimal `json:"ack-random-factor" codec:"40"`
+	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40"`
 	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
 	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
 }
