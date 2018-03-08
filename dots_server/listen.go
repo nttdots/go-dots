@@ -101,6 +101,7 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
                 response.Code = libcoap.ResponseInternalServerError
                 return
             }
+
             log.Debugf("res=%+v", res)
             payload, err := marshalCbor(res.Body)
             if err != nil {
@@ -111,6 +112,8 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
 
             response.Code = libcoap.Code(res.Code)
             response.Data = payload
+            // add content type cbor
+            response.Options = append(response.Options, libcoap.OptionContentType.Uint16(60))
 
             return
         }
