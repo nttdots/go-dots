@@ -77,6 +77,17 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		for k := range mp.mitigation.TargetProtocol {
 			scopeStates.TargetProtocol = append(scopeStates.TargetProtocol, k)
 		}
+		// Set TargetPrefix, TargetPortRange
+		scopeStates.TargetPrefix = make([]string, 0, len(mp.mitigation.TargetPrefix))
+		scopeStates.TargetPortRange = make([]messages.TargetPortRange, 0, len(mp.mitigation.TargetPortRange))
+		for _, item := range mp.mitigation.TargetPrefix {
+			scopeStates.TargetPrefix = append(scopeStates.TargetPrefix, item.String())
+		}
+
+		for _, item := range mp.mitigation.TargetPortRange {
+			portRange := messages.TargetPortRange{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
+			scopeStates.TargetPortRange = append(scopeStates.TargetPortRange, portRange)
+		}
 		scopes = append(scopes, scopeStates)
 	}
 
