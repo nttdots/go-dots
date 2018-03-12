@@ -114,6 +114,7 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
 
             response.Code = libcoap.Code(res.Code)
             response.Data = payload
+            response.Type = CoAPType(res.Type)
             log.Debugf("response.Data=\n%s", hex.Dump(payload))
             // add content type cbor
             response.Options = append(response.Options, libcoap.OptionContentType.Uint16(60))
@@ -127,6 +128,21 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
     resource.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost))
     resource.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete))
     return resource
+}
+
+func CoAPType(t dots_common.Type) (libcoapType libcoap.Type) {
+    switch t {
+    case dots_common.Confirmable:
+        return libcoap.TypeCon
+    case dots_common.NonConfirmable:
+        return libcoap.TypeNon
+    case dots_common.Acknowledgement:
+        return libcoap.TypeAck
+    case dots_common.Reset:
+        return libcoap.TypeRst
+    default:
+        panic("unexpected Type")
+    }
 }
 
 func addHandler(ctx *libcoap.Context, code messages.Code, controller controllers.ControllerInterface) {
