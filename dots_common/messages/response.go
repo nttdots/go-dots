@@ -20,8 +20,8 @@ type ScopeStatus struct {
 	MitigationId    int   `json:"mid"    codec:"5"`
 	MitigationStart float64 `json:"mitigation-start" codec:"15"`
 	TargetPrefix []string `json:"target-prefix" codec:"6,omitempty"`
-	TargetPortRange []TargetPortRange `json:"target-port-range" codec:"7"`
-	TargetProtocol []int  `json:"target-protocol"   codec:"10"`
+	TargetPortRange []TargetPortRange `json:"target-port-range" codec:"7,omitempty"`
+	TargetProtocol []int  `json:"target-protocol"   codec:"10,omitempty"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
 	Status          int   `json:"status"           codec:"16"`
 	BytesDropped    int   `json:"bytes-dropped"    codec:"25"`
