@@ -23,7 +23,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 	signalSessionConfiguration, err := models.GetCurrentSignalSessionConfiguration(customer.Id)
 	if err != nil {
 		res = Response{
-			Type: common.NonConfirmable,
+			Type: common.Acknowledgement,
 			Code: common.BadRequest,
 			Body: nil,
 		}
@@ -52,7 +52,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 
 	// TODO: support Idle-Config
 	res = Response{
-			Type: common.NonConfirmable,
+			Type: common.Acknowledgement,
 			Code: common.Content,
 			Body: resp,
 	}
@@ -78,7 +78,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 
 	if request == nil {
 		res = Response{
-			Type: common.NonConfirmable,
+			Type: common.Acknowledgement,
 			Code: common.BadRequest,
 			Body: nil,
 		}
@@ -117,7 +117,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 ResponseNG:
 // on validation error
 	res = Response{
-		Type: common.NonConfirmable,
+		Type: common.Acknowledgement,
 		Code: common.BadRequest,
 		Body: nil,
 	}
@@ -125,7 +125,7 @@ ResponseNG:
 ResponseOK:
 // on validation success
 	res = Response{
-		Type: common.NonConfirmable,
+		Type: common.Acknowledgement,
 		Code: common.Created,
 		Body: nil,
 	}
@@ -136,7 +136,7 @@ func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models
 	err = models.DeleteSignalSessionConfigurationByCustomerId(customer.Id)
 	if err != nil {
 		res = Response{
-			Type: common.NonConfirmable,
+			Type: common.Acknowledgement,
 			Code: common.InternalServerError,
 			Body: nil,
 		}
@@ -144,7 +144,7 @@ func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models
 	}
 
 	res = Response{
-		Type: common.NonConfirmable,
+		Type: common.Acknowledgement,
 		Code: common.Deleted,
 		Body: nil,
 	}
