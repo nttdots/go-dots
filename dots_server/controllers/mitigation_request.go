@@ -26,10 +26,10 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 
 	log.WithField("request", request).Debug("[GET] receive message")
 
-	// Get cuid, mid from Uri-Queries
-	cuid, mid, err := parseURIPath(request.Queries)
+	// Get cuid, mid from Uri-Path
+	cuid, mid, err := parseURIPath(request.PathInfo)
 	if err != nil {
-		log.Errorf("Failed to parse Uri-Query, error: %s", err)
+		log.Errorf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -38,9 +38,9 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		return
 	}
 
-	// cuid is required Uri-Query
+	// cuid is required Uri-Path
 	if cuid == "" {
-		log.Errorf("Missing required Uri-Query Parameter: cuid")
+		log.Errorf("Missing required Uri-Path Parameter: cuid")
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -61,6 +61,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		lifetime := mp.mitigation.Lifetime
 
 		var startedAt int64
+		log.WithField("protection", mp.protection).Debug("Protection: ")
 		if mp.protection != nil {
 			startedAt = mp.protection.StartedAt().Unix()
 		}
@@ -251,10 +252,10 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 
 	log.WithField("request", request).Debug("[DELETE] receive message")
 
-	// Get cuid, mid from Uri-Query
-	cuid, mid, err := parseURIPath(request.Queries)
+	// Get cuid, mid from Uri-Path
+	cuid, mid, err := parseURIPath(request.PathInfo)
 	if err != nil {
-		log.Errorf("Failed to parse Uri-Query, error: %s", err)
+		log.Errorf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -263,9 +264,9 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		return
 	}
 
-	// cuid, mid are required Uri-Queries
+	// cuid, mid are required Uri-Paths
 	if mid == 0 || cuid == "" {
-		log.Errorf("Missing required Uri-Query Parameter(cuid, mid).")
+		log.Errorf("Missing required Uri-Path Parameter(cuid, mid).")
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -396,7 +397,7 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 	r := make([]mpPair, 0)
 	var mitigationIds []int
 
-	// if Uri-Query mid is empty, get all DOTS mitigation request
+	// if Uri-Path mid is empty, get all DOTS mitigation request
 	if mitigationId == 0 {
 		mids, err := models.GetMitigationIds(customer.Id, clientIdentifier)
 		if err != nil {
