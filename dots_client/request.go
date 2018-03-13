@@ -135,21 +135,9 @@ func (r *Request) CreateRequest() {
 		r.pdu.Options = append(r.pdu.Options, libcoap.OptionContentFormat.Uint16(60))
 		log.Debugf("hex dump cbor request:\n%s", hex.Dump(r.pdu.Data))
 	}
-	// r.pdu.SetPathString(r.RequestCode.PathString())
-	// if strings.ToUpper(r.method) == "PUT" {
-		// if PUT mitigation request, append path + queryParams into Uri-Path
-		tmpPathWithQuery := r.RequestCode.PathString() + "/" + strings.Join(r.queryParams, "/")
-		r.pdu.SetPathString(tmpPathWithQuery)
-		log.Debugf("SetPathString=%+v", tmpPathWithQuery)
-	// } else {
-	// 	// if GET/DELETE mitigation request, queryParams into Uri-Query
-	// 	r.pdu.SetPathString(r.RequestCode.PathString())
-	// 	log.Debugf("SetPathString=%+v", r.RequestCode.PathString())
-	// 	for _, v := range r.queryParams {
-	// 		r.pdu.Options = append(r.pdu.Options, libcoap.OptionUriQuery.String(v))
-	// 		log.Debugf("add OptionUriQuery=%+v", v)
-	// 	}
-	// }
+	tmpPathWithQuery := r.RequestCode.PathString() + "/" + strings.Join(r.queryParams, "/")
+	r.pdu.SetPathString(tmpPathWithQuery)
+	log.Debugf("SetPathString=%+v", tmpPathWithQuery)
 	log.Debugf("r.pdu=%+v", r.pdu)
 }
 
