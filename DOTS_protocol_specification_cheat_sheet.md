@@ -1,3 +1,6 @@
+DOTS protocol specification cheat sheet
+===
+
 # Protocol Stack
 
 |  | Signal Channel | Data Channel |
@@ -100,6 +103,11 @@
 a DOTS client MUST NOT include multiple 'scope' parameters in the same PUT request
 :::
 
+
+#### PUT(Response)
+
+Not specified
+
 #### GET(Request)
 
 No Body
@@ -146,7 +154,9 @@ No Body
 | trigger-mitigation | optional | 45 | 7 bits 20 / 7 bits 21|
 | config-interval | optional | 46 | 0 unsigned |
 
+
 values
+
 | Parameter |CBOR Key | CBOR Major Type | used by |
 |:----------|:---------:|:----------:|:-----------|
 | max-value | 34 | 0 unsigned |heartbeat-interval, missing-hb-allowed, max-retransmit, ack-timeout |
@@ -192,7 +202,6 @@ No Body
 | Name | Value | Unit |
 |:-----------|:-----------:|:-----------:|
 | signal channel port | TBD(4646) | |
-| Data channel port | TBD | |
 | lifetime | 3600 | sec |
 | active-but-terminating | 120 | sec |
 | heartbeat-interval | 30 | sec |
@@ -201,3 +210,238 @@ No Body
 | ack-timeout | 2 | sec |
 | ack-random-factor | 1.5 | |
 
+# Data Channel
+
+## RESTCONF URI
+
+### Register DOTS clients
+
+| Method | URI-Path | Content-Type |
+|:-----------|:------------|:------------|
+| POST | /restconf/data/ietf-dots-data-channel:dots-data HTTP1.1 | application/yang-data+json |
+| PUT | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw HTTP1.1 | application/yang-data+json |
+| DELETE | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw HTTP1.1 | application/yang-data+json |
+
+### Register Alias
+
+| Method | URI-Path | Content-Type |
+|:-----------|:------------|:------------|
+| POST | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw HTTP1.1 | application/yang-data+json |
+| GET(all alias) | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw/aliases?content=config HTTP1.1 | application/yang-data+json |
+| GET(specific alias) | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw/aliases/alias=Server2?content=config HTTP1.1 | application/yang-data+json |
+| DELETE | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw/aliases/alias=Server2 HTTP1.1 | application/yang-data+json |
+
+### Register Filtering Rules
+
+| Method | URI-Path | Content-Type |
+|:-----------|:------------|:------------|
+| POST | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw HTTP1.1 | application/yang-data+json |
+| GET(all ACLs) | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw/access-lists?content=all HTTP1.1 | application/yang-data+json |
+| GET(specific ACL) | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw/access-lists/acl=sample-ipv6-acl?content=all HTTP1.1 | application/yang-data+json |
+| DELETE | /restconf/data/ietf-dots-data-channel:dots-data/dots-client=dz6pHjaADkaFTbjr0JGBpw/access-lists/acl=sample-ipv6-acl HTTP1.1 | application/yang-data+json |
+
+## Message Body
+
+### Register DOTS clients(Request)
+
+```
+ {
+   "ietf-dots-data-channel:dots-client": [
+     {
+       "cuid": "string",
+       "cdid": "string"
+     }
+   ]
+ }
+ ```
+
+ \* cdid is **optional** which can be inserted only by DOTS gateway
+
+### Register DOTS clients(Response)
+
+Not specified
+
+### Create Alias(Request)
+
+Method: POST
+
+```
+ {
+   "ietf-dots-data-channel:aliases": {
+     "alias": [
+       {
+         "name": "string",
+         "target-prefix": [
+           "string"
+         ],
+         "target-port-range": [
+           {
+             "lower-port": integer,
+             "upper-port": integer
+           }
+         ],
+         "target-protocol": [
+           integer
+         ],
+         "target-fqdn": [
+           "string"
+         ],
+         "target-uri": [
+           "string"
+         ],
+         "lifetime": integer
+       }
+     ]
+   }
+ }
+```
+
+mandatory: name, lifetime
+
+ \* at least one of these optional parameters(target-prefix, target-fqdn, target-uri) is mandatory
+
+### Create Alias(Response)
+
+Not specified
+
+### Retrieve Alias(Request)
+
+Method: GET
+No body
+
+### Retrieve Alias(Response)
+
+```
+ {
+   "ietf-dots-data-channel:aliases": {
+     "alias": [
+       {
+         "name": "string",
+         "target-prefix": [
+           "string"
+         ],
+         "target-port-range": [
+           {
+             "lower-port": integer,
+             "upper-port": integer
+           }
+         ],
+         "target-protocol": [
+           integer
+         ],
+         "target-fqdn": [
+           "string"
+         ],
+         "target-uri": [
+           "string"
+         ],
+         "lifetime": integer
+       }
+     ]
+   }
+ }
+```
+
+### DELETE Alias(Request)
+
+Method: DELETE
+No body
+
+### DELETE Alias(Response)
+
+Not specified
+
+### Create Filtering Rule(Request)
+
+Method: POST
+
+```
+{
+  "ietf-dots-data-channel:access-lists": {
+    "acl": [
+      {
+        "name": "sample-ipv4-acl",
+        "type": "ipv4-acl-type",
+        "lifetime": 10080,
+        "aces": {
+          "ace": [
+            {
+              "name": "rule1",
+              "matches": {
+                "l3": {
+                  "ipv4" {
+                     "destination-ipv4-network": "198.51.100.0/24"
+                     "source-ipv4-network": "192.0.2.0/24",
+                  }
+                }
+              },
+              "actions": {
+                "forwarding": "drop"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+### Create Filtering Rule(Response)
+
+Not specified
+
+### Retrieve Filtering Rules(Request)
+
+Method: GET
+No body
+
+### Retrieve Alias(Response)
+
+```
+{
+  "ietf-dots-data-channel:access-lists": {
+    "acl": [
+      {
+        "name": "sample-ipv4-acl",
+        "type": "ipv4-acl-type",
+        "lifetime": 10080,
+        "aces": {
+          "ace": [
+            {
+              "name": "rule1",
+              "matches": {
+                "l3": {
+                  "ipv4" {
+                     "destination-ipv4-network": "198.51.100.0/24"
+                     "source-ipv4-network": "192.0.2.0/24",
+                  }
+                }
+              },
+              "actions": {
+                "forwarding": "drop"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+### DELETE Filtering Rule(Request)
+
+Method: DELETE
+No body
+
+### DELETE Filtering Rule(Response)
+
+Not specified
+
+## Default Values
+
+| Name | Value | Unit |
+|:-----------|:-----------:|:-----------:|
+| Data channel port | TBD | |
+| lifetime(of alias) | 10080 | min |
