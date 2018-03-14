@@ -396,7 +396,7 @@ Not specified
 Method: GET
 No body
 
-### Retrieve Alias(Response)
+### Retrieve Filtering Rules(Response)
 
 ```
 {
