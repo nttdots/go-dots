@@ -52,7 +52,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 
 	if sid != 0 {
 		signalSessionConfiguration, err := models.GetSignalSessionConfiguration(customer.Id, sid)
-		if err != nil {
+		if err != nil || signalSessionConfiguration == nil {
 			res = Response{
 				Type: common.Acknowledgement,
 				Code: common.NotFound,
@@ -60,12 +60,13 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 			}
 			return res, err
 		}
+
 		resp.SignalConfigs.Sid = sid
 		resp.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
 		resp.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
 		resp.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
 		resp.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue        = signalSessionConfiguration.AckTimeout
-		resp.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactor)
+		resp.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactor).Round(2)
 		resp.SignalConfigs.MitigationConfig.TriggerMitigation              = signalSessionConfiguration.TriggerMitigation
 	} else {
 		defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
@@ -130,7 +131,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 	sessionConfigurationPayloadDisplay(payload)
 	// TODO: support IdleConfig, draft-17+
 
-	ackRandomFactor, _ := payload.AckRandomFactor.CurrentValue.Float64()
+	ackRandomFactor, _ := payload.AckRandomFactor.CurrentValue.Round(2).Float64()
 	// validate
 	signalSessionConfiguration := models.NewSignalSessionConfiguration(
 		sid,
