@@ -6,6 +6,7 @@ import (
     "net"
     "reflect"
     "encoding/hex"
+    "strings"
 
     log "github.com/sirupsen/logrus"
     "github.com/ugorji/go/codec"
@@ -81,6 +82,25 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
             }
 
             log.Debugf("request.Data=\n%s", hex.Dump(request.Data))
+
+            log.Debugf("typ=%+v:", typ)
+            log.Debugf("request.Path(): %+v", request.Path())
+            if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
+                uri := request.Path()
+                for i := range uri {
+                    if strings.HasPrefix(uri[i], "mitigate") {
+                        log.Debug("Request path include 'mitigate'. Set message type to MitigationRequest")
+                        typ = reflect.TypeOf(messages.MitigationRequest{})
+                        break;
+                
+                    } else if strings.HasPrefix(uri[i], "config") {
+                        log.Debug("Request path include 'config' to SignalConfigRequest")
+                        typ = reflect.TypeOf(messages.SignalConfigRequest{})
+                        break;	
+                    }
+                }
+
+            }
             body, err := unmarshalCbor(request, typ)
             if err != nil {
                 log.WithError(err).Error("unmarshalCbor failed.")
@@ -205,9 +225,8 @@ func listenSignal(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ 
     }
 
     addHandler(ctx, messages.HELLO,                 &controllers.Hello{})
-    addHandler(ctx, messages.SESSION_CONFIGURATION, &controllers.SessionConfiguration{})
-
-    addPrefixHandler(ctx, messages.MITIGATION_REQUEST, &controllers.MitigationRequest{})
+    
+    addPrefixHandler(ctx, messages.SIGNAL_CHANNEL, &controllers.SignalChannel{})
 
     return ctx, nil
 }

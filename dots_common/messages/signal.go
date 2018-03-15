@@ -162,3 +162,7 @@ type HelloRequest struct {
 type HelloResponse struct {
 	Message string `json:"message" cbor:"message"`
 }
+
+type SignalChannelRequest struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+}

@@ -25,6 +25,7 @@ const (
 	HELLO_DATA
 	CREATE_IDENTIFIERS
 	INSTALL_FILTERING_RULE
+	SIGNAL_CHANNEL
 )
 
 /*
@@ -87,6 +88,8 @@ func init() {
 	// for test
 	register(HELLO, REQUEST, coap.Confirmable, libcoap.TypeCon, SIGNAL, "hello", ".well-known/v1/dots-signal/hello", HelloRequest{})
 	register(HELLO_DATA, REQUEST, coap.Confirmable, libcoap.TypeCon, DATA, "hello_data", ".well-known/v1/dots-data/hello_data", HelloRequest{})
+
+	register(SIGNAL_CHANNEL, REQUEST, coap.Confirmable, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots/v1", SignalChannelRequest{})
 }
 
 /*
