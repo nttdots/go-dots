@@ -1,0 +1,36 @@
+{
+    "ietf-dots-signal-channel:signal-config": {
+        "mitigating-config": {
+            "heartbeat-interval": {
+                "current-value": 50
+            },
+            "missing-hb-allowed": {
+                "current-value": 3
+            },
+            "max-retransmit": {
+                "current-value": 7
+            },
+            "ack-timeout": {
+                "current-value": 50
+            },
+            "ack-random-factor": {
+                "current-value-decimal": 1.5
+            }
+        },
+        "idle-config": {
+            "heartbeat-interval": {
+                "current-value": 20
+            },
+            "max-retransmit": {
+                "current-value": 7
+            },
+            "ack-timeout": {
+                "current-value": 50
+            },
+            "ack-random-factor": {
+                "current-value-decimal": 1.5
+            }
+        },
+        "trigger-mitigation": true
+    }
+}

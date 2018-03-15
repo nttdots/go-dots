@@ -102,6 +102,19 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
  */
 func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Customer) (res Response, err error) {
 
+	log.WithField("request", newRequest).Debug("[PUT] receive message")
+
+	sid, err := parseSidFromUriPath(newRequest.PathInfo)
+	if err != nil {
+		log.Errorf("Failed to parse Uri-Path, error: %s", err)
+		res = Response{
+			Type: common.Acknowledgement,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
 	request := newRequest.Body
 
 	if request == nil {
@@ -120,7 +133,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 	ackRandomFactor, _ := payload.AckRandomFactor.CurrentValue.Float64()
 	// validate
 	signalSessionConfiguration := models.NewSignalSessionConfiguration(
-		payload.SessionId,
+		sid,
 		payload.HeartbeatInterval.CurrentValue,
 		payload.MissingHbAllowed.CurrentValue,
 		payload.MaxRetransmit.CurrentValue,
