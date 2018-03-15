@@ -29,7 +29,7 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 		log.Errorf("database query error: %s", err)
 		return
 	}
-	if dbSignalSessionConfiguration.Id != 0 {
+	if dbSignalSessionConfiguration != nil && dbSignalSessionConfiguration.Id != 0 {
 		err = UpdateSignalSessionConfiguration(signalSessionConfiguration, customer)
 		return
 	}
@@ -136,10 +136,7 @@ Rollback:
  *  signalSessionConfiguration SignalSessionConfiguration
  *  error error
  */
-func GetSignalSessionConfiguration(customerId int, sessionId int) (signalSessionConfiguration SignalSessionConfiguration, err error) {
-	// default value setting
-	signalSessionConfiguration = SignalSessionConfiguration{}
-
+func GetSignalSessionConfiguration(customerId int, sessionId int) (signalSessionConfiguration *SignalSessionConfiguration, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -157,6 +154,8 @@ func GetSignalSessionConfiguration(customerId int, sessionId int) (signalSession
 		// no data
 		return
 	}
+
+	signalSessionConfiguration = &SignalSessionConfiguration{}
 	signalSessionConfiguration.SessionId = dbSignalSessionConfiguration.SessionId
 	signalSessionConfiguration.HeartbeatInterval = dbSignalSessionConfiguration.HeartbeatInterval
 	signalSessionConfiguration.MissingHbAllowed = dbSignalSessionConfiguration.MissingHbAllowed
