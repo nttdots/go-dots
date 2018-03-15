@@ -60,7 +60,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 			}
 			return res, err
 		}
-		resp.SignalConfigs.SessionId = sid
+		resp.SignalConfigs.Sid = sid
 		resp.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
 		resp.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
 		resp.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
