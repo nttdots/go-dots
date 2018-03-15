@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
+	"strings"
+	"strconv"
 
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
@@ -19,9 +21,12 @@ type SessionConfiguration struct {
 }
 
 func (m *SessionConfiguration) HandleGet(request Request, customer *models.Customer) (res Response, err error) {
-        log.Debugf("[GET]SessionConfig customer.Id=%+v", customer.Id)
-	signalSessionConfiguration, err := models.GetCurrentSignalSessionConfiguration(customer.Id)
+	
+	log.WithField("request", request).Debug("[GET] receive message")
+
+	sid, err := parseSidFromUriPath(request.PathInfo)
 	if err != nil {
+		log.Errorf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
 			Type: common.Acknowledgement,
 			Code: common.BadRequest,
@@ -43,12 +48,35 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 	resp.SignalConfigs.MitigationConfig.AckTimeout.SetMinMax(config.AckTimeout)
 	resp.SignalConfigs.MitigationConfig.AckRandomFactor.SetMinMax(config.AckRandomFactor)
 
-	resp.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
-	resp.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
-	resp.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
-	resp.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue        = signalSessionConfiguration.AckTimeout
-	resp.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactor)
-	resp.SignalConfigs.MitigationConfig.TriggerMitigation              = signalSessionConfiguration.TriggerMitigation
+	log.Debugf("%s", sid)
+
+	if sid != 0 {
+		signalSessionConfiguration, err := models.GetSignalSessionConfiguration(customer.Id, sid)
+		if err != nil {
+			res = Response{
+				Type: common.Acknowledgement,
+				Code: common.NotFound,
+				Body: nil,
+			}
+			return res, err
+		}
+		resp.SignalConfigs.SessionId = sid
+		resp.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
+		resp.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
+		resp.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
+		resp.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue        = signalSessionConfiguration.AckTimeout
+		resp.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactor)
+		resp.SignalConfigs.MitigationConfig.TriggerMitigation              = signalSessionConfiguration.TriggerMitigation
+	} else {
+		defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
+
+		resp.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue = defaultValue.HeartbeatInterval
+		resp.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue  = defaultValue.MissingHbAllowed
+		resp.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue     = defaultValue.MaxRetransmit
+		resp.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue        = defaultValue.AckTimeout
+		resp.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(defaultValue.AckRandomFactor).Round(2)
+		resp.SignalConfigs.MitigationConfig.TriggerMitigation              = true
+	}
 
 	// TODO: support Idle-Config
 	res = Response{
@@ -133,7 +161,26 @@ ResponseOK:
 }
 
 func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models.Customer) (res Response, err error) {
-	err = models.DeleteSignalSessionConfigurationByCustomerId(customer.Id)
+
+	log.WithField("request", newRequest).Debug("[DELETE] receive message")
+
+	sid, err := parseSidFromUriPath(newRequest.PathInfo)
+	if err != nil {
+		log.Errorf("Failed to parse Uri-Path, error: %s", err)
+		res = Response{
+			Type: common.Acknowledgement,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return
+	}
+
+	if sid != 0{
+		err = models.DeleteSignalSessionConfiguration(customer.Id, sid)
+	} else {
+		err = models.DeleteSignalSessionConfigurationByCustomerId(customer.Id)
+	}
+
 	if err != nil {
 		res = Response{
 			Type: common.Acknowledgement,
@@ -166,4 +213,25 @@ func sessionConfigurationPayloadDisplay(data *messages.SignalConfig) {
 	result += fmt.Sprintf("   \"%s\": %f\n", "ack-random-factor", data.AckRandomFactor)
 	result += fmt.Sprintf("   \"%s\": %f\n", "trigger-mitigation", data.TriggerMitigation)
 	log.Infoln(result)
+}
+
+/*
+*  Get sid value from URI-Path
+*/
+func parseSidFromUriPath(uriPath []string) (sid int, err error){
+	log.Debugf("Parsing URI-Path : %+v", uriPath)
+	// Get sid from Uri-Path
+	for _, uriPath := range uriPath{
+		if(strings.HasPrefix(uriPath, "sid")){
+			sidStr := uriPath[strings.Index(uriPath, "=")+1:]
+			sidValue, err := strconv.Atoi(sidStr)
+			if err != nil {
+				log.Errorf("Mid is not integer type.")
+				return sid, err
+			}
+			sid = sidValue
+		}
+	}
+	log.Debugf("Parsing URI-Path result : sid=%+v", sid)
+	return
 }

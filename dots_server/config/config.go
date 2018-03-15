@@ -40,6 +40,14 @@ type SignalConfigurationParameterNode struct {
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
 }
 
+type DefaultSignalConfigurationNode struct {
+	HeartbeatInterval string `yaml:"heartbeatInterval"`
+	MissingHbAllowed  string `yaml:"missingHbAllowed"`
+	MaxRetransmit     string `yaml:"maxRetransmit"`
+	AckTimeout        string `yaml:"ackTimeout"`
+	AckRandomFactor   string `yaml:"ackRandomFactor"`
+}
+
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	return &SignalConfigurationParameter{
 		HeartbeatInterval: parseParameterRange(scpn.HeartbeatInterval),
@@ -47,6 +55,16 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 		MaxRetransmit:     parseParameterRange(scpn.MaxRetransmit),
 		AckTimeout:        parseParameterRange(scpn.AckTimeout),
 		AckRandomFactor:   parseParameterRange(scpn.AckRandomFactor),
+	}, nil
+}
+
+func (scpn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
+	return &DefaultSignalConfiguration{
+		HeartbeatInterval: parseIntegerValue(scpn.HeartbeatInterval),
+		MissingHbAllowed:  parseIntegerValue(scpn.MissingHbAllowed),
+		MaxRetransmit:     parseIntegerValue(scpn.MaxRetransmit),
+		AckTimeout:        parseIntegerValue(scpn.AckTimeout),
+		AckRandomFactor:   parseFloatValue(scpn.AckRandomFactor),
 	}, nil
 }
 
@@ -169,6 +187,7 @@ func (dc *Database) Store() {
 // System global configuration container
 type ServerSystemConfig struct {
 	SignalConfigurationParameter *SignalConfigurationParameter
+	DefaultSignalConfiguration   *DefaultSignalConfiguration
 	SecureFile                   *SecureFile
 	Network                      *Network
 	Database                     *Database
@@ -176,6 +195,7 @@ type ServerSystemConfig struct {
 
 func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setSignalConfigurationParameter(*sc.SignalConfigurationParameter)
+	GetServerSystemConfig().setDefaultSignalConfiguration(*sc.DefaultSignalConfiguration)
 	GetServerSystemConfig().setSecureFile(*sc.SecureFile)
 	GetServerSystemConfig().setNetwork(*sc.Network)
 	GetServerSystemConfig().setDatabase(*sc.Database)
@@ -183,6 +203,7 @@ func (sc *ServerSystemConfig) Store() {
 
 type ServerSystemConfigNode struct {
 	SignalConfigurationParameter SignalConfigurationParameterNode `yaml:"signalConfigurationParameter"`
+	DefaultSignalConfiguration   DefaultSignalConfigurationNode   `yaml:"defaultSignalConfiguration"`
 	SecureFile                   SecureFileNode                   `yaml:"secureFile"`
 	Network                      NetworkNode                      `yaml:"network"`
 	Database                     DatabaseNode                     `yaml:"database"`
@@ -190,6 +211,11 @@ type ServerSystemConfigNode struct {
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 	signalConfigurationParameter, err := scn.SignalConfigurationParameter.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	defaultSignalConfiguration, err := scn.DefaultSignalConfiguration.Convert()
 	if err != nil {
 		return nil, err
 	}
@@ -211,6 +237,7 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
+		DefaultSignalConfiguration:   defaultSignalConfiguration.(*DefaultSignalConfiguration),
 		SecureFile:                   secureFilePath.(*SecureFile),
 		Network:                      network.(*Network),
 		Database:                     database.(*Database),
@@ -219,6 +246,10 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 
 func (sc *ServerSystemConfig) setSignalConfigurationParameter(parameter SignalConfigurationParameter) {
 	sc.SignalConfigurationParameter = &parameter
+}
+
+func (sc *ServerSystemConfig) setDefaultSignalConfiguration(parameter DefaultSignalConfiguration) {
+	sc.DefaultSignalConfiguration = &parameter
 }
 
 func (sc *ServerSystemConfig) setSecureFile(config SecureFile) {
@@ -395,6 +426,38 @@ func parseParameterRange(input string) *ParameterRange {
 	}
 }
 
+// input format examples: "1"
+// error input examples:  "1.5"
+// return 0 on the parseServerConfig failures
+func parseIntegerValue(input string) (res int) {
+	var err error
+
+	res, err = strconv.Atoi(input)
+	if err != nil {
+		// negative values must be dropped here
+		return
+	}
+	return
+}
+
+// input format examples: "1.5"
+// error input examples:  "-1.5"
+// return 0 on the parseServerConfig failures
+func parseFloatValue(input string) (res float64) {
+	var err error
+
+	res, err = strconv.ParseFloat(input, 64)
+	if err != nil {
+		// negative values must be dropped here
+		return
+	}
+
+	if res < 0 {
+		return 0
+	}
+	return
+}
+
 type SignalConfigurationParameter struct {
 	HeartbeatInterval *ParameterRange
 	MissingHbAllowed  *ParameterRange
@@ -403,6 +466,18 @@ type SignalConfigurationParameter struct {
 	AckRandomFactor   *ParameterRange
 }
 
+type DefaultSignalConfiguration struct {
+	HeartbeatInterval int
+	MissingHbAllowed  int
+	MaxRetransmit     int
+	AckTimeout        int
+	AckRandomFactor   float64
+}
+
 func (scp *SignalConfigurationParameter) Store() {
 	GetServerSystemConfig().setSignalConfigurationParameter(*scp)
+}
+
+func (scp *DefaultSignalConfiguration) Store() {
+	GetServerSystemConfig().setDefaultSignalConfiguration(*scp)
 }

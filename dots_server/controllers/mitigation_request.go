@@ -84,7 +84,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		for _, item := range mp.mitigation.TargetPrefix {
 			scopeStates.TargetPrefix = append(scopeStates.TargetPrefix, item.String())
 		}
-
+		
 		for _, item := range mp.mitigation.TargetPortRange {
 			portRange := messages.TargetPortRange{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
 			scopeStates.TargetPortRange = append(scopeStates.TargetPortRange, portRange)
@@ -609,7 +609,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 }
 
 /*
-*  Get cuid, mid value from URI-Path/URI-Queries
+*  Get cuid, mid value from URI-Path
 */
 func parseURIPath(uriPath []string) (cuid string, mid int, err error){
 	log.Debugf("Parsing URI-Path : %+v", uriPath)

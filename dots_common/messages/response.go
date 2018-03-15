@@ -53,6 +53,7 @@ type ConfigurationResponseConfigs struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationConfig ConfigurationResponseConfig `json:"mitigating-config" codec:"32"`
 	IdleConfig ConfigurationResponseConfig       `json:"idle-config"       codec:"44"`
+	Sid        int                               `json:"sid"               codec:"46"`
 }
 
 type ConfigurationResponseConfig struct {
