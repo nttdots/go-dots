@@ -89,12 +89,12 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
                 uri := request.Path()
                 for i := range uri {
                     if strings.HasPrefix(uri[i], "mitigate") {
-                        log.Debug("Request path include 'mitigate'. Set message type to MitigationRequest")
+                        log.Debug("Request path includes 'mitigate'. Set message type to MitigationRequest")
                         typ = reflect.TypeOf(messages.MitigationRequest{})
                         break;
                 
                     } else if strings.HasPrefix(uri[i], "config") {
-                        log.Debug("Request path include 'config' to SignalConfigRequest")
+                        log.Debug("Request path includes 'config'. Set message type to SignalConfigRequest")
                         typ = reflect.TypeOf(messages.SignalConfigRequest{})
                         break;	
                     }
