@@ -85,23 +85,28 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
 
             log.Debugf("typ=%+v:", typ)
             log.Debugf("request.Path(): %+v", request.Path())
+
+            var body interface{}
+
             if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
                 uri := request.Path()
                 for i := range uri {
                     if strings.HasPrefix(uri[i], "mitigate") {
-                        log.Debug("Request path includes 'mitigate'. Set message type to MitigationRequest")
-                        typ = reflect.TypeOf(messages.MitigationRequest{})
+                        log.Debug("Request path includes 'mitigate'. Cbor decode with type MitigationRequest")
+                        body, err = unmarshalCbor(request, reflect.TypeOf(messages.MitigationRequest{}))
                         break;
                 
                     } else if strings.HasPrefix(uri[i], "config") {
-                        log.Debug("Request path includes 'config'. Set message type to SignalConfigRequest")
-                        typ = reflect.TypeOf(messages.SignalConfigRequest{})
+                        log.Debug("Request path includes 'config'. Cbor decode with type SignalConfigRequest")
+                        body, err = unmarshalCbor(request, reflect.TypeOf(messages.SignalConfigRequest{}))
                         break;	
                     }
                 }
 
+            } else {
+                body, err = unmarshalCbor(request, typ)
             }
-            body, err := unmarshalCbor(request, typ)
+            
             if err != nil {
                 log.WithError(err).Error("unmarshalCbor failed.")
                 response.Code = libcoap.ResponseInternalServerError

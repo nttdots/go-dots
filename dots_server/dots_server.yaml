@@ -22,7 +22,7 @@ system:
     dataChannelPort: 4647
   database:
     username: root
-    password: 123456
+    password: 
     protocol: tcp
     host: localhost
     port: 3306
