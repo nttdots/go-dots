@@ -85,20 +85,10 @@ To set up your database, refer to the [Database configuration document](./docs/D
 ## Server
     $ $GOPATH/bin/dots_server -config [config.yml file (ex: go-dots/dots_server/dots_server.yaml)]
 
-Or,
-
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/example/dots_server
-    $ docker-compose build
-    $ docker-compose up 
 
 ## Client
     $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=5684 -vv
 
-Or,
-
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/example/dots_client
-    $ docker-compose build
-    $ docker-compose up
     
 ### Client Controller [mitigation_request]
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
@@ -131,25 +121,7 @@ Or you can run MySQL on docker.
     $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
 
 
-# Example
-
-## One box example on Docker (mitigation request and delete)
-
-![diagram](https://github.com/nttdots/go-dots/blob/master/docs/pics/mitigation_example_diagram.png)
-
-This docker-compose file builds dots client, server, db and gobgp in one box and connect them each other on a docker network.
-
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/example/onebox
-    $ docker-compose build
-    $ docker-compose up
-
-Setup customer information in db
-
-    $ docker exec -i db mysql -u root dots < customer_example.sql
-
-You can see how they work by this example command on the dots_client.
-
-    $ docker exec -i dots_client dots_client_controller -method Post -request mitigation_request -json example/onebox/sampleMitigationRequest.json
+# GOBGP
 
 Check the route is installed successfully in gobgp server
 
@@ -159,22 +131,3 @@ Check the route is installed successfully in gobgp server
 Network              Next Hop             AS_PATH              Age        Attrs
 *> 172.16.238.100/32    172.16.238.254                            00:00:42   [{Origin: i}]
 ```
-You can withdraw the route by Delete method
-
-    $ docker exec -i dots_client dots_client_controller -method Delete -request mitigation_request -json example/onebox/sampleMitigationRequest.json
-
-You can restore the db
-
-    $ docker exec -i db mysql -u root dots < ../../dots_server/db_models/template.sql 
-
-# Test
-
-## Running tests
-
-You can test all package by the commands below.
-
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/
-    $ make test
-
-
-
