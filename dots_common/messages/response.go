@@ -19,9 +19,12 @@ type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mid"    codec:"5"`
 	MitigationStart float64 `json:"mitigation-start" codec:"15"`
-	TargetPrefix []string `json:"target-prefix" codec:"6,omitempty"`
+	TargetPrefix    []string `json:"target-prefix" codec:"6,omitempty"`
 	TargetPortRange []TargetPortRange `json:"target-port-range" codec:"7,omitempty"`
-	TargetProtocol []int  `json:"target-protocol"   codec:"10,omitempty"`
+	TargetProtocol  []int  `json:"target-protocol"   codec:"10,omitempty"`
+	FQDN            []string `json:"target-fqdn" codec:"11,omitempty"`
+	URI             []string `json:"target-uri" codec:"12,omitempty"`
+	AliasName       []string `json:"alias-name" codec:"13,omitempty"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
 	Status          int   `json:"status"           codec:"16"`
 	BytesDropped    int   `json:"bytes-dropped"    codec:"25"`
