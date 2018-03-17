@@ -44,6 +44,7 @@ type MitigationScope struct {
 	TargetPortRange  []PortRange
 	Customer         *Customer
 	ClientIdentifier string
+	ClientDomainIdentifier string
 }
 
 func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScope) {
@@ -59,6 +60,7 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 		make([]PortRange, 0),
 		c,
 		clientIdentifier,
+		"",
 	}
 	return
 }

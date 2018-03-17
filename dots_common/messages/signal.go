@@ -51,10 +51,24 @@ func (m *MitigationRequest) EffectiveClientIdentifier() string {
 }
 
 /*
+ * get last client-domain-identifier
+ */
+func (m *MitigationRequest) EffectiveClientDomainIdentifier() string {
+	return m.MitigationScope.ClientDomainIdentifier
+}
+
+/*
  * set client-identifier
  */
 func (m *MitigationRequest) UpdateClientIdentifier(cuid string) {
 	m.MitigationScope.Scopes[0].ClientIdentifier = cuid
+}
+
+/*
+ * set client-domain-identifier
+ */
+func (m *MitigationRequest) UpdateClientDomainIdentifier(cdid string) {
+	m.MitigationScope.ClientDomainIdentifier = cdid
 }
 
 /*

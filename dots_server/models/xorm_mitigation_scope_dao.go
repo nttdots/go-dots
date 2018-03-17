@@ -23,10 +23,12 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		log.Errorf("database connect error: %s", err)
 		return
 	}
+	log.Debugf("CreateMitigationScope mitigationScope=%+v\n", mitigationScope)
 
 	// same data check
 	dbMitigationScope := new(db_models.MitigationScope)
 	clientIdentifier := mitigationScope.ClientIdentifier
+	clientDomainIdentifier := mitigationScope.ClientDomainIdentifier
 	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customer.Id, clientIdentifier, mitigationScope.MitigationId).Get(dbMitigationScope)
 	if err != nil {
 		log.Errorf("mitigation_scope select error: %s", err)
@@ -51,6 +53,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	newMitigationScope = db_models.MitigationScope{
 		CustomerId:       customer.Id,
 		ClientIdentifier: clientIdentifier,
+		ClientDomainIdentifier: clientDomainIdentifier,
 		MitigationId:     mitigationScope.MitigationId,
 		Lifetime:         mitigationScope.Lifetime,
 	}
@@ -425,6 +428,7 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	// Get mitigationId and Lifetime
 	mitigationScope.MitigationId = dbMitigationScope.MitigationId
 	mitigationScope.Lifetime = dbMitigationScope.Lifetime
+	mitigationScope.ClientDomainIdentifier = dbMitigationScope.ClientDomainIdentifier
 
 	// Get FQDN data
 	dbParameterValueFqdnList := []db_models.ParameterValue{}

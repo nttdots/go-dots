@@ -88,6 +88,7 @@ type MitigationResponsePut struct {
 type MitigationScopePut struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	Scopes            []ScopePut  `json:"scope"             codec:"3"`
+	ClientDomainIdentifier string `json:"cdid" codec:"2,omitempty"`
 }
 
 type ScopePut struct {
@@ -106,6 +107,7 @@ func NewMitigationResponsePut(req *MitigationRequest) MitigationResponsePut {
 		for i := range req.MitigationScope.Scopes {
 			res.MitigationScope.Scopes[i] = ScopePut{ MitigationId: req.MitigationScope.Scopes[i].MitigationId, Lifetime: req.MitigationScope.Scopes[i].Lifetime }
 		}
+		res.MitigationScope.ClientDomainIdentifier = req.EffectiveClientDomainIdentifier()
 	}
 
 	return res

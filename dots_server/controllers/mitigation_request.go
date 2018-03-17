@@ -27,7 +27,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	log.WithField("request", request).Debug("[GET] receive message")
 
 	// Get cuid, mid from Uri-Path
-	cuid, mid, err := parseURIPath(request.PathInfo)
+	_, cuid, mid, err := parseURIPath(request.PathInfo)
 	if err != nil {
 		log.Errorf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
@@ -56,9 +56,12 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 
 	scopes := make([]messages.ScopeStatus, 0)
 
+	var cdidInDB string
+
 	for _, mp := range mpp {
 		id := mp.mitigation.MitigationId
 		lifetime := mp.mitigation.Lifetime
+		cdidInDB = mp.mitigation.ClientDomainIdentifier
 
 		var startedAt int64
 		log.WithField("protection", mp.protection).Debug("Protection: ")
@@ -106,7 +109,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	res = Response{
 		Type: common.NonConfirmable,
 		Code: common.Content,
-		Body: messages.MitigationResponse { MitigationScope: messages.MitigationScopeStatus { Scopes: scopes }},
+		Body: messages.MitigationResponse { MitigationScope: messages.MitigationScopeStatus { Scopes: scopes, ClientDomainIdentifier: cdidInDB }},
 	}
 
 	return
@@ -142,7 +145,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	log.WithField("message", body.String()).Debug("[PUT] receive message")
 
 	// Get cuid, mid from Uri-Path
-	cuid, mid, err := parseURIPath(request.PathInfo)
+	cdid, cuid, mid, err := parseURIPath(request.PathInfo)
 	if(err != nil){
 		log.Errorf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
@@ -178,6 +181,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 		// Update cuid, mid to body
 		body.UpdateClientIdentifier(cuid)
+		body.UpdateClientDomainIdentifier(cdid)
 		body.UpdateMitigationId(mid)
 
 		var currentScope *models.MitigationScope
@@ -253,7 +257,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 	log.WithField("request", request).Debug("[DELETE] receive message")
 
 	// Get cuid, mid from Uri-Path
-	cuid, mid, err := parseURIPath(request.PathInfo)
+	_, cuid, mid, err := parseURIPath(request.PathInfo)
 	if err != nil {
 		log.Errorf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
@@ -300,7 +304,8 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 /*
  * Create MitigationScope objects based on the mitigationRequest request messages.
  */
-func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier string) (m *models.MitigationScope, err error) {
+func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier string, clientDomainIdentifier string) (m *models.MitigationScope, err error) {
+	log.Debugf("newMitigationScope req=%+v, c=%+v, clientIdentifier=%+v, clientDomainIdentifier=%+v", req, c, clientIdentifier, clientDomainIdentifier)
 	m = models.NewMitigationScope(c, clientIdentifier)
 	m.MitigationId = req.MitigationId
 	m.TargetProtocol.AddList(req.TargetProtocol)
@@ -309,6 +314,7 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	m.AliasName.AddList(req.AliasName)
 	m.Lifetime = req.Lifetime
 	m.TargetPrefix, err = newTargetPrefix(req.TargetPrefix)
+	m.ClientDomainIdentifier = clientDomainIdentifier
 	if err != nil {
 		return
 	}
@@ -367,7 +373,7 @@ func createMitigationScope(req *messages.MitigationRequest, customer *models.Cus
 			req.MitigationScope.Scopes[i].Lifetime = common.DEFAULT_SIGNAL_MITIGATE_LIFETIME
 			messageScope.Lifetime = common.DEFAULT_SIGNAL_MITIGATE_LIFETIME
 		}
-		scope, err := newMitigationScope(messageScope, customer, req.EffectiveClientIdentifier())
+		scope, err := newMitigationScope(messageScope, customer, req.EffectiveClientIdentifier(), req.EffectiveClientDomainIdentifier())
 		if err != nil {
 			return err
 		}
@@ -556,7 +562,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 	// retrieve scope objects from the request, then validate it.
 	// obtain an appropriate blocker from the blocker selection service if the validation succeeded.
 	for _, messageScope := range data.MitigationScope.Scopes {
-		scope, err := newMitigationScope(messageScope, c, data.EffectiveClientIdentifier())
+		scope, err := newMitigationScope(messageScope, c, data.EffectiveClientIdentifier(), data.EffectiveClientDomainIdentifier())
 		if err != nil {
 			return err
 		}
@@ -611,22 +617,24 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer) (err erro
 /*
 *  Get cuid, mid value from URI-Path
 */
-func parseURIPath(uriPath []string) (cuid string, mid int, err error){
+func parseURIPath(uriPath []string) (cdid string, cuid string, mid int, err error){
 	log.Debugf("Parsing URI-Path : %+v", uriPath)
 	// Get cuid, mid from Uri-Path
 	for _, uriPath := range uriPath{
-		if(strings.HasPrefix(uriPath, "cuid")){
-			cuid = uriPath[strings.Index(uriPath, "=")+1:]
-		} else if(strings.HasPrefix(uriPath, "mid")){
-			midStr := uriPath[strings.Index(uriPath, "=")+1:]
+		if(strings.HasPrefix(uriPath, "cuid=")){
+			cuid = uriPath[strings.Index(uriPath, "cuid=")+5:]
+		} else if (strings.HasPrefix(uriPath, "cdid=")){
+			cdid = uriPath[strings.Index(uriPath, "cdid=")+5:]
+		} else if(strings.HasPrefix(uriPath, "mid=")){
+			midStr := uriPath[strings.Index(uriPath, "mid=")+4:]
 			midValue, err := strconv.Atoi(midStr)
 			if err != nil {
 				log.Errorf("Mid is not integer type.")
-				return cuid, mid, err
+				return cdid, cuid, mid, err
 			}
 			mid = midValue
 		}
 	}
-	log.Debugf("Parsing URI-Path result : cuid=%+v, mid=%+v", cuid, mid)
+	log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, mid)
 	return
 }
