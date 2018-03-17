@@ -37,6 +37,7 @@ func (env *Env) HandleResponse(pdu *libcoap.Pdu) {
     if !ok {
         log.Info("Unexpected incoming PDU: %v", pdu)
     } else {
+        log.Debugf("Success incoming PDU(HandleResponse): %+v", pdu)
         delete(env.requests, key)
         t.stop()
         t.responseHandler(t, pdu)
