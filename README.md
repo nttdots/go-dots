@@ -6,7 +6,7 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-signal-channel-11
+* draft-ietf-dots-signal-channel-18
 * draft-ietf-dots-data-channel-02 
 * draft-ietf-dots-architecture-05 
 * draft-ietf-dots-requirements-11 
@@ -20,31 +20,33 @@ Licensed under Apache License 2.0.
 
 ## Requirements
 
-* gcc 4.8.5 or higher
-* make
+* gcc 5.4.0 or higher
+* make, autoconf, automake, libtool
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.6 or later is required.
+  * go 1.9 or later is required. (for latest GoBGP)
   * set PATH to go and set $GOPATH, using their instructions.
-* [gnutls](http://www.gnutls.org/)
-  * gnutls 3.3.24 or higher
+* [openssl](https://www.openssl.org/)
+  * OpenSSL 1.1.0 or higher (for libcoap)
 
 * MySQL 5.7 or higher
 
-### An issue to build this project on MacOS
+## Recommandation Environment
+* Ubuntu 16.04+
+* macOS High Sierra 10.13+
 
-* Building go 1.8 fails with macOS/Xcode 8.3.
-
-    go 1.8.1 will resolve the problem.
-    
-    Or you can solve the problem by installing Xcode8.2
-    
-    [runtime: some Go executables broken with macOS 10.12.4 / Xcode 8.3 but fine with Xcode 8.2 ](https://github.com/golang/go/issues/19734)
-    
 ## How to build go-dots
+* build libcoap custom for go-dots
+    $ wget https://github.com/nttdots/go-dots/blob/ietf101interop/misc/libcoap_custom_for_go-dots.tar.gz
+    $ tar zxvf libcoap_custom_for_go-dots.tar.gz
+    $ cd libcoap_custom_for_go-dots
+    $ ./autogen.sh
+    $ ./configure --disable-documentation --with-openssl=/usr/local
+    $ make
+    $ sudo make install
 
+* Install go-dots
 To install go-dots source codes and command line programs, use the following command:
-
     $ go get -u github.com/nttdots/go-dots/...
 
 
@@ -88,7 +90,7 @@ Or,
     $ docker-compose up 
 
 ## Client
-    $ $GOPATH/bin/dots_client -server 127.0.0.1
+    $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=5684 -vv
 
 Or,
 
@@ -97,12 +99,17 @@ Or,
     $ docker-compose up
     
 ### Client Controller [mitigation_request]
-    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Post \
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequest.json
    
-### Client Controller [mitigation_cancel_request]
-    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequest.json
+### Client Controller [mitigation_retrieve_all]
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw
+
+### Client Controller [mitigation_retrieve_one]
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
+
+### Client Controller [mitigation_withdraw]
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
 ## DB
 
