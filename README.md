@@ -37,6 +37,7 @@ Licensed under Apache License 2.0.
 
 ## How to build go-dots
 * build libcoap custom for go-dots
+
     $ wget https://github.com/nttdots/go-dots/blob/ietf101interop/misc/libcoap_custom_for_go-dots.tar.gz
     $ tar zxvf libcoap_custom_for_go-dots.tar.gz
     $ cd libcoap_custom_for_go-dots
@@ -47,6 +48,7 @@ Licensed under Apache License 2.0.
 
 * Install go-dots
 To install go-dots source codes and command line programs, use the following command:
+
     $ go get -u github.com/nttdots/go-dots/...
 
 
