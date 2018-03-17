@@ -101,17 +101,21 @@ Or,
     $ docker-compose up
     
 ### Client Controller [mitigation_request]
-    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequest.json
    
 ### Client Controller [mitigation_retrieve_all]
-    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw
 
 ### Client Controller [mitigation_retrieve_one]
-    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
 ### Client Controller [mitigation_withdraw]
-    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
 ## DB
 
