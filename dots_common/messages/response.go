@@ -13,6 +13,7 @@ type MitigationResponse struct {
 type MitigationScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	Scopes []ScopeStatus `json:"scope" codec:"3"`
+	ClientDomainIdentifier string `json:"cdid" codec:"2,omitempty"`
 }
 
 type ScopeStatus struct {

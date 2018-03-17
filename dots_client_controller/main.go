@@ -22,6 +22,7 @@ var (
 	requestName   string
 	requestMethod string
 	cuid          string
+	cdid          string
 	mid           string
 	sid           string
 	jsonFilePath  string
@@ -34,7 +35,7 @@ func init() {
 	flag.StringVar(&requestName, "request", defaultValue, "Request Name")
 	flag.StringVar(&requestMethod, "method", defaultValue, "Request Method(Get/Post/Put/Delete)")
 	flag.StringVar(&cuid, "cuid", defaultValue, "Client Unique Identifier on Uri-Path. mandatory in Put/Get/Delete")
-	// TODO: cdid for gateway
+	flag.StringVar(&cdid, "cdid", defaultValue, "Client Domain IDentifier on Uri-Path (only used in debug). optional in Put/Get/Delete")
 	flag.StringVar(&mid, "mid", defaultValue, "Identifier for the mitigation request on Uri-Path. mandatory in Put/Delete")
 	flag.StringVar(&sid, "sid", defaultValue, "Session Identifier is an identifier for the DOTS signal channel session configuration data represented as an integer.")
 	flag.StringVar(&jsonFilePath, "json", defaultValue, "Request Json file")
@@ -117,16 +118,22 @@ func main() {
 	u, err := url.Parse("http://dots_client/server")
 
 	contentType := "application/json"
+	u.Path = path.Join(u.Path, "server", requestName)
 	if cuid != "" {
-		if mid == "" {
-			u.Path = path.Join(u.Path, "server", requestName) + "/cuid=" + cuid
-		} else {
-			u.Path = path.Join(u.Path, "server", requestName) + "/cuid=" + cuid + "/mid=" + mid
+		// for mitigation request
+		// if exists cdid set cdid first
+		if cdid != "" {
+			u.Path += "/cdid=" + cdid
+		}
+		// add cuid
+		u.Path += "/cuid=" + cuid
+		// add mid if exists
+		if mid != "" {
+			u.Path += "/mid=" + mid
 		}
 	} else if sid != "" {
-		u.Path = path.Join(u.Path, "server", requestName) + "/sid=" + sid
-	} else {
-		u.Path = path.Join(u.Path, "server", requestName)
+		// for session configuration
+		u.Path += "/sid=" + sid
 	}
 	var body io.Reader
 	if jsonFilePath != "" {

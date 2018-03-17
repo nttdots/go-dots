@@ -12,6 +12,8 @@ type TargetPortRange struct {
 type MitigationScope struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	Scopes            []Scope  `json:"scope"             codec:"3"`
+	// only used in response
+	ClientDomainIdentifier string `json:"cdid" codec:"2,omitempty"`
 }
 
 type Scope struct {
