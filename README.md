@@ -142,7 +142,7 @@ Or you can run MySQL on docker.
 
 Check the route is installed successfully in gobgp server
 
-    $ docker exec -it gobgp gobgp global rib
+    $ gobgp global rib
 
 ```
 Network              Next Hop             AS_PATH              Age        Attrs
