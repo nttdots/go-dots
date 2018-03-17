@@ -1,6 +1,8 @@
 package dots_common
 
 import (
+    "math/rand"
+
 	"github.com/nttdots/go-dots/coap"
 	log "github.com/sirupsen/logrus"
 )
@@ -33,6 +35,16 @@ func (t Type) CoAPType() coap.COAPType {
 	default:
 		panic("unexpected Type")
 	}
+}
+
+const letterBytes = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) []byte {
+    b := make([]byte, n)
+    for i := range b {
+        b[i] = letterBytes[rand.Intn(len(letterBytes))]
+    }
+    return b
 }
 
 /*

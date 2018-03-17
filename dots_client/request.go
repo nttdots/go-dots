@@ -128,6 +128,7 @@ func (r *Request) CreateRequest() {
 	r.pdu.Type = r.coapType
 	r.pdu.Code = code
 	r.pdu.MessageID = r.env.CoapSession().NewMessageID()
+	r.pdu.Token = dots_common.RandStringBytes(8)
 	r.pdu.Options = make([]libcoap.Option, 0)
 
 	if r.Message != nil {
