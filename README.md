@@ -107,6 +107,23 @@ To set up your database, refer to the [Database configuration document](./docs/D
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
+
+### Client Controller [session_configuration_request]
+    $ $GOPATH/bin/dots_client_controller -request session_configuration -method Put \
+     -sid 234 \
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleSessionConfigurationDraft.json
+
+### Client Controller [session_configuration_retrieve_default]
+    $ $GOPATH/bin/dots_client_controller -request session_configuration -method Get
+
+### Client Controller [session_configuration_retrieve_one]
+    $ $GOPATH/bin/dots_client_controller -request session_configuration -method Get \
+      -sid 234
+
+### Client Controller [session_configuration_delete]
+    $ $GOPATH/bin/dots_client_controller -request session_configuration -method Delete \
+      -sid 234
+
 ## DB
 
 To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)  
