@@ -103,7 +103,7 @@ Or,
 ### Client Controller [mitigation_request]
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequest.json
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraft.json
    
 ### Client Controller [mitigation_retrieve_all]
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
