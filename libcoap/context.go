@@ -74,9 +74,27 @@ func NewContextDtls(addr *Address, dtls *DtlsParam) *Context {
 
     ptr := C.coap_new_context_dtls(caddr, cdtls)
     if ptr != nil {
-        context := &Context{ ptr, nil, cdtls }
-        contexts[ptr] = context
-        return context
+        // Enable PKI
+        var setup_data *C.coap_dtls_pki_t = &C.coap_dtls_pki_t{}
+        if dtls.CaFilename != nil {
+            setup_data.ca_file  = C.CString(*dtls.CaFilename)
+        }
+        if dtls.CertificateFilename != nil {
+            setup_data.public_cert = C.CString(*dtls.CertificateFilename)
+        }
+        if dtls.PrivateKeyFilename != nil {
+            setup_data.private_key = C.CString(*dtls.PrivateKeyFilename)
+        }
+        ok := C.coap_dtls_context_set_pki(ptr, setup_data)
+
+        if ok == 1 {
+            context := &Context{ ptr, nil, cdtls }
+            contexts[ptr] = context
+            return context            
+        } else {
+            return nil
+        }
+        
     } else {
         return nil
     }
