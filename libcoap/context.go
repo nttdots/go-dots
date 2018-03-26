@@ -18,7 +18,7 @@ type DtlsParam struct {
 type Context struct {
     ptr     *C.coap_context_t
     handler ResponseHandler
-    dtls    *C.coap_dtls_param_t
+    dtls    *C.coap_dtls_pki_t
 }
 
 var contexts = make(map[*C.coap_context_t] *Context)
@@ -55,40 +55,23 @@ func NewContextDtls(addr *Address, dtls *DtlsParam) *Context {
       caddr = &addr.value
     }
 
-    var cdtls *C.coap_dtls_param_t = nil
-    if dtls != nil {
-        cdtls = &C.coap_dtls_param_t{};
-        if dtls.CaFilename != nil {
-            cdtls.ca_filename = C.CString(*dtls.CaFilename)
-        }
-        if dtls.CaPath != nil {
-            cdtls.ca_path = C.CString(*dtls.CaPath)
-        }
-        if dtls.CertificateFilename != nil {
-            cdtls.cert_filename = C.CString(*dtls.CertificateFilename)
-        }
-        if dtls.PrivateKeyFilename != nil {
-            cdtls.pkey_filename = C.CString(*dtls.PrivateKeyFilename)
-        }
-    }
-
-    ptr := C.coap_new_context_dtls(caddr, cdtls)
-    if ptr != nil {
+    ptr := C.coap_new_context(caddr)
+    if (ptr != nil) && (dtls != nil) {
         // Enable PKI
-        var setup_data *C.coap_dtls_pki_t = &C.coap_dtls_pki_t{}
+        var setupData *C.coap_dtls_pki_t = &C.coap_dtls_pki_t{}
         if dtls.CaFilename != nil {
-            setup_data.ca_file  = C.CString(*dtls.CaFilename)
+            setupData.ca_file  = C.CString(*dtls.CaFilename)
         }
         if dtls.CertificateFilename != nil {
-            setup_data.public_cert = C.CString(*dtls.CertificateFilename)
+            setupData.public_cert = C.CString(*dtls.CertificateFilename)
         }
         if dtls.PrivateKeyFilename != nil {
-            setup_data.private_key = C.CString(*dtls.PrivateKeyFilename)
+            setupData.private_key = C.CString(*dtls.PrivateKeyFilename)
         }
-        ok := C.coap_dtls_context_set_pki(ptr, setup_data)
+        ok := C.coap_dtls_context_set_pki(ptr, setupData)
 
         if ok == 1 {
-            context := &Context{ ptr, nil, cdtls }
+            context := &Context{ ptr, nil, setupData }
             contexts[ptr] = context
             return context            
         } else {
@@ -108,17 +91,23 @@ func (context *Context) FreeContext() {
     C.coap_free_context(ptr)
 
     if context.dtls != nil {
-        if context.dtls.ca_filename != nil {
-            C.free(unsafe.Pointer(context.dtls.ca_filename))
+        if context.dtls.ca_file != nil {
+            C.free(unsafe.Pointer(context.dtls.ca_file))
         }
-        if context.dtls.ca_path != nil {
-            C.free(unsafe.Pointer(context.dtls.ca_path))
+        if context.dtls.public_cert != nil {
+            C.free(unsafe.Pointer(context.dtls.public_cert))
         }
-        if context.dtls.cert_filename != nil {
-            C.free(unsafe.Pointer(context.dtls.cert_filename))
+        if context.dtls.private_key != nil {
+            C.free(unsafe.Pointer(context.dtls.private_key))
         }
-        if context.dtls.pkey_filename != nil {
-            C.free(unsafe.Pointer(context.dtls.pkey_filename))
+        if context.dtls.asn1_ca_file != nil {
+            C.free(unsafe.Pointer(context.dtls.asn1_ca_file))
+        }
+        if context.dtls.asn1_public_cert != nil {
+            C.free(unsafe.Pointer(context.dtls.asn1_public_cert))
+        }
+        if context.dtls.asn1_private_key != nil {
+            C.free(unsafe.Pointer(context.dtls.asn1_private_key))
         }
         context.dtls = nil
     }
