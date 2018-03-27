@@ -18,6 +18,7 @@ type DtlsParam struct {
 type Context struct {
     ptr     *C.coap_context_t
     handler ResponseHandler
+    pongHandler PongHandler
     dtls    *C.coap_dtls_pki_t
 }
 
@@ -41,7 +42,7 @@ func NewContext(addr *Address) *Context {
 
     ptr := C.coap_new_context(caddr)
     if ptr != nil {
-        context := &Context{ ptr, nil, nil }
+        context := &Context{ ptr, nil, nil, nil }
         contexts[ptr] = context
         return context
     } else {
@@ -71,7 +72,7 @@ func NewContextDtls(addr *Address, dtls *DtlsParam) *Context {
         ok := C.coap_dtls_context_set_pki(ptr, setupData)
 
         if ok == 1 {
-            context := &Context{ ptr, nil, setupData }
+            context := &Context{ ptr, nil, nil, setupData }
             contexts[ptr] = context
             return context            
         } else {

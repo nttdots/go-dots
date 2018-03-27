@@ -11,6 +11,8 @@ import "unsafe"
 
 type ResponseHandler func(*Context, *Session, *Pdu, *Pdu)
 
+type PongHandler func(*Context, *Session, *Pdu)
+
 type Proto C.coap_proto_t
 const (
     ProtoUdp  Proto = C.COAP_PROTO_UDP
@@ -126,7 +128,38 @@ func export_response_handler(ctx      *C.coap_context_t,
     }
 }
 
+//export export_pong_handler
+func export_pong_handler(ctx *C.coap_context_t,
+	sess *C.coap_session_t,
+	received *C.coap_pdu_t,
+	id C.coap_tid_t) {
+
+	context, ok := contexts[ctx]
+	if !ok {
+		return
+	}
+
+	session, ok := sessions[sess]
+	if !ok {
+		return
+	}
+
+	res, err := received.toGo()
+	if err != nil {
+		return
+	}
+
+	if context.pongHandler != nil {
+		context.pongHandler(context, session, res)
+	}
+}
+
 func (context *Context) RegisterResponseHandler(handler ResponseHandler) {
     context.handler = handler
     C.coap_register_response_handler(context.ptr, C.coap_response_handler_t(C.response_handler))
+}
+
+func (context *Context) RegisterPongHandler(handler PongHandler) {
+	context.pongHandler = handler
+	C.coap_register_pong_handler(context.ptr, C.coap_pong_handler_t(C.pong_handler))
 }
