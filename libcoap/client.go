@@ -1,7 +1,7 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-1
+#cgo LDFLAGS: -lcoap-1 -lssl -lcrypto
 #include <coap/coap.h>
 #include "callback.h"
 */
@@ -56,18 +56,24 @@ func (ctx *Context) NewClientSessionPSK(dst Address, proto Proto, identity strin
 }
 
 func (ctx *Context) NewClientSessionDTLS(dst Address, proto Proto, serverCommonName *string) *Session {
-    var cSercerCommonName *C.char
+    var cServerCommonName *C.char
     if serverCommonName != nil {
-      cSercerCommonName = C.CString(*serverCommonName)
-      defer C.free(unsafe.Pointer(cSercerCommonName))
+      cServerCommonName = C.CString(*serverCommonName)
+      defer C.free(unsafe.Pointer(cServerCommonName))
     }
 
     ptr := C.coap_new_client_session_dtls(ctx.ptr,
                                           nil,
                                           &dst.value,
                                           C.coap_proto_t(proto),
-                                          cSercerCommonName)
+                                          cServerCommonName)
     if ptr != nil {
+        // Set server common name
+        if (proto != ProtoDtls) && (proto != ProtoTls) {
+            return nil
+        }
+		C.set_server_common_name(ptr, cServerCommonName)
+
         session := &Session{ ptr }
         sessions[ptr] = session
         return session
