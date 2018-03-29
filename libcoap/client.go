@@ -11,7 +11,7 @@ import "unsafe"
 
 type ResponseHandler func(*Context, *Session, *Pdu, *Pdu)
 
-type PongHandler func(*Context, *Session, *Pdu)
+type NackHandler func(*Context, *Session, *Pdu)
 
 type Proto C.coap_proto_t
 const (
@@ -133,10 +133,11 @@ func export_response_handler(ctx      *C.coap_context_t,
     }
 }
 
-//export export_pong_handler
-func export_pong_handler(ctx *C.coap_context_t,
+//export export_nack_handler
+func export_nack_handler(ctx *C.coap_context_t,
 	sess *C.coap_session_t,
-	received *C.coap_pdu_t,
+	sent *C.coap_pdu_t,
+	reason C.coap_nack_reason_t,
 	id C.coap_tid_t) {
 
 	context, ok := contexts[ctx]
@@ -149,13 +150,13 @@ func export_pong_handler(ctx *C.coap_context_t,
 		return
 	}
 
-	res, err := received.toGo()
+	req, err := sent.toGo()
 	if err != nil {
 		return
 	}
 
-	if context.pongHandler != nil {
-		context.pongHandler(context, session, res)
+	if context.nackHandler != nil && reason == C.COAP_NACK_RST && req.Type == C.COAP_MESSAGE_CON && req.Code == 0 {
+		context.nackHandler(context, session, req)
 	}
 }
 
@@ -164,7 +165,7 @@ func (context *Context) RegisterResponseHandler(handler ResponseHandler) {
     C.coap_register_response_handler(context.ptr, C.coap_response_handler_t(C.response_handler))
 }
 
-func (context *Context) RegisterPongHandler(handler PongHandler) {
-	context.pongHandler = handler
-	C.coap_register_pong_handler(context.ptr, C.coap_pong_handler_t(C.pong_handler))
+func (context *Context) RegisterNackHandler(handler NackHandler) {
+	context.nackHandler = handler
+	C.coap_register_nack_handler(context.ptr, C.coap_nack_handler_t(C.nack_handler))
 }

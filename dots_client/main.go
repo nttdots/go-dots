@@ -116,8 +116,8 @@ func connectSignalChannel() (env *task.Env, err error) {
 		env.HandleResponse(received)
 	})
 
-	ctx.RegisterPongHandler(func(_ *libcoap.Context, _ *libcoap.Session, received *libcoap.Pdu) {
-		env.HandleResponse(received)
+	ctx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu) {
+		env.HandleResponse(sent)
 	})
 	return
 

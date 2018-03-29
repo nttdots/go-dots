@@ -18,7 +18,7 @@ type DtlsParam struct {
 type Context struct {
     ptr     *C.coap_context_t
     handler ResponseHandler
-    pongHandler PongHandler
+	nackHandler NackHandler
     dtls    *C.coap_dtls_pki_t
 }
 

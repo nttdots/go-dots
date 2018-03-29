@@ -16,11 +16,11 @@ extern void export_method_handler(coap_context_t *ctx,
                            str *query,
                            coap_pdu_t *resp);
 
-extern void export_pong_handler(coap_context_t *ctx,
-	                            coap_session_t *sess,
-	                            coap_pdu_t *received,
-	                            coap_tid_t id);
-
+extern void export_nack_handler(coap_context_t *ctx,
+                    coap_session_t *sess,
+                    coap_pdu_t *sent,
+                    coap_nack_reason_t reason,
+                    coap_tid_t id);
 
 void response_handler(coap_context_t *context,
                       coap_session_t *session,
@@ -42,14 +42,14 @@ void method_handler(coap_context_t *context,
     export_method_handler(context, resource, session, request, token, queryString, response);
 }
 
-void pong_handler(coap_context_t *context,
-                      coap_session_t *session,
-                      coap_pdu_t *received,
-                      const coap_tid_t id) {
+void nack_handler(coap_context_t *context,
+                    coap_session_t *session,
+                    coap_pdu_t *sent,
+                    coap_nack_reason_t reason,
+                    const coap_tid_t id){
 
-    export_pong_handler(context, session, received, id);
+    export_nack_handler(context, session, sent, reason, id);
 }
-
 
 void set_server_common_name (coap_session_t* session,
                              const char* server_common_name) {
