@@ -62,11 +62,10 @@ func (ctx *Context) NewClientSessionDTLS(dst Address, proto Proto, serverCommonN
       defer C.free(unsafe.Pointer(cServerCommonName))
     }
 
-    ptr := C.coap_new_client_session_dtls(ctx.ptr,
+    ptr := C.coap_new_client_session(ctx.ptr,
                                           nil,
                                           &dst.value,
-                                          C.coap_proto_t(proto),
-                                          cServerCommonName)
+                                          C.coap_proto_t(proto))
     if ptr != nil {
         // Set server common name
         if (proto != ProtoDtls) && (proto != ProtoTls) {
