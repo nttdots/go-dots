@@ -38,7 +38,7 @@ Licensed under Apache License 2.0.
 ## How to build go-dots
 ### build libcoap custom for go-dots
     
-    $ wget https://github.com/nttdots/go-dots/blob/ietf101interop/misc/libcoap_custom_for_go-dots.tar.gz
+    $ wget --content-disposition https://github.com/nttdots/go-dots/blob/master/misc/libcoap_custom_for_go-dots.tar.gz?raw=true
     $ tar zxvf libcoap_custom_for_go-dots.tar.gz
     $ cd libcoap_custom_for_go-dots
     $ ./autogen.sh
@@ -83,11 +83,15 @@ Server Configuration is done by the system configuration file and the database s
 To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)
 
 ## Server
-    $ $GOPATH/bin/dots_server -config [config.yml file (ex: go-dots/dots_server/dots_server.yaml)]
+    $ $GOPATH/bin/dots_server --config [config.yml file (ex: go-dots/dots_server/dots_server.yaml)]
 
 
 ## Client
     $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=5684 -vv
+
+## GoBGP Server
+To install and run gobgp-server, refer to the following link:
+* [gobgp-server](https://github.com/osrg/gobgp)
 
     
 ### Client Controller [mitigation_request]
@@ -130,7 +134,7 @@ To set up your database, refer to the [Database configuration document](./docs/D
 The 'dots_server' accesses the 'dots' database on MySQL as the root user.
 
     $ cd $GOPATH/src/github.com/nttdots/go-dots/
-    $ mysql -u root dots < ./dots_server/db_models/test_dump.sql
+    $ mysql -u root -p dots < ./dots_server/db_models/test_dump.sql
 
 Or you can run MySQL on docker.
 
