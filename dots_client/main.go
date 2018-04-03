@@ -103,7 +103,7 @@ func connectSignalChannel() (env *task.Env, err error) {
 			goto error
 		}
 
-		sess = ctx.NewClientSessionDTLS(addr, libcoap.ProtoDtls, nil)
+		sess = ctx.NewClientSessionDTLS(addr, libcoap.ProtoDtls)
 		if sess == nil {
 			log.Error("NewClientSessionDTLS() -> nil")
 			err = errors.New("NewClientSessionDTLS() -> nil")

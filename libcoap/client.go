@@ -55,30 +55,20 @@ func (ctx *Context) NewClientSessionPSK(dst Address, proto Proto, identity strin
     }
 }
 
-func (ctx *Context) NewClientSessionDTLS(dst Address, proto Proto, serverCommonName *string) *Session {
-    var cServerCommonName *C.char
-    if serverCommonName != nil {
-      cServerCommonName = C.CString(*serverCommonName)
-      defer C.free(unsafe.Pointer(cServerCommonName))
-    }
+func (ctx *Context) NewClientSessionDTLS(dst Address, proto Proto) *Session {
 
     ptr := C.coap_new_client_session(ctx.ptr,
                                           nil,
                                           &dst.value,
                                           C.coap_proto_t(proto))
     if ptr != nil {
-        // Set server common name
-        if (proto != ProtoDtls) && (proto != ProtoTls) {
-            return nil
-        }
-		C.set_server_common_name(ptr, cServerCommonName)
-
         session := &Session{ ptr }
         sessions[ptr] = session
         return session
-    } else {
-        return nil
     }
+    
+    return nil
+    
 }
 
 func (session *Session) NewMessageID() uint16 {

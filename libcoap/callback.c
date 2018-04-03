@@ -51,19 +51,6 @@ void nack_handler(coap_context_t *context,
     export_nack_handler(context, session, sent, reason, id);
 }
 
-void set_server_common_name (coap_session_t* session,
-                             const char* server_common_name) {
-
-    if ((session != NULL) && (server_common_name != NULL)) {
-        size_t len = strlen(server_common_name);
-        session->server_common_name = (char *)coap_malloc(len + 1);
-        if (session->server_common_name) {
-            memcpy(session->server_common_name, server_common_name, len + 1);
-        }
-    }
-
-}
-
 int coap_dtls_get_peer_common_name(coap_session_t *session,
                                     char *buf,
                                     size_t buf_len){
