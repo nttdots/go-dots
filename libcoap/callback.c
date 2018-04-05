@@ -1,5 +1,4 @@
-#include <coap/coap.h>
-#include <openssl/ssl.h>
+
 #include "callback.h"
 
 extern void export_response_handler(coap_context_t *ctx,
@@ -82,4 +81,42 @@ int coap_dtls_get_peer_common_name(coap_session_t *session,
     }
     return X509_NAME_get_text_by_NID(name, NID_commonName, buf, buf_len);
 
+}
+
+int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t * setup_data) {
+    char* ciphers = "TLSv1.2:TLSv1.0:!PSK";
+    coap_openssl_context_t *context = (coap_openssl_context_t *)(ctx->dtls_context);
+    if (context->dtls.ctx) {
+        if (setup_data->ca_file) {
+            SSL_CTX_set_verify(context->dtls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+            if (0 == SSL_CTX_load_verify_locations(context->dtls.ctx, setup_data->ca_file, NULL)) {
+                coap_log(LOG_WARNING, "*** verify_certificate: TLS: %s: Unable to load verify locations\n", setup_data->ca_file);
+                return 0;
+            }
+        }
+
+        if (setup_data->public_cert && setup_data->public_cert[0]) {
+            if (0 == SSL_CTX_set_cipher_list(context->dtls.ctx, ciphers)){
+                coap_log(LOG_WARNING, "*** verify_certificate: Unable to set ciphers %s \n",  ciphers);
+                return 0;
+            }
+        }
+    }
+
+    if (context->tls.ctx) {
+        if (setup_data->ca_file) {
+            SSL_CTX_set_verify(context->tls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+            if (0 == SSL_CTX_load_verify_locations(context->tls.ctx, setup_data->ca_file, NULL)) {
+            coap_log(LOG_WARNING, "*** verify_certificate: TLS: %s: Unable to load verify locations\n", setup_data->ca_file);
+            return 0;
+            }
+        }
+        if (setup_data->public_cert && setup_data->public_cert[0]) {
+            if (0 == SSL_CTX_set_cipher_list(context->tls.ctx, ciphers)){
+                coap_log(LOG_WARNING, "*** verify_certificate: Unable to set ciphers %s \n",  ciphers);
+                return 0;
+            }
+        }
+    }
+    return 1;
 }

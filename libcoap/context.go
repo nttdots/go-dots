@@ -3,6 +3,7 @@ package libcoap
 /*
 #cgo LDFLAGS: -lcoap-1
 #include <coap/coap.h>
+#include "callback.h"
 */
 import "C"
 import "time"
@@ -69,7 +70,10 @@ func NewContextDtls(addr *Address, dtls *DtlsParam) *Context {
         if dtls.PrivateKeyFilename != nil {
             setupData.private_key = C.CString(*dtls.PrivateKeyFilename)
         }
-        ok := C.coap_dtls_context_set_pki(ptr, setupData)
+        ok := C.verify_certificate(ptr, setupData)
+        if ok == 1 {
+            ok = C.coap_dtls_context_set_pki(ptr, setupData)
+        }
 
         if ok == 1 {
             context := &Context{ ptr, nil, nil, setupData }
