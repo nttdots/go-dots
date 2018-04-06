@@ -90,7 +90,7 @@ int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t * setup_data) {
         if (setup_data->ca_file) {
             SSL_CTX_set_verify(context->dtls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
             if (0 == SSL_CTX_load_verify_locations(context->dtls.ctx, setup_data->ca_file, NULL)) {
-                coap_log(LOG_WARNING, "*** verify_certificate: TLS: %s: Unable to load verify locations\n", setup_data->ca_file);
+                coap_log(LOG_WARNING, "*** verify_certificate: DTLS: %s: Unable to load verify locations\n", setup_data->ca_file);
                 return 0;
             }
         }
@@ -107,8 +107,8 @@ int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t * setup_data) {
         if (setup_data->ca_file) {
             SSL_CTX_set_verify(context->tls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
             if (0 == SSL_CTX_load_verify_locations(context->tls.ctx, setup_data->ca_file, NULL)) {
-            coap_log(LOG_WARNING, "*** verify_certificate: TLS: %s: Unable to load verify locations\n", setup_data->ca_file);
-            return 0;
+                coap_log(LOG_WARNING, "*** verify_certificate: TLS: %s: Unable to load verify locations\n", setup_data->ca_file);
+                return 0;
             }
         }
         if (setup_data->public_cert && setup_data->public_cert[0]) {

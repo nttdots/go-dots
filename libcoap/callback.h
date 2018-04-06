@@ -22,12 +22,24 @@ void nack_handler(struct coap_context_t *,
                     coap_pdu_t *,
                     coap_nack_reason_t,
                     const coap_tid_t);
+/**
+ * Get peer common name (from certificate issuer names)
+ * @param session   The CoAP session
+ * @param buf       The return value
+ * @param buflen    The max length of the return value 
+ * @return          Return the index of the next matching entry -1 if not found
+ */
+int coap_dtls_get_peer_common_name(coap_session_t *session,
+                                    char *buf,
+                                    size_t buf_len);
 
-int coap_dtls_get_peer_common_name(coap_session_t *,
-                                    char *,
-                                    size_t);
-
-int verify_certificate(coap_context_t *, coap_dtls_pki_t *);
+/**
+ * Verify certificate data and set list of available ciphers for context
+ * @param ctx     The CoAP context
+ * @param setup_data  certificate data
+ * @return            Return 1 for success, 0 for failure
+ */
+int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t *setup_data);
 
 
 typedef struct coap_dtls_context_t {
