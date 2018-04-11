@@ -10,6 +10,9 @@ type Env struct {
     channel  chan Event
 
     requests map[string] *MessageTask
+    missing_hb_allowed int
+    current_missing_hb int
+    pingTask *PingTask
 }
 
 func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
@@ -18,14 +21,34 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         session,
         make(chan Event, 32),
         make(map[string] *MessageTask),
+        0,
+        0,
+        nil,
     }
 }
+
+func (env *Env) ReNewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
+    env.context = context
+    env.session = session
+    env.channel = make(chan Event, 32)
+    env.requests = make(map[string] *MessageTask)
+    env.current_missing_hb = 0
+    return env
+}
+
+func (env *Env) SetMissingHbAllowed(missing_hb_allowed int) {
+    env.missing_hb_allowed = missing_hb_allowed
+}
+
 
 func (env *Env) Run(task Task) {
     switch t := task.(type) {
     case *MessageTask:
         key := asMapKey(t.message)
         env.requests[key] = t
+
+    case *PingTask:
+        env.pingTask = t
     }
     go task.run(env.channel)
 }
@@ -41,6 +64,25 @@ func (env *Env) HandleResponse(pdu *libcoap.Pdu) {
         delete(env.requests, key)
         t.stop()
         t.responseHandler(t, pdu)
+        // Reset current_missing_hb
+	    env.current_missing_hb = 0
+    }
+}
+
+func (env *Env) HandleTimeout(sent *libcoap.Pdu) {
+    key := asMapKey(sent)
+    t, ok := env.requests[key]
+
+    if !ok {
+        log.Info("Unexpected PDU: %v", sent)
+    } else {
+        delete(env.requests, key)
+        t.stop()
+
+        // Couting to missing-hb
+        env.current_missing_hb = env.current_missing_hb + 1
+
+        t.timeoutHandler(t)
     }
 }
 
@@ -58,5 +100,18 @@ func (env *Env) EventChannel() chan Event {
 
 func asMapKey(pdu *libcoap.Pdu) string {
     // return fmt.Sprintf("%d[%x]", pdu.MessageID, pdu.Token)
-    return fmt.Sprintf("%x", pdu.Token)
+    // return fmt.Sprintf("%x", pdu.Token)
+    return fmt.Sprintf("%d", pdu.MessageID)
+}
+
+func (env *Env) IsHeartbeatAllowed () bool {
+    return env.current_missing_hb < env.missing_hb_allowed
+}
+
+func (env *Env) StopPing() {
+    env.pingTask.stop()
+}
+
+func (env *Env) CurrentMissingHb() int {
+    return env.current_missing_hb
 }

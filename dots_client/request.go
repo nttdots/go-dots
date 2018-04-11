@@ -143,7 +143,7 @@ func (r *Request) CreateRequest() {
 }
 
 func handleTimeout(task *task.MessageTask) {
-  log.Info("<<< handleTimeout >>>")
+	log.Info("<<< handleTimeout >>>")
 }
 
 /*

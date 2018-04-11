@@ -64,7 +64,7 @@ func init() {
 var signalChannelAddress string
 var dataChannelAddress string
 
-func connectSignalChannel() (env *task.Env, err error) {
+func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	var ctx *libcoap.Context
 	var sess *libcoap.Session
 	var addr libcoap.Address
@@ -110,14 +110,27 @@ func connectSignalChannel() (env *task.Env, err error) {
 			goto error
 		}
 	}
+	if (orgEnv == nil){
+		env = task.NewEnv(ctx, sess)
+	} else {
+		env = orgEnv.ReNewEnv(ctx, sess)
+	}
 
-	env = task.NewEnv(ctx, sess)
 	ctx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
 		env.HandleResponse(received)
 	})
 
-	ctx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu) {
-		env.HandleResponse(sent)
+	ctx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
+		if (reason == libcoap.NackRst){
+			// Pong message
+			env.HandleResponse(sent)
+		} else if (reason == libcoap.NackTooManyRetries){
+			// Ping timeout
+			env.HandleTimeout(sent)
+		} else {
+			// Unsupported type
+			log.Infof("nack_handler gets fired with unsupported reason type : %+v.", reason)
+		}
 	})
 	return
 
@@ -260,8 +273,52 @@ func pingResponseHandler(_ *task.PingTask, pdu *libcoap.Pdu) {
 	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("Ping Ack")
 }
 
-func pingTimeoutHandler(*task.PingTask) {
-	log.Info("Ping Timeout")
+func pingTimeoutHandler(_ *task.PingTask, env *task.Env) {
+	log.Info("Ping Timeout #", env.CurrentMissingHb())
+
+	if !env.IsHeartbeatAllowed() {
+		log.Debug("Exceeded missing_hb_allowed. Stop ping task...")
+		env.StopPing()
+
+		restartConnection(env)
+		env.Run(task.NewPingTask(
+			time.Duration(config.HeartbeatInterval) * time.Second,
+			pingResponseHandler,
+			pingTimeoutHandler))
+	}
+}
+
+func restartConnection (env *task.Env) {
+	log.Debug("Restart connection to server...")
+	cleanupSignalChannel(env.CoapContext(), env.CoapSession())
+	_,err := connectSignalChannel(env)
+	if err != nil {
+		log.WithError(err).Errorf("connectSignalChannel() failed")
+		os.Exit(1)
+	}
+
+	log.Debug("Restarted connection successfully.")
+}
+
+type SignalConfiguration struct {
+	HeartbeatInterval int
+	MissingHbAllowed  int
+	MaxRetransmit     int
+	AckTimeout        int
+	AckRandomFactor   float64
+	TriggerMitigation bool
+}
+
+var config SignalConfiguration
+
+/**
+* Load config file
+* 
+*/
+func loadConfig(env *task.Env) {
+	config = SignalConfiguration {HeartbeatInterval:5, MissingHbAllowed:5}
+	env.SetMissingHbAllowed(config.MissingHbAllowed)
+	return
 }
 
 func main() {
@@ -298,7 +355,7 @@ func main() {
 		exists(filePath)
 	}
 
-	env, err := connectSignalChannel()
+	env, err := connectSignalChannel(nil)
 	if err != nil {
 		log.WithError(err).Errorf("connectSignalChannel() failed")
 		os.Exit(1)
@@ -334,8 +391,10 @@ func main() {
 	srv := &http.Server{Handler: nil, ConnState: connectionStateChange}
 	go srv.Serve(l)
 
+	// Load session configuration
+	loadConfig(env)
 	env.Run(task.NewPingTask(
-		time.Duration(30) * time.Second,
+		time.Duration(config.HeartbeatInterval) * time.Second,
 		pingResponseHandler,
 		pingTimeoutHandler))
 loop:

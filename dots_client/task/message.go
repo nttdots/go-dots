@@ -59,9 +59,9 @@ func (t *MessageTask) run(out chan Event) {
     select {
     case <- t.stopChan:
         return
-    case <- timeout:
-        out <- &TimeoutEvent{ EventBase{ t } }
-        t.stop()
+    // case <- timeout:
+    //     out <- &TimeoutEvent{ EventBase{ t } }
+    //     t.stop()
     }
 }
 

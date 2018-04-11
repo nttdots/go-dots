@@ -11,7 +11,15 @@ import "unsafe"
 
 type ResponseHandler func(*Context, *Session, *Pdu, *Pdu)
 
-type NackHandler func(*Context, *Session, *Pdu)
+type NackHandler func(*Context, *Session, *Pdu, NackReason)
+
+type NackReason C.coap_nack_reason_t
+const (
+    NackTooManyRetries NackReason = C.COAP_NACK_TOO_MANY_RETRIES
+    NackNotDeliverable NackReason = C.COAP_NACK_NOT_DELIVERABLE
+    NackRst NackReason = C.COAP_NACK_RST
+    NackTlsFailed NackReason = C.COAP_NACK_TLS_FAILED
+)
 
 type Proto C.coap_proto_t
 const (
@@ -145,8 +153,9 @@ func export_nack_handler(ctx *C.coap_context_t,
 		return
 	}
 
-	if context.nackHandler != nil && reason == C.COAP_NACK_RST && req.Type == C.COAP_MESSAGE_CON && req.Code == 0 {
-		context.nackHandler(context, session, req)
+    // If previous message is Ping message
+	if context.nackHandler != nil && req.Type == C.COAP_MESSAGE_CON && req.Code == 0 {
+		context.nackHandler(context, session, req, NackReason(reason))
 	}
 }
 
