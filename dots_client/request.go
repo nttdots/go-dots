@@ -146,6 +146,7 @@ func handleTimeout(task *task.MessageTask) {
 	log.Info("<<< handleTimeout >>>")
 }
 
+
 /*
  * Send the request to the server.
 */
@@ -157,6 +158,9 @@ func (r *Request) Send() {
 		time.Duration(10) * time.Second,
 		func (_ *task.MessageTask, response *libcoap.Pdu) {
 			r.logMessage(response)
+			if r.requestName == "session_configuration" && r.method == "GET" {
+				r.RestartPingTask(response)
+			}
 		},
 		handleTimeout)
 
@@ -210,4 +214,27 @@ func (r *Request) logMessage(pdu *libcoap.Pdu) {
 		return
 	}
 	log.Infof("        CBOR decoded: %s", logStr)
+}
+
+func (r *Request) RestartPingTask(pdu *libcoap.Pdu) {
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
+	var v messages.ConfigurationResponse
+	err := dec.Decode(&v)
+	heartbeatInterval := v.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue
+	missingHbAllowed := v.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue
+	// maxRetransmit := v.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue
+	// ackTimeout := v.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue
+	// ackRandomFactor := v.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue
+
+	if err != nil {
+		log.WithError(err).Warn("CBOR Decode failed.")
+		return
+	}
+	log.Debug("Got new session configuration data. Restart ping task...")
+	r.env.StopPing()
+	r.env.SetMissingHbAllowed(missingHbAllowed)
+	r.env.Run(task.NewPingTask(
+			time.Duration(heartbeatInterval) * time.Second,
+			pingResponseHandler,
+			pingTimeoutHandler))
 }

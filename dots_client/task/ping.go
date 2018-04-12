@@ -35,7 +35,7 @@ func (t *PingTask) run(out chan Event) {
     for {
         select {
         case <- t.stopChan:{
-            log.Debug("Ping task ended.")
+            log.Debug("Current ping task ended.")
             return
         }
         case <- time.After(t.interval):
@@ -79,4 +79,8 @@ func (e *PingEvent) Handle(env *Env) {
     env.Run(newTask)
     pingTask.current_ping_id = fmt.Sprintf("%d", newTask.message.MessageID)
     log.Debugf ("Sent new ping message (id = %+v)", pingTask.current_ping_id )
+}
+
+func (t * PingTask) IsRunnable() bool {
+    return t.interval > 0
 }

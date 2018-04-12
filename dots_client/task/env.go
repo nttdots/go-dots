@@ -3,6 +3,7 @@ package task
 import "fmt"
 import "github.com/nttdots/go-dots/libcoap"
 import log "github.com/sirupsen/logrus"
+import "reflect"
 
 type Env struct {
     context  *libcoap.Context
@@ -33,6 +34,7 @@ func (env *Env) ReNewEnv(context *libcoap.Context, session *libcoap.Session) *En
     env.channel = make(chan Event, 32)
     env.requests = make(map[string] *MessageTask)
     env.current_missing_hb = 0
+    env.pingTask = nil
     return env
 }
 
@@ -42,6 +44,11 @@ func (env *Env) SetMissingHbAllowed(missing_hb_allowed int) {
 
 
 func (env *Env) Run(task Task) {
+    if (reflect.TypeOf(task) == reflect.TypeOf(&PingTask{})) && (!task.(*PingTask).IsRunnable()) {
+        log.Debug("Ping task is disabled. Do not start ping task.")
+        return
+    }
+
     switch t := task.(type) {
     case *MessageTask:
         key := asMapKey(t.message)

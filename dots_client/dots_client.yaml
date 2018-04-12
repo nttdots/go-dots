@@ -1,0 +1,5 @@
+heartbeatInterval: 40
+missingHbAllowed: 5
+maxRetransmit: 3
+ackTimeout: 2
+ackRandomFactor: 1.5

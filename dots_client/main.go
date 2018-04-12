@@ -20,6 +20,7 @@ import (
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_client/task"
 	"github.com/nttdots/go-dots/libcoap"
+	dots_config "github.com/nttdots/go-dots/dots_client/config"
 )
 
 const (
@@ -38,6 +39,8 @@ var (
 
 	identity          string
 	psk               string
+	configFile        string
+	defaultConfigFile = "dots_client.yaml"
 )
 
 func init() {
@@ -58,6 +61,8 @@ func init() {
 
 	flag.StringVar(&identity, "identity", "", "identity for DTLS PSK")
 	flag.StringVar(&psk, "psk", "", "DTLS PSK")
+
+	flag.StringVar(&configFile, "config", defaultConfigFile, "config yaml file")
 }
 
 // These variables hold the server connection configurations.
@@ -300,25 +305,20 @@ func restartConnection (env *task.Env) {
 	log.Debug("Restarted connection successfully.")
 }
 
-type SignalConfiguration struct {
-	HeartbeatInterval int
-	MissingHbAllowed  int
-	MaxRetransmit     int
-	AckTimeout        int
-	AckRandomFactor   float64
-	TriggerMitigation bool
-}
-
-var config SignalConfiguration
+var config dots_config.SignalConfiguration
 
 /**
 * Load config file
 * 
 */
-func loadConfig(env *task.Env) {
-	config = SignalConfiguration {HeartbeatInterval:5, MissingHbAllowed:5}
+func loadConfig(env *task.Env) error{
+	var err error
+	config,err = dots_config.LoadClientConfig(configFile)
+	if err != nil {
+		return err
+	}
 	env.SetMissingHbAllowed(config.MissingHbAllowed)
-	return
+	return nil
 }
 
 func main() {
@@ -392,11 +392,21 @@ func main() {
 	go srv.Serve(l)
 
 	// Load session configuration
-	loadConfig(env)
+	errConf := loadConfig(env)
+	if errConf != nil {
+		return
+	}
 	env.Run(task.NewPingTask(
 		time.Duration(config.HeartbeatInterval) * time.Second,
 		pingResponseHandler,
 		pingTimeoutHandler))
+
+	//Send Delete (without sid)
+	log.Debug("Send a DELETE request to set the configuration parameters to default values.")
+	sendRequest(nil, "session_configuration", "DELETE", nil, env)
+	//Send Get (without sid)
+	log.Debug("Send GET to retrieve the configuration parameters.")
+	sendRequest(nil, "session_configuration", "GET", nil, env)
 loop:
 	for {
 		select {
