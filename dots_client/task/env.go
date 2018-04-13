@@ -1,9 +1,12 @@
 package task
 
-import "fmt"
-import "github.com/nttdots/go-dots/libcoap"
-import log "github.com/sirupsen/logrus"
-import "reflect"
+import (
+	"github.com/shopspring/decimal"
+	"fmt"
+	"github.com/nttdots/go-dots/libcoap"
+	log "github.com/sirupsen/logrus"
+	"reflect"
+)
 
 type Env struct {
     context  *libcoap.Context
@@ -28,7 +31,7 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
     }
 }
 
-func (env *Env) ReNewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
+func (env *Env) RenewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
     env.context = context
     env.session = session
     env.channel = make(chan Event, 32)
@@ -36,6 +39,12 @@ func (env *Env) ReNewEnv(context *libcoap.Context, session *libcoap.Session) *En
     env.current_missing_hb = 0
     env.pingTask = nil
     return env
+}
+
+func (env *Env) SetRetransmitParams(maxRetransmit int, ackTimeout int, ackRandomFactor decimal.Decimal){
+    env.session.SetMaxRetransmit(maxRetransmit)
+    env.session.SetAckTimeout(ackTimeout)
+    env.session.SetAckRandomFactor(ackRandomFactor)
 }
 
 func (env *Env) SetMissingHbAllowed(missing_hb_allowed int) {

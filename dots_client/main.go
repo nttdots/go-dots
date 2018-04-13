@@ -118,7 +118,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	if (orgEnv == nil){
 		env = task.NewEnv(ctx, sess)
 	} else {
-		env = orgEnv.ReNewEnv(ctx, sess)
+		env = orgEnv.RenewEnv(ctx, sess)
 	}
 
 	ctx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
@@ -305,7 +305,7 @@ func restartConnection (env *task.Env) {
 	log.Debug("Restarted connection successfully.")
 }
 
-var config dots_config.SignalConfiguration
+var config *dots_config.SignalConfiguration
 
 /**
 * Load config file
@@ -317,6 +317,8 @@ func loadConfig(env *task.Env) error{
 	if err != nil {
 		return err
 	}
+	log.Debugf("dots client starting with config: %# v", config)
+
 	env.SetMissingHbAllowed(config.MissingHbAllowed)
 	return nil
 }

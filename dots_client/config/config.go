@@ -3,7 +3,7 @@ package config
 import (
 	"io/ioutil"
 	"gopkg.in/yaml.v2"
-	"fmt"
+	log "github.com/sirupsen/logrus"
 )
 
 type SignalConfiguration struct {
@@ -15,16 +15,20 @@ type SignalConfiguration struct {
 	TriggerMitigation bool
 }
 
-// Load client config 
-func LoadClientConfig(path string) (SignalConfiguration, error) {
+/**
+* Load client config
+*/
+func LoadClientConfig(path string) (*SignalConfiguration, error) {
     var configText SignalConfiguration
 	yamlFile, err := ioutil.ReadFile(path)
     if err != nil {
-        fmt.Println("yamlFile.Get err   #%v ", err)
+        log.Errorf("yamlFile.Get err: %v ", err)
+        return nil, err
 	}
     err = yaml.Unmarshal(yamlFile, &configText)
     if err != nil {
-        fmt.Println("Unmarshal: %v", err)
+        log.Errorf("Unmarshal: %v", err)
+        return nil, err
 	}
-	return configText, nil
+	return &configText, nil
 }

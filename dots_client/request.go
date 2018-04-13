@@ -158,7 +158,9 @@ func (r *Request) Send() {
 		time.Duration(10) * time.Second,
 		func (_ *task.MessageTask, response *libcoap.Pdu) {
 			r.logMessage(response)
-			if r.requestName == "session_configuration" && r.method == "GET" {
+			// If this is response of session config Get without abnormal, restart ping task with latest parameters
+			if (r.requestName == "session_configuration") && (r.method == "GET") && 
+				(response.Code == libcoap.ResponseContent) {
 				r.RestartPingTask(response)
 			}
 		},
@@ -220,17 +222,21 @@ func (r *Request) RestartPingTask(pdu *libcoap.Pdu) {
 	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 	var v messages.ConfigurationResponse
 	err := dec.Decode(&v)
-	heartbeatInterval := v.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue
-	missingHbAllowed := v.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue
-	// maxRetransmit := v.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue
-	// ackTimeout := v.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue
-	// ackRandomFactor := v.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue
-
 	if err != nil {
 		log.WithError(err).Warn("CBOR Decode failed.")
 		return
 	}
-	log.Debug("Got new session configuration data. Restart ping task...")
+
+	heartbeatInterval := v.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue
+	missingHbAllowed := v.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue
+	maxRetransmit := v.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue
+	ackTimeout := v.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue
+	ackRandomFactor := v.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue.Round(2)
+
+	log.Debugf("Got session configuration data from server. Restart ping task with heatbeat-interval=%v, missing-hb-allowed=%v...", heartbeatInterval, missingHbAllowed)
+	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
+	r.env.SetRetransmitParams(maxRetransmit, ackTimeout, ackRandomFactor)
+	
 	r.env.StopPing()
 	r.env.SetMissingHbAllowed(missingHbAllowed)
 	r.env.Run(task.NewPingTask(

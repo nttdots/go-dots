@@ -1,4 +1,4 @@
-heartbeatInterval: 40
+heartbeatInterval: 30
 missingHbAllowed: 5
 maxRetransmit: 3
 ackTimeout: 2
