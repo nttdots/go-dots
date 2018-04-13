@@ -79,8 +79,8 @@ func register(code Code, role Role, coapType coap.COAPType, libcoapType libcoap.
  * Register supported message types to the message map.
  */
 func init() {
-	register(MITIGATION_REQUEST, REQUEST, coap.Confirmable, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/v1/mitigate", MitigationRequest{})
-	register(SESSION_CONFIGURATION, REQUEST, coap.Confirmable, libcoap.TypeNon, SIGNAL, "session_configuration", ".well-known/dots/v1/config", SignalConfigRequest{})
+	register(MITIGATION_REQUEST, REQUEST, coap.NonConfirmable, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/v1/mitigate", MitigationRequest{})
+	register(SESSION_CONFIGURATION, REQUEST, coap.Confirmable, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/v1/config", SignalConfigRequest{})
 
 	register(CREATE_IDENTIFIERS, REQUEST, coap.NonConfirmable, libcoap.TypeNon, DATA, "create_identifiers", ".well-known/v1/dots-data/create_identifiers", CreateIdentifier{})
 	register(INSTALL_FILTERING_RULE, REQUEST, coap.NonConfirmable, libcoap.TypeNon, DATA, "install_filtering_rule", ".well-known/v1/dots-data/install_filtering_rule", InstallFilteringRule{})
