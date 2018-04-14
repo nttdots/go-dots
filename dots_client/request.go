@@ -153,9 +153,9 @@ func handleTimeout(task *task.MessageTask) {
 func (r *Request) Send() {
 	task := task.NewMessageTask(
 		r.pdu,
-		time.Duration(2) * time.Second,
-		2,
-		time.Duration(10) * time.Second,
+		time.Duration(0) * time.Second,
+		0,
+		time.Duration(0) * time.Second,
 		func (_ *task.MessageTask, response *libcoap.Pdu) {
 			r.logMessage(response)
 			// If this is response of session config Get without abnormal, restart ping task with latest parameters

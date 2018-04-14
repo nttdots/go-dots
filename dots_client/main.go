@@ -404,7 +404,7 @@ func main() {
 		pingTimeoutHandler))
 
 	//Send Delete (without sid)
-	log.Debug("Send a DELETE request to set the configuration parameters to default values.")
+	log.Debug("Send DELETE request to set the configuration parameters to default values.")
 	sendRequest(nil, "session_configuration", "DELETE", nil, env)
 	//Send Get (without sid)
 	log.Debug("Send GET to retrieve the configuration parameters.")
