@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/shopspring/decimal"
 	"bytes"
 	"errors"
 	"flag"
@@ -320,6 +321,8 @@ func loadConfig(env *task.Env) error{
 	log.Debugf("dots client starting with config: %# v", config)
 
 	env.SetMissingHbAllowed(config.MissingHbAllowed)
+	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
+	env.SetRetransmitParams(config.MaxRetransmit, config.AckTimeout, decimal.NewFromFloat(config.AckRandomFactor).Round(2))
 	return nil
 }
 
