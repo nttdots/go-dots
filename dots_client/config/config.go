@@ -13,6 +13,7 @@ type SignalConfiguration struct {
 	AckTimeout        int `yaml:"ackTimeout"`
 	AckRandomFactor   float64 `yaml:"ackRandomFactor"`
 	TriggerMitigation bool
+	TimeSleep		  int  `yaml:"timeSleep"`
 }
 
 /**

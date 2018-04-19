@@ -399,6 +399,7 @@ func main() {
 	// Load session configuration
 	errConf := loadConfig(env)
 	if errConf != nil {
+		log.Error("Load client config data error.")
 		return
 	}
 	env.Run(task.NewPingTask(
@@ -409,6 +410,9 @@ func main() {
 	//Send Delete (without sid)
 	log.Debug("Send DELETE request to set the configuration parameters to default values.")
 	sendRequest(nil, "session_configuration", "DELETE", nil, env)
+	//Delay time between Delete request and Get request
+	log.Debugf("Delay time between Delete request and Get request: %dms",config.TimeSleep)
+	time.Sleep(time.Duration(config.TimeSleep) * time.Millisecond)
 	//Send Get (without sid)
 	log.Debug("Send GET to retrieve the configuration parameters.")
 	sendRequest(nil, "session_configuration", "GET", nil, env)

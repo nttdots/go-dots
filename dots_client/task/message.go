@@ -2,6 +2,7 @@ package task
 
 import "time"
 import "github.com/nttdots/go-dots/libcoap"
+import log "github.com/sirupsen/logrus"
 
 type ResponseHandler func(*MessageTask, *libcoap.Pdu)
 type TimeoutHandler  func(*MessageTask)
@@ -56,12 +57,20 @@ func (t *MessageTask) run(out chan Event) {
         }
     }
 
-    select {
-    case <- t.stopChan:
-        return
-    // case <- timeout:
-    //     out <- &TimeoutEvent{ EventBase{ t } }
-    //     t.stop()
+    if t.message.Type == libcoap.TypeNon {
+        select {
+        case <- t.stopChan:
+            return
+        case <- timeout:
+            log.Debug("Mitigation request timeout")
+            out <- &TimeoutEvent{ EventBase{ t } }
+            t.stop()
+        }
+    }else {
+        select {
+        case <- t.stopChan:
+            return
+        }
     }
 }
 
