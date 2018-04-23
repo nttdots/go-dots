@@ -5,6 +5,15 @@ system:
     maxRetransmit: 3-10
     ackTimeout: 30-120
     ackRandomFactor: 0-8888
+
+  # Default current values of session configuration
+  defaultSignalConfiguration:
+    heartbeatInterval: 30
+    missingHbAllowed: 5
+    maxRetransmit: 3
+    ackTimeout: 2
+    ackRandomFactor: 1.5
+
   secureFile:
     serverCertFile: ../certs/server-cert.pem
     serverKeyFile: ../certs/server-key.pem
