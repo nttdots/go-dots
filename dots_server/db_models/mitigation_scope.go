@@ -8,6 +8,7 @@ type MitigationScope struct {
 	ClientIdentifier string    `xorm:"'client_identifier'"`
 	ClientDomainIdentifier string `xorm:"'client_domain_identifier'"`
 	MitigationId     int       `xorm:"'mitigation_id'"`
+	Status			 int	   `xorm:"'status'"`
 	Lifetime         int       `xorm:"'lifetime'"`
 	Created          time.Time `xorm:"created"`
 	Updated          time.Time `xorm:"updated"`

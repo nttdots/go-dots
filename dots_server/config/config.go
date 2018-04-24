@@ -49,6 +49,8 @@ type DefaultSignalConfigurationNode struct {
 }
 
 type LifetimeConfigurationNode struct {
+	ActiveButTerminatingPeriod    string `yaml:"activeButTerminatingPeriod"`
+	MaxActiveButTerminatingPeriod string `yaml:"maxActiveButTerminatingPeriod"`
 	ManageLifetimeInterval        string `yaml:"manageLifetimeInterval"`
 }
 
@@ -74,6 +76,8 @@ func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 
 func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
 	return &LifetimeConfiguration{
+		ActiveButTerminatingPeriod:    parseIntegerValue(lcn.ActiveButTerminatingPeriod),
+		MaxActiveButTerminatingPeriod: parseIntegerValue(lcn.MaxActiveButTerminatingPeriod),
 		ManageLifetimeInterval:        parseIntegerValue(lcn.ManageLifetimeInterval),
 	}, nil
 }
@@ -498,6 +502,8 @@ type DefaultSignalConfiguration struct {
 }
 
 type LifetimeConfiguration struct {
+	ActiveButTerminatingPeriod     int
+	MaxActiveButTerminatingPeriod  int
 	ManageLifetimeInterval	       int
 }
 

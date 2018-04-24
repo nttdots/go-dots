@@ -58,6 +58,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		MitigationId:     mitigationScope.MitigationId,
 		Lifetime:         mitigationScope.Lifetime,
 	}
+	newMitigationScope.Status = 1
 	_, err = session.Insert(&newMitigationScope)
 	if err != nil {
 		session.Rollback()
@@ -150,6 +151,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	// for mitigation_scope
 	updMitigationScope := db_models.MitigationScope{
 		Lifetime: mitigationScope.Lifetime,
+		Status:   mitigationScope.Status,
 	}
 	_, err = session.Id(dbMitigationScope.Id).Update(&updMitigationScope)
 	if err != nil {
@@ -437,6 +439,7 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	// Get mitigationId and ClientDomainIdentifier
 	mitigationScope.MitigationId = dbMitigationScope.MitigationId
 	mitigationScope.ClientDomainIdentifier = dbMitigationScope.ClientDomainIdentifier
+	mitigationScope.Status = dbMitigationScope.Status
 
 	// Calculate the remaining lifetime
 	currentTime := time.Now()

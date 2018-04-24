@@ -11,6 +11,7 @@ import (
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
+	dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
 
 /*
@@ -77,7 +78,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			MitigationId: mp.mitigation.MitigationId,
 			MitigationStart: float64(startedAt),
 			Lifetime: mp.mitigation.Lifetime,
-			Status: 2,        // Just dummy for interop
+			Status: mp.mitigation.Status,
 			BytesDropped: 0,  // Just dummy for interop
 			BpsDropped: 0,    // Just dummy for interop
 			PktsDropped: 0,   // Just dummy for interop
@@ -230,6 +231,10 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		} else  {
 
 			// Update
+			config := dots_config.GetServerSystemConfig().LifetimeConfiguration
+			if currentScope.Status == 5 {
+				body.MitigationScope.Scopes[0].Lifetime = config.MaxActiveButTerminatingPeriod
+			}
 
 			// Cannot rollback :P
 			err = cancelMitigationByModel(currentScope, body.EffectiveClientIdentifier(), customer)
@@ -282,9 +287,34 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		return
 	}
 
-	// Delete Mitigation
-	DeleteMitigation(customer.Id, cuid, mid)
+	var mitigationScope *models.MitigationScope
+	mitigationScope, err = models.GetMitigationScope(customer.Id, cuid, mid)
+	if err != nil {
+		log.WithError(err).Error("MitigationScope load error.")
+		return Response{}, err
+	}
 
+	if mitigationScope == nil || mitigationScope.MitigationId == 0 {
+		goto Response
+	}
+
+	if mitigationScope.Status <= 3 && mitigationScope.Lifetime != 0 {
+		config := dots_config.GetServerSystemConfig().LifetimeConfiguration
+
+		mitigationScope.Lifetime = config.ActiveButTerminatingPeriod
+		mitigationScope.Status = 5
+
+		err = models.UpdateMitigationScope(*mitigationScope, *customer)
+		if err != nil {
+			log.WithError(err).Error("MitigationScope update error.")
+			return Response{}, err
+		}
+	} else {
+		// Delete Mitigation
+		DeleteMitigation(customer.Id, cuid, mid)
+	}
+
+Response:
 	res = Response{
 		Type: common.NonConfirmable,
 		Code: common.Deleted,
@@ -672,6 +702,24 @@ func CreateMitigation (body *messages.MitigationRequest, customer *models.Custom
 	if err != nil {
 		log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
 		return
+	}
+
+	// Set Status to InProgress
+	if currentScope == nil {
+		currentScope, err = models.GetMitigationScope(customer.Id, body.MitigationScope.Scopes[0].ClientIdentifier,
+			body.MitigationScope.Scopes[0].MitigationId)
+		if err != nil {
+			log.WithError(err).Error("MitigationScope load error.")
+			return
+		}
+
+		currentScope.Status = 2
+
+		err = models.UpdateMitigationScope(*currentScope, *customer)
+		if err != nil {
+			log.WithError(err).Error("MitigationScope update error.")
+			return
+		}
 	}
 }
 

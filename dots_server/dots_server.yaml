@@ -32,4 +32,6 @@ system:
     databaseName: dots
 
   lifetimeConfiguration:
+    activeButTerminatingPeriod: 120
+    maxActiveButTerminatingPeriod: 300
     manageLifetimeInterval: 100

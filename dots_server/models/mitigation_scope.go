@@ -39,6 +39,7 @@ type MitigationScope struct {
 	URI              SetString
 	AliasName        SetString
 	Lifetime         int
+	Status			 int
 	TargetIP         []Prefix
 	TargetPrefix     []Prefix
 	TargetPortRange  []PortRange
@@ -54,6 +55,7 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 		NewSetString(),
 		NewSetString(),
 		NewSetString(),
+		0,
 		0,
 		make([]Prefix, 0),
 		make([]Prefix, 0),
