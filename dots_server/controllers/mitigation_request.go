@@ -232,7 +232,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 			// Update
 			config := dots_config.GetServerSystemConfig().LifetimeConfiguration
-			if currentScope.Status == 5 {
+			if currentScope.Status == models.ActiveButTerminating {
 				body.MitigationScope.Scopes[0].Lifetime = config.MaxActiveButTerminatingPeriod
 			}
 
@@ -302,7 +302,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		config := dots_config.GetServerSystemConfig().LifetimeConfiguration
 
 		mitigationScope.Lifetime = config.ActiveButTerminatingPeriod
-		mitigationScope.Status = 5
+		mitigationScope.Status = models.ActiveButTerminating
 
 		err = models.UpdateMitigationScope(*mitigationScope, *customer)
 		if err != nil {
@@ -713,7 +713,7 @@ func CreateMitigation (body *messages.MitigationRequest, customer *models.Custom
 			return
 		}
 
-		currentScope.Status = 2
+		currentScope.Status = models.SuccessfullyMitigated
 
 		err = models.UpdateMitigationScope(*currentScope, *customer)
 		if err != nil {

@@ -29,3 +29,11 @@ system:
     host: db
     port: 3306
     databaseName: dots
+
+  lifetimeConfiguration:
+    # The active-but-terminating period in case client withdraws a mitigation request
+    activeButTerminatingPeriod: 120
+    # If the client requests the active-but-terminating mitigation again, the DOTS server may exponentially increase the active-but-terminating period
+    maxActiveButTerminatingPeriod: 300
+    # The lifetime interval to manage expired mitigation request
+    manageLifetimeInterval: 100

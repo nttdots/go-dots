@@ -58,7 +58,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		MitigationId:     mitigationScope.MitigationId,
 		Lifetime:         mitigationScope.Lifetime,
 	}
-	newMitigationScope.Status = 1
+	newMitigationScope.Status = InProgress
 	_, err = session.Insert(&newMitigationScope)
 	if err != nil {
 		session.Rollback()

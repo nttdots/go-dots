@@ -32,6 +32,17 @@ func NewPortRange(lower_port int, upper_port int) PortRange {
 	return PortRange{lower_port, upper_port}
 }
 
+const (
+	InProgress             int = 1
+	SuccessfullyMitigated  int = 2
+	Stopped                int = 3
+	ExceedCapability       int = 4
+	ActiveButTerminating   int = 5
+	Terminated             int = 6
+	Withdrawn              int = 7
+	Rejected               int = 8
+)
+
 type MitigationScope struct {
 	MitigationId     int
 	TargetProtocol   SetInt
