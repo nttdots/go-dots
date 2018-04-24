@@ -9,6 +9,7 @@ import (
 	common "github.com/nttdots/go-dots/dots_common"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/libcoap"
+	"github.com/nttdots/go-dots/dots_server/controllers"
 )
 
 var (
@@ -41,6 +42,9 @@ func main() {
 		&config.SecureFile.ServerCertFile,
 		&config.SecureFile.ServerKeyFile,
 	}
+
+	// Manage Active Mitigation Request
+	go controllers.ManageExpiredMitigation(config.LifetimeConfiguration.ManageLifetimeInterval)
 
 	log.Debug("listen Signal with DTLS param: %# v", dtlsParam)
 	signalCtx, err := listenSignal(config.Network.BindAddress, uint16(config.Network.SignalChannelPort), &dtlsParam)

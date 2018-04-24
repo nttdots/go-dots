@@ -4,6 +4,7 @@ import (
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
+	"time"
 )
 
 /*
@@ -97,6 +98,10 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	// add Commit() after all actions
 	err = session.Commit()
 
+	// Add Active Mitigation to ManageList
+	AddActiveMitigationRequest(newMitigationScope.CustomerId, newMitigationScope.ClientIdentifier, newMitigationScope.ClientDomainIdentifier,
+		newMitigationScope.MitigationId, newMitigationScope.Lifetime, newMitigationScope.Created)
+
 	return
 }
 
@@ -146,7 +151,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	updMitigationScope := db_models.MitigationScope{
 		Lifetime: mitigationScope.Lifetime,
 	}
-	_, err = session.Id(dbMitigationScope.Id).Update(updMitigationScope)
+	_, err = session.Id(dbMitigationScope.Id).Update(&updMitigationScope)
 	if err != nil {
 		session.Rollback()
 		log.Errorf("mitigationScope update err: %s", err)
@@ -191,6 +196,10 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 
 	// add Commit() after all actions
 	err = session.Commit()
+
+	// Update Active Mitigation to ManageList
+	AddActiveMitigationRequest(dbMitigationScope.CustomerId, dbMitigationScope.ClientIdentifier, dbMitigationScope.ClientDomainIdentifier,
+		dbMitigationScope.MitigationId, updMitigationScope.Lifetime, updMitigationScope.Updated)
 
 	return
 }
@@ -425,10 +434,18 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	// default value setting
 	mitigationScope = NewMitigationScope(&customer, clientIdentifier)
 
-	// Get mitigationId and Lifetime
+	// Get mitigationId and ClientDomainIdentifier
 	mitigationScope.MitigationId = dbMitigationScope.MitigationId
-	mitigationScope.Lifetime = dbMitigationScope.Lifetime
 	mitigationScope.ClientDomainIdentifier = dbMitigationScope.ClientDomainIdentifier
+
+	// Calculate the remaining lifetime
+	currentTime := time.Now()
+	remainingLifetime := dbMitigationScope.Lifetime - int(currentTime.Sub(dbMitigationScope.Updated).Seconds())
+	if remainingLifetime > 0 {
+		mitigationScope.Lifetime = remainingLifetime
+	} else {
+		mitigationScope.Lifetime = 0
+	}
 
 	// Get FQDN data
 	dbParameterValueFqdnList := []db_models.ParameterValue{}
@@ -596,6 +613,35 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 
 	session.Commit()
 
+	// Remove Active Mitigation from ManageList
+	RemoveActiveMitigationRequest(customerId, clientIdentifier, mitigationId)
+
 	return
 
+}
+
+/*
+ * Get all mitigationScope.
+ *
+ * parameter:
+ * return:
+ *  mitigations list of mitigation request
+ *  err error
+ */
+ func GetAllMitigationScopes() (mitigations []db_models.MitigationScope, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+
+	// Get customer table data
+	err = engine.Table("mitigation_scope").Find(&mitigations)
+	if err != nil {
+		log.Printf("Get mitigations error: %s\n", err)
+		return
+	}
+
+	return
 }

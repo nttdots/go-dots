@@ -30,3 +30,6 @@ system:
     host: localhost
     port: 3306
     databaseName: dots
+
+  lifetimeConfiguration:
+    manageLifetimeInterval: 100

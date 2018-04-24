@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
@@ -59,9 +60,13 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	var cdidInDB string
 
 	for _, mp := range mpp {
-		id := mp.mitigation.MitigationId
-		lifetime := mp.mitigation.Lifetime
 		cdidInDB = mp.mitigation.ClientDomainIdentifier
+
+		// Check expired mitigation
+		if mp.mitigation.Lifetime == 0 {
+			DeleteMitigation(mp.mitigation.Customer.Id, mp.mitigation.ClientIdentifier, mp.mitigation.MitigationId)
+			continue
+		}
 
 		var startedAt int64
 		log.WithField("protection", mp.protection).Debug("Protection: ")
@@ -69,9 +74,9 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			startedAt = mp.protection.StartedAt().Unix()
 		}
 		scopeStates := messages.ScopeStatus {
-			MitigationId: id,
+			MitigationId: mp.mitigation.MitigationId,
 			MitigationStart: float64(startedAt),
-			Lifetime: lifetime,
+			Lifetime: mp.mitigation.Lifetime,
 			Status: 2,        // Just dummy for interop
 			BytesDropped: 0,  // Just dummy for interop
 			BpsDropped: 0,    // Just dummy for interop
@@ -179,6 +184,18 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 	} else {
 
+		// Lifetime is required in body
+		lifetime := body.MitigationScope.Scopes[0].Lifetime
+		if lifetime <= 0 {
+			log.Errorf("Lifetime value is not allowed.")
+			res = Response{
+				Type: common.NonConfirmable,
+				Code: common.BadRequest,
+				Body: nil,
+			}
+			return
+		}
+
 		// Update cuid, mid to body
 		body.UpdateClientIdentifier(cuid)
 		body.UpdateClientDomainIdentifier(cdid)
@@ -191,21 +208,17 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			return Response{}, err
 		}
 
+		//TODO: Check Collision: same 'mid' but dif 'cuid'
+
+		// Check expired mitigation
+		if currentScope != nil && currentScope.Lifetime == 0 {
+			DeleteMitigation(currentScope.Customer.Id, currentScope.ClientIdentifier, currentScope.MitigationId)
+			currentScope = nil
+		}
+
 		if currentScope == nil || currentScope.MitigationId == 0 {
 
-			// Create New
-
-			err = createMitigationScope(body, customer)
-			if err != nil {
-				log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
-				return
-			}
-
-			err = callBlocker(body, customer)
-			if err != nil {
-				log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
-				return
-			}
+			CreateMitigation(body, customer, nil)
 
 			// return status
 			res = Response{
@@ -225,17 +238,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				return
 			}
 
-			err = createMitigationScope(body, customer)
-			if err != nil {
-				log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
-				return
-			}
-
-			err = callBlocker(body, customer)
-			if err != nil {
-				log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
-				return
-			}
+			CreateMitigation(body, customer, currentScope)
 
 			res = Response{
 				Type: common.NonConfirmable,
@@ -279,19 +282,8 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		return
 	}
 
-	// Cancel mitigations
-	ids := make([]int, 1)
-	ids[0] = mid
-	err = cancelMitigationByIds(ids, cuid, customer)
-	if err != nil {
-		return
-	}
-
-	// Delete mitigations
-	err = models.DeleteMitigationScope(customer.Id, cuid, mid)
-	if err != nil {
-		return
-	}
+	// Delete Mitigation
+	DeleteMitigation(customer.Id, cuid, mid)
 
 	res = Response{
 		Type: common.NonConfirmable,
@@ -366,13 +358,7 @@ func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges 
  * Create MitigationScope objects based on received mitigation requests, and store the scopes into the database.
  */
 func createMitigationScope(req *messages.MitigationRequest, customer *models.Customer) (err error) {
-	for i, messageScope := range req.MitigationScope.Scopes {
-		// defaults value of lifetime
-		if messageScope.Lifetime <= 0 {
-			// TODO: return 4.00 if Lifetime is 0
-			req.MitigationScope.Scopes[i].Lifetime = common.DEFAULT_SIGNAL_MITIGATE_LIFETIME
-			messageScope.Lifetime = common.DEFAULT_SIGNAL_MITIGATE_LIFETIME
-		}
+	for _, messageScope := range req.MitigationScope.Scopes {
 		scope, err := newMitigationScope(messageScope, customer, req.EffectiveClientIdentifier(), req.EffectiveClientDomainIdentifier())
 		if err != nil {
 			return err
@@ -474,69 +460,73 @@ func cancelMitigationByModel(scope *models.MitigationScope, clientIdentifier str
 }
 
 /*
- * Terminate the mitigation.
+ * Terminate the mitigations.
  */
 func cancelMitigationByIds(mitigationIds []int, clientIdentifier string, customer *models.Customer) (err error) {
-	protections := make([]models.Protection, 0)
+	for _, mitigationId := range mitigationIds {
+		err = cancelMitigationById(mitigationId, clientIdentifier, customer.Id)
+	}
+	return
+}
+
+/*
+ * Terminate the mitigation.
+ */
+func cancelMitigationById(mitigationId int, clientIdentifier string, customerId int) (err error) {
 
 	// validation & DB search
-	for _, mitigationId := range mitigationIds {
-		if mitigationId == 0 {
-			log.WithField("mitigation_id", mitigationId).Warn("invalid mitigation_id")
-			return Error{
-				Code: common.NotFound,
-				Type: common.NonConfirmable,
-			}
+	if mitigationId == 0 {
+		log.WithField("mitigation_id", mitigationId).Warn("invalid mitigation_id")
+		return Error{
+			Code: common.NotFound,
+			Type: common.NonConfirmable,
 		}
-		s, err := models.GetMitigationScope(customer.Id, clientIdentifier, mitigationId)
-		if err != nil {
-			log.WithError(err).Error("models.GetMitigationScope()")
-			return err
+	}
+	s, err := models.GetMitigationScope(customerId, clientIdentifier, mitigationId)
+	if err != nil {
+		log.WithError(err).Error("models.GetMitigationScope()")
+		return err
+	}
+	if s == nil {
+		log.WithField("mitigation_id", mitigationId).Error("mitigation_scope not found.")
+		return Error{
+			Code: common.NotFound,
+			Type: common.NonConfirmable,
 		}
-		if s == nil {
-			log.WithField("mitigation_id", mitigationId).Error("mitigation_scope not found.")
-			return Error{
-				Code: common.NotFound,
-				Type: common.NonConfirmable,
-			}
+	}
+	p, err := models.GetActiveProtectionByMitigationId(customerId, clientIdentifier, mitigationId)
+	if err != nil {
+		log.WithError(err).Error("models.GetActiveProtectionByMitigationId()")
+		return err
+	}
+	if p == nil {
+		log.WithField("mitigation_id", mitigationId).Error("protection not found.")
+		return Error{
+			Code: common.NotFound,
+			Type: common.NonConfirmable,
 		}
-		p, err := models.GetActiveProtectionByMitigationId(customer.Id, clientIdentifier, mitigationId)
-		if err != nil {
-			log.WithError(err).Error("models.GetActiveProtectionByMitigationId()")
-			return err
-		}
-		if p == nil {
-			log.WithField("mitigation_id", mitigationId).Error("protection not found.")
-			return Error{
-				Code: common.NotFound,
-				Type: common.NonConfirmable,
-			}
-		}
-		if !p.IsEnabled() {
-			log.WithFields(log.Fields{
-				"mitigation_id":   mitigationId,
-				"is_enable":   p.IsEnabled(),
-				"started_at":  p.StartedAt(),
-				"finished_at": p.FinishedAt(),
-			}).Error("protection status error.")
+	}
+	if !p.IsEnabled() {
+		log.WithFields(log.Fields{
+			"mitigation_id":   mitigationId,
+			"is_enable":   p.IsEnabled(),
+			"started_at":  p.StartedAt(),
+			"finished_at": p.FinishedAt(),
+		}).Error("protection status error.")
 
-			return Error{
-				Code: common.PreconditionFailed,
-				Type: common.NonConfirmable,
-			}
+		return Error{
+			Code: common.PreconditionFailed,
+			Type: common.NonConfirmable,
 		}
-		protections = append(protections, p)
 	}
 
 	// cancel
-	for _, p := range protections {
-		blocker := p.TargetBlocker()
-		err = blocker.StopProtection(p)
-		if err != nil {
-			return Error{
-				Code: common.BadRequest,
-				Type: common.NonConfirmable,
-			}
+	blocker := p.TargetBlocker()
+	err = blocker.StopProtection(p)
+	if err != nil {
+		return Error{
+			Code: common.BadRequest,
+			Type: common.NonConfirmable,
 		}
 	}
 
@@ -636,5 +626,69 @@ func parseURIPath(uriPath []string) (cdid string, cuid string, mid int, err erro
 		}
 	}
 	log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, mid)
+	return
+}
+
+func ManageExpiredMitigation(lifetimeInterval int) {
+
+    // Get all mitigations from DB
+    mitigations, err := models.GetAllMitigationScopes()
+    if err != nil {
+        log.Error("Failed to get all mitigation from DB")
+        return
+	}
+
+    // Add all mitigation in DB to managed list
+    for _, mitigation := range mitigations {
+		models.AddActiveMitigationRequest(mitigation.CustomerId, mitigation.ClientIdentifier, mitigation.ClientDomainIdentifier, mitigation.MitigationId,
+			mitigation.Lifetime, mitigation.Updated)
+    }
+
+    // Manage expired Mitigation
+    for {
+        for _, acm := range models.GetActiveMitigationMap() {
+            currentTime := time.Now()
+			remainingLifetime := acm.Lifetime - int(currentTime.Sub(acm.LastModified).Seconds())
+			log.Debugf("Handling Active Mitigation with id: %+v", acm.MitigationId)
+			log.Debugf("Remain Lifetime: %+v", remainingLifetime)
+            if remainingLifetime <= 0{
+				DeleteMitigation(acm.CustomerId, acm.ClientIdentifier, acm.MitigationId)
+            }
+        }
+
+        time.Sleep(time.Duration(lifetimeInterval) * time.Second)
+    }
+}
+
+func CreateMitigation (body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope) {
+	// Create New
+	err := createMitigationScope(body, customer)
+	if err != nil {
+		log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
+		return
+	}
+
+	err = callBlocker(body, customer)
+	if err != nil {
+		log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
+		return
+	}
+}
+
+func DeleteMitigation(customerId int, cuid string, mid int) {
+	log.Debugf("Remove Expired Mitigation with id: %+v", mid)
+	// Cancel Mitigation
+	err := cancelMitigationById(mid, cuid, customerId)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	//Delete Mitigtion
+	err = models.DeleteMitigationScope(customerId, cuid, mid)
+	if err != nil {
+		log.Error(err)
+		return
+	}
 	return
 }
