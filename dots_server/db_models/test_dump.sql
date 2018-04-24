@@ -235,6 +235,7 @@ CREATE TABLE `mitigation_scope` (
   `client_identifier` varchar(255) DEFAULT NULL,
   `client_domain_identifier` varchar(255) DEFAULT NULL,
   `mitigation_id` int(11) DEFAULT NULL,
+  `status` int(1) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
