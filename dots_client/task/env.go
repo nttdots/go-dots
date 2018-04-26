@@ -125,7 +125,9 @@ func (env *Env) IsHeartbeatAllowed () bool {
 }
 
 func (env *Env) StopPing() {
-    env.pingTask.stop()
+    if env.pingTask != nil {
+        env.pingTask.stop()
+    }
 }
 
 func (env *Env) CurrentMissingHb() int {
