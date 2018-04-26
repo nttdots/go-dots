@@ -4,7 +4,3 @@ missingHbAllowed: 5
 maxRetransmit: 3
 ackTimeout: 2
 ackRandomFactor: 1.5
-
-# Waiting time (in milliseconds) between session configuration(DELETE) and session configuration(GET) when dots_client starts up
-# This waiting time gurantees that session configuration(DELETE) is processed completely before session configuration(GET) get sent
-timeSleep: 500
