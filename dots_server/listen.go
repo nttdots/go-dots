@@ -46,9 +46,17 @@ func marshalCbor(msg interface{}) ([]byte, error) {
     return buf, nil
 }
 
-func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface) *libcoap.Resource {
+func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) *libcoap.Resource {
 
-    resource := libcoap.ResourceInit(&path, 0)
+    var resource *libcoap.Resource
+
+    if (is_unknown){
+        // Unknown resource
+        resource = libcoap.ResourceUnknownInit()
+    } else {
+        // Well-known resource
+        resource = libcoap.ResourceInit(&path, 0)
+    }
     log.Debugf("listen.go: createResource, path=%+v", path)
 
     var toMethodHandler = func(method controllers.ServiceMethod) libcoap.MethodHandler {
@@ -155,6 +163,7 @@ func createResource(ctx *libcoap.Context, path string, typ reflect.Type, control
     return resource
 }
 
+
 func CoAPType(t dots_common.Type) (libcoapType libcoap.Type) {
     switch t {
     case dots_common.Confirmable:
@@ -174,7 +183,7 @@ func addHandler(ctx *libcoap.Context, code messages.Code, controller controllers
     msg := messages.MessageTypes[code]
     path := "/" + msg.Path
 
-    ctx.AddResource(createResource(ctx, path, msg.Type, controller))
+    ctx.AddResource(createResource(ctx, path, msg.Type, controller, false))
 }
 
 func addPrefixHandler(ctx *libcoap.Context, code messages.Code, controller controllers.ControllerInterface) {
@@ -182,7 +191,7 @@ func addPrefixHandler(ctx *libcoap.Context, code messages.Code, controller contr
     path := "/" + msg.Path
 
     filter := controllers.NewPrefixFilter(path, controller)
-    ctx.AddResourceUnknown(createResource(ctx, "dummy for unknown", msg.Type, filter))
+    ctx.AddResource(createResource(ctx, "dummy for unknown", msg.Type, filter, true))
 }
 
 func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libcoap.Context, err error) {

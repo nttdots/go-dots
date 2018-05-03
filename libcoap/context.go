@@ -1,7 +1,7 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-1
+#cgo LDFLAGS: -lcoap-2-openssl
 #include <coap/coap.h>
 #include "callback.h"
 */
@@ -72,7 +72,7 @@ func NewContextDtls(addr *Address, dtls *DtlsParam) *Context {
         }
         ok := C.verify_certificate(ptr, setupData)
         if ok == 1 {
-            ok = C.coap_dtls_context_set_pki(ptr, setupData)
+            ok = C.coap_context_set_pki(ptr, setupData)
         }
 
         if ok == 1 {

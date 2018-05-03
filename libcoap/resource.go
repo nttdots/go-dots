@@ -1,7 +1,7 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-1
+#cgo LDFLAGS: -lcoap-2-openssl
 #include <coap/coap.h>
 #include "callback.h"
 */
@@ -45,12 +45,18 @@ func ResourceInit(uri *string, flags ResourceFlags) *Resource {
     return resource
 }
 
-func (context *Context) AddResource(resource *Resource) {
-    C.coap_add_resource(context.ptr, resource.ptr)
+func ResourceUnknownInit() *Resource {
+
+	ptr := C.coap_resource_unknown_init(nil)
+
+	resource := &Resource{ptr, make(map[Code]MethodHandler)}
+	resources[ptr] = resource
+	return resource
+
 }
 
-func (context *Context) AddResourceUnknown(resource *Resource) {
-    C.coap_add_resource_unknown(context.ptr, resource.ptr)
+func (context *Context) AddResource(resource *Resource) {
+    C.coap_add_resource(context.ptr, resource.ptr)
 }
 
 func (context *Context) DeleteResource(resource *Resource) {
@@ -58,7 +64,7 @@ func (context *Context) DeleteResource(resource *Resource) {
     delete(resources, ptr)
     resource.ptr = nil
 
-    C.coap_delete_resource(context.ptr, &ptr.key[0])
+    C.coap_delete_resource(context.ptr, ptr)
 }
 
 func (context *Context) DeleteAllResources() {
