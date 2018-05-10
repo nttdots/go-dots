@@ -15,6 +15,8 @@ import (
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_client/task"
 	"github.com/nttdots/go-dots/libcoap"
+	"github.com/shopspring/decimal"
+	client_message "github.com/nttdots/go-dots/dots_client/messages"
 )
 
 type RequestInterface interface {
@@ -235,11 +237,25 @@ func (r *Request) RestartPingTask(pdu *libcoap.Pdu) {
 		return
 	}
 
-	heartbeatInterval := v.SignalConfigs.MitigationConfig.HeartbeatInterval.CurrentValue
-	missingHbAllowed := v.SignalConfigs.MitigationConfig.MissingHbAllowed.CurrentValue
-	maxRetransmit := v.SignalConfigs.MitigationConfig.MaxRetransmit.CurrentValue
-	ackTimeout := v.SignalConfigs.MitigationConfig.AckTimeout.CurrentValue
-	ackRandomFactor := v.SignalConfigs.MitigationConfig.AckRandomFactor.CurrentValue.Round(2)
+	var heartbeatInterval int
+	var missingHbAllowed int
+	var maxRetransmit int
+	var ackTimeout int
+	var ackRandomFactor decimal.Decimal
+
+	if r.env.SessionConfigMode() == string(client_message.MITIGATING) {
+		heartbeatInterval = v.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue
+		missingHbAllowed = v.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue
+		maxRetransmit = v.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue
+		ackTimeout = v.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue
+		ackRandomFactor = v.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2)
+	} else if r.env.SessionConfigMode() == string(client_message.IDLE) {
+		heartbeatInterval = v.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue
+		missingHbAllowed = v.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue
+		maxRetransmit = v.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue
+		ackTimeout = v.SignalConfigs.IdleConfig.AckTimeout.CurrentValue
+		ackRandomFactor = v.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue.Round(2)
+	}
 
 	log.Debugf("Got session configuration data from server. Restart ping task with heatbeat-interval=%v, missing-hb-allowed=%v...", heartbeatInterval, missingHbAllowed)
 	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap

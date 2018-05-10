@@ -52,6 +52,11 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 		MaxRetransmit:     signalSessionConfiguration.MaxRetransmit,
 		AckTimeout:        signalSessionConfiguration.AckTimeout,
 		AckRandomFactor:   signalSessionConfiguration.AckRandomFactor,
+		HeartbeatIntervalIdle: signalSessionConfiguration.HeartbeatIntervalIdle,
+		MissingHbAllowedIdle:  signalSessionConfiguration.MissingHbAllowedIdle,
+		MaxRetransmitIdle:     signalSessionConfiguration.MaxRetransmitIdle,
+		AckTimeoutIdle:        signalSessionConfiguration.AckTimeoutIdle,
+		AckRandomFactorIdle:   signalSessionConfiguration.AckRandomFactorIdle,
 		TriggerMitigation: signalSessionConfiguration.TriggerMitigation,
 	}
 	_, err = session.Insert(&newSignalSessionConfiguration)
@@ -226,10 +231,7 @@ Rollback:
  *  signalSessionConfiguration SignalSessionConfiguration
  *  error error
  */
-func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfiguration SignalSessionConfiguration, err error) {
-	// default value setting
-	signalSessionConfiguration = SignalSessionConfiguration{}
-
+func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfiguration *SignalSessionConfiguration, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -247,12 +249,18 @@ func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfigur
 		// no data
 		return
 	}
+	signalSessionConfiguration = &SignalSessionConfiguration{}
 	signalSessionConfiguration.SessionId = dbSignalSessionConfiguration.SessionId
 	signalSessionConfiguration.HeartbeatInterval = dbSignalSessionConfiguration.HeartbeatInterval
 	signalSessionConfiguration.MissingHbAllowed = dbSignalSessionConfiguration.MissingHbAllowed
 	signalSessionConfiguration.MaxRetransmit = dbSignalSessionConfiguration.MaxRetransmit
 	signalSessionConfiguration.AckTimeout = dbSignalSessionConfiguration.AckTimeout
 	signalSessionConfiguration.AckRandomFactor = dbSignalSessionConfiguration.AckRandomFactor
+	signalSessionConfiguration.HeartbeatIntervalIdle = dbSignalSessionConfiguration.HeartbeatIntervalIdle
+	signalSessionConfiguration.MissingHbAllowedIdle = dbSignalSessionConfiguration.MissingHbAllowedIdle
+	signalSessionConfiguration.MaxRetransmitIdle = dbSignalSessionConfiguration.MaxRetransmitIdle
+	signalSessionConfiguration.AckTimeoutIdle = dbSignalSessionConfiguration.AckTimeoutIdle
+	signalSessionConfiguration.AckRandomFactorIdle = dbSignalSessionConfiguration.AckRandomFactorIdle
 	signalSessionConfiguration.TriggerMitigation = dbSignalSessionConfiguration.TriggerMitigation
 
 	return

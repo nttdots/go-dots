@@ -38,6 +38,11 @@ type SignalConfigurationParameterNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
+	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
+	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
+	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
+	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
 }
 
 type DefaultSignalConfigurationNode struct {
@@ -46,6 +51,11 @@ type DefaultSignalConfigurationNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
+	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
+	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
+	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
+	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
 }
 
 type LifetimeConfigurationNode struct {
@@ -61,6 +71,11 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 		MaxRetransmit:     parseParameterRange(scpn.MaxRetransmit),
 		AckTimeout:        parseParameterRange(scpn.AckTimeout),
 		AckRandomFactor:   parseParameterRange(scpn.AckRandomFactor),
+		HeartbeatIntervalIdle: parseParameterRange(scpn.HeartbeatIntervalIdle),
+		MissingHbAllowedIdle:  parseParameterRange(scpn.MissingHbAllowedIdle),
+		MaxRetransmitIdle:     parseParameterRange(scpn.MaxRetransmitIdle),
+		AckTimeoutIdle:        parseParameterRange(scpn.AckTimeoutIdle),
+		AckRandomFactorIdle:   parseParameterRange(scpn.AckRandomFactorIdle),
 	}, nil
 }
 
@@ -71,6 +86,11 @@ func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 		MaxRetransmit:     parseIntegerValue(dscn.MaxRetransmit),
 		AckTimeout:        parseIntegerValue(dscn.AckTimeout),
 		AckRandomFactor:   parseFloatValue(dscn.AckRandomFactor),
+		HeartbeatIntervalIdle: parseIntegerValue(dscn.HeartbeatIntervalIdle),
+		MissingHbAllowedIdle:  parseIntegerValue(dscn.MissingHbAllowedIdle),
+		MaxRetransmitIdle:     parseIntegerValue(dscn.MaxRetransmitIdle),
+		AckTimeoutIdle:        parseIntegerValue(dscn.AckTimeoutIdle),
+		AckRandomFactorIdle:   parseFloatValue(dscn.AckRandomFactorIdle),
 	}, nil
 }
 
@@ -491,6 +511,11 @@ type SignalConfigurationParameter struct {
 	MaxRetransmit     *ParameterRange
 	AckTimeout        *ParameterRange
 	AckRandomFactor   *ParameterRange
+	HeartbeatIntervalIdle *ParameterRange
+	MissingHbAllowedIdle  *ParameterRange
+	MaxRetransmitIdle     *ParameterRange
+	AckTimeoutIdle        *ParameterRange
+	AckRandomFactorIdle   *ParameterRange
 }
 
 type DefaultSignalConfiguration struct {
@@ -499,6 +524,11 @@ type DefaultSignalConfiguration struct {
 	MaxRetransmit     int
 	AckTimeout        int
 	AckRandomFactor   float64
+	HeartbeatIntervalIdle int
+	MissingHbAllowedIdle  int
+	MaxRetransmitIdle     int
+	AckTimeoutIdle        int
+	AckRandomFactorIdle   float64
 }
 
 type LifetimeConfiguration struct {

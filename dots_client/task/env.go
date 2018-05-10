@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"github.com/nttdots/go-dots/libcoap"
 	log "github.com/sirupsen/logrus"
-	"reflect"
+    "reflect"
+    client_message "github.com/nttdots/go-dots/dots_client/messages"
 )
 
 type Env struct {
@@ -17,6 +18,8 @@ type Env struct {
     missing_hb_allowed int
     current_missing_hb int
     pingTask *PingTask
+
+    sessionConfigMode string
 }
 
 func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
@@ -28,6 +31,7 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         0,
         0,
         nil,
+        string(client_message.IDLE),
     }
 }
 
@@ -51,6 +55,13 @@ func (env *Env) SetMissingHbAllowed(missing_hb_allowed int) {
     env.missing_hb_allowed = missing_hb_allowed
 }
 
+func (env *Env) SetSessionConfigMode(sessionConfigMode string) {
+    env.sessionConfigMode = sessionConfigMode
+}
+
+func (env *Env) SessionConfigMode() string {
+    return env.sessionConfigMode
+}
 
 func (env *Env) Run(task Task) {
     if (reflect.TypeOf(task) == reflect.TypeOf(&PingTask{})) && (!task.(*PingTask).IsRunnable()) {

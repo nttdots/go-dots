@@ -5,6 +5,11 @@ system:
     maxRetransmit: 3-10
     ackTimeout: 30-120
     ackRandomFactor: 0-8888
+    heartbeatIntervalIdle: 30-60
+    missingHbAllowedIdle: 3-9
+    maxRetransmitIdle: 3-10
+    ackTimeoutIdle: 30-120
+    ackRandomFactorIdle: 0-8888
 
 # Default current values of session configuration
   defaultSignalConfiguration:
@@ -13,6 +18,11 @@ system:
     maxRetransmit: 3
     ackTimeout: 2
     ackRandomFactor: 1.5
+    heartbeatIntervalIdle: 30
+    missingHbAllowedIdle: 5
+    maxRetransmitIdle: 3
+    ackTimeoutIdle: 2
+    ackRandomFactorIdle: 1.5
 
   secureFile:
     serverCertFile: ../certs/server-cert.pem

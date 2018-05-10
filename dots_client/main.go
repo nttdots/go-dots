@@ -15,6 +15,7 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
@@ -22,6 +23,7 @@ import (
 	"github.com/nttdots/go-dots/dots_client/task"
 	"github.com/nttdots/go-dots/libcoap"
 	dots_config "github.com/nttdots/go-dots/dots_client/config"
+	client_message "github.com/nttdots/go-dots/dots_client/messages"
 )
 
 const (
@@ -178,7 +180,7 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 		}
 		log.Debugf("Parsed URI, requestName=%+v, requestQuerys=%+v", requestName, requestQuerys)
 
-		if requestName == "" || !messages.IsRequest(requestName) {
+		if requestName == "" || (!isClientConfigRequest(requestName) && !messages.IsRequest(requestName)) {
 			fmt.Printf("dots_client.serverHandler -- %s is invalid request name \n", requestName)
 			fmt.Printf("support messages: %s \n", messages.SupportRequest())
 			errMessage := fmt.Sprintf("%s is invalid request name \n", requestName)
@@ -195,6 +197,24 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			jsonData = buff.Bytes()
 		}
 
+		if r.Method == "POST" && requestName == string(client_message.CLIENTCONFIGURATION) {
+			var clientConfig *client_message.ClientConfigRequest
+			err := json.Unmarshal(jsonData, &clientConfig)
+			if err != nil {
+				log.Errorf("Failed to parse json data : %+v", err)
+				return
+			}
+			mode := clientConfig.SessionConfig.Mode
+			log.Debugf("Session config mode: %+v",mode)
+			if mode == string(client_message.IDLE) || mode == string(client_message.MITIGATING) {
+				log.Debug("Session config mode is valid. Switch to new session config mode")
+				env.SetSessionConfigMode(mode)
+			} else {
+				log.Debug("Session config mode is invalid")
+			}
+			return
+		}
+
 		err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env)
 		if err != nil {
 			fmt.Printf("dots_client.serverHandler -- %s", err.Error())
@@ -204,6 +224,16 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusOK)
 	}
+}
+
+/**
+* Check if request name is client config request
+*/
+func isClientConfigRequest(requestName string) bool {
+	if requestName == string(client_message.CLIENTCONFIGURATION) {
+		return true
+	}
+	return false
 }
 
 /*

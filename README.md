@@ -128,6 +128,21 @@ To install and run gobgp-server, refer to the following link:
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Delete \
       -sid 234
 
+###  Client Controller [client_configuration_request]
+DOTS signal channel session configuration supports 2 sets of parameters : 'mitigating-config' and 'idle-config'.
+The same or distinct configuration set may be used during times when a mitigation is active ('mitigating-config') and when no mitigation is active ('idle-config').
+Dots_client uses 'idle-config' parameter set by default. It can be configured to switch to the other parameter set by client_configuration request
+
+Configure dots_client to use 'idle-config' parameters
+
+    $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
+    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Idle.json
+
+Configure dots_client to use 'mitigating-config' parameters
+
+    $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
+    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Mitigating.json
+
 ## DB
 
 To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)  
