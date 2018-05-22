@@ -178,7 +178,14 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			requestQuerys = tmpPaths[i+1:]
 			break
 		}
-		log.Debugf("Parsed URI, requestName=%+v, requestQuerys=%+v", requestName, requestQuerys)
+		// map observe option
+		observeStr := r.Header.Get(string(messages.OBSERVE))
+		options := make(map[messages.Option]string)
+		if observeStr != "" {
+			options[messages.OBSERVE] = observeStr
+		}
+
+		log.Debugf("Parsed URI, requestName=%+v, requestQuerys=%+v, options=%+v", requestName, requestQuerys, options)
 
 		if requestName == "" || (!isClientConfigRequest(requestName) && !messages.IsRequest(requestName)) {
 			fmt.Printf("dots_client.serverHandler -- %s is invalid request name \n", requestName)
@@ -215,7 +222,7 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			return
 		}
 
-		err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env)
+		err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env, options)
 		if err != nil {
 			fmt.Printf("dots_client.serverHandler -- %s", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -239,7 +246,7 @@ func isClientConfigRequest(requestName string) bool {
 /*
  * sendRequest is a function that sends requests to the server.
  */
-func sendRequest(jsonData []byte, requestName, method string, queryParams []string, env *task.Env) (err error) {
+func sendRequest(jsonData []byte, requestName, method string, queryParams []string, env *task.Env, options map[messages.Option]string) (err error) {
 	if jsonData != nil {
 		err = common.ValidateJson(requestName, string(jsonData))
 		if err != nil {
@@ -252,7 +259,7 @@ func sendRequest(jsonData []byte, requestName, method string, queryParams []stri
 	var requestMessage RequestInterface
 	switch messages.GetChannelType(requestName) {
 	case messages.SIGNAL:
-		requestMessage = NewRequest(code, libCoapType, method, requestName, queryParams, env)
+		requestMessage = NewRequest(code, libCoapType, method, requestName, queryParams, env, options)
 	case messages.DATA:
 		errorMsg := fmt.Sprintf("unsupported channel type error: %s", requestName)
 		log.Errorf("dots_client.sendRequest -- %s", errorMsg)

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"strings"
 	"time"
+	"strconv"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
@@ -25,6 +26,13 @@ type RequestInterface interface {
 	Send()
 }
 
+const (
+	Register     uint16 = 0
+	Deregister   uint16 = 1
+)
+
+var Token map[string][]byte = make(map[string][]byte)
+
 /*
  * Dots requests
  */
@@ -38,12 +46,13 @@ type Request struct {
 	queryParams []string
 
 	env         *task.Env
+	options     map[messages.Option]string
 }
 
 /*
  * Request constructor.
  */
-func NewRequest(code messages.Code, coapType libcoap.Type, method string, requestName string, queryParams []string, env *task.Env) *Request {
+func NewRequest(code messages.Code, coapType libcoap.Type, method string, requestName string, queryParams []string, env *task.Env, options map[messages.Option]string) *Request {
 	return &Request{
 		nil,
 		code,
@@ -53,6 +62,7 @@ func NewRequest(code messages.Code, coapType libcoap.Type, method string, reques
 		requestName,
 		queryParams,
 		env,
+		options,
 	}
 }
 
@@ -112,6 +122,7 @@ func (r *Request) pathString() {
  */
 func (r *Request) CreateRequest() {
 	var code libcoap.Code
+	var observe uint16
 
 	switch strings.ToUpper(r.method) {
 	case "GET":
@@ -132,6 +143,26 @@ func (r *Request) CreateRequest() {
 	r.pdu.MessageID = r.env.CoapSession().NewMessageID()
 	r.pdu.Token = dots_common.RandStringBytes(8)
 	r.pdu.Options = make([]libcoap.Option, 0)
+	observeStr := r.options[messages.OBSERVE]
+	if observeStr != "" {
+		observeValue, error := strconv.ParseUint(observeStr, 10, 16)
+		if error != nil {
+			log.Errorf("Observe is not uint type.")
+			return
+		}
+		observe = uint16(observeValue)
+	} 
+
+	if observe == Register || observe == Deregister {
+		r.pdu.Options = append(r.pdu.Options, libcoap.OptionObserve.Uint16(observe))
+		queryString := queryParamsToString(r.queryParams)
+		if observe == Register {
+			Token[queryString] = r.pdu.Token
+		} else {
+			r.pdu.Token = Token[queryString]
+			delete(Token, queryString)
+		}
+	}
 
 	if r.Message != nil {
 		r.pdu.Data = r.dumpCbor()
@@ -267,4 +298,15 @@ func (r *Request) RestartPingTask(pdu *libcoap.Pdu) {
 			time.Duration(heartbeatInterval) * time.Second,
 			pingResponseHandler,
 			pingTimeoutHandler))
+}
+
+func queryParamsToString(queryParams []string) (str string) {
+	str = ""
+	for i, query := range queryParams {
+		if i == 0 {
+			str = query
+		}
+		str += "&" + query
+	}
+	return
 }

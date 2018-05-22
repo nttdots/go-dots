@@ -37,7 +37,10 @@ const (
 	REQUEST  Role = iota
 	RESPONSE
 )
-
+type Option string
+const (
+	OBSERVE Option = "Observe"
+)
 type ChannelType int
 
 const (
