@@ -60,3 +60,6 @@ typedef struct coap_openssl_context_t {
   coap_tls_context_t tls;
   int psk_pki_enabled;
 } coap_openssl_context_t;
+
+void coap_set_dirty(coap_resource_t *resource, char *query, int length);
+coap_resource_t *coap_get_resource(coap_context_t *context, char *key, int length);

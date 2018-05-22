@@ -7,6 +7,7 @@ package libcoap
 */
 import "C"
 import "unsafe"
+import "unicode/utf8"
 
 type Resource struct {
     ptr      *C.coap_resource_t
@@ -93,4 +94,13 @@ func (resource *Resource) AddAttr(name string, value *string) *Attr {
     } else {
         return &Attr{ ptr }
     }
+}
+
+func (resource *Resource) TurnOnResourceObservable() {
+    C.coap_resource_set_get_observable(resource.ptr, 1)
+}
+
+func (context *Context) DeleteResourceByQuery(query string) {
+    resource := C.coap_get_resource(context.ptr, C.CString(query), C.int(utf8.RuneCountInString(query)))
+    C.coap_delete_resource(context.ptr, resource)
 }

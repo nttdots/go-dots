@@ -120,3 +120,25 @@ int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t * setup_data) {
     }
     return 1;
 }
+
+void coap_set_dirty(coap_resource_t *resource, char *key, int length) {
+    if(*key == '\0' && length == 0){
+        coap_resource_set_dirty(resource, NULL);
+    } else {
+        str *query = coap_new_string(length);
+        query->s = key;
+        query->length = length;
+        coap_resource_set_dirty(resource, query);
+    }
+}
+
+coap_resource_t *coap_get_resource(coap_context_t *context, char *key, int length){
+    if(*key == '\0' && length == 0){
+        return NULL;
+    } else {
+        str *uriPath = coap_new_string(length);
+        uriPath->s = key;
+        uriPath->length = length;
+        return coap_get_resource_from_uri_path(context, *uriPath);
+    }
+}

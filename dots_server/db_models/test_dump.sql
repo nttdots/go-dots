@@ -247,6 +247,24 @@ VALUES
   (1,128,'','',12332,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
   (2,128,'','',12333,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
+# mitigation_scope trigger when status change
+# ------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS MySQLNotification;
+CREATE FUNCTION MySQLNotification RETURNS INTEGER SONAME 'mysql-notification.so';
+
+DELIMITER @@
+
+CREATE TRIGGER status_changed_trigger AFTER UPDATE ON mitigation_scope
+FOR EACH ROW
+BEGIN
+  IF NEW.status <> OLD.status THEN
+    SELECT MySQLNotification(NEW.id, NEW.client_identifier, NEW.mitigation_id, NEW.status) INTO @x;
+  END IF;
+END@@
+
+DELIMITER ;
+
 
 # signal_session_configuration
 # ------------------------------------------------------------

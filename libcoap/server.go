@@ -9,6 +9,8 @@ import "C"
 import "errors"
 import "fmt"
 import "unsafe"
+import log "github.com/sirupsen/logrus"
+import "strings"
 
 // across invocations, sessions are not 'eq'
 type MethodHandler func(*Context, *Resource, *Session, *Pdu, *[]byte, *string, *Pdu)
@@ -47,6 +49,16 @@ func export_method_handler(ctx   *C.coap_context_t,
         fmt.Printf("resource\n")
         return
     }
+    
+    // Handle observe : 
+    // In case of observation response (or notification), original 'request' from libcoap is NULL
+    // In order to handle request with handleGet(), it is necessary to re-create equest
+    // First, initialize request from response to re-use some data.
+    is_observe := false
+    if req == nil {
+        is_observe = true
+        req = resp
+    }
 
     session := &Session{ sess }
 
@@ -55,6 +67,20 @@ func export_method_handler(ctx   *C.coap_context_t,
         fmt.Printf("req.toGo\n")
         return
     }
+
+    // Handle observe: 
+    // Set request.uri-path from resource.uri-path (so that it can by-pass uri-path check inside PrefixFilter)
+    if (is_observe){
+        request.Code = RequestGet
+        request.Options = make([]Option, 0)
+        
+        uri := strings.Split(*(rsrc.uri_path.toString()), "/")
+        for _, path := range uri {
+            request.Options = append(request.Options, OptionUriPath.String(path))
+        }
+        log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
+    }
+    
 
     token := tok.toBytes()
     queryString := query.toString()

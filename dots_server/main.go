@@ -43,7 +43,7 @@ func main() {
 		&config.SecureFile.ServerKeyFile,
 	}
 
-	// Manage Active Mitigation Request
+	// Thread for monitoring remaining lifetime of mitigation requests
 	go controllers.ManageExpiredMitigation(config.LifetimeConfiguration.ManageLifetimeInterval)
 
 	log.Debug("listen Signal with DTLS param: %# v", dtlsParam)
@@ -60,6 +60,9 @@ func main() {
 		os.Exit(1)
 	}
 	defer dataCtx.FreeContext()
+
+	// Thread for handling status changed notification from DB
+	go listenDB (signalCtx)
 
 	for {
 		signalCtx.RunOnce(time.Duration(100) * time.Millisecond)
