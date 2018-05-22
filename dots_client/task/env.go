@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
     "reflect"
     client_message "github.com/nttdots/go-dots/dots_client/messages"
+    "bytes"
 )
 
 type Env struct {
@@ -18,6 +19,7 @@ type Env struct {
     missing_hb_allowed int
     current_missing_hb int
     pingTask *PingTask
+    tokens   map[string][]byte
 
     sessionConfigMode string
 }
@@ -31,6 +33,7 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         0,
         0,
         nil,
+        make(map[string][]byte),
         string(client_message.IDLE),
     }
 }
@@ -42,6 +45,7 @@ func (env *Env) RenewEnv(context *libcoap.Context, session *libcoap.Session) *En
     env.requests = make(map[string] *MessageTask)
     env.current_missing_hb = 0
     env.pingTask = nil
+    env.tokens = make(map[string][]byte)
     return env
 }
 
@@ -85,7 +89,11 @@ func (env *Env) HandleResponse(pdu *libcoap.Pdu) {
     t, ok := env.requests[key]
 
     if !ok {
-        log.Info("Unexpected incoming PDU: %v", pdu)
+        if env.isTokenExist(pdu.Token) {
+            log.Info("Success incoming PDU(NotificationResponse): %v", pdu)
+        } else {
+            log.Info("Unexpected incoming PDU: %v", pdu)
+        }
     } else {
         log.Debugf("Success incoming PDU(HandleResponse): %+v", pdu)
         delete(env.requests, key)
@@ -143,4 +151,36 @@ func (env *Env) StopPing() {
 
 func (env *Env) CurrentMissingHb() int {
     return env.current_missing_hb
+}
+
+func (env *Env) AddToken(token []byte, query string) {
+    env.tokens[query] = token
+}
+
+func (env *Env) GetToken(query string) (token []byte) {
+    return env.tokens[query]
+}
+
+func (env *Env) RemoveToken(query string) {
+    delete(env.tokens, query)
+}
+
+func QueryParamsToString(queryParams []string) (str string) {
+	str = ""
+	for i, query := range queryParams {
+		if i == 0 {
+			str = query
+		}
+		str += "&" + query
+	}
+	return
+}
+
+func (env *Env) isTokenExist(key []byte) (bool) {
+    for _, token := range env.tokens {
+        if bytes.Compare(token, key) == 0 {
+            return true
+        }
+    }
+    return false
 }

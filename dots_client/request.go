@@ -31,8 +31,6 @@ const (
 	Deregister   uint16 = 1
 )
 
-var Token map[string][]byte = make(map[string][]byte)
-
 /*
  * Dots requests
  */
@@ -155,12 +153,12 @@ func (r *Request) CreateRequest() {
 
 	if observe == Register || observe == Deregister {
 		r.pdu.Options = append(r.pdu.Options, libcoap.OptionObserve.Uint16(observe))
-		queryString := queryParamsToString(r.queryParams)
+		queryString := task.QueryParamsToString(r.queryParams)
 		if observe == Register {
-			Token[queryString] = r.pdu.Token
+			r.env.AddToken(r.pdu.Token, queryString)
 		} else {
-			r.pdu.Token = Token[queryString]
-			delete(Token, queryString)
+			r.pdu.Token = r.env.GetToken(queryString)
+			r.env.RemoveToken(queryString)
 		}
 	}
 
@@ -298,15 +296,4 @@ func (r *Request) RestartPingTask(pdu *libcoap.Pdu) {
 			time.Duration(heartbeatInterval) * time.Second,
 			pingResponseHandler,
 			pingTimeoutHandler))
-}
-
-func queryParamsToString(queryParams []string) (str string) {
-	str = ""
-	for i, query := range queryParams {
-		if i == 0 {
-			str = query
-		}
-		str += "&" + query
-	}
-	return
 }

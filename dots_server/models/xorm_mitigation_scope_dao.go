@@ -663,7 +663,7 @@ func GetAllMitigationScopes() (mitigations []db_models.MitigationScope, err erro
 	}
 
 	// Get customer table data
-	err = engine.Table("mitigation_scope").Find(&mitigations)
+	err = engine.Table("mitigation_scope").Where("status <> 6").Find(&mitigations)
 	if err != nil {
 		log.Printf("Get mitigations error: %s\n", err)
 		return
