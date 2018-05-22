@@ -108,8 +108,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	err = session.Commit()
 
 	// Add Active Mitigation to ManageList
-	AddActiveMitigationRequest(newMitigationScope.CustomerId, newMitigationScope.ClientIdentifier, newMitigationScope.ClientDomainIdentifier,
-		newMitigationScope.MitigationId, newMitigationScope.Lifetime, newMitigationScope.Created)
+	AddActiveMitigationRequest(newMitigationScope.Id, newMitigationScope.Lifetime, newMitigationScope.Created)
 
 	return
 }
@@ -212,8 +211,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	err = session.Commit()
 
 	// Update Active Mitigation to ManageList
-	AddActiveMitigationRequest(dbMitigationScope.CustomerId, dbMitigationScope.ClientIdentifier, dbMitigationScope.ClientDomainIdentifier,
-		dbMitigationScope.MitigationId, updMitigationScope.Lifetime, updMitigationScope.Updated)
+	AddActiveMitigationRequest(dbMitigationScope.Id, updMitigationScope.Lifetime, updMitigationScope.Updated)
 
 	return
 }
@@ -642,7 +640,7 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 	session.Commit()
 
 	// Remove Active Mitigation from ManageList
-	RemoveActiveMitigationRequest(customerId, clientIdentifier, mitigationId)
+	RemoveActiveMitigationRequest(dbMitigationScope.Id)
 
 	return
 

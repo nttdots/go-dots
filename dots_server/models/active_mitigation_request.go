@@ -2,7 +2,6 @@ package models
 
 import (
 	"time"
-	"strconv"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -10,62 +9,44 @@ import (
  * Struct for Active Mitigation Request.
  */
  type ActiveMitigationRequest struct {
-	CustomerId       		int
-	ClientIdentifier 		string
-	ClientDomainIdentifier  string
-	MitigationId     		int
+	MitigationScopeId       int64
 	Lifetime				int
 	LastModified            time.Time
 }
 
-var (
-	acmMap map[string]ActiveMitigationRequest = make(map[string]ActiveMitigationRequest)
-)
+var acmMap map[int64]ActiveMitigationRequest = make(map[int64]ActiveMitigationRequest)
 
-func GetActiveMitigationMap() map[string]ActiveMitigationRequest{
+func GetActiveMitigationMap() map[int64]ActiveMitigationRequest{
 	return acmMap
 }
 
-func generateKey(customerId int, cuid string, mid int) (key string) {
-	key = strconv.Itoa(customerId) + cuid + strconv.Itoa(mid)
-	return
-}
-
-func AddActiveMitigationRequest(customerId int, cuid string, cdid string, mid int, lifetime int, modified time.Time) {
-	key := generateKey(customerId, cuid, mid)
-	acm, isPresent := acmMap[key]
+func AddActiveMitigationRequest(id int64, lifetime int, modified time.Time) {
+	acm, isPresent := acmMap[id]
 	if isPresent {
-		log.Debugf("Mitigation Request lifetime with id: %+v is updated: %+v", acm.MitigationId, lifetime)
+		log.Debugf("Mitigation Request lifetime with id: %+v is updated: %+v", acm.MitigationScopeId, lifetime)
 		acm.LastModified = modified
 		acm.Lifetime = lifetime
-		acmMap[key] = acm
+		acmMap[id] = acm
 	} else {
 		acm = ActiveMitigationRequest{
-			customerId,
-			cuid,
-			cdid,
-			mid,
+			id,
 			lifetime,
 			modified,
 		}
-		acmMap[key] = acm
+		acmMap[id] = acm
 	}
 }
 
-func RemoveActiveMitigationRequest(customerId int, cuid string, mid int) {
-	key := generateKey(customerId, cuid, mid)
-	_, isPresent := acmMap[key]
+func RemoveActiveMitigationRequest(id int64) {
+	_, isPresent := acmMap[id]
 	if isPresent {
-		delete(acmMap, key)
+		delete(acmMap, id)
 	}
 }
 
-func CreateActiveMitigationRequest(customerId int, cuid string, cdid string, mid int, lifetime int) (acm ActiveMitigationRequest) {
+func CreateActiveMitigationRequest(id int64, lifetime int) (acm ActiveMitigationRequest) {
     acm = ActiveMitigationRequest{
-        customerId,
-        cuid,
-        cdid,
-        mid,
+        id,
         lifetime,
         time.Now(),
     }

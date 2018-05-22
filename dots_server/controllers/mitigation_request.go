@@ -666,18 +666,17 @@ func parseURIPath(uriPath []string) (cdid string, cuid string, mid int, err erro
 }
 
 func ManageExpiredMitigation(lifetimeInterval int) {
-
+	
     // Get all mitigations from DB
     mitigations, err := models.GetAllMitigationScopes()
     if err != nil {
-        log.Error("Failed to get all mitigation from DB")
+        log.Error("[Lifetime Mngt Thread]: Failed to get all mitigation from DB")
         return
 	}
 
     // Add all mitigation in DB to managed list
     for _, mitigation := range mitigations {
-		models.AddActiveMitigationRequest(mitigation.CustomerId, mitigation.ClientIdentifier, mitigation.ClientDomainIdentifier, mitigation.MitigationId,
-			mitigation.Lifetime, mitigation.Updated)
+		models.AddActiveMitigationRequest(mitigation.Id, mitigation.Lifetime, mitigation.Updated)
     }
 
     // Manage expired Mitigation
@@ -685,15 +684,15 @@ func ManageExpiredMitigation(lifetimeInterval int) {
         for _, acm := range models.GetActiveMitigationMap() {
             currentTime := time.Now()
 			remainingLifetime := acm.Lifetime - int(currentTime.Sub(acm.LastModified).Seconds())
-			log.Debugf("Handling Active Mitigation with id: %+v", acm.MitigationId)
-			log.Debugf("Remain Lifetime: %+v", remainingLifetime)
+			log.Debugf("[Lifetime Mngt Thread]: mitigation-scope-id= %+v, actual-remaining-lifetime=%+v", acm.MitigationScopeId, remainingLifetime)
             if remainingLifetime <= 0{
-				DeleteMitigation(acm.CustomerId, acm.ClientIdentifier, acm.MitigationId)
+				log.Debugf("[Lifetime Mngt Thread]: Remaining lifetime < 0, change mitigation status to %+v", models.Terminated)
+				TerminateMitigation(0, "0", 0, acm.MitigationScopeId)
             }
         }
 
         time.Sleep(time.Duration(lifetimeInterval) * time.Second)
-    }
+	}
 }
 
 func CreateMitigation (body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope) {
@@ -731,6 +730,36 @@ func CreateMitigation (body *messages.MitigationRequest, customer *models.Custom
 			return
 		}
 	}
+}
+
+func TerminateMitigation(customerId int, cuid string, mid int, mitigationScopeId int64) {
+	currentScope, err := models.GetMitigationScope(customerId, cuid, mid, mitigationScopeId)
+	if err != nil {
+		log.WithError(err).Error("MitigationScope load error.")
+		return
+	}
+
+	if currentScope.Status == models.Terminated {
+		log.Debugf("The Mitigation with id %+v have already been terminated.", mitigationScopeId)
+		return
+	}
+
+	currentScope.Status = models.Terminated
+
+	customer, err := models.GetCustomerById(customerId)
+	if err != nil {
+		log.WithError(err).Error("Failed to get Customer.")
+		return
+	}
+
+	err = models.UpdateMitigationScope(*currentScope, *customer)
+	if err != nil {
+		log.WithError(err).Error("MitigationScope update error.")
+		return
+	}
+
+	// Remove Active Mitigation from ManageList
+	models.RemoveActiveMitigationRequest(currentScope.MitigationScopeId)
 }
 
 func DeleteMitigation(customerId int, cuid string, mid int, mitigationScopeId int64) {
