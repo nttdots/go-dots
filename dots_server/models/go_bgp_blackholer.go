@@ -36,7 +36,7 @@ func (g *GoBgpBlackHoler) ExecuteProtection(p Protection) (err error) {
 	}
 
 	log.WithFields(log.Fields{
-		"mitigation.id": b.mitigationId,
+		"mitigation-scope.id": b.mitigationScopeId,
 	}).Info("GoBgpBlackHoler.ExecuteProtection")
 
 	// TODO: start protection
@@ -78,7 +78,7 @@ func (g *GoBgpBlackHoler) StopProtection(p Protection) (err error) {
 	}
 
 	log.WithFields(log.Fields{
-		"mitigation.id": b.MitigationId(),
+		"mitigation-scope.id": b.MitigationScopeId(),
 	}).Info("GoBgpBlackHoler.StopProtection")
 
 	// TODO: stop protection
@@ -97,7 +97,7 @@ func (g *GoBgpBlackHoler) StopProtection(p Protection) (err error) {
 func (g *GoBgpBlackHoler) RegisterProtection(m *MitigationScope) (p Protection, err error) {
 	base := ProtectionBase{
 		id:            0,
-		mitigationId:  m.MitigationId,
+		mitigationScopeId:  m.MitigationScopeId,
 		targetBlocker: g,
 		isEnabled:     false,
 		startedAt:     time.Unix(0, 0),

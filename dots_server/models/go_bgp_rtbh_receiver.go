@@ -119,7 +119,7 @@ func (g *GoBgpRtbhReceiver) ExecuteProtection(p Protection) (err error) {
 
 	log.WithFields(log.Fields{
 		"customer.id":   b.rtbhCustomerId,
-		"mitigation.id": b.mitigationId,
+		"mitigation-scope.id": b.mitigationScopeId,
 	}).Info("GoBgpRtbhReceiver.ExecuteProtection")
 
 	blockerClient, err := g.connect()
@@ -175,7 +175,7 @@ func (g *GoBgpRtbhReceiver) StopProtection(p Protection) (err error) {
 
 	log.WithFields(log.Fields{
 		"customer.id":   b.RtbhCustomerId(),
-		"mitigation.id": b.MitigationId(),
+		"mitigation-scope.id": b.MitigationScopeId(),
 		"load":          g.Load(),
 	}).Infof("GoBgpRtbhReceiver.StopProtection")
 
@@ -268,9 +268,7 @@ func (g *GoBgpRtbhReceiver) RegisterProtection(m *MitigationScope) (p Protection
 
 	base := ProtectionBase{
 		0,
-		m.Customer.Id,
-		m.ClientIdentifier,
-		m.MitigationId,
+		m.MitigationScopeId,
 		g,
 		false,
 		time.Unix(0, 0),
