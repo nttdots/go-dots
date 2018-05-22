@@ -36,11 +36,11 @@ Licensed under Apache License 2.0.
 * macOS High Sierra 10.13+
 
 ## How to build go-dots
-### build libcoap custom for go-dots
-    
-    $ wget --content-disposition https://github.com/nttdots/go-dots/blob/master/misc/libcoap_custom_for_go-dots.tar.gz?raw=true
-    $ tar zxvf libcoap_custom_for_go-dots.tar.gz
-    $ cd libcoap_custom_for_go-dots
+### build libcoap for go-dots
+Currenly supported libcoap version : 1365dea
+    $ git clone https://github.com/obgm/libcoap.git
+    $ cd libcoap
+    $ git checkout 1365dea39a6129a9b7e8c579537e12ffef1558f6
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
     $ make
