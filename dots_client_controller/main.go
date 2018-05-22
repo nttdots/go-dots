@@ -16,6 +16,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
+	"github.com/nttdots/go-dots/dots_common/messages"
 )
 
 var (
@@ -27,6 +28,7 @@ var (
 	sid           string
 	jsonFilePath  string
 	socket        string
+	observe       string
 )
 
 func init() {
@@ -40,6 +42,7 @@ func init() {
 	flag.StringVar(&sid, "sid", defaultValue, "Session Identifier is an identifier for the DOTS signal channel session configuration data represented as an integer.")
 	flag.StringVar(&jsonFilePath, "json", defaultValue, "Request Json file")
 	flag.StringVar(&socket, "socket", common.DEFAULT_CLIENT_SOCKET_FILE, "dots client socket")
+	flag.StringVar(&observe, "observe", defaultValue, "mitigation request observe")
 }
 
 /*
@@ -151,6 +154,9 @@ func main() {
 		os.Exit(1)
 	}
 	request.Header.Set("Content-Type", contentType)
+	if observe != "" {
+		request.Header.Set(string(messages.OBSERVE), observe)
+	}
 	resp, err := client.Do(request)
 
 	if err != nil {
