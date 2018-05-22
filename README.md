@@ -42,7 +42,7 @@ Licensed under Apache License 2.0.
     $ tar zxvf libcoap_custom_for_go-dots.tar.gz
     $ cd libcoap_custom_for_go-dots
     $ ./autogen.sh
-    $ ./configure --disable-documentation --with-openssl=/usr/local
+    $ ./configure --disable-documentation --with-openssl
     $ make
     $ sudo make install
     
@@ -111,6 +111,17 @@ To install and run gobgp-server, refer to the following link:
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
+### Client Controller [mitigation_observe]
+A DOTS client can convey the 'observe' option set to '0' in the GET request to receive notification whenever status of mitigation request changed
+and deregister itself by issuing GET request with 'observe' option set to '1'
+
+Register for resource observation:
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=0
+
+Deregister from resource observation:
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=0
 
 ### Client Controller [session_configuration_request]
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Put \
