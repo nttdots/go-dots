@@ -40,14 +40,14 @@ my_bool MySQLNotification_init(UDF_INIT *initid,
     struct sockaddr_in remote, saddr;
 
     // check the arguments format
-    if(args->arg_count != 4) {
-      strcpy(message, "MySQLNotification() requires exactly four arguments");
+    if(args->arg_count != 5) {
+      strcpy(message, "MySQLNotification() requires exactly five arguments");
       return 1;
     }
 
-    if(args->arg_type[0] != INT_RESULT || args->arg_type[1] != STRING_RESULT || 
-        args->arg_type[2] != INT_RESULT || args->arg_type[3] != INT_RESULT) {
-      strcpy(message, "MySQLNotification() requires three integers and one string");
+    if(args->arg_type[0] != INT_RESULT || args->arg_type[1] != INT_RESULT || args->arg_type[2] != STRING_RESULT ||
+        args->arg_type[3] != INT_RESULT || args->arg_type[4] != INT_RESULT) {
+      strcpy(message, "MySQLNotification() requires four integers and one string");
       return 1;
     }
    
@@ -95,8 +95,8 @@ longlong MySQLNotification(UDF_INIT *initid, UDF_ARGS *args,
     char packet[512];
 
     // format a message containing id of row and type of change
-    sprintf(packet, "{\"id\":\"%lld\", \"cuid\":\"%s\", \"mid\":\"%lld\", \"status\":\"%lld\"}", 
-        *((longlong*)args->args[0]), ((char*)args->args[1]), *((longlong*)args->args[2]), *((longlong*)args->args[3]));   
+    sprintf(packet, "{\"id\":\"%lld\", \"cid\":\"%lld\", \"cuid\":\"%s\", \"mid\":\"%lld\", \"status\":\"%lld\"}",
+        *((longlong*)args->args[0]), *((longlong*)args->args[1]), ((char*)args->args[2]), *((longlong*)args->args[3]), *((longlong*)args->args[4]));
     
     send(_server, packet, strlen(packet), 0);
     

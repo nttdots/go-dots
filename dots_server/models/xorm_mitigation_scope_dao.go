@@ -630,7 +630,7 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 	}
 
 	// Delete mitigation_scope table data
-	_, err = session.Delete(db_models.MitigationScope{CustomerId: customerId, MitigationId: mitigationId})
+	_, err = session.Delete(db_models.MitigationScope{Id: dbMitigationScope.Id})
 	if err != nil {
 		session.Rollback()
 		log.Errorf("delete mitigationScope error: %s", err)

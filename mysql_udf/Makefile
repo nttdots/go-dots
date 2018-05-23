@@ -3,6 +3,7 @@ mysql_udf:
 	gcc -shared -o mysql-notification.so mysql-notification.o
 install:
 	sudo cp mysql-notification.so /usr/lib/mysql/plugin/.
+	sudo /etc/init.d/mysql restart
 clean:
 	rm -f mysql-notification.o
 	rm -f mysql-notification.so

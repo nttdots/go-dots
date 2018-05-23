@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/models"
@@ -64,23 +65,50 @@ ILOOP:
 			if isTransportOver(data) {
 				break ILOOP
 			}
-			// Notify status changed to those clients who are observing this mitigation request
-			log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-			uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
-			id, cuid, mid, status, query := context.NotifyOnce(data, uriPath)
 
-			idValue, iErr := strconv.ParseInt(id, 10, 64)
-			midValue, mErr := strconv.Atoi(mid)
-			statusValue, sErr := strconv.Atoi(status)
-			if iErr != nil || mErr != nil || sErr != nil {
+			// Parse json data from notification to parameters
+			var mapData map[string]interface{}
+			err := json.Unmarshal([]byte (data), &mapData)
+			if err != nil {
+				log.Errorf("[MySQL-Notification]: Failed to encode json message to map data.")
+				return
+			}
+			id, iErr := strconv.ParseInt(mapData["id"].(string), 10, 64)
+			cid, cErr := strconv.Atoi(mapData["cid"].(string))
+			cuid := mapData["cuid"].(string)
+			mid, mErr := strconv.Atoi(mapData["mid"].(string))
+			status, sErr := strconv.Atoi(mapData["status"].(string))
+			if iErr != nil || mErr != nil || sErr != nil || cErr != nil {
 				log.Debugf("[MySQL-Notification]:Failed to parse string to integer")
 				return
 			}
+			uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
+			query := uriPath + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
+
+			// Check duplicate mitigation when PUT a new mitigation before delete an expired mitigation
+			mids, err := models.GetMitigationIds(cid, cuid)
+			if err != nil {
+				log.Errorf("[MySQL-Notification]: Error: %+v", err)
+				return
+			}
+			dup := isDuplicateMitigation(mids, mid)
+			if dup && status == models.Terminated {
+				// Skip notify, just delete the expired mitigation
+				log.Debugf("[MySQL-Notification]: Skip Notify for this mitigation: %+v", mid)
+			} else {
+				// Notify status changed to those clients who are observing this mitigation request
+				log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
+				context.NotifyOnce(query)
+			}
+
 			// If mitigation status was changed to 6: (attack mitigation is now terminated), delete this mitigation after notifying
-			if statusValue == models.Terminated {
+			if status == models.Terminated {
 				log.Debugf("[MySQL-Notification]: Mitigation was terminated. Delete corresponding sub-resource and mitigation request.", models.Terminated)
-				context.DeleteResourceByQuery(query)
-				controllers.DeleteMitigation(0, cuid, midValue, idValue)
+				controllers.DeleteMitigation(cid, cuid, mid, id)
+				// Keep resource when there is a duplication
+				if !dup {
+					context.DeleteResourceByQuery(query)
+				}
 			}
 		default:
 			log.Debugf("[MySQL-Notification]: Failed to receive data:%+v", err)
@@ -95,4 +123,21 @@ ILOOP:
 func isTransportOver(data string) (over bool) {
 	over = strings.HasSuffix(data, "\r\n\r\n")
 	return
+}
+
+/*
+ * Check if there is a duplication mitigation in DB
+ */
+func isDuplicateMitigation(mids []int, mid int) bool {
+	count := 0
+	for _, id := range mids {
+		if id == mid {
+			count++
+		}
+	}
+	if count > 1 {
+		return true
+	} else {
+		return false
+	}
 }

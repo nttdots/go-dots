@@ -9,7 +9,6 @@ import "C"
 import "time"
 import "unsafe"
 import log "github.com/sirupsen/logrus"
-import "encoding/json"
 import "unicode/utf8"
 
 type DtlsParam struct {
@@ -130,36 +129,23 @@ func (context *Context) RunOnce(timeout time.Duration) time.Duration {
     return time.Duration(d) * time.Millisecond
 }
 
-func (context *Context) NotifyOnce(jsonData string, uriPath string) (id string, cuid string, mid string, status string, query string){
-    var data map[string]interface{}
-    err := json.Unmarshal([]byte (jsonData), &data)
-    if err != nil {
-        log.Errorf("[NotifyOnce]: Failed to encode json message to map data.")
-        return
+func (context *Context) NotifyOnce(query string){
+    log.Debugf("[NotifyOnce]: Data to notify: query: %+v", query)
+
+    // Get sub-resource corresponding to uriPath
+    resource := C.coap_get_resource(context.ptr, C.CString(query), C.int(utf8.RuneCountInString(query)))
+
+    if (resource != nil) {
+        log.Debugf("[NotifyOnce]: Found resource to notify= %+v ", resource)
+        // Mark resource as dirty and do notifying
+        log.Debug("[NotifyOnce]: Set resource dirty.")
+        C.coap_set_dirty(resource, C.CString(""), 0)
+        log.Debugf("[NotifyOnce]: Do coap_check_notify")
+        C.coap_check_notify(context.ptr)
+        log.Debug("[NotifyOnce]: Done coap_check_notify")
     } else {
-        id = data["id"].(string)
-        cuid = data["cuid"].(string)
-        mid = data["mid"].(string)
-        status = data["status"].(string)
-        query = uriPath + "/cuid=" + cuid + "/mid=" + mid
-        log.Debugf("[NotifyOnce]: Data to notify:  mid: %+v, cuid: %+v, query: %+v", mid, cuid, query)
-
-        // Get sub-resource corresponding to uriPath
-        resource := C.coap_get_resource(context.ptr, C.CString(query), C.int(utf8.RuneCountInString(query)))
-
-        if (resource != nil) {
-            log.Debugf("[NotifyOnce]: Found resource to notify= %+v ", resource)
-            // Mark resource as dirty and do notifying
-            log.Debug("[NotifyOnce]: Set resource dirty.")
-            C.coap_set_dirty(resource, C.CString(""), 0)
-            log.Debugf("[NotifyOnce]: Do coap_check_notify")
-            C.coap_check_notify(context.ptr)
-            log.Debug("[NotifyOnce]: Done coap_check_notify")
-        } else {
-            log.Debug("[NotifyOnce]: Not found any resource to notify.")
-        }
-        
-
-        return
+        log.Debug("[NotifyOnce]: Not found any resource to notify.")
     }
+
+    return
 }

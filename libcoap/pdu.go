@@ -205,3 +205,12 @@ func (pdu *Pdu) Queries() []string {
     }
     return ret
 }
+
+func (pdu *Pdu) GetOptionValue(key OptionKey) uint16 {
+    for _, option := range pdu.Options {
+        if key == option.Key {
+            return option.Uint16()
+        }
+    }
+    return 2
+}

@@ -76,6 +76,14 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                 response *libcoap.Pdu) {
 
         log.WithField("MessageID", request.MessageID).Info("Incoming Request")
+        log.WithField("Option", request.Options).Info("Incoming Request")
+
+        observe := request.GetOptionValue(libcoap.OptionObserve)
+        if observe == 0 {
+            log.Debugf("Register Mitigation Observe.")
+        } else if observe == 1 {
+            log.Debugf("Deregister Mitigation Observe.")
+        }
 
         response.MessageID = request.MessageID
         response.Token     = request.Token

@@ -416,6 +416,17 @@ type mpPair struct {
 	protection models.Protection
 }
 
+func filterDuplicate(input []int) (res []int) {
+	keys := make(map[int]bool)
+    for _, entry := range input {
+        if _, value := keys[entry]; !value {
+            keys[entry] = true
+            res = append(res, entry)
+        }
+    }
+    return
+}
+
 /*
  * load mitigation and protection
  */
@@ -434,7 +445,7 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 			log.WithField("ClientIdentifiers", clientIdentifier).Warn("mitigation id not found for this client identifiers.")		
 		} else {
 			log.WithField("list of mitigation id", mids).Info("found mitigation ids.")
-			mitigationIds = mids
+			mitigationIds = filterDuplicate(mids)
 		}
 		
 	} else {
@@ -739,23 +750,27 @@ func TerminateMitigation(customerId int, cuid string, mid int, mitigationScopeId
 		return
 	}
 
-	if currentScope.Status == models.Terminated {
-		log.Debugf("The Mitigation with id %+v have already been terminated.", mitigationScopeId)
-		return
-	}
+	if currentScope == nil {
+		log.Errorf("Mitigation with id %+v is not found.", mitigationScopeId)
+	} else {
+		if currentScope.Status == models.Terminated {
+			log.Debugf("The Mitigation with id %+v have already been terminated.", mitigationScopeId)
+			return
+		}
 
-	currentScope.Status = models.Terminated
+		currentScope.Status = models.Terminated
 
-	customer, err := models.GetCustomerById(customerId)
-	if err != nil {
-		log.WithError(err).Error("Failed to get Customer.")
-		return
-	}
+		customer, err := models.GetCustomerById(customerId)
+		if err != nil {
+			log.WithError(err).Error("Failed to get Customer.")
+			return
+		}
 
-	err = models.UpdateMitigationScope(*currentScope, *customer)
-	if err != nil {
-		log.WithError(err).Error("MitigationScope update error.")
-		return
+		err = models.UpdateMitigationScope(*currentScope, *customer)
+		if err != nil {
+			log.WithError(err).Error("MitigationScope update error.")
+			return
+		}
 	}
 
 	// Remove Active Mitigation from ManageList
