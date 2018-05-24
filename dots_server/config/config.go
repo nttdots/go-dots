@@ -112,6 +112,7 @@ type NetworkNode struct {
 	BindAddress       string `yaml:"bindAddress"`
 	SignalChannelPort int    `yaml:"signalChannelPort"`
 	DataChannelPort   int    `yaml:"dataChannelPort"`
+	DBNotificationPort int   `yaml:"dbNotificationPort"`
 }
 
 func (ncn NetworkNode) Convert() (interface{}, error) {
@@ -128,6 +129,10 @@ func (ncn NetworkNode) Convert() (interface{}, error) {
 		return nil, errors.New("dataChannelPort must be between 1 and 65,535")
 	}
 
+	if ncn.DBNotificationPort < 1 || ncn.DBNotificationPort > 65535 {
+		return nil, errors.New("dbNotificationPort must be between 1 and 65,535")
+	}
+
 	if ncn.SignalChannelPort == ncn.DataChannelPort {
 		return nil, errors.New("dataChannelPort must be different from signalChannelPort")
 	}
@@ -136,6 +141,7 @@ func (ncn NetworkNode) Convert() (interface{}, error) {
 		BindAddress:       ncn.BindAddress,
 		SignalChannelPort: ncn.SignalChannelPort,
 		DataChannelPort:   ncn.DataChannelPort,
+		DBNotificationPort: ncn.DBNotificationPort,
 	}, nil
 }
 
@@ -148,6 +154,7 @@ type Network struct {
 	BindAddress       string
 	SignalChannelPort int
 	DataChannelPort   int
+	DBNotificationPort int
 }
 
 // Secure file config

@@ -34,6 +34,8 @@ system:
     bindAddress: "::"
     signalChannelPort: 4646
     dataChannelPort: 4647
+    # Port value for connection between Dots server and DB notification server. If change this value, need also change port value defined in mysql-notification.c file
+    dbNotificationPort: 9999
   database:
     username: root
     protocol: tcp

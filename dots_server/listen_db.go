@@ -14,14 +14,15 @@ import (
 	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_server/controllers"
 	"github.com/nttdots/go-dots/dots_common/messages"
+	dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
-
-var port = 9999
 
 /*
  * Listen for notification from DB
  */
 func listenDB (context *libcoap.Context) {
+	config := dots_config.GetServerSystemConfig()
+	port := config.Network.DBNotificationPort
 	listen, err := net.Listen("tcp4", ":" + strconv.Itoa(port))
 	if err != nil {
 		log.Debugf("[MySQL-Notification]:Socket listening on port %+v failed,%+v", port, err)

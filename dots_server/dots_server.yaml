@@ -33,6 +33,7 @@ system:
     bindAddress: "::"
     signalChannelPort: 4646
     dataChannelPort: 4647
+    dbNotificationPort: 9999
   database:
     username: root
     password: 

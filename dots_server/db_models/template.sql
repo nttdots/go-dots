@@ -289,6 +289,23 @@ CREATE TABLE `mitigation_scope` (
 
 ####### Basically the table 'mitigation_scope' is modified by the system only.
 
+# mitigation_scope trigger when status change
+# ------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS MySQLNotification;
+CREATE FUNCTION MySQLNotification RETURNS INTEGER SONAME 'mysql-notification.so';
+
+DELIMITER @@
+
+CREATE TRIGGER status_changed_trigger AFTER UPDATE ON mitigation_scope
+FOR EACH ROW
+BEGIN
+  IF NEW.status <> OLD.status THEN
+    SELECT MySQLNotification(NEW.id, NEW.customer_id, NEW.client_identifier, NEW.mitigation_id, NEW.status) INTO @x;
+  END IF;
+END@@
+
+DELIMITER ;
 
 # signal_session_configuration
 # ------------------------------------------------------------
@@ -327,9 +344,7 @@ DROP TABLE IF EXISTS `protection`;
 
 CREATE TABLE `protection` (
   `id`                     BIGINT(20)   NOT NULL AUTO_INCREMENT,
-  `customer_id`            INT(11)      NOT NULL,
-  `client_identifier`      VARCHAR(255) NOT NULL,
-  `mitigation_id`          INT(11)      NOT NULL,
+  `mitigation_scope_id`    BIGINT(20)            DEFAULT NULL,
   `is_enabled`             TINYINT(1)   NOT NULL,
   `type`                   VARCHAR(255) NOT NULL,
   `target_blocker_id`      BIGINT(20)            DEFAULT NULL,
@@ -340,8 +355,7 @@ CREATE TABLE `protection` (
   `blocked_data_info_id`   BIGINT(20)            DEFAULT NULL,
   `created`                DATETIME              DEFAULT NULL,
   `updated`                DATETIME              DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `IDX_protection_idx_mitigation_id` (`mitigation_id`)
+  PRIMARY KEY (`id`)
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8;

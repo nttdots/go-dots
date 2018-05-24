@@ -30,6 +30,8 @@ enum TRIGGER_TYPE {
     TRIGGER_DELETE = 4
 };
 
+#define PORT 9999
+
 my_bool MySQLNotification_init(UDF_INIT *initid, 
                                           UDF_ARGS *args,
                                           char *message) {
@@ -69,10 +71,10 @@ my_bool MySQLNotification_init(UDF_INIT *initid,
     // connect to server
     memset(&remote, 0, sizeof(remote));
     remote.sin_family = AF_INET;
-    remote.sin_port = htons(9999);
+    remote.sin_port = htons(PORT);
     remote.sin_addr.s_addr = inet_addr("127.0.0.1");
     if(connect(_server, (struct sockaddr*)&remote, sizeof(remote)) != 0) {
-        strcpy(message, "Failed to connect to server on port 9999");
+        strcpy(message, "Failed to connect to server on port: " + PORT);
         return -1;
     }  
 
