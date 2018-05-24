@@ -113,15 +113,22 @@ To install and run gobgp-server, refer to the following link:
 
 ### Client Controller [mitigation_observe]
 A DOTS client can convey the 'observe' option set to '0' in the GET request to receive notification whenever status of mitigation request changed
-and deregister itself by issuing GET request with 'observe' option set to '1'
+and unsubscribe itself by issuing GET request with 'observe' option set to '1'
 
-Register for resource observation:
+Subscribe for resource observation:
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=0
 
-Deregister from resource observation:
+Unsubscribe from resource observation:
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
-     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=0
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=1
+
+Subscriptions are valid as long as current session exists. When session is renewed (e.g DOTS client does not receive response from DOTS server for its Ping message 
+in a period of time, it decided that server has been disconnected, then re-connects), all previous subscriptions will be lost. In such cases, DOTS clients will have to re-subscribe
+for observation. Below is recommended step: 
+    ・GET a list of all existing mitigations (that were created before server restarted)
+    ・PUT mitigations  one by one
+    ・GET + Observe for all the mitigations that should be observed
 
 ### Client Controller [session_configuration_request]
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Put \
