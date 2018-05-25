@@ -174,6 +174,9 @@ Or you can run MySQL on docker.
     $ cd $GOPATH/src/github.com/nttdots/go-dots/
     $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
 
+To change the port value of channel between Dots server and DB notification server, there are two places need to be changed and have the same value:
+    - dots_server/dot_server.yaml: dbNotificationPort: port_number
+    - mysql_udf/mysql-notification.c: #define PORT port_number
 
 # GOBGP
 
