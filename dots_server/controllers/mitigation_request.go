@@ -698,7 +698,9 @@ func ManageExpiredMitigation(lifetimeInterval int) {
 			log.Debugf("[Lifetime Mngt Thread]: mitigation-scope-id= %+v, actual-remaining-lifetime=%+v", acm.MitigationScopeId, remainingLifetime)
             if remainingLifetime <= 0{
 				log.Debugf("[Lifetime Mngt Thread]: Remaining lifetime < 0, change mitigation status to %+v", models.Terminated)
-				TerminateMitigation(0, "0", 0, acm.MitigationScopeId)
+				// CustomerId, ClientIdentifier and MitigationId is unnecessary in case MitigationScopeId has value. 
+				// 0 and "" are fake values.
+				TerminateMitigation(0, "", 0, acm.MitigationScopeId)
             }
         }
 
