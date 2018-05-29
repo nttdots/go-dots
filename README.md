@@ -29,14 +29,16 @@ Licensed under Apache License 2.0.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.0 or higher (for libcoap)
 
-* MySQL 5.7 or higher
+* MySQL 5.7 or higher and its development package
+  * Install mysql development package in Ubuntu:
+    $ sudo apt-get install libmysqld-dev
 
 ## Recommandation Environment
 * Ubuntu 16.04+
 * macOS High Sierra 10.13+
 
 ## How to build go-dots
-### build libcoap for go-dots
+### Build libcoap for go-dots
 Currenly supported libcoap version : 1365dea
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
