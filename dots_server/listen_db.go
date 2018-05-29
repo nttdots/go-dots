@@ -95,7 +95,7 @@ ILOOP:
 			dup := isDuplicateMitigation(mids, mid)
 			if dup && status == models.Terminated {
 				// Skip notify, just delete the expired mitigation
-				log.Debugf("[MySQL-Notification]: Skip Notify for this mitigation: %+v", mid)
+				log.Debugf("[MySQL-Notification]: Skip Notification for this mitigation (mid=%+v, id=%+v) due to duplicate with another existing active mitigation", mid, id)
 			} else {
 				// Notify status changed to those clients who are observing this mitigation request
 				log.Debug("[MySQL-Notification]: Send notification if obsevers exists")

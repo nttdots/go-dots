@@ -90,9 +90,9 @@ func (env *Env) HandleResponse(pdu *libcoap.Pdu) {
 
     if !ok {
         if env.isTokenExist(pdu.Token) {
-            log.Info("Success incoming PDU(NotificationResponse): %v", pdu)
+            log.Debugf("Success incoming PDU(NotificationResponse): %+v", pdu)
         } else {
-            log.Info("Unexpected incoming PDU: %v", pdu)
+            log.Debugf("Unexpected incoming PDU: %+v", pdu)
         }
     } else {
         log.Debugf("Success incoming PDU(HandleResponse): %+v", pdu)

@@ -2,7 +2,6 @@ package models
 
 import (
 	"time"
-	log "github.com/sirupsen/logrus"
 )
 
 /*
@@ -23,7 +22,6 @@ func GetActiveMitigationMap() map[int64]ActiveMitigationRequest{
 func AddActiveMitigationRequest(id int64, lifetime int, modified time.Time) {
 	acm, isPresent := acmMap[id]
 	if isPresent {
-		log.Debugf("Mitigation Request lifetime with id: %+v is updated: %+v", acm.MitigationScopeId, lifetime)
 		acm.LastModified = modified
 		acm.Lifetime = lifetime
 		acmMap[id] = acm
