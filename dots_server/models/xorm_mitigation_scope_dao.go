@@ -163,6 +163,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	updMitigationScope := db_models.MitigationScope{
 		Lifetime: mitigationScope.Lifetime,
 		Status:   mitigationScope.Status,
+		AttackStatus: mitigationScope.AttackStatus,
 	}
 	_, err = session.Id(dbMitigationScope.Id).Update(&updMitigationScope)
 	if err != nil {

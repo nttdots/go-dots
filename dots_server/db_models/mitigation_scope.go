@@ -10,6 +10,7 @@ type MitigationScope struct {
 	MitigationId     int       `xorm:"'mitigation_id'"`
 	Status			 int	   `xorm:"'status'"`
 	Lifetime         int       `xorm:"'lifetime'"`
+	AttackStatus	 int	   `xorm:"'attack-status'"`
 	Created          time.Time `xorm:"created"`
 	Updated          time.Time `xorm:"updated"`
 }

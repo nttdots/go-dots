@@ -237,6 +237,7 @@ CREATE TABLE `mitigation_scope` (
   `mitigation_id` int(11) DEFAULT NULL,
   `status` int(1) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
+  `attack-status` int(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)

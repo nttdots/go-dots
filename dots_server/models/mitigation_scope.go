@@ -44,6 +44,12 @@ const (
 	Rejected               int = 8
 )
 
+type AttackStatus int
+const (
+	UnderAttack			AttackStatus = iota+1
+	AttackSuccessfullyMitigated
+)
+
 type MitigationScope struct {
 	MitigationId     int
 	MitigationScopeId int64
@@ -53,6 +59,7 @@ type MitigationScope struct {
 	AliasName        SetString
 	Lifetime         int
 	Status			 int
+	AttackStatus	 int
 	TargetIP         []Prefix
 	TargetPrefix     []Prefix
 	TargetPortRange  []PortRange
@@ -69,6 +76,7 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 		NewSetString(),
 		NewSetString(),
 		NewSetString(),
+		0,
 		0,
 		0,
 		make([]Prefix, 0),

@@ -161,6 +161,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             Uri:     request.Path(),
             Queries: request.Queries(),
             Body:    body,
+            Options: request.Options,
         }
         log.Debugf("req=%+v", req)
 
