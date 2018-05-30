@@ -20,8 +20,7 @@
         "target-protocol": [
          6
         ],
-        "lifetime": 100,
-        "attack-status": 2
+        "lifetime": 100
       }
     ]
   }

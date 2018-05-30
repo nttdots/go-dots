@@ -822,6 +822,17 @@ func DeleteMitigation(customerId int, cuid string, mid int, mitigationScopeId in
 	return
 }
 
+/*
+ * Validate content of efficacy update request
+ * parameter:
+ *  optionValue value of If-Match option
+ *  customer request source Customer
+ *  body request mitigation
+ *  currentScope current mitigation in DB
+ * return bool:
+ *  true: if efficacy update is valid
+ *  false: if efficacy update is invalid
+ */
 func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, body *messages.MitigationRequest, currentScope *models.MitigationScope) bool {
 	if len(optionValue) != 0 {
 		log.Error("If-Match option with value other than empty is not supported.")
@@ -844,6 +855,16 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 	return true
 }
 
+/*
+ * Check attribute difference between efficacy update request and existing mitigation request in DB
+ * parameter:
+ *  customer request source Customer
+ *  messageScope request mitigation
+ *  currentScope current mitigation in DB
+ * return bool:
+ *  true: Except for attack-status and lifetime, if any attribute of incomming request is different from existing value in DB
+ *  false: Except for attack-status and lifetime, if all other attributes of mitigation request is the same as  existing values in DB
+ */
 func checkAttributesEfficacyUpdate(customer *models.Customer, messageScope *messages.MitigationRequest, currentScope *models.MitigationScope) bool {
 	// Convert type of scope in request to type of scope in DB
 	m := models.NewMitigationScope(customer, messageScope.EffectiveClientIdentifier())
