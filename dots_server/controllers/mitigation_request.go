@@ -199,6 +199,17 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			return
 		}
 
+		if len(body.MitigationScope.Scopes[0].TargetPrefix) == 0 && len(body.MitigationScope.Scopes[0].FQDN) == 0 &&
+		   len(body.MitigationScope.Scopes[0].URI) == 0 && len(body.MitigationScope.Scopes[0].AliasName) == 0 {
+			log.Error("At least one of the attributes 'target-prefix','target-fqdn','target-uri', or 'alias-name' MUST be present.")
+			res = Response{
+				Type: common.NonConfirmable,
+				Code: common.BadRequest,
+				Body: nil,
+			}
+			return
+		}
+
 		// Update cuid, mid to body
 		body.UpdateClientIdentifier(cuid)
 		body.UpdateClientDomainIdentifier(cdid)
