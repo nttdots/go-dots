@@ -62,6 +62,9 @@
             },
             "lifetime": {
               "type": "integer"
+            },
+            "attack-status": {
+              "type": "integer"
             }
           }
         }

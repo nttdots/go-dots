@@ -161,6 +161,9 @@ func (r *Request) CreateRequest() {
 			}
 		}
 	}
+	if val, ok := r.options[messages.IFMATCH]; ok {
+		r.pdu.Options = append(r.pdu.Options, libcoap.OptionIfMatch.String(val))
+	}
 
 	if r.Message != nil {
 		r.pdu.Data = r.dumpCbor()

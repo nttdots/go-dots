@@ -137,6 +137,12 @@ for observation. Below is recommended step:
     ・PUT mitigations  one by one
     ・GET + Observe for all the mitigations that should be observed
 
+### Client Controller [mitigation_efficacy_update]
+A DOTS client can convey the 'If-Match' option with empty value in the PUT request to transmit DOTS mitigation efficacy update to the DOTS server:
+     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftEfficacyUpdate.json
+
 ### Client Controller [session_configuration_request]
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Put \
      -sid 234 \

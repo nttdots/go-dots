@@ -36,6 +36,8 @@ type Scope struct {
 	AliasName []string `json:"alias-name" codec:"13,omitempty"`
 	// lifetime
 	Lifetime int `json:"lifetime" codec:"14,omitempty"`
+	// attack-status
+	AttackStatus int `json:"attack-status" codec:"29,omitempty"`
 }
 
 type MitigationRequest struct {
@@ -122,6 +124,9 @@ func (m *MitigationRequest) String() (result string) {
 		}
 		if scope.Lifetime != 0 {
 			result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+		}
+		if scope.AttackStatus != 0 {
+			result += fmt.Sprintf("     \"%s\": %d\n", "attack-status", scope.AttackStatus)
 		}
 	}
 	return

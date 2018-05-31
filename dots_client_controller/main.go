@@ -29,7 +29,13 @@ var (
 	jsonFilePath  string
 	socket        string
 	observe       string
+	ifMatch       string
 )
+
+/*
+ * Default value in case If-Match option is not specified
+ */
+ var defaultIfMatchValue = "notIfMatch"
 
 func init() {
 	defaultValue := ""
@@ -43,6 +49,7 @@ func init() {
 	flag.StringVar(&jsonFilePath, "json", defaultValue, "Request Json file")
 	flag.StringVar(&socket, "socket", common.DEFAULT_CLIENT_SOCKET_FILE, "dots client socket")
 	flag.StringVar(&observe, "observe", defaultValue, "mitigation request observe")
+	flag.StringVar(&ifMatch, "ifMatch", defaultIfMatchValue, "If-Match option")
 }
 
 /*
@@ -156,6 +163,9 @@ func main() {
 	request.Header.Set("Content-Type", contentType)
 	if observe != "" {
 		request.Header.Set(string(messages.OBSERVE), observe)
+	}
+	if ifMatch != defaultIfMatchValue {
+		request.Header.Set(string(messages.IFMATCH), ifMatch)
 	}
 	resp, err := client.Do(request)
 

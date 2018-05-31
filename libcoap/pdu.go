@@ -141,12 +141,22 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
         sort.Stable(&optsSorter{ opts })
 
         for _, o := range opts {
-            if 0 == C.coap_add_option(p,
-                                      C.uint16_t(o.Key),
-                                      C.size_t(len(o.Value)),
-                                      (*C.uint8_t)(unsafe.Pointer(&o.Value[0]))) {
-                err = errors.New("coap_add_option() failed.")
-                return
+            if len(o.Value) == 0 {
+               if 0 == C.coap_add_option(p,
+                    C.uint16_t(o.Key),
+                    C.size_t(len(o.Value)),
+                    (*C.uint8_t)(unsafe.Pointer(&o.Value))) {
+                    err = errors.New("coap_add_option() failed.")
+                    return
+                }
+            } else {
+                if 0 == C.coap_add_option(p,
+                                        C.uint16_t(o.Key),
+                                        C.size_t(len(o.Value)),
+                                        (*C.uint8_t)(unsafe.Pointer(&o.Value[0]))) {
+                    err = errors.New("coap_add_option() failed.")
+                    return
+                }
             }
         }
     }

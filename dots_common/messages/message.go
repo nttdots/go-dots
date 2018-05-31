@@ -40,6 +40,7 @@ const (
 type Option string
 const (
 	OBSERVE Option = "Observe"
+	IFMATCH	Option = "If-Match"
 )
 type ChannelType int
 

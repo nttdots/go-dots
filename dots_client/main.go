@@ -178,12 +178,17 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			requestQuerys = tmpPaths[i+1:]
 			break
 		}
-		// map observe option
+		// Create observe option
 		observeStr := r.Header.Get(string(messages.OBSERVE))
 		options := make(map[messages.Option]string)
 		if observeStr != "" {
 			options[messages.OBSERVE] = observeStr
 		}
+		// Create If-Match option
+		if val, ok := r.Header[string(messages.IFMATCH)]; ok {
+			options[messages.IFMATCH] = val[0]
+		}
+
 
 		log.Debugf("Parsed URI, requestName=%+v, requestQuerys=%+v, options=%+v", requestName, requestQuerys, options)
 

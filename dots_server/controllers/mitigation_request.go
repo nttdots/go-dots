@@ -6,12 +6,14 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"reflect"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
+	"github.com/nttdots/go-dots/libcoap"
 )
 
 /*
@@ -164,7 +166,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 	// cuid, mid are required Uri-Paths
 	if  mid == 0 || cuid == "" {
-		log.Errorf("Missing required Uri-Path Parameter(cuid, mid).")
+		log.Error("Missing required Uri-Path Parameter(cuid, mid).")
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -188,7 +190,18 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		// Lifetime is required in body
 		lifetime := body.MitigationScope.Scopes[0].Lifetime
 		if lifetime <= 0 {
-			log.Errorf("Lifetime value is not allowed.")
+			log.Errorf("Invalid lifetime value : %+v.", lifetime)
+			res = Response{
+				Type: common.NonConfirmable,
+				Code: common.BadRequest,
+				Body: nil,
+			}
+			return
+		}
+
+		if len(body.MitigationScope.Scopes[0].TargetPrefix) == 0 && len(body.MitigationScope.Scopes[0].FQDN) == 0 &&
+		   len(body.MitigationScope.Scopes[0].URI) == 0 && len(body.MitigationScope.Scopes[0].AliasName) == 0 {
+			log.Error("At least one of the attributes 'target-prefix','target-fqdn','target-uri', or 'alias-name' MUST be present.")
 			res = Response{
 				Type: common.NonConfirmable,
 				Code: common.BadRequest,
@@ -217,7 +230,29 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			currentScope = nil
 		}
 
-		if currentScope == nil || currentScope.MitigationId == 0 {
+		isIfMatchOption := false
+		var indexIfMatch int
+		for i:=0; i<len(request.Options); i++ {
+			if request.Options[i].Key == libcoap.OptionIfMatch {
+				isIfMatchOption = true
+				indexIfMatch = i
+				break;
+			}
+		}
+		if isIfMatchOption {
+			log.Debug("Handle efficacy update.")
+			valid := validateForEfficacyUpdate(request.Options[indexIfMatch].Value, customer, body, currentScope)
+			if !valid {
+				res = Response{
+					Type: common.NonConfirmable,
+					Code: common.BadRequest,
+					Body: nil,
+				}
+				return
+			}
+		}
+
+		if (currentScope == nil || currentScope.MitigationId == 0) && !isIfMatchOption {
 
 			CreateMitigation(body, customer, nil)
 
@@ -228,7 +263,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				Body: messages.NewMitigationResponsePut(body),
 			}
 
-		} else  {
+		} else if currentScope != nil  {
 
 			// Update
 			config := dots_config.GetServerSystemConfig().LifetimeConfiguration
@@ -337,6 +372,7 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	m.URI.AddList(req.URI)
 	m.AliasName.AddList(req.AliasName)
 	m.Lifetime = req.Lifetime
+	m.AttackStatus = req.AttackStatus
 	m.TargetPrefix, err = newTargetPrefix(req.TargetPrefix)
 	m.ClientDomainIdentifier = clientDomainIdentifier
 	if err != nil {
@@ -795,4 +831,85 @@ func DeleteMitigation(customerId int, cuid string, mid int, mitigationScopeId in
 		return
 	}
 	return
+}
+
+/*
+ * Validate content of efficacy update request
+ * parameter:
+ *  optionValue value of If-Match option
+ *  customer request source Customer
+ *  body request mitigation
+ *  currentScope current mitigation in DB
+ * return bool:
+ *  true: if efficacy update is valid
+ *  false: if efficacy update is invalid
+ */
+func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, body *messages.MitigationRequest, currentScope *models.MitigationScope) bool {
+	if len(optionValue) != 0 {
+		log.Error("If-Match option with value other than empty is not supported.")
+		return false
+	}
+
+	attackStatus := body.MitigationScope.Scopes[0].AttackStatus
+	if attackStatus != int(models.UnderAttack) && attackStatus != int(models.AttackSuccessfullyMitigated) {
+		log.Errorf("Invalid attack-status value: %+v. Expected values includes 1: under-attack, 2: attack-successfully-mitigated.", attackStatus)
+		return false
+	}
+
+	if currentScope != nil {
+		different := checkAttributesEfficacyUpdate(customer, body, currentScope)
+		if different {
+			return false
+		}
+	}
+
+	return true
+}
+
+/*
+ * Check attribute difference between efficacy update request and existing mitigation request in DB
+ * parameter:
+ *  customer request source Customer
+ *  messageScope request mitigation
+ *  currentScope current mitigation in DB
+ * return bool:
+ *  true: Except for attack-status and lifetime, if any attribute of incomming request is different from existing value in DB
+ *  false: Except for attack-status and lifetime, if all other attributes of mitigation request is the same as  existing values in DB
+ */
+func checkAttributesEfficacyUpdate(customer *models.Customer, messageScope *messages.MitigationRequest, currentScope *models.MitigationScope) bool {
+	// Convert type of scope in request to type of scope in DB
+	m := models.NewMitigationScope(customer, messageScope.EffectiveClientIdentifier())
+	m.TargetPrefix,_ = newTargetPrefix(messageScope.MitigationScope.Scopes[0].TargetPrefix)
+	m.TargetPortRange,_ = newTargetPortRange(messageScope.MitigationScope.Scopes[0].TargetPortRange)
+	m.TargetProtocol.AddList(messageScope.MitigationScope.Scopes[0].TargetProtocol)
+	m.FQDN.AddList(messageScope.MitigationScope.Scopes[0].FQDN)
+	m.URI.AddList(messageScope.MitigationScope.Scopes[0].URI)
+	m.AliasName.AddList(messageScope.MitigationScope.Scopes[0].AliasName)
+
+	if !reflect.DeepEqual(m.TargetPrefix, currentScope.TargetPrefix) {
+		log.Errorf("TargetPrefix in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPrefix, currentScope.TargetPrefix)
+		return true;
+	}
+	if !reflect.DeepEqual(m.TargetPortRange, currentScope.TargetPortRange) {
+		log.Errorf("TargetPortRange in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPortRange, currentScope.TargetPortRange)
+		return true;
+	}
+	if !reflect.DeepEqual(m.TargetProtocol, currentScope.TargetProtocol) {
+		log.Errorf("TargetProtocol in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetProtocol, currentScope.TargetProtocol)
+		return true;
+	}
+	if !reflect.DeepEqual(m.FQDN, currentScope.FQDN) {
+		log.Errorf("FQDN in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.FQDN, currentScope.FQDN)
+		return true;
+	}
+	if !reflect.DeepEqual(m.URI, currentScope.URI) {
+		log.Errorf("URI in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.URI, currentScope.URI)
+		return true;
+	}
+	if !reflect.DeepEqual(m.AliasName, currentScope.AliasName) {
+		log.Errorf("AliasName in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.AliasName, currentScope.AliasName)
+		return true;
+	}
+
+	return false
 }
