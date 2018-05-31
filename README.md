@@ -39,7 +39,9 @@ Licensed under Apache License 2.0.
 
 ## How to build go-dots
 ### Build libcoap for go-dots
+
 Currenly supported libcoap version : 1365dea
+
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
     $ git checkout 1365dea39a6129a9b7e8c579537e12ffef1558f6
@@ -118,16 +120,19 @@ A DOTS client can convey the 'observe' option set to '0' in the GET request to r
 and unsubscribe itself by issuing GET request with 'observe' option set to '1'
 
 Subscribe for resource observation:
+
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=0
 
 Unsubscribe from resource observation:
+
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=1
 
 Subscriptions are valid as long as current session exists. When session is renewed (e.g DOTS client does not receive response from DOTS server for its Ping message 
 in a period of time, it decided that server has been disconnected, then re-connects), all previous subscriptions will be lost. In such cases, DOTS clients will have to re-subscribe
 for observation. Below is recommended step: 
+
     ・GET a list of all existing mitigations (that were created before server restarted)
     ・PUT mitigations  one by one
     ・GET + Observe for all the mitigations that should be observed
@@ -177,9 +182,12 @@ Or you can run MySQL on docker.
     $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
 
 DOTS server listens to DB notification (e.g changes to mitigation_scope#status) at port 9999. If you want to change to different port, you have to change it at two places:
+
     - dots_server/dot_server.yaml: dbNotificationPort: 9999
     - mysql_udf/mysql-notification.c: #define PORT 9999
+
 After changing port number, it is neccessary to rebuild go-dots (which includes rebuilding mysql-notification.c and restarting DB) so that the change can take effect.
+
     $ cd $GOPATH/src/github.com/nttdots/go-dots/
     $ make && make install
 
