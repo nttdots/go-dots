@@ -153,10 +153,17 @@ func (r *Request) CreateRequest() {
 		if observe == Register || observe == Deregister {
 			r.pdu.Options = append(r.pdu.Options, libcoap.OptionObserve.Uint16(observe))
 			queryString := task.QueryParamsToString(r.queryParams)
+			token := r.env.GetToken(queryString)
 			if observe == Register {
-				r.env.AddToken(r.pdu.Token, queryString)
+				if token != nil {
+					r.pdu.Token = token
+				} else {
+					r.env.AddToken(r.pdu.Token, queryString)
+				}
 			} else {
-				r.pdu.Token = r.env.GetToken(queryString)
+				if token != nil {
+					r.pdu.Token = token
+				}
 				r.env.RemoveToken(queryString)
 			}
 		}
