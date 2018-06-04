@@ -333,7 +333,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		goto Response
 	}
 
-	if mitigationScope.Status <= 3 && mitigationScope.Lifetime != 0 {
+	if mitigationScope.Status <= 4 && mitigationScope.Lifetime != 0 {
 		config := dots_config.GetServerSystemConfig().LifetimeConfiguration
 
 		mitigationScope.Lifetime = config.ActiveButTerminatingPeriod
@@ -344,11 +344,8 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 			log.WithError(err).Error("MitigationScope update error.")
 			return Response{}, err
 		}
-	} else if mitigationScope.Status == models.ActiveButTerminating && mitigationScope.Lifetime != 0 {
-		goto Response
 	} else {
-		// Delete Mitigation
-		DeleteMitigation(customer.Id, cuid, mid, models.AnyMitigationScopeId)
+		goto Response
 	}
 
 Response:

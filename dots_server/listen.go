@@ -121,7 +121,6 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                     // Create sub resource to handle observation on behalf of Unknown resource in case of mitigation PUT
                     sfMed := reflect.ValueOf(method)
                     sfPut := reflect.ValueOf(controller.HandlePut)
-                    sfDel := reflect.ValueOf(controller.HandleDelete)
                     if is_unknown && sfMed.Pointer() == sfPut.Pointer() {
                         p := request.PathString()
                         r := libcoap.ResourceInit(&p, 0)
@@ -132,9 +131,6 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                         r.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete, typ, controller, !is_unknown))
                         context.AddResource(r)
                         log.Debugf("Create sub resource to handle observation later : uri-path=%+v", p)
-                    } else if !is_unknown && sfMed.Pointer() == sfDel.Pointer() {
-                        query := request.PathString()
-                        context.DeleteResourceByQuery(query)
                     }
                     break;
 
