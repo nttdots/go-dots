@@ -91,7 +91,7 @@ To set up your database, refer to the [Database configuration document](./docs/D
 
 
 ## Client
-    $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=5684 -vv
+    $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=5684 --config [config.yml file (ex: go-dots/dots_client/dots_client.yaml)] -vv
 
 ## GoBGP Server
 To install and run gobgp-server, refer to the following link:
