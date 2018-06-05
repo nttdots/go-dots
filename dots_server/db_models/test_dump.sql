@@ -235,7 +235,9 @@ CREATE TABLE `mitigation_scope` (
   `client_identifier` varchar(255) DEFAULT NULL,
   `client_domain_identifier` varchar(255) DEFAULT NULL,
   `mitigation_id` int(11) DEFAULT NULL,
+  `status` int(1) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
+  `attack-status` int(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -245,6 +247,24 @@ INSERT INTO `mitigation_scope` (`id`, `customer_id`, `client_identifier`, `clien
 VALUES
   (1,128,'','',12332,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
   (2,128,'','',12333,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34');
+
+# mitigation_scope trigger when status change
+# ------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS MySQLNotification;
+CREATE FUNCTION MySQLNotification RETURNS INTEGER SONAME 'mysql-notification.so';
+
+DELIMITER @@
+
+CREATE TRIGGER status_changed_trigger AFTER UPDATE ON mitigation_scope
+FOR EACH ROW
+BEGIN
+  IF NEW.status <> OLD.status THEN
+    SELECT MySQLNotification(NEW.id, NEW.customer_id, NEW.client_identifier, NEW.mitigation_id, NEW.status) INTO @x;
+  END IF;
+END@@
+
+DELIMITER ;
 
 
 # signal_session_configuration
@@ -261,6 +281,11 @@ CREATE TABLE `signal_session_configuration` (
   `max_retransmit` int(11) DEFAULT NULL,
   `ack_timeout` int(11) DEFAULT NULL,
   `ack_random_factor` double DEFAULT NULL,
+  `heartbeat_interval_idle` int(11) DEFAULT NULL,
+  `missing_hb_allowed_idle` int(11) DEFAULT NULL,
+  `max_retransmit_idle` int(11) DEFAULT NULL,
+  `ack_timeout_idle` int(11) DEFAULT NULL,
+  `ack_random_factor_idle` double DEFAULT NULL,
   `trigger_mitigation` tinyint(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
@@ -277,9 +302,7 @@ DROP TABLE IF EXISTS `protection`;
 
 CREATE TABLE `protection` (
   `id`                     BIGINT(20)   NOT NULL AUTO_INCREMENT,
-  `customer_id`            INT(11)      NOT NULL,
-  `client_identifier`      VARCHAR(255) NOT NULL,
-  `mitigation_id`          INT(11)      NOT NULL,
+  `mitigation_scope_id`    BIGINT(20)            DEFAULT NULL,
   `is_enabled`             TINYINT(1)   NOT NULL,
   `type`                   VARCHAR(255) NOT NULL,
   `target_blocker_id`      BIGINT(20)            DEFAULT NULL,
@@ -290,16 +313,15 @@ CREATE TABLE `protection` (
   `blocked_data_info_id`   BIGINT(20)            DEFAULT NULL,
   `created`                DATETIME              DEFAULT NULL,
   `updated`                DATETIME              DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `IDX_protection_idx_mitigation_id` (mitigation_id)
+  PRIMARY KEY (`id`)
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
 
-insert into `protection` (id, customer_id, client_identifier, mitigation_id, is_enabled, `type`, target_blocker_id, started_at, finished_at, record_time, forwarded_data_info_id, blocked_data_info_id, `created`, `updated`)
+insert into `protection` (id, mitigation_scope_id, is_enabled, `type`, target_blocker_id, started_at, finished_at, record_time, forwarded_data_info_id, blocked_data_info_id, `created`, `updated`)
 VALUES
-(100, 123, '', 1, false, 'RTBH', 1, null, null, null, 1, 2, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-(101, 123, '', 2, false, 'RTBH', 1, null, null, null, 3, 4, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+(100, 1, false, 'RTBH', 1, null, null, null, 1, 2, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+(101, 2, false, 'RTBH', 1, null, null, null, 3, 4, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 # protection_parameter
 # ------------------------------------------------------------

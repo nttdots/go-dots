@@ -2,9 +2,11 @@ package task
 
 import "time"
 import "github.com/nttdots/go-dots/libcoap"
+import log "github.com/sirupsen/logrus"
+import "fmt"
 
 type PingResponseHandler func(*PingTask, *libcoap.Pdu)
-type PingTimeoutHandler  func(*PingTask)
+type PingTimeoutHandler  func(*PingTask, *Env)
 
 type PingTask struct {
     TaskBase
@@ -12,9 +14,12 @@ type PingTask struct {
     interval        time.Duration
     responseHandler PingResponseHandler
     timeoutHandler  PingTimeoutHandler
+    current_ping_id  string
 }
 
 type PingEvent struct { EventBase }
+
+
 
 func NewPingTask(interval time.Duration, responseHandler PingResponseHandler, timeoutHandler PingTimeoutHandler) *PingTask {
     return &PingTask {
@@ -22,14 +27,17 @@ func NewPingTask(interval time.Duration, responseHandler PingResponseHandler, ti
         interval,
         responseHandler,
         timeoutHandler,
+        "",
     }
 }
 
 func (t *PingTask) run(out chan Event) {
     for {
         select {
-        case <- t.stopChan:
+        case <- t.stopChan:{
+            log.Debug("Current ping task ended.")
             return
+        }
         case <- time.After(t.interval):
             out <- &PingEvent{ EventBase{ t } }
         }
@@ -45,6 +53,15 @@ func newPingMessage(env *Env) *libcoap.Pdu {
 }
 
 func (e *PingEvent) Handle(env *Env) {
+    pingTask := e.task.(*PingTask)
+    currentTask := env.requests[pingTask.current_ping_id]
+
+    if currentTask != nil {
+        log.Debugf("Waiting for current ping message (id=%+v)to be completed...", pingTask.current_ping_id)
+        return
+    }
+
+    // Send new ping message
     pdu := newPingMessage(env)
     task := e.Task().(*PingTask)
 
@@ -52,12 +69,18 @@ func (e *PingEvent) Handle(env *Env) {
         pdu,
         time.Duration(0),
         0,
-        time.Duration(task.interval * 2),
+        time.Duration(0),
         func (_ *MessageTask, pdu *libcoap.Pdu) {
             task.responseHandler(task, pdu)
         },
         func (*MessageTask) {
-            task.timeoutHandler(task)
+            task.timeoutHandler(task, env)
         })
     env.Run(newTask)
+    pingTask.current_ping_id = fmt.Sprintf("%d", newTask.message.MessageID)
+    log.Debugf ("Sent new ping message (id = %+v)", pingTask.current_ping_id )
+}
+
+func (t * PingTask) IsRunnable() bool {
+    return t.interval > 0
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/shopspring/decimal"
 	"bytes"
 	"errors"
 	"flag"
@@ -14,12 +15,15 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"encoding/json"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_client/task"
 	"github.com/nttdots/go-dots/libcoap"
+	dots_config "github.com/nttdots/go-dots/dots_client/config"
+	client_message "github.com/nttdots/go-dots/dots_client/messages"
 )
 
 const (
@@ -38,6 +42,8 @@ var (
 
 	identity          string
 	psk               string
+	configFile        string
+	defaultConfigFile = "dots_client.yaml"
 )
 
 func init() {
@@ -58,13 +64,15 @@ func init() {
 
 	flag.StringVar(&identity, "identity", "", "identity for DTLS PSK")
 	flag.StringVar(&psk, "psk", "", "DTLS PSK")
+
+	flag.StringVar(&configFile, "config", defaultConfigFile, "config yaml file")
 }
 
 // These variables hold the server connection configurations.
 var signalChannelAddress string
 var dataChannelAddress string
 
-func connectSignalChannel() (env *task.Env, err error) {
+func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	var ctx *libcoap.Context
 	var sess *libcoap.Session
 	var addr libcoap.Address
@@ -103,17 +111,34 @@ func connectSignalChannel() (env *task.Env, err error) {
 			goto error
 		}
 
-		sess = ctx.NewClientSessionDTLS(addr, libcoap.ProtoDtls, nil)
+		sess = ctx.NewClientSessionDTLS(addr, libcoap.ProtoDtls)
 		if sess == nil {
 			log.Error("NewClientSessionDTLS() -> nil")
 			err = errors.New("NewClientSessionDTLS() -> nil")
 			goto error
 		}
 	}
+	if (orgEnv == nil){
+		env = task.NewEnv(ctx, sess)
+	} else {
+		env = orgEnv.RenewEnv(ctx, sess)
+	}
 
-	env = task.NewEnv(ctx, sess)
 	ctx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
 		env.HandleResponse(received)
+	})
+
+	ctx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
+		if (reason == libcoap.NackRst){
+			// Pong message
+			env.HandleResponse(sent)
+		} else if (reason == libcoap.NackTooManyRetries){
+			// Ping timeout
+			env.HandleTimeout(sent)
+		} else {
+			// Unsupported type
+			log.Infof("nack_handler gets fired with unsupported reason type : %+v.", reason)
+		}
 	})
 	return
 
@@ -153,9 +178,21 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			requestQuerys = tmpPaths[i+1:]
 			break
 		}
-		log.Debugf("Parsed URI, requestName=%+v, requestQuerys=%+v", requestName, requestQuerys)
+		// Create observe option
+		observeStr := r.Header.Get(string(messages.OBSERVE))
+		options := make(map[messages.Option]string)
+		if observeStr != "" {
+			options[messages.OBSERVE] = observeStr
+		}
+		// Create If-Match option
+		if val, ok := r.Header[string(messages.IFMATCH)]; ok {
+			options[messages.IFMATCH] = val[0]
+		}
 
-		if requestName == "" || !messages.IsRequest(requestName) {
+
+		log.Debugf("Parsed URI, requestName=%+v, requestQuerys=%+v, options=%+v", requestName, requestQuerys, options)
+
+		if requestName == "" || (!isClientConfigRequest(requestName) && !messages.IsRequest(requestName)) {
 			fmt.Printf("dots_client.serverHandler -- %s is invalid request name \n", requestName)
 			fmt.Printf("support messages: %s \n", messages.SupportRequest())
 			errMessage := fmt.Sprintf("%s is invalid request name \n", requestName)
@@ -172,7 +209,25 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			jsonData = buff.Bytes()
 		}
 
-		err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env)
+		if r.Method == "POST" && requestName == string(client_message.CLIENTCONFIGURATION) {
+			var clientConfig *client_message.ClientConfigRequest
+			err := json.Unmarshal(jsonData, &clientConfig)
+			if err != nil {
+				log.Errorf("Failed to parse json data : %+v", err)
+				return
+			}
+			mode := clientConfig.SessionConfig.Mode
+			log.Debugf("Session config mode: %+v",mode)
+			if mode == string(client_message.IDLE) || mode == string(client_message.MITIGATING) {
+				log.Debug("Session config mode is valid. Switch to new session config mode")
+				env.SetSessionConfigMode(mode)
+			} else {
+				log.Debug("Session config mode is invalid")
+			}
+			return
+		}
+
+		err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env, options)
 		if err != nil {
 			fmt.Printf("dots_client.serverHandler -- %s", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -183,10 +238,20 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 	}
 }
 
+/**
+* Check if request name is client config request
+*/
+func isClientConfigRequest(requestName string) bool {
+	if requestName == string(client_message.CLIENTCONFIGURATION) {
+		return true
+	}
+	return false
+}
+
 /*
  * sendRequest is a function that sends requests to the server.
  */
-func sendRequest(jsonData []byte, requestName, method string, queryParams []string, env *task.Env) (err error) {
+func sendRequest(jsonData []byte, requestName, method string, queryParams []string, env *task.Env, options map[messages.Option]string) (err error) {
 	if jsonData != nil {
 		err = common.ValidateJson(requestName, string(jsonData))
 		if err != nil {
@@ -199,7 +264,7 @@ func sendRequest(jsonData []byte, requestName, method string, queryParams []stri
 	var requestMessage RequestInterface
 	switch messages.GetChannelType(requestName) {
 	case messages.SIGNAL:
-		requestMessage = NewRequest(code, libCoapType, method, requestName, queryParams, env)
+		requestMessage = NewRequest(code, libCoapType, method, requestName, queryParams, env, options)
 	case messages.DATA:
 		errorMsg := fmt.Sprintf("unsupported channel type error: %s", requestName)
 		log.Errorf("dots_client.sendRequest -- %s", errorMsg)
@@ -256,8 +321,51 @@ func pingResponseHandler(_ *task.PingTask, pdu *libcoap.Pdu) {
 	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("Ping Ack")
 }
 
-func pingTimeoutHandler(*task.PingTask) {
-	log.Info("Ping Timeout")
+func pingTimeoutHandler(_ *task.PingTask, env *task.Env) {
+	log.Info("Ping Timeout #", env.CurrentMissingHb())
+
+	if !env.IsHeartbeatAllowed() {
+		log.Debug("Exceeded missing_hb_allowed. Stop ping task...")
+		env.StopPing()
+
+		restartConnection(env)
+		env.Run(task.NewPingTask(
+			time.Duration(config.HeartbeatInterval) * time.Second,
+			pingResponseHandler,
+			pingTimeoutHandler))
+	}
+}
+
+func restartConnection (env *task.Env) {
+	log.Debug("Restart connection to server...")
+	cleanupSignalChannel(env.CoapContext(), env.CoapSession())
+	_,err := connectSignalChannel(env)
+	if err != nil {
+		log.WithError(err).Errorf("connectSignalChannel() failed")
+		os.Exit(1)
+	}
+
+	log.Debug("Restarted connection successfully.")
+}
+
+var config *dots_config.SignalConfiguration
+
+/**
+* Load config file
+* 
+*/
+func loadConfig(env *task.Env) error{
+	var err error
+	config,err = dots_config.LoadClientConfig(configFile)
+	if err != nil {
+		return err
+	}
+	log.Debugf("dots client starting with config: %# v", config)
+
+	env.SetMissingHbAllowed(config.MissingHbAllowed)
+	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
+	env.SetRetransmitParams(config.MaxRetransmit, config.AckTimeout, decimal.NewFromFloat(config.AckRandomFactor).Round(2))
+	return nil
 }
 
 func main() {
@@ -294,7 +402,7 @@ func main() {
 		exists(filePath)
 	}
 
-	env, err := connectSignalChannel()
+	env, err := connectSignalChannel(nil)
 	if err != nil {
 		log.WithError(err).Errorf("connectSignalChannel() failed")
 		os.Exit(1)
@@ -330,8 +438,14 @@ func main() {
 	srv := &http.Server{Handler: nil, ConnState: connectionStateChange}
 	go srv.Serve(l)
 
+	// Load session configuration
+	errConf := loadConfig(env)
+	if errConf != nil {
+		log.Error("Load client config data error.")
+		return
+	}
 	env.Run(task.NewPingTask(
-		time.Duration(30) * time.Second,
+		time.Duration(config.HeartbeatInterval) * time.Second,
 		pingResponseHandler,
 		pingTimeoutHandler))
 loop:

@@ -24,11 +24,11 @@ func CreatePortRangeParam(lowerPort int, upperPort int) (portRange *PortRange) {
 }
 
 func DeleteMitigationScopePortRange(session *xorm.Session, mitigationScopeId int64) (err error) {
-	_, err = session.Delete(&Prefix{MitigationScopeId: mitigationScopeId})
+	_, err = session.Delete(&PortRange{MitigationScopeId: mitigationScopeId})
 	return
 }
 
 func DeleteIdentifierPortRange(session *xorm.Session, identifierId int64) (err error) {
-	_, err = session.Delete(&Prefix{IdentifierId: identifierId})
+	_, err = session.Delete(&PortRange{IdentifierId: identifierId})
 	return
 }

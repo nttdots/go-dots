@@ -1,7 +1,7 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-1
+#cgo LDFLAGS: -lcoap-2-openssl
 #include <coap/coap.h>
 */
 import "C"
@@ -141,12 +141,22 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
         sort.Stable(&optsSorter{ opts })
 
         for _, o := range opts {
-            if 0 == C.coap_add_option(p,
-                                      C.uint16_t(o.Key),
-                                      C.size_t(len(o.Value)),
-                                      (*C.uint8_t)(unsafe.Pointer(&o.Value[0]))) {
-                err = errors.New("coap_add_option() failed.")
-                return
+            if len(o.Value) == 0 {
+               if 0 == C.coap_add_option(p,
+                    C.uint16_t(o.Key),
+                    C.size_t(len(o.Value)),
+                    (*C.uint8_t)(unsafe.Pointer(&o.Value))) {
+                    err = errors.New("coap_add_option() failed.")
+                    return
+                }
+            } else {
+                if 0 == C.coap_add_option(p,
+                                        C.uint16_t(o.Key),
+                                        C.size_t(len(o.Value)),
+                                        (*C.uint8_t)(unsafe.Pointer(&o.Value[0]))) {
+                    err = errors.New("coap_add_option() failed.")
+                    return
+                }
             }
         }
     }
@@ -204,4 +214,13 @@ func (pdu *Pdu) Queries() []string {
         }
     }
     return ret
+}
+
+func (pdu *Pdu) GetOptionValue(key OptionKey) uint16 {
+    for _, option := range pdu.Options {
+        if key == option.Key {
+            return option.Uint16()
+        }
+    }
+    return 2
 }

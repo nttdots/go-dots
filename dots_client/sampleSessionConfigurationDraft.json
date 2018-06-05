@@ -19,7 +19,10 @@
         },
         "idle-config": {
             "heartbeat-interval": {
-                "current-value": 20
+                "current-value": 30
+            },
+            "missing-hb-allowed": {
+                "current-value": 3
             },
             "max-retransmit": {
                 "current-value": 7

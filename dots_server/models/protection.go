@@ -43,9 +43,7 @@ type Protection interface {
 	//GetByMitigationId(mitigationId int) Protection
 
 	Id() int64
-	CustomerId() int
-	ClientIdentifier() string
-	MitigationId() int
+	MitigationScopeId() int64
 	IsEnabled() bool
 	SetIsEnabled(b bool)
 	Type() ProtectionType
@@ -62,9 +60,7 @@ type Protection interface {
 // Protection Base
 type ProtectionBase struct {
 	id                int64
-	customerId        int
-	clientIdentifier  string
-	mitigationId      int
+	mitigationScopeId int64
 	targetBlocker     Blocker
 	isEnabled         bool
 	startedAt         time.Time
@@ -78,16 +74,8 @@ func (p ProtectionBase) Id() int64 {
 	return p.id
 }
 
-func (p ProtectionBase) CustomerId() int {
-	return p.customerId
-}
-
-func (p ProtectionBase) ClientIdentifier() string {
-	return p.clientIdentifier
-}
-
-func (p ProtectionBase) MitigationId() int {
-	return p.mitigationId
+func (p ProtectionBase) MitigationScopeId() int64 {
+	return p.mitigationScopeId
 }
 
 func (p ProtectionBase) TargetBlocker() Blocker {

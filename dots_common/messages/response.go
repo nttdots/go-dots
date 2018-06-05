@@ -55,9 +55,10 @@ type ConfigurationResponse struct {
 
 type ConfigurationResponseConfigs struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	MitigationConfig ConfigurationResponseConfig `json:"mitigating-config" codec:"32"`
+	MitigatingConfig ConfigurationResponseConfig `json:"mitigating-config" codec:"32"`
 	IdleConfig ConfigurationResponseConfig       `json:"idle-config"       codec:"44"`
 	Sid        int                               `json:"sid"               codec:"31,omitempty"`
+	TriggerMitigation bool                 `json:"trigger-mitigation" codec:"45"`
 }
 
 type ConfigurationResponseConfig struct {
@@ -67,7 +68,6 @@ type ConfigurationResponseConfig struct {
 	MaxRetransmit     IntCurrentMinMax     `json:"max-retransmit"     codec:"38"`
 	AckTimeout        IntCurrentMinMax     `json:"ack-timeout"        codec:"39"`
 	AckRandomFactor   DecimalCurrentMinMax `json:"ack-random-factor"  codec:"40"`
-	TriggerMitigation bool                 `json:"trigger-mitigation" codec:"45"`
 }
 
 func (v *IntCurrentMinMax) SetMinMax(pr *config.ParameterRange) {

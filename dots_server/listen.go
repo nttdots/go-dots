@@ -46,113 +46,145 @@ func marshalCbor(msg interface{}) ([]byte, error) {
     return buf, nil
 }
 
-func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface) *libcoap.Resource {
+func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) *libcoap.Resource {
 
-    resource := libcoap.ResourceInit(&path, 0)
+    var resource *libcoap.Resource
+
+    if (is_unknown){
+        // Unknown resource
+        resource = libcoap.ResourceUnknownInit()
+    } else {
+        // Well-known resource
+        resource = libcoap.ResourceInit(&path, 0)
+    }
     log.Debugf("listen.go: createResource, path=%+v", path)
 
-    var toMethodHandler = func(method controllers.ServiceMethod) libcoap.MethodHandler {
-        return func(context  *libcoap.Context,
-                    resource *libcoap.Resource,
-                    session  *libcoap.Session,
-                    request  *libcoap.Pdu,
-                    token    *[]byte,
-                    query    *string,
-                    response *libcoap.Pdu) {
+    resource.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, is_unknown))
+    resource.RegisterHandler(libcoap.RequestPut,    toMethodHandler(controller.HandlePut, typ, controller, is_unknown))
+    resource.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost, typ, controller, is_unknown))
+    resource.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete, typ, controller, is_unknown))
+    return resource
+}
 
-            log.WithField("MessageID", request.MessageID).Info("Incoming Request")
+func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) libcoap.MethodHandler {
+    return func(context  *libcoap.Context,
+                resource *libcoap.Resource,
+                session  *libcoap.Session,
+                request  *libcoap.Pdu,
+                token    *[]byte,
+                query    *string,
+                response *libcoap.Pdu) {
 
-            response.MessageID = request.MessageID
-            response.Token     = request.Token
+        log.WithField("MessageID", request.MessageID).Info("Incoming Request")
+        log.WithField("Option", request.Options).Info("Incoming Request")
 
-            cn, err := session.DtlsGetPeerCommonName()
-            if err != nil {
-                log.WithError(err).Warn("DtlsGetPeercCommonName() failed")
-                response.Code = libcoap.ResponseForbidden
-                return
-            }
+        observe := request.GetOptionValue(libcoap.OptionObserve)
+        if observe == 0 {
+            log.Debugf("Register Mitigation Observe.")
+        } else if observe == 1 {
+            log.Debugf("Deregister Mitigation Observe.")
+        }
 
-            log.Infof("CommonName is %v", cn)
+        response.MessageID = request.MessageID
+        response.Token     = request.Token
 
-            customer, err := models.GetCustomerByCommonName(cn)
-            if err != nil || customer.Id == 0 {
-                log.WithError(err).Warn("Customer not found.")
-                response.Code = libcoap.ResponseForbidden
-                return
-            }
-
-            log.Debugf("request.Data=\n%s", hex.Dump(request.Data))
-
-            log.Debugf("typ=%+v:", typ)
-            log.Debugf("request.Path(): %+v", request.Path())
-
-            var body interface{}
-
-            if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
-                uri := request.Path()
-                for i := range uri {
-                    if strings.HasPrefix(uri[i], "mitigate") {
-                        log.Debug("Request path includes 'mitigate'. Cbor decode with type MitigationRequest")
-                        body, err = unmarshalCbor(request, reflect.TypeOf(messages.MitigationRequest{}))
-                        break;
-                
-                    } else if strings.HasPrefix(uri[i], "config") {
-                        log.Debug("Request path includes 'config'. Cbor decode with type SignalConfigRequest")
-                        body, err = unmarshalCbor(request, reflect.TypeOf(messages.SignalConfigRequest{}))
-                        break;	
-                    }
-                }
-
-            } else {
-                body, err = unmarshalCbor(request, typ)
-            }
-            
-            if err != nil {
-                log.WithError(err).Error("unmarshalCbor failed.")
-                response.Code = libcoap.ResponseInternalServerError
-                return
-            }
-
-            req := controllers.Request {
-                Code:    request.Code,
-                Type:    request.Type,
-                Uri:     request.Path(),
-                Queries: request.Queries(),
-                Body:    body,
-            }
-            log.Debugf("req=%+v", req)
-
-            res, err := method(req, customer)
-            if err != nil {
-                log.WithError(err).Error("controller returned error")
-                response.Code = libcoap.ResponseInternalServerError
-                return
-            }
-
-            log.Debugf("res=%+v", res)
-            payload, err := marshalCbor(res.Body)
-            if err != nil {
-                log.WithError(err).Error("marshalCbor failed.")
-                response.Code = libcoap.ResponseInternalServerError
-                return
-            }
-
-            response.Code = libcoap.Code(res.Code)
-            response.Data = payload
-            response.Type = CoAPType(res.Type)
-            log.Debugf("response.Data=\n%s", hex.Dump(payload))
-            // add content type cbor
-            response.Options = append(response.Options, libcoap.OptionContentType.Uint16(60))
-
+        cn, err := session.DtlsGetPeerCommonName()
+        if err != nil {
+            log.WithError(err).Warn("DtlsGetPeercCommonName() failed")
+            response.Code = libcoap.ResponseForbidden
             return
         }
-    }
 
-    resource.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet))
-    resource.RegisterHandler(libcoap.RequestPut,    toMethodHandler(controller.HandlePut))
-    resource.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost))
-    resource.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete))
-    return resource
+        log.Infof("CommonName is %v", cn)
+
+        customer, err := models.GetCustomerByCommonName(cn)
+        if err != nil || customer.Id == 0 {
+            log.WithError(err).Warn("Customer not found.")
+            response.Code = libcoap.ResponseForbidden
+            return
+        }
+
+        log.Debugf("request.Data=\n%s", hex.Dump(request.Data))
+
+        log.Debugf("typ=%+v:", typ)
+        log.Debugf("request.Path(): %+v", request.Path())
+
+        var body interface{}
+
+        if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
+            uri := request.Path()
+            for i := range uri {
+                if strings.HasPrefix(uri[i], "mitigate") {
+                    log.Debug("Request path includes 'mitigate'. Cbor decode with type MitigationRequest")
+                    body, err = unmarshalCbor(request, reflect.TypeOf(messages.MitigationRequest{}))
+
+                    // Create sub resource to handle observation on behalf of Unknown resource in case of mitigation PUT
+                    sfMed := reflect.ValueOf(method)
+                    sfPut := reflect.ValueOf(controller.HandlePut)
+                    if is_unknown && sfMed.Pointer() == sfPut.Pointer() {
+                        p := request.PathString()
+                        r := libcoap.ResourceInit(&p, 0)
+                        r.TurnOnResourceObservable()
+                        r.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
+                        r.RegisterHandler(libcoap.RequestPut,    toMethodHandler(controller.HandlePut, typ, controller, !is_unknown))
+                        r.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost, typ, controller, !is_unknown))
+                        r.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete, typ, controller, !is_unknown))
+                        context.AddResource(r)
+                        log.Debugf("Create sub resource to handle observation later : uri-path=%+v", p)
+                    }
+                    break;
+
+                } else if strings.HasPrefix(uri[i], "config") {
+                    log.Debug("Request path includes 'config'. Cbor decode with type SignalConfigRequest")
+                    body, err = unmarshalCbor(request, reflect.TypeOf(messages.SignalConfigRequest{}))
+                    break;
+                }
+            }
+
+        } else {
+            body, err = unmarshalCbor(request, typ)
+        }
+
+        if err != nil {
+            log.WithError(err).Error("unmarshalCbor failed.")
+            response.Code = libcoap.ResponseInternalServerError
+            return
+        }
+
+        req := controllers.Request {
+            Code:    request.Code,
+            Type:    request.Type,
+            Uri:     request.Path(),
+            Queries: request.Queries(),
+            Body:    body,
+            Options: request.Options,
+        }
+        log.Debugf("req=%+v", req)
+
+        res, err := method(req, customer)
+        if err != nil {
+            log.WithError(err).Error("controller returned error")
+            response.Code = libcoap.ResponseInternalServerError
+            return
+        }
+
+        log.Debugf("res=%+v", res)
+        payload, err := marshalCbor(res.Body)
+        if err != nil {
+            log.WithError(err).Error("marshalCbor failed.")
+            response.Code = libcoap.ResponseInternalServerError
+            return
+        }
+
+        response.Code = libcoap.Code(res.Code)
+        response.Data = payload
+        response.Type = CoAPType(res.Type)
+        log.Debugf("response.Data=\n%s", hex.Dump(payload))
+        // add content type cbor
+        response.Options = append(response.Options, libcoap.OptionContentType.Uint16(60))
+
+        return
+    }
 }
 
 func CoAPType(t dots_common.Type) (libcoapType libcoap.Type) {
@@ -174,7 +206,7 @@ func addHandler(ctx *libcoap.Context, code messages.Code, controller controllers
     msg := messages.MessageTypes[code]
     path := "/" + msg.Path
 
-    ctx.AddResource(createResource(ctx, path, msg.Type, controller))
+    ctx.AddResource(createResource(ctx, path, msg.Type, controller, false))
 }
 
 func addPrefixHandler(ctx *libcoap.Context, code messages.Code, controller controllers.ControllerInterface) {
@@ -182,7 +214,7 @@ func addPrefixHandler(ctx *libcoap.Context, code messages.Code, controller contr
     path := "/" + msg.Path
 
     filter := controllers.NewPrefixFilter(path, controller)
-    ctx.AddResourceUnknown(createResource(ctx, "dummy for unknown", msg.Type, filter))
+    ctx.AddResource(createResource(ctx, "dummy for unknown", msg.Type, filter, true))
 }
 
 func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libcoap.Context, err error) {

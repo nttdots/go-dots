@@ -1,7 +1,7 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-1
+#cgo LDFLAGS: -lcoap-2-openssl
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <coap/coap.h>

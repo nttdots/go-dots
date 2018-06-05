@@ -29,20 +29,24 @@ Licensed under Apache License 2.0.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.0 or higher (for libcoap)
 
-* MySQL 5.7 or higher
+* MySQL 5.7 or higher and its development package
+  * Install mysql development package in Ubuntu:
+    $ sudo apt-get install libmysqld-dev
 
 ## Recommandation Environment
 * Ubuntu 16.04+
 * macOS High Sierra 10.13+
 
 ## How to build go-dots
-### build libcoap custom for go-dots
-    
-    $ wget --content-disposition https://github.com/nttdots/go-dots/blob/master/misc/libcoap_custom_for_go-dots.tar.gz?raw=true
-    $ tar zxvf libcoap_custom_for_go-dots.tar.gz
-    $ cd libcoap_custom_for_go-dots
+### Build libcoap for go-dots
+
+Currenly supported libcoap version : 1365dea
+
+    $ git clone https://github.com/obgm/libcoap.git
+    $ cd libcoap
+    $ git checkout 1365dea39a6129a9b7e8c579537e12ffef1558f6
     $ ./autogen.sh
-    $ ./configure --disable-documentation --with-openssl=/usr/local
+    $ ./configure --disable-documentation --with-openssl
     $ make
     $ sudo make install
     
@@ -87,7 +91,7 @@ To set up your database, refer to the [Database configuration document](./docs/D
 
 
 ## Client
-    $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=5684 -vv
+    $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=5684 --config [config.yml file (ex: go-dots/dots_client/dots_client.yaml)] -vv
 
 ## GoBGP Server
 To install and run gobgp-server, refer to the following link:
@@ -111,6 +115,33 @@ To install and run gobgp-server, refer to the following link:
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
+### Client Controller [mitigation_observe]
+A DOTS client can convey the 'observe' option set to '0' in the GET request to receive notification whenever status of mitigation request changed
+and unsubscribe itself by issuing GET request with 'observe' option set to '1'
+
+Subscribe for resource observation:
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=0
+
+Unsubscribe from resource observation:
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=1
+
+Subscriptions are valid as long as current session exists. When session is renewed (e.g DOTS client does not receive response from DOTS server for its Ping message 
+in a period of time, it decided that server has been disconnected, then re-connects), all previous subscriptions will be lost. In such cases, DOTS clients will have to re-subscribe
+for observation. Below is recommended step: 
+
+    ・GET a list of all existing mitigations (that were created before server restarted)
+    ・PUT mitigations  one by one
+    ・GET + Observe for all the mitigations that should be observed
+
+### Client Controller [mitigation_efficacy_update]
+A DOTS client can convey the 'If-Match' option with empty value in the PUT request to transmit DOTS mitigation efficacy update to the DOTS server:
+     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftEfficacyUpdate.json
 
 ### Client Controller [session_configuration_request]
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Put \
@@ -128,6 +159,21 @@ To install and run gobgp-server, refer to the following link:
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Delete \
       -sid 234
 
+###  Client Controller [client_configuration_request]
+DOTS signal channel session configuration supports 2 sets of parameters : 'mitigating-config' and 'idle-config'.
+The same or distinct configuration set may be used during times when a mitigation is active ('mitigating-config') and when no mitigation is active ('idle-config').
+Dots_client uses 'idle-config' parameter set by default. It can be configured to switch to the other parameter set by client_configuration request
+
+Configure dots_client to use 'idle-config' parameters
+
+    $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
+    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Idle.json
+
+Configure dots_client to use 'mitigating-config' parameters
+
+    $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
+    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Mitigating.json
+
 ## DB
 
 To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)  
@@ -141,6 +187,15 @@ Or you can run MySQL on docker.
     $ cd $GOPATH/src/github.com/nttdots/go-dots/
     $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
 
+DOTS server listens to DB notification (e.g changes to mitigation_scope#status) at port 9999. If you want to change to different port, you have to change it at two places:
+
+    - dots_server/dot_server.yaml: dbNotificationPort: 9999
+    - mysql_udf/mysql-notification.c: #define PORT 9999
+
+After changing port number, it is neccessary to rebuild go-dots (which includes rebuilding mysql-notification.c and restarting DB) so that the change can take effect.
+
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/
+    $ make && make install
 
 # GOBGP
 

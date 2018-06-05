@@ -1,12 +1,13 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-1
+#cgo LDFLAGS: -lcoap-2-openssl
 #include <coap/coap.h>
 #include "callback.h"
 */
 import "C"
 import "unsafe"
+import "unicode/utf8"
 
 type Resource struct {
     ptr      *C.coap_resource_t
@@ -45,12 +46,18 @@ func ResourceInit(uri *string, flags ResourceFlags) *Resource {
     return resource
 }
 
-func (context *Context) AddResource(resource *Resource) {
-    C.coap_add_resource(context.ptr, resource.ptr)
+func ResourceUnknownInit() *Resource {
+
+	ptr := C.coap_resource_unknown_init(nil)
+
+	resource := &Resource{ptr, make(map[Code]MethodHandler)}
+	resources[ptr] = resource
+	return resource
+
 }
 
-func (context *Context) AddResourceUnknown(resource *Resource) {
-    C.coap_add_resource_unknown(context.ptr, resource.ptr)
+func (context *Context) AddResource(resource *Resource) {
+    C.coap_add_resource(context.ptr, resource.ptr)
 }
 
 func (context *Context) DeleteResource(resource *Resource) {
@@ -58,7 +65,7 @@ func (context *Context) DeleteResource(resource *Resource) {
     delete(resources, ptr)
     resource.ptr = nil
 
-    C.coap_delete_resource(context.ptr, &ptr.key[0])
+    C.coap_delete_resource(context.ptr, ptr)
 }
 
 func (context *Context) DeleteAllResources() {
@@ -87,4 +94,13 @@ func (resource *Resource) AddAttr(name string, value *string) *Attr {
     } else {
         return &Attr{ ptr }
     }
+}
+
+func (resource *Resource) TurnOnResourceObservable() {
+    C.coap_resource_set_get_observable(resource.ptr, 1)
+}
+
+func (context *Context) DeleteResourceByQuery(query string) {
+    resource := C.coap_get_resource(context.ptr, C.CString(query), C.int(utf8.RuneCountInString(query)))
+    C.coap_delete_resource(context.ptr, resource)
 }

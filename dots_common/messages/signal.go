@@ -36,6 +36,8 @@ type Scope struct {
 	AliasName []string `json:"alias-name" codec:"13,omitempty"`
 	// lifetime
 	Lifetime int `json:"lifetime" codec:"14,omitempty"`
+	// attack-status
+	AttackStatus int `json:"attack-status" codec:"29,omitempty"`
 }
 
 type MitigationRequest struct {
@@ -123,6 +125,9 @@ func (m *MitigationRequest) String() (result string) {
 		if scope.Lifetime != 0 {
 			result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
 		}
+		if scope.AttackStatus != 0 {
+			result += fmt.Sprintf("     \"%s\": %d\n", "attack-status", scope.AttackStatus)
+		}
 	}
 	return
 }
@@ -134,8 +139,10 @@ type SignalConfigRequest struct {
 
 type SignalConfigs struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	MitigationConfig SignalConfig `json:"mitigating-config" codec:"32"`
+	MitigatingConfig SignalConfig `json:"mitigating-config" codec:"32"`
 	IdleConfig SignalConfig       `json:"idle-config"       codec:"44"`
+	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
+	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
 }
 
 type IntCurrent struct {
@@ -167,8 +174,6 @@ type SignalConfig struct {
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
 	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40"`
-	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
-	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
 }
 
 type HelloRequest struct {

@@ -1,7 +1,7 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-1
+#cgo LDFLAGS: -lcoap-2-openssl -lssl -lcrypto
 #include <coap/coap.h>
 #include "callback.h"
 */
@@ -10,6 +10,16 @@ import "errors"
 import "unsafe"
 
 type ResponseHandler func(*Context, *Session, *Pdu, *Pdu)
+
+type NackHandler func(*Context, *Session, *Pdu, NackReason)
+
+type NackReason C.coap_nack_reason_t
+const (
+    NackTooManyRetries NackReason = C.COAP_NACK_TOO_MANY_RETRIES
+    NackNotDeliverable NackReason = C.COAP_NACK_NOT_DELIVERABLE
+    NackRst NackReason = C.COAP_NACK_RST
+    NackTlsFailed NackReason = C.COAP_NACK_TLS_FAILED
+)
 
 type Proto C.coap_proto_t
 const (
@@ -53,25 +63,20 @@ func (ctx *Context) NewClientSessionPSK(dst Address, proto Proto, identity strin
     }
 }
 
-func (ctx *Context) NewClientSessionDTLS(dst Address, proto Proto, serverCommonName *string) *Session {
-    var cSercerCommonName *C.char
-    if serverCommonName != nil {
-      cSercerCommonName = C.CString(*serverCommonName)
-      defer C.free(unsafe.Pointer(cSercerCommonName))
-    }
+func (ctx *Context) NewClientSessionDTLS(dst Address, proto Proto) *Session {
 
-    ptr := C.coap_new_client_session_dtls(ctx.ptr,
+    ptr := C.coap_new_client_session(ctx.ptr,
                                           nil,
                                           &dst.value,
-                                          C.coap_proto_t(proto),
-                                          cSercerCommonName)
+                                          C.coap_proto_t(proto))
     if ptr != nil {
         session := &Session{ ptr }
         sessions[ptr] = session
         return session
-    } else {
-        return nil
     }
+    
+    return nil
+    
 }
 
 func (session *Session) NewMessageID() uint16 {
@@ -126,7 +131,40 @@ func export_response_handler(ctx      *C.coap_context_t,
     }
 }
 
+//export export_nack_handler
+func export_nack_handler(ctx *C.coap_context_t,
+	sess *C.coap_session_t,
+	sent *C.coap_pdu_t,
+	reason C.coap_nack_reason_t,
+	id C.coap_tid_t) {
+
+	context, ok := contexts[ctx]
+	if !ok {
+		return
+	}
+
+	session, ok := sessions[sess]
+	if !ok {
+		return
+	}
+
+	req, err := sent.toGo()
+	if err != nil {
+		return
+	}
+
+    // If previous message is Ping message
+	if context.nackHandler != nil && req.Type == C.COAP_MESSAGE_CON && req.Code == 0 {
+		context.nackHandler(context, session, req, NackReason(reason))
+	}
+}
+
 func (context *Context) RegisterResponseHandler(handler ResponseHandler) {
     context.handler = handler
     C.coap_register_response_handler(context.ptr, C.coap_response_handler_t(C.response_handler))
+}
+
+func (context *Context) RegisterNackHandler(handler NackHandler) {
+	context.nackHandler = handler
+	C.coap_register_nack_handler(context.ptr, C.coap_nack_handler_t(C.nack_handler))
 }

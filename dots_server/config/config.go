@@ -38,6 +38,11 @@ type SignalConfigurationParameterNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
+	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
+	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
+	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
+	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
 }
 
 type DefaultSignalConfigurationNode struct {
@@ -46,6 +51,17 @@ type DefaultSignalConfigurationNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
+	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
+	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
+	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
+	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
+}
+
+type LifetimeConfigurationNode struct {
+	ActiveButTerminatingPeriod    string `yaml:"activeButTerminatingPeriod"`
+	MaxActiveButTerminatingPeriod string `yaml:"maxActiveButTerminatingPeriod"`
+	ManageLifetimeInterval        string `yaml:"manageLifetimeInterval"`
 }
 
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
@@ -55,16 +71,34 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 		MaxRetransmit:     parseParameterRange(scpn.MaxRetransmit),
 		AckTimeout:        parseParameterRange(scpn.AckTimeout),
 		AckRandomFactor:   parseParameterRange(scpn.AckRandomFactor),
+		HeartbeatIntervalIdle: parseParameterRange(scpn.HeartbeatIntervalIdle),
+		MissingHbAllowedIdle:  parseParameterRange(scpn.MissingHbAllowedIdle),
+		MaxRetransmitIdle:     parseParameterRange(scpn.MaxRetransmitIdle),
+		AckTimeoutIdle:        parseParameterRange(scpn.AckTimeoutIdle),
+		AckRandomFactorIdle:   parseParameterRange(scpn.AckRandomFactorIdle),
 	}, nil
 }
 
-func (scpn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
+func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 	return &DefaultSignalConfiguration{
-		HeartbeatInterval: parseIntegerValue(scpn.HeartbeatInterval),
-		MissingHbAllowed:  parseIntegerValue(scpn.MissingHbAllowed),
-		MaxRetransmit:     parseIntegerValue(scpn.MaxRetransmit),
-		AckTimeout:        parseIntegerValue(scpn.AckTimeout),
-		AckRandomFactor:   parseFloatValue(scpn.AckRandomFactor),
+		HeartbeatInterval: parseIntegerValue(dscn.HeartbeatInterval),
+		MissingHbAllowed:  parseIntegerValue(dscn.MissingHbAllowed),
+		MaxRetransmit:     parseIntegerValue(dscn.MaxRetransmit),
+		AckTimeout:        parseIntegerValue(dscn.AckTimeout),
+		AckRandomFactor:   parseFloatValue(dscn.AckRandomFactor),
+		HeartbeatIntervalIdle: parseIntegerValue(dscn.HeartbeatIntervalIdle),
+		MissingHbAllowedIdle:  parseIntegerValue(dscn.MissingHbAllowedIdle),
+		MaxRetransmitIdle:     parseIntegerValue(dscn.MaxRetransmitIdle),
+		AckTimeoutIdle:        parseIntegerValue(dscn.AckTimeoutIdle),
+		AckRandomFactorIdle:   parseFloatValue(dscn.AckRandomFactorIdle),
+	}, nil
+}
+
+func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
+	return &LifetimeConfiguration{
+		ActiveButTerminatingPeriod:    parseIntegerValue(lcn.ActiveButTerminatingPeriod),
+		MaxActiveButTerminatingPeriod: parseIntegerValue(lcn.MaxActiveButTerminatingPeriod),
+		ManageLifetimeInterval:        parseIntegerValue(lcn.ManageLifetimeInterval),
 	}, nil
 }
 
@@ -78,6 +112,7 @@ type NetworkNode struct {
 	BindAddress       string `yaml:"bindAddress"`
 	SignalChannelPort int    `yaml:"signalChannelPort"`
 	DataChannelPort   int    `yaml:"dataChannelPort"`
+	DBNotificationPort int   `yaml:"dbNotificationPort"`
 }
 
 func (ncn NetworkNode) Convert() (interface{}, error) {
@@ -94,6 +129,10 @@ func (ncn NetworkNode) Convert() (interface{}, error) {
 		return nil, errors.New("dataChannelPort must be between 1 and 65,535")
 	}
 
+	if ncn.DBNotificationPort < 1 || ncn.DBNotificationPort > 65535 {
+		return nil, errors.New("dbNotificationPort must be between 1 and 65,535")
+	}
+
 	if ncn.SignalChannelPort == ncn.DataChannelPort {
 		return nil, errors.New("dataChannelPort must be different from signalChannelPort")
 	}
@@ -102,6 +141,7 @@ func (ncn NetworkNode) Convert() (interface{}, error) {
 		BindAddress:       ncn.BindAddress,
 		SignalChannelPort: ncn.SignalChannelPort,
 		DataChannelPort:   ncn.DataChannelPort,
+		DBNotificationPort: ncn.DBNotificationPort,
 	}, nil
 }
 
@@ -114,6 +154,7 @@ type Network struct {
 	BindAddress       string
 	SignalChannelPort int
 	DataChannelPort   int
+	DBNotificationPort int
 }
 
 // Secure file config
@@ -191,6 +232,7 @@ type ServerSystemConfig struct {
 	SecureFile                   *SecureFile
 	Network                      *Network
 	Database                     *Database
+	LifetimeConfiguration        *LifetimeConfiguration
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -199,6 +241,7 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setSecureFile(*sc.SecureFile)
 	GetServerSystemConfig().setNetwork(*sc.Network)
 	GetServerSystemConfig().setDatabase(*sc.Database)
+	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
 }
 
 type ServerSystemConfigNode struct {
@@ -207,6 +250,7 @@ type ServerSystemConfigNode struct {
 	SecureFile                   SecureFileNode                   `yaml:"secureFile"`
 	Network                      NetworkNode                      `yaml:"network"`
 	Database                     DatabaseNode                     `yaml:"database"`
+	LifetimeConfiguration        LifetimeConfigurationNode        `yaml:"lifetimeConfiguration"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -235,12 +279,18 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
+	lifetimeConfiguration, err := scn.LifetimeConfiguration.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		DefaultSignalConfiguration:   defaultSignalConfiguration.(*DefaultSignalConfiguration),
 		SecureFile:                   secureFilePath.(*SecureFile),
 		Network:                      network.(*Network),
 		Database:                     database.(*Database),
+		LifetimeConfiguration:        lifetimeConfiguration.(*LifetimeConfiguration),
 	}, nil
 }
 
@@ -262,6 +312,10 @@ func (sc *ServerSystemConfig) setNetwork(config Network) {
 
 func (sc *ServerSystemConfig) setDatabase(config Database) {
 	sc.Database = &config
+}
+
+func (sc *ServerSystemConfig) setLifetimeConfiguration(parameter LifetimeConfiguration) {
+	sc.LifetimeConfiguration = &parameter
 }
 
 var systemConfigInstance *ServerSystemConfig
@@ -464,6 +518,11 @@ type SignalConfigurationParameter struct {
 	MaxRetransmit     *ParameterRange
 	AckTimeout        *ParameterRange
 	AckRandomFactor   *ParameterRange
+	HeartbeatIntervalIdle *ParameterRange
+	MissingHbAllowedIdle  *ParameterRange
+	MaxRetransmitIdle     *ParameterRange
+	AckTimeoutIdle        *ParameterRange
+	AckRandomFactorIdle   *ParameterRange
 }
 
 type DefaultSignalConfiguration struct {
@@ -472,12 +531,27 @@ type DefaultSignalConfiguration struct {
 	MaxRetransmit     int
 	AckTimeout        int
 	AckRandomFactor   float64
+	HeartbeatIntervalIdle int
+	MissingHbAllowedIdle  int
+	MaxRetransmitIdle     int
+	AckTimeoutIdle        int
+	AckRandomFactorIdle   float64
+}
+
+type LifetimeConfiguration struct {
+	ActiveButTerminatingPeriod     int
+	MaxActiveButTerminatingPeriod  int
+	ManageLifetimeInterval	       int
 }
 
 func (scp *SignalConfigurationParameter) Store() {
 	GetServerSystemConfig().setSignalConfigurationParameter(*scp)
 }
 
-func (scp *DefaultSignalConfiguration) Store() {
-	GetServerSystemConfig().setDefaultSignalConfiguration(*scp)
+func (dsc *DefaultSignalConfiguration) Store() {
+	GetServerSystemConfig().setDefaultSignalConfiguration(*dsc)
+}
+
+func (sc *LifetimeConfiguration) Store() {
+	GetServerSystemConfig().setLifetimeConfiguration(*sc)
 }
