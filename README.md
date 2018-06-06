@@ -21,7 +21,7 @@ Licensed under Apache License 2.0.
 ## Requirements
 
 * gcc 5.4.0 or higher
-* make, autoconf, automake, libtool
+* make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
   * go 1.9 or later is required. (for latest GoBGP)
@@ -54,7 +54,8 @@ Currenly supported libcoap version : 1365dea
 To install go-dots source codes and command line programs, use the following command:
     
     $ go get -u github.com/nttdots/go-dots/...
-    
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/
+    $ make && make install
 
 # How to install (In Japanese)
 
