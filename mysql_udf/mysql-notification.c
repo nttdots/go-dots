@@ -74,7 +74,7 @@ my_bool MySQLNotification_init(UDF_INIT *initid,
     remote.sin_port = htons(PORT);
     remote.sin_addr.s_addr = inet_addr("127.0.0.1");
     if(connect(_server, (struct sockaddr*)&remote, sizeof(remote)) != 0) {
-        strcpy(message, "Failed to connect to server on port: " + PORT);
+        sprintf(message, "Failed to connect to server on port: %d", PORT);
         return -1;
     }  
 
