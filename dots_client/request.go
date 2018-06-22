@@ -26,11 +26,6 @@ type RequestInterface interface {
 	Send()
 }
 
-const (
-	Register     uint16 = 0
-	Deregister   uint16 = 1
-)
-
 /*
  * Dots requests
  */
@@ -150,11 +145,11 @@ func (r *Request) CreateRequest() {
 		}
 		observe = uint16(observeValue)
 
-		if observe == Register || observe == Deregister {
+		if observe == uint16(messages.Register) || observe == uint16(messages.Deregister) {
 			r.pdu.SetOption(libcoap.OptionObserve, observe)
 			queryString := task.QueryParamsToString(r.queryParams)
 			token := r.env.GetToken(queryString)
-			if observe == Register {
+			if observe == uint16(messages.Register) {
 				if token != nil {
 					r.pdu.Token = token
 				} else {
@@ -279,20 +274,20 @@ func (r *Request) RestartPingTask(pdu *libcoap.Pdu) {
 	var heartbeatInterval int
 	var missingHbAllowed int
 	var maxRetransmit int
-	var ackTimeout int
+	var ackTimeout decimal.Decimal
 	var ackRandomFactor decimal.Decimal
 
 	if r.env.SessionConfigMode() == string(client_message.MITIGATING) {
 		heartbeatInterval = v.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue
 		missingHbAllowed = v.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue
 		maxRetransmit = v.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue
-		ackTimeout = v.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue
+		ackTimeout = v.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue.Round(2)
 		ackRandomFactor = v.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2)
 	} else if r.env.SessionConfigMode() == string(client_message.IDLE) {
 		heartbeatInterval = v.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue
 		missingHbAllowed = v.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue
 		maxRetransmit = v.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue
-		ackTimeout = v.SignalConfigs.IdleConfig.AckTimeout.CurrentValue
+		ackTimeout = v.SignalConfigs.IdleConfig.AckTimeout.CurrentValue.Round(2)
 		ackRandomFactor = v.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue.Round(2)
 	}
 

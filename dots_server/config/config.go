@@ -84,12 +84,12 @@ func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 		HeartbeatInterval: parseIntegerValue(dscn.HeartbeatInterval),
 		MissingHbAllowed:  parseIntegerValue(dscn.MissingHbAllowed),
 		MaxRetransmit:     parseIntegerValue(dscn.MaxRetransmit),
-		AckTimeout:        parseIntegerValue(dscn.AckTimeout),
+		AckTimeout:        parseFloatValue(dscn.AckTimeout),
 		AckRandomFactor:   parseFloatValue(dscn.AckRandomFactor),
 		HeartbeatIntervalIdle: parseIntegerValue(dscn.HeartbeatIntervalIdle),
 		MissingHbAllowedIdle:  parseIntegerValue(dscn.MissingHbAllowedIdle),
 		MaxRetransmitIdle:     parseIntegerValue(dscn.MaxRetransmitIdle),
-		AckTimeoutIdle:        parseIntegerValue(dscn.AckTimeoutIdle),
+		AckTimeoutIdle:        parseFloatValue(dscn.AckTimeoutIdle),
 		AckRandomFactorIdle:   parseFloatValue(dscn.AckRandomFactorIdle),
 	}, nil
 }
@@ -529,12 +529,12 @@ type DefaultSignalConfiguration struct {
 	HeartbeatInterval int
 	MissingHbAllowed  int
 	MaxRetransmit     int
-	AckTimeout        int
+	AckTimeout        float64
 	AckRandomFactor   float64
 	HeartbeatIntervalIdle int
 	MissingHbAllowedIdle  int
 	MaxRetransmitIdle     int
-	AckTimeoutIdle        int
+	AckTimeoutIdle        float64
 	AckRandomFactorIdle   float64
 }
 

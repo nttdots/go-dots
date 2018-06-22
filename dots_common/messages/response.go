@@ -12,8 +12,8 @@ type MitigationResponse struct {
 
 type MitigationScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	Scopes []ScopeStatus `json:"scope" codec:"3"`
-	ClientDomainIdentifier string `json:"cdid" codec:"2,omitempty"`
+	Scopes []ScopeStatus `json:"scope" codec:"2"`
+	ClientDomainIdentifier string `json:"cdid" codec:"3,omitempty"`
 }
 
 type ScopeStatus struct {
@@ -66,7 +66,7 @@ type ConfigurationResponseConfig struct {
 	HeartbeatInterval IntCurrentMinMax     `json:"heartbeat-interval" codec:"33"`
 	MissingHbAllowed  IntCurrentMinMax     `json:"missing-hb-allowed" codec:"37"`
 	MaxRetransmit     IntCurrentMinMax     `json:"max-retransmit"     codec:"38"`
-	AckTimeout        IntCurrentMinMax     `json:"ack-timeout"        codec:"39"`
+	AckTimeout        DecimalCurrentMinMax `json:"ack-timeout"        codec:"39"`
 	AckRandomFactor   DecimalCurrentMinMax `json:"ack-random-factor"  codec:"40"`
 }
 
@@ -87,8 +87,7 @@ type MitigationResponsePut struct {
 
 type MitigationScopePut struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	Scopes            []ScopePut  `json:"scope"             codec:"3"`
-	ClientDomainIdentifier string `json:"cdid" codec:"2,omitempty"`
+	Scopes            []ScopePut  `json:"scope"             codec:"2"`
 }
 
 type ScopePut struct {
@@ -107,7 +106,6 @@ func NewMitigationResponsePut(req *MitigationRequest) MitigationResponsePut {
 		for i := range req.MitigationScope.Scopes {
 			res.MitigationScope.Scopes[i] = ScopePut{ MitigationId: req.MitigationScope.Scopes[i].MitigationId, Lifetime: req.MitigationScope.Scopes[i].Lifetime }
 		}
-		res.MitigationScope.ClientDomainIdentifier = req.EffectiveClientDomainIdentifier()
 	}
 
 	return res

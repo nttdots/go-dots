@@ -57,12 +57,12 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue = defaultValue.HeartbeatInterval
 		resp.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue  = defaultValue.MissingHbAllowed
 		resp.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue     = defaultValue.MaxRetransmit
-		resp.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue        = defaultValue.AckTimeout
+		resp.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue        = decimal.NewFromFloat(defaultValue.AckTimeout).Round(2)
 		resp.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(defaultValue.AckRandomFactor).Round(2)
 		resp.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue 	   = defaultValue.HeartbeatIntervalIdle
 		resp.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue        = defaultValue.MissingHbAllowedIdle
 		resp.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue           = defaultValue.MaxRetransmitIdle
-		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue              = defaultValue.AckTimeoutIdle
+		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue              = decimal.NewFromFloat(defaultValue.AckTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue         = decimal.NewFromFloat(defaultValue.AckRandomFactorIdle).Round(2)
 		resp.SignalConfigs.TriggerMitigation                               = true
 	}else {
@@ -70,12 +70,12 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
 		resp.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
 		resp.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
-		resp.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue        = signalSessionConfiguration.AckTimeout
+		resp.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue        = decimal.NewFromFloat(signalSessionConfiguration.AckTimeout).Round(2)
 		resp.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactor).Round(2)
 		resp.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue 	   = signalSessionConfiguration.HeartbeatIntervalIdle
 		resp.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue  	   = signalSessionConfiguration.MissingHbAllowedIdle
 		resp.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue    	   = signalSessionConfiguration.MaxRetransmitIdle
-		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue       	   = signalSessionConfiguration.AckTimeoutIdle
+		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue       	   = decimal.NewFromFloat(signalSessionConfiguration.AckTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue   	   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactorIdle).Round(2)
 		resp.SignalConfigs.TriggerMitigation                               = signalSessionConfiguration.TriggerMitigation
 	}
@@ -141,6 +141,8 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 
 	setDefaultValues(payload)
 	sessionConfigurationPayloadDisplay(payload)
+	ackTimeout, _ := payload.MitigatingConfig.AckTimeout.CurrentValue.Round(2).Float64()
+	ackTimeoutIdle, _ := payload.IdleConfig.AckTimeout.CurrentValue.Round(2).Float64()
 	ackRandomFactor, _ := payload.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
 	ackRandomFactorIdle, _ := payload.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
 	// validate
@@ -149,32 +151,30 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 		payload.MitigatingConfig.HeartbeatInterval.CurrentValue,
 		payload.MitigatingConfig.MissingHbAllowed.CurrentValue,
 		payload.MitigatingConfig.MaxRetransmit.CurrentValue,
-		payload.MitigatingConfig.AckTimeout.CurrentValue,
+		ackTimeout,
 		ackRandomFactor,
 		payload.IdleConfig.HeartbeatInterval.CurrentValue,
 		payload.IdleConfig.MissingHbAllowed.CurrentValue,
 		payload.IdleConfig.MaxRetransmit.CurrentValue,
-		payload.IdleConfig.AckTimeout.CurrentValue,
+		ackTimeoutIdle,
 		ackRandomFactorIdle,
 		payload.TriggerMitigation,
 	)
-	validateResult := v.Validate(signalSessionConfiguration, *customer)
+	validateResult, isPresent := v.Validate(signalSessionConfiguration, *customer)
 	if !validateResult {
 		goto ResponseNG
 	} else {
-		// Delete record in DB
-		err = models.DeleteSignalSessionConfigurationByCustomerId(customer.Id)
-		if err != nil {
-			goto ResponseNG
-		}
-
-		// Register SignalConfigurationParameter
+		// Register or Update SignalConfigurationParameter
 		_, err = models.CreateSignalSessionConfiguration(*signalSessionConfiguration, *customer)
 		if err != nil {
 			goto ResponseNG
 		}
 
-		goto ResponseOK
+		if isPresent {
+			goto ResponseUpdated
+		} else {
+			goto ResponseCreated
+		}
 	}
 
 ResponseNG:
@@ -185,11 +185,20 @@ ResponseNG:
 		Body: nil,
 	}
 	return
-ResponseOK:
+ResponseCreated:
 // on validation success
 	res = Response{
 		Type: common.Acknowledgement,
 		Code: common.Created,
+		Body: nil,
+	}
+	return
+
+ResponseUpdated:
+// on validation success
+	res = Response{
+		Type: common.Acknowledgement,
+		Code: common.Changed,
 		Body: nil,
 	}
 	return
@@ -198,8 +207,24 @@ ResponseOK:
 func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models.Customer) (res Response, err error) {
 
 	log.WithField("request", newRequest).Debug("[DELETE] receive message")
-	err = models.DeleteSignalSessionConfigurationByCustomerId(customer.Id)
 
+	defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
+	signalSessionConfiguration := models.NewSignalSessionConfiguration(
+		0,           // fake sid to compare with new sid when PUT new session configuration  
+		defaultValue.HeartbeatInterval,
+		defaultValue.MissingHbAllowed,
+		defaultValue.MaxRetransmit,
+		defaultValue.AckTimeout,
+		defaultValue.AckRandomFactor,
+		defaultValue.HeartbeatIntervalIdle,
+		defaultValue.MissingHbAllowedIdle,
+		defaultValue.MaxRetransmitIdle,
+		defaultValue.AckTimeoutIdle,
+		defaultValue.AckRandomFactorIdle,
+		true,
+	)
+
+	_, err = models.CreateSignalSessionConfiguration(*signalSessionConfiguration, *customer)
 	if err != nil {
 		res = Response{
 			Type: common.Acknowledgement,
@@ -228,8 +253,8 @@ func setDefaultValues (data *messages.SignalConfigs) {
 	if data.MitigatingConfig.MaxRetransmit.CurrentValue == 0 {
 		data.MitigatingConfig.MaxRetransmit.CurrentValue = defaultValue.MaxRetransmit
 	}
-	if data.MitigatingConfig.AckTimeout.CurrentValue == 0 {
-		data.MitigatingConfig.AckTimeout.CurrentValue = defaultValue.AckTimeout
+	if data.MitigatingConfig.AckTimeout.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0 {
+		data.MitigatingConfig.AckTimeout.CurrentValue = decimal.NewFromFloat(defaultValue.AckTimeout)
 	}
 	if data.MitigatingConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0 {
 		data.MitigatingConfig.AckRandomFactor.CurrentValue = decimal.NewFromFloat(defaultValue.AckRandomFactor)
@@ -243,8 +268,8 @@ func setDefaultValues (data *messages.SignalConfigs) {
 	if data.IdleConfig.MaxRetransmit.CurrentValue == 0 {
 		data.IdleConfig.MaxRetransmit.CurrentValue = defaultValue.MaxRetransmitIdle
 	}
-	if data.IdleConfig.AckTimeout.CurrentValue == 0 {
-		data.IdleConfig.AckTimeout.CurrentValue = defaultValue.AckTimeoutIdle
+	if data.IdleConfig.AckTimeout.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0 {
+		data.IdleConfig.AckTimeout.CurrentValue = decimal.NewFromFloat(defaultValue.AckTimeoutIdle)
 	}
 	if data.IdleConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0 {
 		data.IdleConfig.AckRandomFactor.CurrentValue = decimal.NewFromFloat(defaultValue.AckRandomFactorIdle)

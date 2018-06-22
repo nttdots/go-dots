@@ -131,14 +131,3 @@ void coap_set_dirty(coap_resource_t *resource, char *key, int length) {
         coap_resource_set_dirty(resource, query);
     }
 }
-
-coap_resource_t *coap_get_resource(coap_context_t *context, char *key, int length){
-    if(*key == '\0' && length == 0){
-        return NULL;
-    } else {
-        str *uriPath = coap_new_string(length);
-        uriPath->s = key;
-        uriPath->length = length;
-        return coap_get_resource_from_uri_path(context, *uriPath);
-    }
-}

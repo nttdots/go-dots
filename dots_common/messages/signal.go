@@ -11,9 +11,9 @@ type TargetPortRange struct {
 
 type MitigationScope struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	Scopes            []Scope  `json:"scope"             codec:"3"`
+	Scopes            []Scope  `json:"scope"             codec:"2"`
 	// only used in response
-	ClientDomainIdentifier string `json:"cdid" codec:"2,omitempty"`
+	ClientDomainIdentifier string `json:"cdid" codec:"3,omitempty"`
 }
 
 type Scope struct {
@@ -57,6 +57,13 @@ func (m *MitigationRequest) EffectiveClientIdentifier() string {
  */
 func (m *MitigationRequest) EffectiveClientDomainIdentifier() string {
 	return m.MitigationScope.ClientDomainIdentifier
+}
+
+/*
+ * get last client-domain-identifier
+ */
+ func (m *MitigationRequest) EffectiveMitigationId() int {
+	return m.MitigationScope.Scopes[0].MitigationId
 }
 
 /*
@@ -170,7 +177,7 @@ type SignalConfig struct {
 	MaxRetransmit IntCurrent `json:"max-retransmit" codec:"38"`
 	// Timeout value in seconds used to calculate the initial retransmission timeout value (referred to as ACK_TIMEOUT
 	// parameter in CoAP). This is an optional attribute.
-	AckTimeout IntCurrent `json:"ack-timeout" codec:"39"`
+	AckTimeout DecimalCurrent `json:"ack-timeout" codec:"39"`
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
 	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40"`

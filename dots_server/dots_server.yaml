@@ -16,12 +16,12 @@ system:
     heartbeatInterval: 30
     missingHbAllowed: 5
     maxRetransmit: 3
-    ackTimeout: 2
+    ackTimeout: 2.0
     ackRandomFactor: 1.5
     heartbeatIntervalIdle: 30
     missingHbAllowedIdle: 5
     maxRetransmitIdle: 3
-    ackTimeoutIdle: 2
+    ackTimeoutIdle: 2.0
     ackRandomFactorIdle: 1.5
 
   secureFile:

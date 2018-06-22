@@ -260,7 +260,7 @@ CREATE TRIGGER status_changed_trigger AFTER UPDATE ON mitigation_scope
 FOR EACH ROW
 BEGIN
   IF NEW.status <> OLD.status THEN
-    SELECT MySQLNotification(NEW.id, NEW.customer_id, NEW.client_identifier, NEW.mitigation_id, NEW.status) INTO @x;
+    SELECT MySQLNotification('mitigation_scope', NEW.id, NEW.customer_id, NEW.client_identifier, NEW.mitigation_id, NEW.status) INTO @x;
   END IF;
 END@@
 
@@ -279,12 +279,12 @@ CREATE TABLE `signal_session_configuration` (
   `heartbeat_interval` int(11) DEFAULT NULL,
   `missing_hb_allowed` int(11) DEFAULT NULL,
   `max_retransmit` int(11) DEFAULT NULL,
-  `ack_timeout` int(11) DEFAULT NULL,
+  `ack_timeout` double DEFAULT NULL,
   `ack_random_factor` double DEFAULT NULL,
   `heartbeat_interval_idle` int(11) DEFAULT NULL,
   `missing_hb_allowed_idle` int(11) DEFAULT NULL,
   `max_retransmit_idle` int(11) DEFAULT NULL,
-  `ack_timeout_idle` int(11) DEFAULT NULL,
+  `ack_timeout_idle` double DEFAULT NULL,
   `ack_random_factor_idle` double DEFAULT NULL,
   `trigger_mitigation` tinyint(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
@@ -293,6 +293,27 @@ CREATE TABLE `signal_session_configuration` (
   KEY `IDX_signal_session_configuration_idx_customer_id` (`customer_id`),
   KEY `IDX_signal_session_configuration_idx_session_id` (session_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# signal_session_configuration trigger when any configuration change
+# ------------------------------------------------------------------------------
+
+
+DELIMITER @@
+
+CREATE TRIGGER session_configuration_changed_trigger AFTER UPDATE ON signal_session_configuration
+FOR EACH ROW
+BEGIN
+  IF (NEW.heartbeat_interval <> OLD.heartbeat_interval) OR (NEW.missing_hb_allowed <> OLD.missing_hb_allowed)
+    OR (NEW.max_retransmit <> OLD.max_retransmit) OR (NEW.ack_timeout <> OLD.ack_timeout)
+    OR (NEW.ack_random_factor <> OLD.ack_random_factor) OR (NEW.heartbeat_interval_idle <> OLD.heartbeat_interval_idle)
+    OR (NEW.missing_hb_allowed_idle <> OLD.missing_hb_allowed_idle) OR (NEW.max_retransmit_idle <> OLD.max_retransmit_idle)
+    OR (NEW.ack_timeout_idle <> OLD.ack_timeout_idle) OR (NEW.ack_random_factor_idle <> OLD.ack_random_factor_idle)
+    OR (NEW.trigger_mitigation <> OLD.trigger_mitigation) THEN
+    SELECT MySQLNotification('signal_session_configuration', NEW.customer_id, NEW.session_id) INTO @x;
+  END IF;
+END@@
+
+DELIMITER ;
 
 
 # protection

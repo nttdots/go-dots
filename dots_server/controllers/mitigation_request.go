@@ -210,6 +210,16 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			return
 		}
 
+		if body.EffectiveClientIdentifier() != "" || body.EffectiveClientDomainIdentifier() != "" || body.EffectiveMitigationId() != 0 {
+			log.Errorf("Client Identifier, Client Domain Identifier and Mitigation Id are forbidden in body request")
+			res = Response{
+				Type: common.NonConfirmable,
+				Code: common.BadRequest,
+				Body: nil,
+			}
+			return
+		}
+
 		// Update cuid, mid to body
 		body.UpdateClientIdentifier(cuid)
 		body.UpdateClientDomainIdentifier(cdid)

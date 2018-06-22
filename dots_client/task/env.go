@@ -49,7 +49,7 @@ func (env *Env) RenewEnv(context *libcoap.Context, session *libcoap.Session) *En
     return env
 }
 
-func (env *Env) SetRetransmitParams(maxRetransmit int, ackTimeout int, ackRandomFactor decimal.Decimal){
+func (env *Env) SetRetransmitParams(maxRetransmit int, ackTimeout decimal.Decimal, ackRandomFactor decimal.Decimal){
     env.session.SetMaxRetransmit(maxRetransmit)
     env.session.SetAckTimeout(ackTimeout)
     env.session.SetAckRandomFactor(ackRandomFactor)

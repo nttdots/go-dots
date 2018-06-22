@@ -41,7 +41,6 @@ const (
 	ActiveButTerminating   int = 5
 	Terminated             int = 6
 	Withdrawn              int = 7
-	Rejected               int = 8
 )
 
 type AttackStatus int

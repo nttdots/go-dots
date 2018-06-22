@@ -76,10 +76,11 @@ func getCompareDataSource() *SignalConfigurationParameter {
 }
 
 // define validate
-func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (ret bool) {
+func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (ret bool, isPresent bool) {
 
 	// default return value
 	ret = true
+	isPresent = false
 
 	if compareSource == nil {
 		compareSource = getCompareDataSource()
@@ -102,6 +103,7 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 				log.Error("Sid value is out of order.")
 				ret = false
 			}
+			isPresent = true
 		}
 
 		// valid attribute value check
@@ -109,14 +111,14 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 			if !(compareSource.heartbeat_interval.Includes(float64(sc.HeartbeatInterval)) &&
 				compareSource.missing_hb_allowed.Includes(float64(sc.MissingHbAllowed)) &&
 				compareSource.max_retransmit.Includes(float64(sc.MaxRetransmit)) &&
-				compareSource.ack_timeout.Includes(float64(sc.AckTimeout)) &&
+				compareSource.ack_timeout.Includes(sc.AckTimeout) &&
 				compareSource.ack_random_factor.Includes(sc.AckRandomFactor)) ||
 				!(compareSource.heartbeat_interval_idle.Includes(float64(sc.HeartbeatIntervalIdle)) &&
 				compareSource.missing_hb_allowed_idle.Includes(float64(sc.MissingHbAllowedIdle)) &&
 				compareSource.max_retransmit_idle.Includes(float64(sc.MaxRetransmitIdle)) &&
-				compareSource.ack_timeout_idle.Includes(float64(sc.AckTimeoutIdle)) &&
+				compareSource.ack_timeout_idle.Includes(sc.AckTimeoutIdle) &&
 				compareSource.ack_random_factor_idle.Includes(sc.AckRandomFactorIdle)) {
-				log.Error("Config values are out of range.")
+					log.Error("Config values are out of range.")
 				ret = false
 			}
 		}
@@ -132,11 +134,11 @@ func (v *SignalConfigurationValidator) CheckMissingSessionConfiguration(data *me
 	// Default return value
 	ret = true
 	if ((data.MitigatingConfig.HeartbeatInterval.CurrentValue == 0) && (data.MitigatingConfig.MissingHbAllowed.CurrentValue == 0) &&
-		(data.MitigatingConfig.MaxRetransmit.CurrentValue == 0) && (data.MitigatingConfig.AckTimeout.CurrentValue == 0) &&
-		(data.MitigatingConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0)) ||
-		((data.IdleConfig.HeartbeatInterval.CurrentValue == 0) &&
-		(data.IdleConfig.MissingHbAllowed.CurrentValue == 0) && (data.IdleConfig.MaxRetransmit.CurrentValue == 0) &&
-		(data.IdleConfig.AckTimeout.CurrentValue == 0) && (data.IdleConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0)) {
+		(data.MitigatingConfig.MaxRetransmit.CurrentValue == 0) && (data.MitigatingConfig.AckTimeout.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0) &&
+		(data.MitigatingConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0)) &&
+		((data.IdleConfig.HeartbeatInterval.CurrentValue == 0) && (data.IdleConfig.MissingHbAllowed.CurrentValue == 0) &&
+		(data.IdleConfig.MaxRetransmit.CurrentValue == 0) && (data.IdleConfig.AckTimeout.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0) &&
+		(data.IdleConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0)) {
 			log.Error("At least one of the attributes 'heartbeat-interval', 'missing-hb-allowed', 'max-retransmit', 'ack-timeout', 'ack-random-factor', and 'trigger-mitigation' MUST be present in the PUT request")
 			ret = false
 		}

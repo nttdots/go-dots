@@ -11,7 +11,7 @@
                 "current-value": 7
             },
             "ack-timeout": {
-                "current-value": 50
+                "current-value-decimal": 50
             },
             "ack-random-factor": {
                 "current-value-decimal": 1.5
@@ -28,7 +28,7 @@
                 "current-value": 7
             },
             "ack-timeout": {
-                "current-value": 50
+                "current-value-decimal": 50
             },
             "ack-random-factor": {
                 "current-value-decimal": 1.5

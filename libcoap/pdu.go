@@ -295,7 +295,7 @@ func (pdu *Pdu) AddOption(key OptionKey, val interface{}) {
 	} else if iv.Kind() == reflect.Uint16 {
 		option = key.Uint16(val.(uint16))
 	} else {
-        log.Errorf("Unsupported type of option value. Current value type: %+v\n", iv.Kind().String())
+        log.Warnf("Unsupported type of option value. Current value type: %+v\n", iv.Kind().String())
         return
 	}
 	pdu.Options = append(pdu.Options, option)

@@ -29,8 +29,18 @@ func (session *Session) SetMaxRetransmit (value int) {
     C.coap_session_set_max_retransmit(session.ptr, C.uint(value))
 }
 
-func (session *Session) SetAckTimeout (value int) {
-    C.coap_session_set_ack_timeout (session.ptr, C.coap_fixed_point_t{C.uint16_t(value),C.uint16_t(0)})
+func (session *Session) SetAckTimeout (value decimal.Decimal) {
+    valStr := value.String()
+    parts := strings.Split(valStr, ".")
+    intPart,_ := strconv.Atoi(parts[0])
+    var fraction float64
+    if len(parts) > 1 {
+        fractionPart,_ := strconv.Atoi(parts[1])
+        fraction = float64(fractionPart) * (math.Pow10(-len(parts[1])))
+        log.Debugf ("ack-timeout : %v => integer part : %+v, fraction part : %+v", value, intPart, fractionPart)
+    }
+
+    C.coap_session_set_ack_timeout (session.ptr, C.coap_fixed_point_t{C.uint16_t(intPart), C.uint16_t(fraction * 1000)})
 }
 
 func (session *Session) SetAckRandomFactor (value decimal.Decimal) {

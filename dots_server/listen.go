@@ -7,6 +7,7 @@ import (
     "reflect"
     "encoding/hex"
     "strings"
+    "strconv"
 
     log "github.com/sirupsen/logrus"
     "github.com/ugorji/go/codec"
@@ -137,6 +138,51 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                 } else if strings.HasPrefix(uri[i], "config") {
                     log.Debug("Request path includes 'config'. Cbor decode with type SignalConfigRequest")
                     body, err = unmarshalCbor(request, reflect.TypeOf(messages.SignalConfigRequest{}))
+
+                    // Create sub resource to handle observation on behalf of Unknown resource in case of session configuration PUT
+                    sfMed := reflect.ValueOf(method)
+                    sfPut := reflect.ValueOf(controller.HandlePut)
+                    sfGet := reflect.ValueOf(controller.HandleGet)
+
+                    p := request.PathString()
+                    var resourcePath string
+                    if strings.Contains(p, "sid") {
+                        resourcePath = p[:strings.LastIndex(p, "/")]
+                    } else {
+                        resourcePath = p
+                    }
+                    resourcePath += "/customerId=" + strconv.Itoa(customer.Id)
+                    if is_unknown && sfMed.Pointer() == sfPut.Pointer() {
+                        resource := context.GetResourceByQuery(resourcePath)
+                        if resource == nil {
+                            r := libcoap.ResourceInit(&resourcePath, 0)
+                            r.TurnOnResourceObservable()
+                            r.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
+                            r.RegisterHandler(libcoap.RequestPut,    toMethodHandler(controller.HandlePut, typ, controller, !is_unknown))
+                            r.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost, typ, controller, !is_unknown))
+                            r.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete, typ, controller, !is_unknown))
+                            context.AddResource(r)
+                            log.Debugf("Create resource to handle session observation later : uri-path=%+v", resourcePath)
+                        } else {
+                            log.Debugf("Resource with uri-path=%+v has already existed", resourcePath)
+                        }
+                    } else if is_unknown && sfMed.Pointer() == sfGet.Pointer() {
+                        // Create observer in sub resource to handle observation in case session configuration change
+                        resource := context.GetResourceByQuery(resourcePath)
+                        if resource != nil {
+                            if observe == uint16(messages.Register) {
+                                log.Debugf("Create observer in sub-resource with query: %+v", p)
+                                if resource != nil {
+                                    resource.AddObserver(session, p, *token)
+                                }
+                            } else if observe == uint16(messages.Deregister) {
+                                log.Debugf("Delete observer in sub-resource")
+                                if resource != nil {
+                                    resource.DeleteObserver(session, *token)
+                                }
+                            }
+                        }
+                    }
                     break;
                 }
             }

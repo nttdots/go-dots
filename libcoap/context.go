@@ -9,7 +9,6 @@ import "C"
 import "time"
 import "unsafe"
 import log "github.com/sirupsen/logrus"
-import "unicode/utf8"
 
 type DtlsParam struct {
     CaFilename          *string
@@ -133,13 +132,13 @@ func (context *Context) NotifyOnce(query string){
     log.Debugf("[NotifyOnce]: Data to notify: query: %+v", query)
 
     // Get sub-resource corresponding to uriPath
-    resource := C.coap_get_resource(context.ptr, C.CString(query), C.int(utf8.RuneCountInString(query)))
+    resource := context.GetResourceByQuery(query)
 
     if (resource != nil) {
         log.Debugf("[NotifyOnce]: Found resource to notify= %+v ", resource)
         // Mark resource as dirty and do notifying
         log.Debug("[NotifyOnce]: Set resource dirty.")
-        C.coap_set_dirty(resource, C.CString(""), 0)
+        C.coap_set_dirty(resource.ptr, C.CString(""), 0)
         log.Debugf("[NotifyOnce]: Do coap_check_notify")
         C.coap_check_notify(context.ptr)
         log.Debug("[NotifyOnce]: Done coap_check_notify")

@@ -10,7 +10,7 @@ type SignalConfiguration struct {
 	HeartbeatInterval int `yaml:"heartbeatInterval"`
 	MissingHbAllowed  int `yaml:"missingHbAllowed"`
 	MaxRetransmit     int `yaml:"maxRetransmit"`
-	AckTimeout        int `yaml:"ackTimeout"`
+	AckTimeout        float64 `yaml:"ackTimeout"`
 	AckRandomFactor   float64 `yaml:"ackRandomFactor"`
 	TriggerMitigation bool
 }

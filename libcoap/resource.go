@@ -7,7 +7,6 @@ package libcoap
 */
 import "C"
 import "unsafe"
-import "unicode/utf8"
 
 type Resource struct {
     ptr      *C.coap_resource_t
@@ -101,6 +100,42 @@ func (resource *Resource) TurnOnResourceObservable() {
 }
 
 func (context *Context) DeleteResourceByQuery(query string) {
-    resource := C.coap_get_resource(context.ptr, C.CString(query), C.int(utf8.RuneCountInString(query)))
-    C.coap_delete_resource(context.ptr, resource)
+    resource := context.GetResourceByQuery(query)
+    if resource != nil {
+        C.coap_delete_resource(context.ptr, resource.ptr)
+    }
+}
+
+func (context *Context) GetResourceByQuery(query string) (res *Resource) {
+    if query == "" {
+        return nil
+    }
+    var queryStr *C.str = C.coap_new_string(C.size_t(len(query)))
+    queryStr.s = (*C.uchar)(unsafe.Pointer(C.CString(query)))
+    queryStr.length = C.size_t(len(query))
+    resource := C.coap_get_resource_from_uri_path(context.ptr, *queryStr)
+    if resource != nil {
+        res = &Resource{resource, nil}
+        return
+    }
+    return nil
+}
+
+func (resource *Resource) AddObserver(session *Session, query string, token []byte) {
+    temp := string(token)
+    var tokenStr *C.str = C.coap_new_string(C.size_t(len(temp)))
+    var queryStr *C.str = C.coap_new_string(C.size_t(len(query)))
+    tokenStr.s = (*C.uchar)(unsafe.Pointer(C.CString(temp)))
+    tokenStr.length = C.size_t(len(temp))
+    queryStr.s = (*C.uchar)(unsafe.Pointer(C.CString(query)))
+    queryStr.length = C.size_t(len(query))
+    C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr)
+}
+
+func (resource *Resource) DeleteObserver(session *Session, token []byte) {
+    temp := string(token)
+    var tokenStr *C.str = C.coap_new_string(C.size_t(len(temp)))
+    tokenStr.s = (*C.uchar)(unsafe.Pointer(C.CString(temp)))
+    tokenStr.length = C.size_t(len(temp))
+    C.coap_delete_observer(resource.ptr, session.ptr, tokenStr)
 }
