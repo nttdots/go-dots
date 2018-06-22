@@ -287,20 +287,6 @@ func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libco
     return ctx, nil
 }
 
-
-func listenData(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libcoap.Context, err error) {
-    ctx, err := listen(address, port, dtlsParam)
-    if err != nil {
-        return
-    }
-
-    addHandler(ctx, messages.HELLO,                  &controllers.Hello{})
-    addHandler(ctx, messages.CREATE_IDENTIFIERS,     &controllers.CreateIdentifiers{})
-    addHandler(ctx, messages.INSTALL_FILTERING_RULE, &controllers.InstallFilteringRule{})
-
-    return ctx, nil
-}
-
 func listenSignal(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libcoap.Context, err error) {
     ctx, err := listen(address, port, dtlsParam)
     if err != nil {

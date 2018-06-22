@@ -487,3 +487,59 @@ CREATE TABLE `acl_rule_action` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ####### Basically the table 'acl_rule_action' is modified by the system only.
+
+# data_clients
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `data_clients`;
+
+CREATE TABLE `data_clients` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `customer_id` INT(11) NOT NULL,
+  `cuid` VARCHAR(255) NOT NULL,
+  `cdid` VARCHAR(255),
+  PRIMARY KEY (`id`),
+  KEY `IDX_data_clients_idx_customer_id_cuid` (`customer_id`, `cuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `data_clients` ADD CONSTRAINT UC_dots_clients UNIQUE (`customer_id`, `cuid`);
+
+####### Basically the table 'data_clients' is modified by the system only.
+
+# data_aliases
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `data_aliases`;
+
+CREATE TABLE `data_aliases` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `data_client_id` BIGINT(20) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `content` TEXT NOT NULL,
+  `valid_through` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `IDX_data_aliases_idx_data_client_id_name` (`data_client_id`, `name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `data_aliases` ADD CONSTRAINT UC_dots_aliases UNIQUE (`data_client_id`, `name`);
+
+####### Basically the table 'data_clients' is modified by the system only.
+
+# data_acls
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `data_acls`;
+
+CREATE TABLE `data_acls` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `data_client_id` BIGINT(20) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `content` TEXT NOT NULL,
+  `valid_through` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `IDX_data_acls_idx_data_client_id_name` (`data_client_id`, `name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `data_acls` ADD CONSTRAINT UC_dots_acls UNIQUE (`data_client_id`, `name`);
+
+####### Basically the table 'data_clients' is modified by the system only.

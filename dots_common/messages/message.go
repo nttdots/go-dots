@@ -90,12 +90,8 @@ func init() {
 	register(MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/v1/mitigate", MitigationRequest{})
 	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/v1/config", SignalConfigRequest{})
 
-	register(CREATE_IDENTIFIERS, REQUEST, libcoap.TypeNon, DATA, "create_identifiers", ".well-known/v1/dots-data/create_identifiers", CreateIdentifier{})
-	register(INSTALL_FILTERING_RULE, REQUEST, libcoap.TypeNon, DATA, "install_filtering_rule", ".well-known/v1/dots-data/install_filtering_rule", InstallFilteringRule{})
-
 	// for test
 	register(HELLO, REQUEST, libcoap.TypeCon, SIGNAL, "hello", ".well-known/v1/dots-signal/hello", HelloRequest{})
-	register(HELLO_DATA, REQUEST, libcoap.TypeCon, DATA, "hello_data", ".well-known/v1/dots-data/hello_data", HelloRequest{})
 
 	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots/v1", SignalChannelRequest{})
 }
