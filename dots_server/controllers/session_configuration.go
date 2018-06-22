@@ -210,7 +210,7 @@ func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models
 
 	defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
 	signalSessionConfiguration := models.NewSignalSessionConfiguration(
-		0,           // fake sid to compare with new sid when PUT new session configuration  
+		-1,           // fake sid value to compare with new sid when PUT new session configuration
 		defaultValue.HeartbeatInterval,
 		defaultValue.MissingHbAllowed,
 		defaultValue.MaxRetransmit,
