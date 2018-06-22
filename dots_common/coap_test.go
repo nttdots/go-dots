@@ -3,7 +3,7 @@ package dots_common_test
 import (
 	"testing"
 
-	"github.com/nttdots/go-dots/coap"
+	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_common"
 )
 
@@ -11,7 +11,7 @@ func Test_CoAP(t *testing.T) {
 	var expects interface{}
 	code := dots_common.Code(dots_common.Created)
 
-	expects = coap.Created
+	expects = libcoap.ResponseCreated
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -25,7 +25,7 @@ func Test_CoAP(t *testing.T) {
 
 	code = dots_common.Code(dots_common.Deleted)
 
-	expects = coap.Deleted
+	expects = libcoap.ResponseDeleted
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -39,7 +39,7 @@ func Test_CoAP(t *testing.T) {
 
 	code = dots_common.Code(dots_common.Valid)
 
-	expects = coap.Valid
+	expects = libcoap.ResponseValid
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -53,7 +53,7 @@ func Test_CoAP(t *testing.T) {
 
 	code = dots_common.Code(dots_common.Changed)
 
-	expects = coap.Changed
+	expects = libcoap.ResponseChanged
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -66,7 +66,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.Content)
 
-	expects = coap.Content
+	expects = libcoap.ResponseContent
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -79,7 +79,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.BadRequest)
 
-	expects = coap.BadRequest
+	expects = libcoap.ResponseBadRequest
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -93,7 +93,7 @@ func Test_CoAP(t *testing.T) {
 
 	code = dots_common.Code(dots_common.Unauthorized)
 
-	expects = coap.Unauthorized
+	expects = libcoap.ResponseUnauthorized
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -106,7 +106,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.BadOption)
 
-	expects = coap.BadOption
+	expects = libcoap.ResponseBadOption
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -119,7 +119,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.Forbidden)
 
-	expects = coap.Forbidden
+	expects = libcoap.ResponseForbidden
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -132,7 +132,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.NotFound)
 
-	expects = coap.NotFound
+	expects = libcoap.ResponseNotFound
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -145,7 +145,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.MethodNotAllowed)
 
-	expects = coap.MethodNotAllowed
+	expects = libcoap.ResponseMethodNotAllowed
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -158,7 +158,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.NotAcceptable)
 
-	expects = coap.NotAcceptable
+	expects = libcoap.ResponseNotAcceptable
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -171,7 +171,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.PreconditionFailed)
 
-	expects = coap.PreconditionFailed
+	expects = libcoap.ResponsePreconditionFailed
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -184,7 +184,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.RequestEntityTooLarge)
 
-	expects = coap.RequestEntityTooLarge
+	expects = libcoap.RequestEntityTooLarge
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -197,7 +197,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.UnsupportedMediaType)
 
-	expects = coap.UnsupportedMediaType
+	expects = libcoap.ResponseUnsupportedMediaType
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -210,7 +210,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.InternalServerError)
 
-	expects = coap.InternalServerError
+	expects = libcoap.ResponseInternalServerError
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -223,7 +223,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.NotImplemented)
 
-	expects = coap.NotImplemented
+	expects = libcoap.ResponseNotImplemented
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -236,7 +236,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.BadGateway)
 
-	expects = coap.BadGateway
+	expects = libcoap.ResponseBadGateway
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -249,7 +249,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.ServiceUnavailable)
 
-	expects = coap.ServiceUnavailable
+	expects = libcoap.ResponseServiceUnavailable
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -262,7 +262,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	code = dots_common.Code(dots_common.GatewayTimeout)
 
-	expects = coap.GatewayTimeout
+	expects = libcoap.ResponseGatewayTimeout
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -276,7 +276,7 @@ func Test_CoAP(t *testing.T) {
 
 	code = dots_common.Code(dots_common.ProxyingNotSupported)
 
-	expects = coap.ProxyingNotSupported
+	expects = libcoap.ResponseProxyingNotSupported
 
 	if code.CoAPCode() != expects {
 		t.Errorf("CoAPCode got %s, want %s", code, expects)
@@ -289,7 +289,7 @@ func Test_CoAP(t *testing.T) {
 	}
 	coapType := dots_common.Type(dots_common.Confirmable)
 
-	expects = coap.Confirmable
+	expects = libcoap.TypeCon
 
 	if coapType.CoAPType() != expects {
 		t.Errorf("CoAPType got %s, want %s", code, expects)
@@ -297,7 +297,7 @@ func Test_CoAP(t *testing.T) {
 
 	coapType = dots_common.Type(dots_common.NonConfirmable)
 
-	expects = coap.NonConfirmable
+	expects = libcoap.TypeNon
 
 	if coapType.CoAPType() != expects {
 		t.Errorf("CoAPType got %s, want %s", code, expects)
@@ -305,7 +305,7 @@ func Test_CoAP(t *testing.T) {
 
 	coapType = dots_common.Type(dots_common.Acknowledgement)
 
-	expects = coap.Acknowledgement
+	expects = libcoap.TypeAck
 
 	if coapType.CoAPType() != expects {
 		t.Errorf("CoAPType got %s, want %s", code, expects)
@@ -313,7 +313,7 @@ func Test_CoAP(t *testing.T) {
 
 	coapType = dots_common.Type(dots_common.Reset)
 
-	expects = coap.Reset
+	expects = libcoap.TypeRst
 
 	if coapType.CoAPType() != expects {
 		t.Errorf("CoAPType got %s, want %s", code, expects)

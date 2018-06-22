@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/nttdots/go-dots/coap"
+	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_server"
 )
 
@@ -49,28 +49,28 @@ func TestCoapHeaderDisplay(t *testing.T) {
 	exp_value[28] = "  JavaScript Object Notation: app/cbor"
 	exp_value[29] = "  Line-based text data: app/cbor"
 
-	var c coap.Message = coap.Message{
-		Type:      coap.Confirmable,
-		Code:      coap.POST,
+	var c libcoap.Pdu = libcoap.Pdu{
+		Type:      libcoap.TypeCon,
+		Code:      libcoap.RequestPost,
 		Token:     token.Bytes(),
 		MessageID: 12,
-		Payload:   payload.Bytes(),
+		Data:      payload.Bytes(),
 	}
 	c.SetPathString(".well-known/v1/dots-signal/test")
-	c.SetOption(coap.URIHost, "test_host")
-	c.SetOption(coap.URIPort, 3366)
-	c.SetOption(coap.MaxAge, 20)
-	c.SetOption(coap.ETag, "test_e-tag")
-	c.SetOption(coap.LocationPath, "test_location_path")
-	c.SetOption(coap.LocationQuery, "test_location_query")
-	c.SetOption(coap.Observe, 10)
-	c.SetOption(coap.ContentFormat, coap.AppCbor)
-	c.SetOption(coap.IfMatch, "test_if_match")
-	c.SetOption(coap.IfNoneMatch, "test_if_none_match")
-	c.SetOption(coap.ProxyURI, "test_proxy_uri")
-	c.SetOption(coap.ProxyScheme, "test_proxy_schema")
-	c.SetOption(coap.Size1, 22)
-	c.SetOption(coap.URIQuery, "test_uri_query")
+	c.SetOption(libcoap.OptionUriHost, "test_host")
+	c.SetOption(libcoap.OptionUriPort, 3366)
+	c.SetOption(libcoap.OptionMaxage, 20)
+	c.SetOption(libcoap.OptionEtag, "test_e-tag")
+	c.SetOption(libcoap.OptionLocationPath, "test_location_path")
+	c.SetOption(libcoap.OptionLocationQuery, "test_location_query")
+	c.SetOption(libcoap.OptionObserve, 10)
+	c.SetOption(libcoap.OptionContentFormat, libcoap.AppCbor)
+	c.SetOption(libcoap.OptionIfMatch, "test_if_match")
+	c.SetOption(libcoap.OptionIfNoneMatch, "test_if_none_match")
+	c.SetOption(libcoap.OptionProxyUri, "test_proxy_uri")
+	c.SetOption(libcoap.OptionProxyScheme, "test_proxy_schema")
+	c.SetOption(libcoap.OptionSize1, 22)
+	c.SetOption(libcoap.OptionUriQuery, "test_uri_query")
 
 	ret := main.CoapHeaderDisplay(&c)
 	// data check
@@ -84,14 +84,14 @@ func TestCoapHeaderDisplay(t *testing.T) {
 func TestGetContentFormatValue(t *testing.T) {
 	// test data setting
 	impValues := make([]interface{}, 10)
-	impValues[0] = coap.TextPlain
-	impValues[1] = coap.AppJSON
-	impValues[2] = coap.AppExi
-	impValues[3] = coap.AppLinkFormat
-	impValues[4] = coap.AppOctets
-	impValues[5] = coap.AppXML
-	impValues[6] = coap.AppCbor
-	impValues[7] = coap.Acknowledgement
+	impValues[0] = libcoap.TextPlain
+	impValues[1] = libcoap.AppJSON
+	impValues[2] = libcoap.AppExi
+	impValues[3] = libcoap.AppLinkFormat
+	impValues[4] = libcoap.AppOctets
+	impValues[5] = libcoap.AppXML
+	impValues[6] = libcoap.AppCbor
+	impValues[7] = libcoap.TypeAck
 
 	// return expected value
 	expValues := make([]string, 10)

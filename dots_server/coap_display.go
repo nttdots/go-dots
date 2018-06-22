@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/nttdots/go-dots/coap"
+	"github.com/nttdots/go-dots/libcoap"
 )
 
 /*
  * Output formatted CoAP messages to the stdout.
  */
-func CoapHeaderDisplay(request *coap.Message) string {
+func CoapHeaderDisplay(request *libcoap.Pdu) string {
 	var result string = "\n"
 	// Version
 	result += fmt.Sprint(" 01.. .... = Version: 1\n")
@@ -29,31 +29,31 @@ func CoapHeaderDisplay(request *coap.Message) string {
 	result += fmt.Sprintf(" Token: %s\n", request.Token)
 	// Options
 	var option_count int = 0
-	result += getOptionValue(coap.URIHost, request.Options(coap.URIHost), &option_count)
-	result += getOptionValue(coap.URIPort, request.Options(coap.URIPort), &option_count)
-	result += getOptionValue(coap.MaxAge, request.Options(coap.MaxAge), &option_count)
-	result += getOptionValue(coap.ETag, request.Options(coap.ETag), &option_count)
-	result += getOptionValue(coap.LocationPath, request.Options(coap.LocationPath), &option_count)
-	result += getOptionValue(coap.LocationQuery, request.Options(coap.LocationQuery), &option_count)
-	result += getOptionValue(coap.URIPath, request.Options(coap.URIPath), &option_count)
-	result += getOptionValue(coap.Observe, request.Options(coap.Observe), &option_count)
-	result += getOptionValue(coap.ContentFormat, request.Options(coap.ContentFormat), &option_count)
-	result += getOptionValue(coap.IfMatch, request.Options(coap.IfMatch), &option_count)
-	result += getOptionValue(coap.IfNoneMatch, request.Options(coap.IfNoneMatch), &option_count)
-	result += getOptionValue(coap.ProxyURI, request.Options(coap.ProxyURI), &option_count)
-	result += getOptionValue(coap.ProxyScheme, request.Options(coap.ProxyScheme), &option_count)
-	result += getOptionValue(coap.Size1, request.Options(coap.Size1), &option_count)
-	result += getOptionValue(coap.URIQuery, request.Options(coap.URIQuery), &option_count)
+	result += getOptionValue(libcoap.OptionUriHost, request.OptionValues(libcoap.OptionUriHost), &option_count)
+	result += getOptionValue(libcoap.OptionUriPort, request.OptionValues(libcoap.OptionUriPort), &option_count)
+	result += getOptionValue(libcoap.OptionMaxage, request.OptionValues(libcoap.OptionMaxage), &option_count)
+	result += getOptionValue(libcoap.OptionEtag, request.OptionValues(libcoap.OptionEtag), &option_count)
+	result += getOptionValue(libcoap.OptionLocationPath, request.OptionValues(libcoap.OptionLocationPath), &option_count)
+	result += getOptionValue(libcoap.OptionLocationQuery, request.OptionValues(libcoap.OptionLocationQuery), &option_count)
+	result += getOptionValue(libcoap.OptionUriPath, request.OptionValues(libcoap.OptionUriPath), &option_count)
+	result += getOptionValue(libcoap.OptionObserve, request.OptionValues(libcoap.OptionObserve), &option_count)
+	result += getOptionValue(libcoap.OptionContentFormat, request.OptionValues(libcoap.OptionContentFormat), &option_count)
+	result += getOptionValue(libcoap.OptionIfMatch, request.OptionValues(libcoap.OptionIfMatch), &option_count)
+	result += getOptionValue(libcoap.OptionIfNoneMatch, request.OptionValues(libcoap.OptionIfNoneMatch), &option_count)
+	result += getOptionValue(libcoap.OptionProxyUri, request.OptionValues(libcoap.OptionProxyUri), &option_count)
+	result += getOptionValue(libcoap.OptionProxyScheme, request.OptionValues(libcoap.OptionProxyScheme), &option_count)
+	result += getOptionValue(libcoap.OptionSize1, request.OptionValues(libcoap.OptionSize1), &option_count)
+	result += getOptionValue(libcoap.OptionUriQuery, request.OptionValues(libcoap.OptionUriQuery), &option_count)
 	// End of Options marker
 	result += fmt.Sprintf(" End of options marker: %d\n", 255)
 	// get content_format string
-	var opt_content_format = request.Options(coap.ContentFormat)
+	var opt_content_format = request.OptionValues(libcoap.OptionContentFormat)
 	var content_format string = ""
 	for _, v := range opt_content_format {
 		content_format = GetContentFormatValue(v)
 	}
 	// Payload
-	result += fmt.Sprintf(" Payload: Payload Content-Format: %s, Length: %d\n", content_format, len(request.Payload))
+	result += fmt.Sprintf(" Payload: Payload Content-Format: %s, Length: %d\n", content_format, len(request.Data))
 	result += fmt.Sprintf("  Payload Desc: %s\n", content_format)
 	result += fmt.Sprintf("  JavaScript Object Notation: %s\n", content_format)
 	result += fmt.Sprintf("  Line-based text data: %s\n", content_format)
@@ -61,37 +61,37 @@ func CoapHeaderDisplay(request *coap.Message) string {
 	return result
 }
 
-func getTypeValue(t coap.COAPType) (int, string) {
+func getTypeValue(t libcoap.Type) (int, string) {
 	switch t {
-	case coap.Confirmable:
+	case libcoap.TypeCon:
 		return 0, "Confirmable"
-	case coap.NonConfirmable:
+	case libcoap.TypeNon:
 		return 1, "Non-Confirmable"
-	case coap.Acknowledgement:
+	case libcoap.TypeAck:
 		return 2, "Acknowledgement"
-	case coap.Reset:
+	case libcoap.TypeRst:
 		return 3, "Reset"
 	default:
 		return 0, ""
 	}
 }
 
-func getMethodValue(t coap.COAPCode) (int, string) {
+func getMethodValue(t libcoap.Code) (int, string) {
 	switch t {
-	case coap.GET:
+	case libcoap.RequestGet:
 		return 1, "GET"
-	case coap.POST:
+	case libcoap.RequestPost:
 		return 2, "POST"
-	case coap.PUT:
+	case libcoap.RequestPut:
 		return 3, "PUT"
-	case coap.DELETE:
+	case libcoap.RequestDelete:
 		return 4, "DELETE"
 	default:
 		return 0, ""
 	}
 }
 
-func getOptionValue(t coap.OptionID, o []interface{}, op_count *int) string {
+func getOptionValue(t libcoap.OptionKey, o []interface{}, op_count *int) string {
 	var retValue string = ""
 
 	// return nil if the interface equals to nil.
@@ -104,63 +104,63 @@ func getOptionValue(t coap.OptionID, o []interface{}, op_count *int) string {
 		var optName string = ""
 		var optValue string = ""
 		switch t {
-		case coap.URIHost:
+		case libcoap.OptionUriHost:
 			optName = "Uri-Host"
 			optValue = fmt.Sprintf("%s", v)
 			break
-		case coap.URIPort:
+		case libcoap.OptionUriPort:
 			optName = "Uri-Port"
 			optValue = fmt.Sprintf("%d", v)
 			break
-		case coap.MaxAge:
+		case libcoap.OptionMaxage:
 			optName = "Max-Age"
 			optValue = fmt.Sprintf("%d", v)
 			break
-		case coap.ETag:
+		case libcoap.OptionEtag:
 			optName = "E-Tag"
 			optValue = fmt.Sprintf("%s", v)
 			break
-		case coap.LocationPath:
+		case libcoap.OptionLocationPath:
 			optName = "Location-Path"
 			optValue = fmt.Sprintf("%s", v)
 			break
-		case coap.LocationQuery:
+		case libcoap.OptionLocationQuery:
 			optName = "Location-Query"
 			optValue = fmt.Sprintf("%s", v)
 			break
-		case coap.URIPath:
+		case libcoap.OptionUriPath:
 			optName = "Uri-Path"
 			optValue = fmt.Sprintf("%s", v)
 			break
-		case coap.Observe:
+		case libcoap.OptionObserve:
 			optName = "Observe"
 			optValue = fmt.Sprintf("%d", v)
 			break
-		case coap.ContentFormat:
+		case libcoap.OptionContentFormat:
 			optName = "Content-Format"
 			optValue = GetContentFormatValue(v)
 			break
-		case coap.IfMatch:
+		case libcoap.OptionIfMatch:
 			optName = "If-Match"
 			optValue = fmt.Sprintf("%s", v)
 			break
-		case coap.IfNoneMatch:
+		case libcoap.OptionIfNoneMatch:
 			optName = "If-None-Match"
 			optValue = fmt.Sprintf("%s", v)
 			break
-		case coap.ProxyURI:
+		case libcoap.OptionProxyUri:
 			optName = "Proxy-Uri"
 			optValue = fmt.Sprintf("%s", v)
 			break
-		case coap.ProxyScheme:
+		case libcoap.OptionProxyScheme:
 			optName = "Proxy-Schema"
 			optValue = fmt.Sprintf("%s", v)
 			break
-		case coap.Size1:
+		case libcoap.OptionSize1:
 			optName = "Size1"
 			optValue = fmt.Sprintf("%d", v)
 			break
-		case coap.URIQuery:
+		case libcoap.OptionUriQuery:
 			optName = "Uri-Query"
 			optValue = fmt.Sprintf("%s", v)
 			break
@@ -178,19 +178,19 @@ func getOptionValue(t coap.OptionID, o []interface{}, op_count *int) string {
 
 func GetContentFormatValue(v interface{}) string {
 	switch v {
-	case coap.TextPlain:
+	case libcoap.TextPlain:
 		return "text/plain"
-	case coap.AppJSON:
+	case libcoap.AppJSON:
 		return "app/json"
-	case coap.AppExi:
+	case libcoap.AppExi:
 		return "app/exi"
-	case coap.AppLinkFormat:
+	case libcoap.AppLinkFormat:
 		return "app/linkformat"
-	case coap.AppOctets:
+	case libcoap.AppOctets:
 		return "app/octets"
-	case coap.AppXML:
+	case libcoap.AppXML:
 		return "app/xml"
-	case coap.AppCbor:
+	case libcoap.AppCbor:
 		return "app/cbor"
 	default:
 		return ""

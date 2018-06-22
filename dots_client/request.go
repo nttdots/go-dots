@@ -151,7 +151,7 @@ func (r *Request) CreateRequest() {
 		observe = uint16(observeValue)
 
 		if observe == Register || observe == Deregister {
-			r.pdu.Options = append(r.pdu.Options, libcoap.OptionObserve.Uint16(observe))
+			r.pdu.SetOption(libcoap.OptionObserve, observe)
 			queryString := task.QueryParamsToString(r.queryParams)
 			token := r.env.GetToken(queryString)
 			if observe == Register {
@@ -169,12 +169,12 @@ func (r *Request) CreateRequest() {
 		}
 	}
 	if val, ok := r.options[messages.IFMATCH]; ok {
-		r.pdu.Options = append(r.pdu.Options, libcoap.OptionIfMatch.String(val))
+		r.pdu.SetOption(libcoap.OptionIfMatch, val)
 	}
 
 	if r.Message != nil {
 		r.pdu.Data = r.dumpCbor()
-		r.pdu.Options = append(r.pdu.Options, libcoap.OptionContentFormat.Uint16(60))
+		r.pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppCbor))
 		log.Debugf("hex dump cbor request:\n%s", hex.Dump(r.pdu.Data))
 	}
 	tmpPathWithQuery := r.RequestCode.PathString() + "/" + strings.Join(r.queryParams, "/")

@@ -9,6 +9,8 @@ import "errors"
 import "sort"
 import "strings"
 import "unsafe"
+import "reflect"
+import log "github.com/sirupsen/logrus"
 
 type Type uint8
 const (
@@ -40,9 +42,29 @@ const (
     ResponseNotAcceptable      Code = 134
     ResponsePreconditionFailed Code = 140
 
+    RequestEntityTooLarge        Code = 141
+	ResponseUnsupportedMediaType Code = 143
+
     ResponseInternalServerError Code = 160
     ResponseNotImplemented      Code = 161
     ResponseServiceUnavailable  Code = 163
+
+    ResponseBadGateway           Code = 162
+	ResponseGatewayTimeout       Code = 164
+	ResponseProxyingNotSupported Code = 165
+)
+
+// MediaType specifies the content type of a message.
+type MediaType uint16
+// Content types.
+const (
+	TextPlain     MediaType = 0  // text/plain;charset=utf-8
+	AppLinkFormat MediaType = 40 // application/link-format
+	AppXML        MediaType = 41 // application/xml
+	AppOctets     MediaType = 42 // application/octet-stream
+	AppExi        MediaType = 47 // application/exi
+	AppJSON       MediaType = 50 // application/json
+	AppCbor       MediaType = 60 // application/cbor https://tools.ietf.org/html/rfc7049#page-37
 )
 
 type Pdu struct {
@@ -119,6 +141,15 @@ func (s *optsSorter) Less(i, j int) bool {
 }
 func (s *optsSorter) Swap(i, j int) {
     s.opts[i], s.opts[j] = s.opts[j], s.opts[i]
+}
+func (s *optsSorter) Minus(okey OptionKey) optsSorter {
+	rv := optsSorter{}
+	for _, opt := range s.opts {
+		if opt.Key != okey {
+			rv.opts = append(rv.opts, opt)
+		}
+	}
+	return rv
 }
 
 func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
@@ -216,11 +247,62 @@ func (pdu *Pdu) Queries() []string {
     return ret
 }
 
-func (pdu *Pdu) GetOptionValue(key OptionKey) uint16 {
+func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (value uint16) {
     for _, option := range pdu.Options {
         if key == option.Key {
-            return option.Uint16()
+			value = option.Uint16()
+			return
         }
     }
-    return 2
+	return 2
+}
+
+// Options gets all the values for the given option.
+func (pdu *Pdu) OptionValues(o OptionKey) []interface{} {
+	var rv []interface{}
+
+	for _, v := range pdu.Options {
+		if o == v.Key {
+			rv = append(rv, v.Value)
+		}
+	}
+
+	return rv
+}
+
+// Option gets the first value for the given option ID.
+func (pdu *Pdu) OptionValue(o OptionKey) interface{} {
+	for _, v := range pdu.Options {
+		if o == v.Key {
+			return v.Value
+		}
+	}
+	return nil
+}
+
+// RemoveOption removes all references to an option
+func (pdu *Pdu) RemoveOption(key OptionKey) {
+	opts := optsSorter{pdu.Options}
+	pdu.Options = opts.Minus(key).opts
+}
+
+// AddOption adds an option.
+func (pdu *Pdu) AddOption(key OptionKey, val interface{}) {
+	var option Option
+	iv := reflect.ValueOf(val)
+	if iv.Kind() == reflect.String {
+		option = key.String(val.(string))
+	} else if iv.Kind() == reflect.Uint16 {
+		option = key.Uint16(val.(uint16))
+	} else {
+        log.Errorf("Unsupported type of option value. Current value type: %+v\n", iv.Kind().String())
+        return
+	}
+	pdu.Options = append(pdu.Options, option)
+}
+
+// SetOption sets an option, discarding any previous value
+func (pdu *Pdu) SetOption(key OptionKey, val interface{}) {
+	pdu.RemoveOption(key)
+	pdu.AddOption(key, val)
 }
