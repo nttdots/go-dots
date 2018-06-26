@@ -1,0 +1,27 @@
+{
+    "ietf-dots-data-channel:acls":{
+       "acl":[
+          {
+             "name":"sample-ipv4-acl",
+             "type":"ipv4-acl-type",
+             "activation-type":"activate-when-mitigating",
+             "aces":{
+                "ace":[
+                   {
+                      "name":"rule1",
+                      "matches":{
+                         "ipv4":{
+                            "destination-ipv4-network":"198.51.100.0/24",
+                            "source-ipv4-network":"192.0.2.0/24"
+                         }
+                      },
+                      "actions":{
+                         "forwarding":"drop"
+                      }
+                   }
+                ]
+             }
+          }
+       ]
+    }
+ }
