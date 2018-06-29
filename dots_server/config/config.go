@@ -113,6 +113,8 @@ type NetworkNode struct {
 	SignalChannelPort int    `yaml:"signalChannelPort"`
 	DataChannelPort   int    `yaml:"dataChannelPort"`
 	DBNotificationPort int   `yaml:"dbNotificationPort"`
+	HrefOrigin         string `yaml:"hrefOrigin"`
+	HrefPathname       string `yaml:"hrefPathname"`
 }
 
 func (ncn NetworkNode) Convert() (interface{}, error) {
@@ -137,11 +139,21 @@ func (ncn NetworkNode) Convert() (interface{}, error) {
 		return nil, errors.New("dataChannelPort must be different from signalChannelPort")
 	}
 
+	if ncn.HrefOrigin == "" {
+		return nil, errors.New("hrefOrigin must not be empty")
+	}
+
+	if ncn.HrefPathname == "" {
+		return nil, errors.New("hrefPathname must not be empty")
+	}
+
 	return &Network{
 		BindAddress:       ncn.BindAddress,
 		SignalChannelPort: ncn.SignalChannelPort,
 		DataChannelPort:   ncn.DataChannelPort,
 		DBNotificationPort: ncn.DBNotificationPort,
+		HrefOrigin:         ncn.HrefOrigin,
+		HrefPathname:       ncn.HrefPathname,
 	}, nil
 }
 
@@ -155,6 +167,8 @@ type Network struct {
 	SignalChannelPort int
 	DataChannelPort   int
 	DBNotificationPort int
+	HrefOrigin         string
+	HrefPathname       string
 }
 
 // Secure file config

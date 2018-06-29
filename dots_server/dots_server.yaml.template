@@ -36,6 +36,9 @@ system:
     dataChannelPort: 4647
     # Port number where DOTS server listens to DB notification. In case you change this value, it is necessary to change the corresponding value defined in mysql-notification.c
     dbNotificationPort: 9999
+    # Host name and root resource name for dots client request to datachannel
+    hrefOrigin: https://13.115.156.186
+    hrefPathname: /v1/restconf
   database:
     username: root
     protocol: tcp

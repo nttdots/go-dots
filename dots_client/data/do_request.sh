@@ -23,7 +23,7 @@ wget \
   --certificate="$CERTS_DIR"/client-cert.pem \
   --private-key="$CERTS_DIR"/client-key.pem \
   --method="$METHOD" \
-  "https://127.0.0.1:10443/$URI_PATH" \
+  "$URI_PATH" \
   "--body-data=$BODY" \
   "--header=Content-Type: application/yang-data+json"
 else
@@ -34,5 +34,5 @@ wget \
   --certificate="$CERTS_DIR"/client-cert.pem \
   --private-key="$CERTS_DIR"/client-key.pem \
   --method="$METHOD" \
-  "https://127.0.0.1:10443/$URI_PATH"
+  "$URI_PATH"
 fi

@@ -2,7 +2,7 @@
 
 METHOD=$1
 URI_PATH=$2
-BODY=$3
+FILE=$3
 
 if [ -z "$METHOD" ]; then
   echo 'No METHOD parameter.' >&2
@@ -12,10 +12,14 @@ if [ -z "$URI_PATH" ]; then
   echo 'No URI_PATH parameter.' >&2
   exit 1
 fi
+if { [ -n "$FILE" ] && ! [ -e "$FILE" ]; }; then
+  echo "Input file $FILE is not existed"
+  exit 1
+fi
 
 CERTS_DIR="`dirname $0`/../../certs"
 
-if [ -n "$BODY" ]; then
+if [ -n "$FILE" ]; then
 wget \
   -q -S -O - \
   --no-check-certificate \
@@ -23,8 +27,8 @@ wget \
   --certificate="$CERTS_DIR"/client-cert.pem \
   --private-key="$CERTS_DIR"/client-key.pem \
   --method="$METHOD" \
-  "https://127.0.0.1:10443/$URI_PATH" \
-  "--body-file=$BODY" \
+  "$URI_PATH" \
+  "--body-file=$FILE" \
   "--header=Content-Type: application/yang-data+json"
 else
 wget \
@@ -34,5 +38,5 @@ wget \
   --certificate="$CERTS_DIR"/client-cert.pem \
   --private-key="$CERTS_DIR"/client-key.pem \
   --method="$METHOD" \
-  "https://127.0.0.1:10443/$URI_PATH"
+  "$URI_PATH"
 fi

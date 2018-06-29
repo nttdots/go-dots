@@ -140,7 +140,7 @@ for observation. Below is recommended step:
 
 ### Client Controller [mitigation_efficacy_update]
 A DOTS client can convey the 'If-Match' option with empty value in the PUT request to transmit DOTS mitigation efficacy update to the DOTS server:
-     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftEfficacyUpdate.json
 
@@ -167,119 +167,137 @@ Dots_client uses 'idle-config' parameter set by default. It can be configured to
 
 Configure dots_client to use 'idle-config' parameters
 
-    $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
+    $ $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Idle.json
 
 Configure dots_client to use 'mitigating-config' parameters
 
-    $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
+    $ $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Mitigating.json
 
 ##  Data Channel
+
+All shell-script and sample json files are located in below directory:
+    $ cd $GOPATH/src/github.com/nttdots/go-dots/dots_client/data/
+
+### Get Root Resource Path
+
+    Get root resource:
+    $ ./get_root_resource.sh SERVER_NAME
+
+    Example:
+        - Request: $ ./get_root_resource.sh https://127.0.0.1:10443
+        - Response:
+        <XRD xmlns="https://127.0.0.1">
+            <Link rel="restconf" href="https://127.0.0.1:10443/v1/restconf"></Link>
+        </XRD>
+
+    "{href}" value will be used as the initial part of the path in the request URI of subsequent requests
+
 ### Managing DOTS Clients
 Registering DOTS Clients
 
     Post dots_client:
-    ./do_request_from_file.sh POST /data/ietf-dots-data-channel:dots-data sampleClient.json
+    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data sampleClient.json
 
     Put dots_client:
-    ./do_request_from_file.sh PUT /data/ietf-dots-data-channel:dots-data/dots-client=123 sampleClient.json
+    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleClient.json
 
 Uregistering DOTS Clients
 
-    ./do_request_from_file.sh DELETE /data/ietf-dots-data-channel:dots-data/dots-client=123
+    $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123
 
 ### Managing DOTS Aliases
 Create Aliases
 
     Post alias:
-    ./do_request_from_file.sh POST /data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAlias.jon
+    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAlias.jon
 
     Put alias:
-    ./do_request_from_file.sh PUT /data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAlias.jon
+    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAlias.jon
 
 Retrieve Installed Aliases
 
     Get all aliases without 'content' parameter (default is get all type attributes, including configurable and non-configurable attributes):
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/aliases
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases
 
     Get all aliases with 'content'='config' (get configurable attributes only):
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=config
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=config
 
     Get all aliases with 'content'='nonconfig' (get non-configurable attributes only):
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=nonconfig
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=nonconfig
 
     Get all aliases with 'content'='all'(get all type attributes, including configurable and non-configurable attributes):
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=all
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=all
 
     Get specific alias without 'content' parameter:
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1
 
     Get specific alias with 'content'='config':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=config
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=config
 
     Get specific alias with 'content'='nonconfig':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=nonconfig
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=nonconfig
 
     Get specific alias with 'content'='all':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=all
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=all
 
 Delete Aliases
 
-    ./do_request_from_file.sh DELETE /data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1
+    $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1
 
 ### Managing DOTS Filtering Rules
 Retrieve DOTS Filtering Capabilities
 
     Get Capabilities without 'content' parameter:
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/capabilities
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/capabilities
 
     Get Capabilities with 'content'='config':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/capabilities?content=config
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/capabilities?content=config
 
     Get Capabilities with 'content'='nonconfig':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/capabilities?content=nonconfig
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/capabilities?content=nonconfig
 
     Get Capabilities with 'content'='all':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/capabilities?content=all
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/capabilities?content=all
 
 Install Filtering Rules
 
     Post acl:
-    ./do_request_from_file.sh POST /data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAcl.json
+    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAcl.json
 
     Put acl:
-    ./do_request_from_file.sh PUT /data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAcl.json
+    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAcl.json
 
 Retrieve Installed Filtering Rules
 
     Get all Acl without 'content' parameter:
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/acls
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls
 
     Get all Acl with 'content'='config':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=config
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=config
 
     Get all Acl with 'content'='nonconfig':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=nonconfig
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=nonconfig
 
     Get all Acl with 'content'='all':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=all
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=all
 
     Get specific acl without 'content' parameter:
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
 
     Get specific acl with 'content'='config':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=config
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=config
 
     Get specific acl with 'content'='nonconfig':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=nonconfig
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=nonconfig
 
     Get specific acl with 'content'='all':
-    ./do_request_from_file.sh GET /data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=all
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=all
 
 Remove Filtering Rules
 
-    ./do_request_from_file.sh DELETE /data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
+    $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
 
 ## DB
 

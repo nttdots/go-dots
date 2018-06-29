@@ -34,6 +34,8 @@ system:
     signalChannelPort: 4646
     dbNotificationPort: 9999
     dataChannelPort: 10443
+    hrefOrigin: https://13.115.156.186
+    hrefPathname: /v1/restconf
   database:
     username: root
     password: 

@@ -1,11 +1,16 @@
 #!/bin/sh
 
-CUID=$1
-NAME=$2
-CONTENT=$3
+HOST_PATH=$1
+CUID=$2
+NAME=$3
+CONTENT=$4
 
 P="`dirname $0`"
 
+if [ -z "$HOST_PATH" ]; then
+  echo 'No HOST_PATH parameter.' >&2
+  exit 1
+fi
 if [ -z "$CUID" ]; then
   echo 'No CUID specified.' >&2
   exit 1
@@ -21,4 +26,4 @@ fi
 
 $P/do_request.sh \
   GET \
-  restconf/data/ietf-dots-data-channel:dots-data/dots-client="$CUID"/aliases/alias="$NAME"?"$CONTENT_PARAM"
+  $HOST_PATH/data/ietf-dots-data-channel:dots-data/dots-client="$CUID"/aliases/alias="$NAME"?"$CONTENT_PARAM"
