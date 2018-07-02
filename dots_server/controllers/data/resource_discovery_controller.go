@@ -28,6 +28,7 @@ type XRD struct {
 const (
 	CONTENT_TYPE_YANG_DATA_JSON string = "application/yang-data+json"
 	CONTENT_TYPE_XRD_XML        string = "application/xrd+xml"
+	XRD_NAMESPACE               string = "http://docs.oasis-open.org/ns/xri/xrd-1.0"
 )
 
 func (c *ResourceDiscoveryController) Get(customer *models.Customer, r *http.Request, p httprouter.Params) (Response, error) {
@@ -41,7 +42,7 @@ func (c *ResourceDiscoveryController) Get(customer *models.Customer, r *http.Req
     config := dots_config.GetServerSystemConfig()
 
 		resource := XRD{}
-		resource.Xmlns = config.Network.HrefOrigin
+		resource.Xmlns = XRD_NAMESPACE
 		resource.Link = []Link{{"restconf", config.Network.HrefOrigin + ":" + strconv.Itoa(config.Network.DataChannelPort) + config.Network.HrefPathname}}
 
 		x, err := xml.MarshalIndent(resource, "", " ")
