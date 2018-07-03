@@ -146,3 +146,58 @@ func (c *ACLsController) Delete(customer *models.Customer, r *http.Request, p ht
     })
   })
 }
+
+func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httprouter.Params) (Response, error) {
+  now := time.Now()
+  cuid := p.ByName("cuid")
+  name := p.ByName("acl")
+  log.WithField("cuid", cuid).WithField("acl", name).Info("[ACLsController] PUT")
+
+  // Check missing 'cuid'
+  if cuid == "" {
+    log.Error("Missing required path 'cuid' value.")
+    return ErrorResponse(http.StatusBadRequest)
+  }
+
+  // Check missing alias 'name'
+  if name == "" {
+    log.Error("Missing required path 'name' value.")
+    return ErrorResponse(http.StatusBadRequest)
+  }
+
+  req := messages.ACLsRequest{}
+  err := Unmarshal(r, &req)
+  if err != nil {
+    return ErrorResponse(http.StatusBadRequest)
+  }
+  log.Infof("[ACLsController] Put request=%#+v", req)
+
+  // Validation
+  if !req.ValidateWithName(name) {
+    return ErrorResponse(http.StatusBadRequest)
+  }
+
+  return WithTransaction(func (tx *db.Tx) (Response, error) {
+    return WithClient(tx, customer, cuid, func (client *data_models.Client) (Response, error) {
+      acl := req.ACLs.ACL[0]
+      e, err := data_models.FindACLByName(tx, client, acl.Name, now)
+      if err != nil {
+        return responseOf(err)
+      }
+      status := http.StatusCreated
+      if e == nil {
+        t := data_models.NewACL(client, acl, now, defaultACLLifetime)
+        e = &t
+      } else {
+        e.ACL = types.ACL(acl)
+        e.ValidThrough = now.Add(defaultACLLifetime)
+        status = http.StatusNoContent
+      }
+      err = e.Save(tx)
+      if err != nil {
+        return responseOf(err)
+      }
+      return EmptyResponse(status)
+    })
+  })
+}

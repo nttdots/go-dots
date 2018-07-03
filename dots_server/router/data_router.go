@@ -60,6 +60,8 @@ func Wrap(f Handle) httprouter.Handle {
         log.Debugf("res,Content=%+v\n", res.Content)
         w.WriteHeader(res.Code)
         w.Write(res.Content)
+        log.Debugf("Response code: %+v", res.Code)
+        log.Debugf("Response body: %+v", string(res.Content))
       }
     } else {
       http.NotFound(w, req)
@@ -87,8 +89,10 @@ func CreateRouter() *httprouter.Router {
 
   clients := data_controllers.ClientsController{}
   r.POST  (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data",                   Wrap(clients.Post))
+  r.PUT   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid", Wrap(clients.Put))
   r.DELETE(config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid", Wrap(clients.Delete))
   // Send delete request client missing cuid
+  r.PUT   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=", Wrap(clients.Put))
   r.DELETE(config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=", Wrap(clients.Delete))
 
   post := data_controllers.PostController{}
@@ -97,25 +101,23 @@ func CreateRouter() *httprouter.Router {
   // Send post request aliases, acls missing cuid
   r.POST  (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=",                      Wrap(post.Post))
 
-  put := data_controllers.PutController{}
-  // Send put request client, aliases, acls
-  r.PUT  (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid",                 Wrap(put.Put))
-  // Send put request client, aliases, acls missing cuid
-  r.PUT  (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=",                      Wrap(put.Put))
-
   aliases := data_controllers.AliasesController{}
+  r.PUT   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/aliases/alias=:alias", Wrap(aliases.Put))
   r.GET   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/aliases",              Wrap(aliases.GetAll))
   r.GET   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/aliases/alias=:alias", Wrap(aliases.Get))
   r.DELETE(config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/aliases/alias=:alias", Wrap(aliases.Delete))
   // Send request aliases missing alias 'name' value
+  r.PUT   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/aliases/alias=", Wrap(aliases.Put))
   r.GET   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/aliases/alias=", Wrap(aliases.Get))
   r.DELETE(config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/aliases/alias=", Wrap(aliases.Delete))
 
   acls := data_controllers.ACLsController{}
+  r.PUT   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/acls/acl=:acl", Wrap(acls.Put))
   r.GET   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/acls",          Wrap(acls.GetAll))
   r.GET   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/acls/acl=:acl", Wrap(acls.Get))
   r.DELETE(config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/acls/acl=:acl", Wrap(acls.Delete))
   // Send request acls missing acl 'name' value
+  r.PUT   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/acls/acl=", Wrap(acls.Put))
   r.GET   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/acls/acl=", Wrap(acls.Get))
   r.DELETE(config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/acls/acl=", Wrap(acls.Delete))
 

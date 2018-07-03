@@ -76,3 +76,49 @@ func (c *ClientsController) Delete(customer *models.Customer, r *http.Request, p
     }
   })
 }
+
+func (c *ClientsController) Put(customer *models.Customer, r *http.Request, p httprouter.Params) (Response, error) {
+  cuid := p.ByName("cuid")
+  log.Infof("[ClientsController] PUT cuid=%s", cuid)
+
+  // Check missing 'cuid'
+  if cuid == "" {
+    log.Error("Missing required path 'cuid' value.")
+    return ErrorResponse(http.StatusBadRequest)
+  }
+
+  // Unmarshal
+  req := messages.ClientRequest{}
+  err := Unmarshal(r, &req)
+  if err != nil {
+    return ErrorResponse(http.StatusBadRequest)
+  }
+  log.Infof("[ClientsController] Put: %#+v", req)
+
+  // Validation
+  if !req.ValidateWithCuid(cuid) {
+    return ErrorResponse(http.StatusBadRequest)
+  }
+  client := req.DotsClient[0]
+
+  return WithTransaction(func (tx *db.Tx) (_ Response, err error) {
+    p, err := data_models.FindClientByCuid(tx, customer, client.Cuid)
+    if err != nil {
+      return responseOf(err)
+    }
+    status := http.StatusNoContent
+    if p == nil {
+      p = &data_models.Client{ Customer: customer }
+      status = http.StatusCreated
+    }
+
+    p.Cuid = client.Cuid
+    p.Cdid = client.Cdid
+
+    err = p.Save(tx)
+    if err != nil {
+      return responseOf(err)
+    }
+    return EmptyResponse(status)
+  })
+}

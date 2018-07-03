@@ -34,12 +34,14 @@ func (r *AliasesRequest) Validate(method string) bool {
     return false
   }
 
-  if method == "POST" {
-    if len(alias.TargetPrefix) == 0 && len(alias.TargetFQDN) == 0 && len(alias.TargetURI) == 0 {
-      log. Error("At least one of the 'target-prefix', 'target-fqdn', or 'target-uri' attributes MUST be present.")
-      return false
-    }
+  if method == "POST" && (len(alias.TargetPrefix) == 0 && len(alias.TargetFQDN) == 0 && len(alias.TargetURI) == 0) {
+    log. Error("At least one of the 'target-prefix', 'target-fqdn', or 'target-uri' attributes MUST be present.")
+    return false
+  } else if method == "PUT" && len(alias.TargetPrefix) == 0 {
+    log. Error("Missing required 'target-prefix' attribute.")
+    return false
   }
+
 
   for _, pr := range alias.TargetPortRange {
     if pr.UpperPort != nil {
@@ -48,6 +50,20 @@ func (r *AliasesRequest) Validate(method string) bool {
         return false
       }
     }
+  }
+
+  return true
+}
+
+func (r *AliasesRequest) ValidateWithName(name string, method string) bool {
+  if !r.Validate(method) {
+    return false
+  }
+
+  alias := r.Aliases.Alias[0]
+  if alias.Name != name {
+    log.WithField("name(req)", alias.Name).WithField("name(URI)", name).Error("request/URI name mismatch.")
+    return false
   }
 
   return true

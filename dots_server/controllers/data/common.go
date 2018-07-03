@@ -27,6 +27,7 @@ func Unmarshal(request *http.Request, val interface{}) error {
     log.WithError(err).Error("ioutil.ReadAll() failed.")
     return err
   }
+  log.Debugf("Request body: %+v", string(raw))
 
   err = json.Unmarshal(raw, val)
   if err != nil {

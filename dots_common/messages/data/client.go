@@ -9,6 +9,10 @@ type ClientRequest struct {
   DotsClient []types.DotsClient `json:"ietf-dots-data-channel:dots-client"`
 }
 
+type ClientResponse struct {
+  DotsClient types.DotsClient `json:"ietf-dots-data-channel:dots-client"`
+}
+
 func (r *ClientRequest) Validate() bool {
   if len(r.DotsClient) <= 0 {
     log.WithField("len", len(r.DotsClient)).Error("'dots-client' is not exist.")

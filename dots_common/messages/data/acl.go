@@ -144,3 +144,18 @@ func (r *ACLsRequest) Validate() bool {
 
   return true
 }
+
+
+func (r *ACLsRequest) ValidateWithName(name string) bool {
+  if !r.Validate() {
+    return false
+  }
+
+  acl := r.ACLs.ACL[0]
+  if acl.Name != name {
+    log.WithField("name(req)", acl.Name).WithField("name(URI)", name).Error("request/URI name mismatch.")
+    return false
+  }
+
+  return true
+}

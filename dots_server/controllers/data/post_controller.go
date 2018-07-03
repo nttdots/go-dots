@@ -29,7 +29,7 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
   }
 
   // Unmarshal
-  ar := messages.ClientsOrAliasesOrACLsRequest{}
+  ar := messages.AliasesOrACLsRequest{}
   err := Unmarshal(r, &ar)
   if err != nil {
     return ErrorResponse(http.StatusBadRequest)
