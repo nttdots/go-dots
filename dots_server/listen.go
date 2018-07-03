@@ -79,11 +79,15 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         log.WithField("MessageID", request.MessageID).Info("Incoming Request")
         log.WithField("Option", request.Options).Info("Incoming Request")
 
-        observe := request.GetOptionIntegerValue(libcoap.OptionObserve)
-        if observe == uint16(messages.Register) {
-            log.Debugf("Register Mitigation or Session Configuration Observe.")
-        } else if observe == uint16(messages.Deregister) {
-            log.Debugf("Deregister Mitigation or Session Configuration Observe.")
+        observe, err := request.GetOptionIntegerValue(libcoap.OptionObserve)
+        if err != nil {
+            log.Warnf("Observer: %+v", err)
+        } else {
+            if observe == uint16(messages.Register) {
+                log.Debugf("Register Mitigation or Session Configuration Observe.")
+            } else if observe == uint16(messages.Deregister) {
+                log.Debugf("Deregister Mitigation or Session Configuration Observe.")
+            }
         }
 
         response.MessageID = request.MessageID

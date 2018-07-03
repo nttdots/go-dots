@@ -247,14 +247,19 @@ func (pdu *Pdu) Queries() []string {
     return ret
 }
 
-func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (value uint16) {
+func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (value uint16, err error) {
     for _, option := range pdu.Options {
         if key == option.Key {
-			value = option.Uint16()
-			return
+            if len(option.Value) > 0 {
+                value = option.Uint16()
+                return value, nil
+            } else {
+                err = errors.New("Option Value is empty.")
+                return 0, err
+            }
         }
     }
-	return 2
+    return 2, nil
 }
 
 // Options gets all the values for the given option.
