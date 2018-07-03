@@ -92,7 +92,7 @@ func (acl *ACL) ToTypesACL(now time.Time) (*types.ACL, error) {
     log.WithError(err).Error("json.Unmarshal() failed.")
     return nil, err
   }
-  lifetime := int32(acl.ValidThrough.Sub(now) / time.Second)
+  lifetime := int32(acl.ValidThrough.Sub(now) / time.Minute)
   r.PendingLifetime = &lifetime
   return &r, nil
 }

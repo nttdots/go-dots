@@ -15,10 +15,10 @@ import (
 )
 
 const (
-  DEFAULT_ALIAS_LIFETIME_IN_SECONDS = 7 * 86400
+  DEFAULT_ALIAS_LIFETIME_IN_MINUTES = 7 * 1440
 )
 
-var defaultAliasLifetime = DEFAULT_ALIAS_LIFETIME_IN_SECONDS * time.Second
+var defaultAliasLifetime = DEFAULT_ALIAS_LIFETIME_IN_MINUTES * time.Minute
 
 type AliasesController struct {
 }

@@ -92,7 +92,7 @@ func (alias *Alias) ToTypesAlias(now time.Time) (*types.Alias, error) {
     log.WithError(err).Error("json.Unmarshal() failed.")
     return nil, err
   }
-  lifetime := int32(alias.ValidThrough.Sub(now) / time.Second)
+  lifetime := int32(alias.ValidThrough.Sub(now) / time.Minute)
   r.PendingLifetime = &lifetime
   return &r, nil
 }
