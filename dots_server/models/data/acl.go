@@ -82,14 +82,14 @@ func (acls ACLs) ToTypesACLs(now time.Time) (*types.ACLs, error) {
 func (acl *ACL) ToTypesACL(now time.Time) (*types.ACL, error) {
   buf, err := json.Marshal(&acl.ACL)
   if err != nil {
-    log.WithError(err).Error("json.Marshal() failed.")
+    log.WithError(err).Error("ToTypesACL - json.Marshal() failed.")
     return nil, err
   }
 
   r := types.ACL{}
   err = json.Unmarshal(buf, &r)
   if err != nil {
-    log.WithError(err).Error("json.Unmarshal() failed.")
+    log.WithError(err).Error("ToTypesACL - json.Unmarshal() failed.")
     return nil, err
   }
   lifetime := int32(acl.ValidThrough.Sub(now) / time.Minute)

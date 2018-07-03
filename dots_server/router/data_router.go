@@ -39,12 +39,13 @@ func Wrap(f Handle) httprouter.Handle {
       return
     }
 
-    log.Debugf("req.RequestURI=%+v\n", req.RequestURI)
-    log.Debugf("httprouter.Params=%+v\n", p)
+    log.Debugf("data_router.go#Wrap - request:")
+    log.Debugf("- req.RequestURI=%+v", req.RequestURI)
+    log.Debugf("- httprouter.Params=%+v", p)
     // httprouter does not have escape character :P
     if p.ByName("dots-data") == ":dots-data" || req.RequestURI == "/.well-known/host-meta" {
-      log.Debugf("req.contentType=%+v\n", req.Header.Get("Content-Type"))
-      log.Debugf("req.Body=%+v\n", req.Body)
+      log.Debugf("- req.contentType=%+v", req.Header.Get("Content-Type"))
+      log.Debugf("- req.Body=%+v", req.Body)
       res, err := f(customer, req, p)
       if err != nil {
         http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -56,12 +57,11 @@ func Wrap(f Handle) httprouter.Handle {
             h.Add(k, v)
           }
         }
-        log.Debugf("res.Code=%+v\n", res.Code)
-        log.Debugf("res,Content=%+v\n", res.Content)
         w.WriteHeader(res.Code)
         w.Write(res.Content)
-        log.Debugf("Response code: %+v", res.Code)
-        log.Debugf("Response body: %+v", string(res.Content))
+        log.Debugf("data_router.go#Wrap - response:")
+        log.Debugf("- Response code: %+v", res.Code)
+        log.Debugf("- Response body: %+v", string(res.Content))
       }
     } else {
       http.NotFound(w, req)

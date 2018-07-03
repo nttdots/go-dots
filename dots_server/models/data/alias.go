@@ -82,14 +82,14 @@ func (aliases Aliases) ToTypesAliases(now time.Time) (*types.Aliases, error) {
 func (alias *Alias) ToTypesAlias(now time.Time) (*types.Alias, error) {
   buf, err := json.Marshal(&alias.Alias)
   if err != nil {
-    log.WithError(err).Error("json.Marshal() failed.")
+    log.WithError(err).Error("ToTypesAlias - json.Marshal() failed.")
     return nil, err
   }
 
   r := types.Alias{}
   err = json.Unmarshal(buf, &r)
   if err != nil {
-    log.WithError(err).Error("json.Unmarshal() failed.")
+    log.WithError(err).Error("ToTypesAlias - json.Unmarshal() failed.")
     return nil, err
   }
   lifetime := int32(alias.ValidThrough.Sub(now) / time.Minute)

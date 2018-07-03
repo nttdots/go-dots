@@ -24,14 +24,14 @@ func Unmarshal(request *http.Request, val interface{}) error {
 
   raw, err := ioutil.ReadAll(request.Body)
   if err != nil {
-    log.WithError(err).Error("ioutil.ReadAll() failed.")
+    log.WithError(err).Error("Unmarshal - ioutil.ReadAll() failed.")
     return err
   }
   log.Debugf("Request body: %+v", string(raw))
 
   err = json.Unmarshal(raw, val)
   if err != nil {
-    log.WithError(err).Error("json.Unmarshal() failed.")
+    log.WithError(err).Error("Unmarshal - json.Unmarshal() failed.")
     return err
   }
 
