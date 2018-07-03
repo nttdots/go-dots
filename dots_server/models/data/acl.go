@@ -63,6 +63,10 @@ func (acl *ACL) Save(tx *db.Tx) error {
   }
 }
 
+func (acls ACLs) GetEmptyTypesACLs() (*types.ACLs) {
+  return &types.ACLs{}
+}
+
 func (acls ACLs) ToTypesACLs(now time.Time) (*types.ACLs, error) {
   r := make([]types.ACL, len(acls))
   for i := range acls {

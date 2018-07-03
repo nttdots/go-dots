@@ -90,9 +90,11 @@ func CreateRouter() *httprouter.Router {
   clients := data_controllers.ClientsController{}
   r.POST  (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data",                   Wrap(clients.Post))
   r.PUT   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid", Wrap(clients.Put))
+  r.GET   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid", Wrap(clients.Get))
   r.DELETE(config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid", Wrap(clients.Delete))
   // Send delete request client missing cuid
   r.PUT   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=", Wrap(clients.Put))
+  r.GET   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=", Wrap(clients.Get))
   r.DELETE(config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=", Wrap(clients.Delete))
 
   post := data_controllers.PostController{}

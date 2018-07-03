@@ -10,6 +10,7 @@ import (
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_server/models/data"
+  "time"
 )
 
 type ClientsController struct {
@@ -120,5 +121,70 @@ func (c *ClientsController) Put(customer *models.Customer, r *http.Request, p ht
       return responseOf(err)
     }
     return EmptyResponse(status)
+  })
+}
+
+func (c *ClientsController) Get(customer *models.Customer, r *http.Request, p httprouter.Params) (Response, error) {
+  now := time.Now()
+  cuid := p.ByName("cuid")
+  log.WithField("cuid", cuid).Info("[ClientController] GET")
+
+  // Check missing 'cuid'
+  if cuid == "" {
+    log.Error("Missing required path 'cuid' value.")
+    return ErrorResponse(http.StatusBadRequest)
+  }
+
+  return WithTransaction(func (tx *db.Tx) (Response, error) {
+    p, err := data_models.FindClientByCuid(tx, customer, cuid)
+    if err != nil {
+      return responseOf(err)
+    }
+    if p == nil {
+      return ErrorResponse(http.StatusNotFound)
+    }
+
+    // Find aliases
+    aliases, err := data_models.FindAliases(tx, p, now)
+    if err != nil {
+      return responseOf(err)
+    }
+    tasAliases, err := aliases.ToTypesAliases(now)
+    if err != nil {
+      return responseOf(err)
+    }
+    if len(tasAliases.Alias) == 0 {
+      tasAliases = aliases.GetEmptyTypesAliases()
+    }
+
+    // Find acls
+    acls, err := data_models.FindACLs(tx, p, now)
+    if err != nil {
+      return responseOf(err)
+    }
+    tasAcls, err := acls.ToTypesACLs(now)
+    if err != nil {
+      return responseOf(err)
+    }
+    if len(tasAcls.ACL) == 0 {
+      tasAcls = acls.GetEmptyTypesACLs()
+    }
+
+    s := messages.ClientResponse{}
+    s.DotsClient.Cuid = p.Cuid
+    s.DotsClient.Cdid = p.Cdid
+    s.DotsClient.Aliases = tasAliases
+    s.DotsClient.ACLs = tasAcls
+
+    cp, err := messages.ContentFromRequest(r)
+    if err != nil {
+      return responseOf(err)
+    }
+
+    m, err := messages.ToMap(s, cp)
+    if err != nil {
+      return responseOf(err)
+    }
+    return YangJsonResponse(m)
   })
 }

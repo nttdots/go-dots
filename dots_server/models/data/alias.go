@@ -63,6 +63,10 @@ func (alias *Alias) Save(tx *db.Tx) error {
   }
 }
 
+func (aliases Aliases) GetEmptyTypesAliases() (*types.Aliases) {
+  return &types.Aliases{}
+}
+
 func (aliases Aliases) ToTypesAliases(now time.Time) (*types.Aliases, error) {
   r := make([]types.Alias, len(aliases))
   for i := range aliases {
