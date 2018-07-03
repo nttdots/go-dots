@@ -50,7 +50,7 @@ type IPv4 struct {
   TTL                    *uint8      `yang:"config" json:"ttl"`
   Protocol               *uint8      `yang:"config" json:"protocol"`
   IHL                    *uint8      `yang:"config" json:"ihl"`                 //TODO: value range (5..60)
-  Flags                  IPv4Flags   `yang:"config" json:"flags"`
+  Flags                  *IPv4Flags   `yang:"config" json:"flags"`
   Offset                 *uint16     `yang:"config" json:"offset"`              //TODO: value range (20..65535)
   DestinationIPv4Network *IPv4Prefix `yang:"config" json:"destination-ipv4-network"`
   SourceIPv4Network      *IPv4Prefix `yang:"config" json:"source-ipv4-network"`
@@ -74,7 +74,7 @@ type TCP struct {
   AcknowledgementNumber *uint32              `yang:"config" json:"acknowledgement-number"`
   DataOffset            *uint8               `yang:"config" json:"data-offset"`
   Reserved              *uint8               `yang:"config" json:"reserved"`
-  Flags                 TCPFlags             `yang:"config" json:"flags"`
+  Flags                 *TCPFlags             `yang:"config" json:"flags"`
   WindowSize            *uint16              `yang:"config" json:"window-size"`
   UrgentPointer         *uint16              `yang:"config" json:"urgent-pointer"`
   Options               *uint32              `yang:"config" json:"options"`
