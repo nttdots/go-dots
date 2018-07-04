@@ -6,6 +6,8 @@ package libcoap
 */
 import "C"
 import "encoding/binary"
+import "bytes"
+import "errors"
 
 type OptionKey uint16
 
@@ -38,16 +40,44 @@ func (key OptionKey) String(value string) Option {
     return Option{ key, []byte(value) }
 }
 
-func (key OptionKey) Uint16(value uint16) Option {
-    a := make([]byte, 2)
-    binary.BigEndian.PutUint16(a, value)
-    return Option{ key, a }
-}
-
 func (opt Option) String() string {
     return string(opt.Value)
 }
 
-func (opt Option) Uint16() uint16 {
-    return binary.BigEndian.Uint16(opt.Value)
+func (key OptionKey) Uint(value interface{}) (Option, error) {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.BigEndian, value)
+	if err != nil {
+		return Option{}, err
+    }
+	return Option{ key, buf.Bytes() }, nil
+}
+
+func (opt Option) Uint() (res uint32, err error) {
+    buf := bytes.NewReader(opt.Value)
+
+    switch len(opt.Value) {
+        case 0:
+            err = errors.New("Option Value is empty.")
+        case 1:
+            var temp uint8
+            err = binary.Read(buf, binary.BigEndian, &temp)
+            res = uint32(temp)
+        case 2, 3:
+            var temp uint16
+            err = binary.Read(buf, binary.BigEndian, &temp)
+            res = uint32(temp)
+        case 4:
+            var temp uint32
+            err = binary.Read(buf, binary.BigEndian, &temp)
+            res = uint32(temp)
+        default:
+            var temp uint32
+            err = binary.Read(buf, binary.BigEndian, &temp)
+            res = uint32(temp)
+    }
+	if err != nil {
+		return 0, err
+	}
+	return
 }

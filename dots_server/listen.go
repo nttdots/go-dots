@@ -83,9 +83,9 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil {
             log.Warnf("Observer: %+v", err)
         } else {
-            if observe == uint16(messages.Register) {
+            if observe == uint32(messages.Register) {
                 log.Debugf("Register Mitigation or Session Configuration Observe.")
-            } else if observe == uint16(messages.Deregister) {
+            } else if observe == uint32(messages.Deregister) {
                 log.Debugf("Deregister Mitigation or Session Configuration Observe.")
             }
         }
@@ -174,12 +174,12 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                         // Create observer in sub resource to handle observation in case session configuration change
                         resource := context.GetResourceByQuery(resourcePath)
                         if resource != nil {
-                            if observe == uint16(messages.Register) {
+                            if observe == uint32(messages.Register) {
                                 log.Debugf("Create observer in sub-resource with query: %+v", p)
                                 if resource != nil {
                                     resource.AddObserver(session, p, *token)
                                 }
-                            } else if observe == uint16(messages.Deregister) {
+                            } else if observe == uint32(messages.Deregister) {
                                 log.Debugf("Delete observer in sub-resource")
                                 if resource != nil {
                                     resource.DeleteObserver(session, *token)
@@ -231,7 +231,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         response.Type = CoAPType(res.Type)
         log.Debugf("response.Data=\n%s", hex.Dump(payload))
         // add content type cbor
-        response.Options = append(response.Options, libcoap.OptionContentType.Uint16(60))
+        response.SetOption(libcoap.OptionContentType, uint16(libcoap.AppCbor))
 
         return
     }

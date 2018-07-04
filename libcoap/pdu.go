@@ -247,19 +247,24 @@ func (pdu *Pdu) Queries() []string {
     return ret
 }
 
-func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (value uint16, err error) {
+func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (value uint32, err error) {
     for _, option := range pdu.Options {
         if key == option.Key {
-            if len(option.Value) > 0 {
-                value = option.Uint16()
-                return value, nil
-            } else {
-                err = errors.New("Option Value is empty.")
-                return 0, err
-            }
+            value, err = option.Uint()
+            return
         }
     }
     return 2, nil
+}
+
+func (pdu *Pdu) GetOptionStringValue(key OptionKey) (value string) {
+    for _, option := range pdu.Options {
+        if key == option.Key {
+            value = option.String()
+            return value
+        }
+    }
+    return ""
 }
 
 // Options gets all the values for the given option.
@@ -293,13 +298,17 @@ func (pdu *Pdu) RemoveOption(key OptionKey) {
 
 // AddOption adds an option.
 func (pdu *Pdu) AddOption(key OptionKey, val interface{}) {
-	var option Option
+    var option Option
+    var err error
 	iv := reflect.ValueOf(val)
 	if iv.Kind() == reflect.String {
 		option = key.String(val.(string))
-	} else if iv.Kind() == reflect.Uint16 {
-		option = key.Uint16(val.(uint16))
-	} else {
+	} else if iv.Kind() == reflect.Uint8 || iv.Kind() == reflect.Uint16 || iv.Kind() == reflect.Uint32 {
+        option, err = key.Uint(val)
+        if err != nil {
+            log.Errorf("Binary read data failed: %+v", err)
+        }
+    } else {
         log.Warnf("Unsupported type of option value. Current value type: %+v\n", iv.Kind().String())
         return
 	}

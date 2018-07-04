@@ -141,7 +141,7 @@ func (r *Request) CreateRequest() {
 		observeValue, error := strconv.ParseUint(observeStr, 10, 16)
 		if error != nil {
 			log.Errorf("Observe is not uint type.")
-			return
+			goto SKIP_OBSERVE
 		}
 		observe = uint16(observeValue)
 
@@ -163,6 +163,8 @@ func (r *Request) CreateRequest() {
 			}
 		}
 	}
+
+SKIP_OBSERVE:
 	if val, ok := r.options[messages.IFMATCH]; ok {
 		r.pdu.SetOption(libcoap.OptionIfMatch, val)
 	}
