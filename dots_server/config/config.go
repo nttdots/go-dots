@@ -66,16 +66,16 @@ type LifetimeConfigurationNode struct {
 
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	return &SignalConfigurationParameter{
-		HeartbeatInterval: parseParameterRange(scpn.HeartbeatInterval),
-		MissingHbAllowed:  parseParameterRange(scpn.MissingHbAllowed),
-		MaxRetransmit:     parseParameterRange(scpn.MaxRetransmit),
-		AckTimeout:        parseParameterRange(scpn.AckTimeout),
-		AckRandomFactor:   parseParameterRange(scpn.AckRandomFactor),
-		HeartbeatIntervalIdle: parseParameterRange(scpn.HeartbeatIntervalIdle),
-		MissingHbAllowedIdle:  parseParameterRange(scpn.MissingHbAllowedIdle),
-		MaxRetransmitIdle:     parseParameterRange(scpn.MaxRetransmitIdle),
-		AckTimeoutIdle:        parseParameterRange(scpn.AckTimeoutIdle),
-		AckRandomFactorIdle:   parseParameterRange(scpn.AckRandomFactorIdle),
+		HeartbeatInterval: parseIntegerParameterRange(scpn.HeartbeatInterval),
+		MissingHbAllowed:  parseIntegerParameterRange(scpn.MissingHbAllowed),
+		MaxRetransmit:     parseIntegerParameterRange(scpn.MaxRetransmit),
+		AckTimeout:        parseFloatParameterRange(scpn.AckTimeout),
+		AckRandomFactor:   parseFloatParameterRange(scpn.AckRandomFactor),
+		HeartbeatIntervalIdle: parseIntegerParameterRange(scpn.HeartbeatIntervalIdle),
+		MissingHbAllowedIdle:  parseIntegerParameterRange(scpn.MissingHbAllowedIdle),
+		MaxRetransmitIdle:     parseIntegerParameterRange(scpn.MaxRetransmitIdle),
+		AckTimeoutIdle:        parseFloatParameterRange(scpn.AckTimeoutIdle),
+		AckRandomFactorIdle:   parseFloatParameterRange(scpn.AckRandomFactorIdle),
 	}, nil
 }
 
@@ -436,21 +436,40 @@ type ServerConfiguration struct {
 	signalConfigurationParameter SignalConfigurationParameter
 }
 
-type ParameterRange struct {
+type IntegerParameterRange struct {
 	start int
 	end   int
 }
 
-func (pm *ParameterRange) Start() interface{} {
+type FloatParameterRange struct {
+	start float64
+	end   float64
+}
+
+// Integer parameter range method
+func (pm *IntegerParameterRange) Start() interface{} {
 	return pm.start
 }
-
-func (pm *ParameterRange) End() interface{} {
+func (pm *IntegerParameterRange) End() interface{} {
 	return pm.end
 }
-
-func (pm *ParameterRange) Includes(i interface{}) bool {
+func (pm *IntegerParameterRange) Includes(i interface{}) bool {
 	x, ok := i.(int)
+	if !ok {
+		return false
+	}
+	return pm.start <= x && x <= pm.end
+}
+
+// Float parameter range method
+func (pm *FloatParameterRange) Start() interface{} {
+	return pm.start
+}
+func (pm *FloatParameterRange) End() interface{} {
+	return pm.end
+}
+func (pm *FloatParameterRange) Includes(i interface{}) bool {
+	x, ok := i.(float64)
 	if !ok {
 		return false
 	}
@@ -460,7 +479,7 @@ func (pm *ParameterRange) Includes(i interface{}) bool {
 // input format examples: "5", "100-120"
 // error input examples: "-5", "120-100", "0.5-90.0"
 // return nil on the parseServerConfig failures
-func parseParameterRange(input string) *ParameterRange {
+func parseIntegerParameterRange(input string) *IntegerParameterRange {
 	var start, end int
 
 	var err error
@@ -488,7 +507,44 @@ func parseParameterRange(input string) *ParameterRange {
 		return nil
 	}
 
-	return &ParameterRange{
+	return &IntegerParameterRange{
+		start: start,
+		end:   end,
+	}
+}
+
+// input format examples: "5.0", "100.0-120.0"
+// error input examples: "-5.0", "120.0-100.0"
+// return nil on the parseServerConfig failures
+func parseFloatParameterRange(input string) *FloatParameterRange {
+	var start, end float64
+
+	var err error
+	if strings.Index(input, "-") >= 0 {
+		array := strings.Split(input, "-")
+		if len(array) != 2 {
+			return nil
+		}
+
+		if start, err = strconv.ParseFloat(array[0], 64); err != nil {
+			// negative values must be dropped here
+			return nil
+		}
+		if end, err = strconv.ParseFloat(array[1], 64); err != nil {
+			return nil
+		}
+	} else {
+		if start, err = strconv.ParseFloat(input, 64); err != nil {
+			return nil
+		}
+		end = start
+	}
+
+	if start > end {
+		return nil
+	}
+
+	return &FloatParameterRange{
 		start: start,
 		end:   end,
 	}
@@ -527,16 +583,16 @@ func parseFloatValue(input string) (res float64) {
 }
 
 type SignalConfigurationParameter struct {
-	HeartbeatInterval *ParameterRange
-	MissingHbAllowed  *ParameterRange
-	MaxRetransmit     *ParameterRange
-	AckTimeout        *ParameterRange
-	AckRandomFactor   *ParameterRange
-	HeartbeatIntervalIdle *ParameterRange
-	MissingHbAllowedIdle  *ParameterRange
-	MaxRetransmitIdle     *ParameterRange
-	AckTimeoutIdle        *ParameterRange
-	AckRandomFactorIdle   *ParameterRange
+	HeartbeatInterval *IntegerParameterRange
+	MissingHbAllowed  *IntegerParameterRange
+	MaxRetransmit     *IntegerParameterRange
+	AckTimeout        *FloatParameterRange
+	AckRandomFactor   *FloatParameterRange
+	HeartbeatIntervalIdle *IntegerParameterRange
+	MissingHbAllowedIdle  *IntegerParameterRange
+	MaxRetransmitIdle     *IntegerParameterRange
+	AckTimeoutIdle        *FloatParameterRange
+	AckRandomFactorIdle   *FloatParameterRange
 }
 
 type DefaultSignalConfiguration struct {

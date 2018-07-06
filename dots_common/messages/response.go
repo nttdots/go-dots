@@ -69,14 +69,14 @@ type ConfigurationResponseConfig struct {
 	AckRandomFactor   DecimalCurrentMinMax `json:"ack-random-factor"  codec:"40"`
 }
 
-func (v *IntCurrentMinMax) SetMinMax(pr *config.ParameterRange) {
+func (v *IntCurrentMinMax) SetMinMax(pr *config.IntegerParameterRange) {
 	v.MinValue = pr.Start().(int)
 	v.MaxValue = pr.End().(int)
 }
 
-func (v *DecimalCurrentMinMax) SetMinMax(pr *config.ParameterRange) {
-	v.MinValue = decimal.New(int64(pr.Start().(int)), 0)
-	v.MaxValue = decimal.New(int64(pr.End().(int)),   0)
+func (v *DecimalCurrentMinMax) SetMinMax(pr *config.FloatParameterRange) {
+	v.MinValue = decimal.NewFromFloat(pr.Start().(float64)).Round(2)
+	v.MaxValue = decimal.NewFromFloat(pr.End().(float64)).Round(2)
 }
 
 type MitigationResponsePut struct {

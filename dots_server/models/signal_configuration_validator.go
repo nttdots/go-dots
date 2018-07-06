@@ -52,11 +52,11 @@ func getCompareDataSource() *SignalConfigurationParameter {
 			min_value: float64(config.MaxRetransmit.Start().(int)),
 			max_value: float64(config.MaxRetransmit.End().(int))},
 		ack_timeout: ConfigurationParameterRange{
-			min_value: float64(config.AckTimeout.Start().(int)),
-			max_value: float64(config.AckTimeout.End().(int))},
+			min_value: config.AckTimeout.Start().(float64),
+			max_value: config.AckTimeout.End().(float64)},
 		ack_random_factor: ConfigurationParameterRange{
-			min_value: float64(config.AckRandomFactor.Start().(int)),
-			max_value: float64(config.AckRandomFactor.End().(int))},
+			min_value: config.AckRandomFactor.Start().(float64),
+			max_value: config.AckRandomFactor.End().(float64)},
 		heartbeat_interval_idle: ConfigurationParameterRange{
 			min_value: float64(config.HeartbeatIntervalIdle.Start().(int)),
 			max_value: float64(config.HeartbeatIntervalIdle.End().(int))},
@@ -67,11 +67,11 @@ func getCompareDataSource() *SignalConfigurationParameter {
 			min_value: float64(config.MaxRetransmitIdle.Start().(int)),
 			max_value: float64(config.MaxRetransmitIdle.End().(int))},
 		ack_timeout_idle: ConfigurationParameterRange{
-			min_value: float64(config.AckTimeoutIdle.Start().(int)),
-			max_value: float64(config.AckTimeoutIdle.End().(int))},
+			min_value: config.AckTimeoutIdle.Start().(float64),
+			max_value: config.AckTimeoutIdle.End().(float64)},
 		ack_random_factor_idle: ConfigurationParameterRange{
-			min_value: float64(config.AckRandomFactorIdle.Start().(int)),
-			max_value: float64(config.AckRandomFactorIdle.End().(int))},
+			min_value: config.AckRandomFactorIdle.Start().(float64),
+			max_value: config.AckRandomFactorIdle.End().(float64)},
 	}
 }
 
