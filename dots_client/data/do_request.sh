@@ -17,6 +17,7 @@ CERTS_DIR="`dirname $0`/../../certs"
 
 if [ -n "$BODY" ]; then
 wget \
+  --content-on-error \
   -q -S -O - \
   --no-check-certificate \
   --ca-certificate="$CERTS_DIR"/ca-cert.pem \
@@ -28,6 +29,7 @@ wget \
   "--header=Content-Type: application/yang-data+json"
 else
 wget \
+  --content-on-error \
   -q -S -O - \
   --no-check-certificate \
   --ca-certificate="$CERTS_DIR"/ca-cert.pem \

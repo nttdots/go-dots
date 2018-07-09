@@ -47,14 +47,15 @@ func (c *ResourceDiscoveryController) Get(customer *models.Customer, r *http.Req
 
 		x, err := xml.MarshalIndent(resource, "", " ")
 		if err != nil {
-			return ErrorResponse(http.StatusInternalServerError)
+			return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Can not marshal xml")
 		}
 
         xmlData := string(x)
         reg := regexp.MustCompile("(></Link>)")
         xmlData = reg.ReplaceAllString(xmlData, "/>")
 
-		resp, e := ErrorResponse(http.StatusOK)
+		resp, e := EmptyResponse(http.StatusOK)
+		resp.Headers = make(http.Header)
 		resp.Headers.Set("Content-Type", CONTENT_TYPE_XRD_XML)
 		resp.Content = []byte(xmlData)
 
@@ -62,9 +63,9 @@ func (c *ResourceDiscoveryController) Get(customer *models.Customer, r *http.Req
 
 	} else if contentType == CONTENT_TYPE_YANG_DATA_JSON {
 		log.Debugf("Content-Type: %+v", CONTENT_TYPE_YANG_DATA_JSON)
-		return ErrorResponse(http.StatusUnsupportedMediaType)
+		return ErrorResponse(http.StatusNotImplemented, ErrorTag_Operation_Not_Supported, "yang-data+json is not yet support for this request")
 
 	}
 
-	return ErrorResponse(http.StatusBadRequest)
+	return ErrorResponse(http.StatusBadRequest, ErrorTag_Malformed_Message, "Only support xrd+xml for this request")
 }

@@ -14,25 +14,27 @@ type AliasesOrACLsRequest struct {
 
 func (r *AliasesOrACLsRequest) ValidateExtract(method string) (interface{}, error) {
   if r.Aliases == nil && r.ACLs == nil {
-    log.Error("aliases == nil and acls == nil and clients == nil")
-    return nil, errors.New("Validation failed.")
+    log.Error("aliases == nil and acls == nil")
+    return nil, errors.New("Validation failed : Both of aliases and acls are not found")
   }
 
   if r.Aliases != nil && r.ACLs != nil {
     log.Error("Request must be either of alias or acl")
-    return nil, errors.New("Validation failed.")
+    return nil, errors.New("Validation failed : Request must be either of aliases or acls")
   }
 
   if r.Aliases != nil {
     t := AliasesRequest{ *r.Aliases }
-    if t.Validate(method) == false {
-      return nil, errors.New("Validation failed.")
+    bValid, errorMsg := t.Validate(method)
+    if bValid == false {
+      return nil, errors.New(errorMsg)
     }
     return &t, nil
   } else {
     t := ACLsRequest{ *r.ACLs }
-    if t.Validate() == false {
-      return nil, errors.New("Validation failed.")
+    bValid, errorMsg := t.Validate()
+    if bValid == false {
+      return nil, errors.New(errorMsg)
     }
     return &t, nil
   }

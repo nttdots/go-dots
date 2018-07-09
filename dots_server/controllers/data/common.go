@@ -14,6 +14,79 @@ import (
   "github.com/nttdots/go-dots/dots_server/models/data"
 )
 
+
+type ErrType string
+type ErrTag string
+
+type ErrorsResponse struct {
+  Errors Errors `json:"ietf-restconf:errors"`
+}
+
+type Errors struct{
+  Error []Error `json:"error"`
+}
+
+type Error struct{
+  ErrorType     ErrType `yang:"nonconfig" json:"error-type"`
+  ErrorTag      ErrTag  `yang:"nonconfig" json:"error-tag"`
+  ErrorMessage  string  `yang:"nonconfig" json:"error-message"`
+  //ErrorAppTag string  `yang:"nonconfig" json:"error-app-tag"`   //TODO : support later
+  //ErrorPath   instance-identifier  `yang:"nonconfig" json:"error-path"`   //TODO : support later
+  //ErrorInfo   string  `yang:"nonconfig" json:"error-info"`   //TODO : support later
+}
+
+const (
+  ErrorType_Transport    ErrType = "transport"
+  ErrorType_RPC          ErrType = "rpc"
+  ErrorType_Protocol     ErrType = "protocol"
+  ErrorType_Application  ErrType = "application"
+)
+
+const (
+  ErrorTag_In_Use                     ErrTag = "in-use"                       // 409
+  ErrorTag_Lock_Denied                ErrTag = "lock-denied"                  // 409
+  ErrorTag_Resource_Denied            ErrTag = "resource-denied"              // 409
+  ErrorTag_Data_Exists                ErrTag = "data-exists"                  // 409
+  ErrorTag_Data_Missing               ErrTag = "data-missing"                 // 409
+
+  ErrorTag_Invalid_Value              ErrTag = "invalid-value"                // 400, 404, or 406
+  ErrorTag_Response_Too_Big           ErrTag = "(response) too-big"           // 400
+  ErrorTag_Missing_Attribute          ErrTag = "missing-attribute"            // 400
+  ErrorTag_Bad_Attribute              ErrTag = "bad-attribute"                // 400
+  ErrorTag_Unknown_Attribute          ErrTag = "unknown-attribute"            // 400
+  ErrorTag_Bad_Element                ErrTag = "bad-element"                  // 400
+  ErrorTag_Unknown_Element            ErrTag = "unknown-element"              // 400
+  ErrorTag_Unknown_Namespace          ErrTag = "unknown-namespace"            // 400
+  ErrorTag_Malformed_Message          ErrTag = "malformed-message"            // 400
+
+  ErrorTag_Access_Denied              ErrTag = "access-denied"                // 401 or 403
+  ErrorTag_Operation_Not_Supported    ErrTag = "operation-not-supported"      // 405 or 501
+
+  ErrorTag_Operation_Failed           ErrTag = "operation-failed"             // 412 or 500
+  ErrorTag_Request_Too_Big            ErrTag = "(request) too-big"            // 413
+  ErrorTag_Rollback_Failed            ErrTag = "rollback-failed"              // 500
+  ErrorTag_Partial_Operation          ErrTag = "partial-operation"            // 500
+  
+)
+
+func (e * Error) GetDefaultErrorType() ErrType{
+  switch e.ErrorTag{
+  case ErrorTag_In_Use, ErrorTag_Lock_Denied, ErrorTag_Resource_Denied, ErrorTag_Invalid_Value,
+  ErrorTag_Missing_Attribute, ErrorTag_Bad_Attribute, ErrorTag_Unknown_Attribute, ErrorTag_Bad_Element,
+  ErrorTag_Unknown_Element, ErrorTag_Unknown_Namespace, ErrorTag_Access_Denied :
+    return ErrorType_Protocol
+  case ErrorTag_Malformed_Message :
+    return ErrorType_RPC
+  case ErrorTag_Operation_Not_Supported, ErrorTag_Operation_Failed, ErrorTag_Rollback_Failed, ErrorTag_Partial_Operation,
+  ErrorTag_Data_Exists, ErrorTag_Data_Missing :
+    return ErrorType_Application
+  case ErrorTag_Response_Too_Big, ErrorTag_Request_Too_Big :
+    return ErrorType_Transport
+  }
+
+  return ErrorType_Protocol
+}
+
 func Unmarshal(request *http.Request, val interface{}) error {
 
   contentType := request.Header.Get("Content-Type")
@@ -61,12 +134,29 @@ func EmptyResponse(code int) (Response, error) {
   return Response{ Code: code }, nil
 }
 
-func ErrorResponse(code int) (Response, error) {
+func ErrorResponse(errorCode int, errorTag ErrTag, errorMsg string) (Response, error) {
+
+  errors := make([]Error, 1)
+  e := Error{}
+  e.ErrorTag = errorTag
+  e.ErrorType = e.GetDefaultErrorType()
+  e.ErrorMessage = errorMsg
+  errors[0] = e
+
+  eres := ErrorsResponse{}
+  eres.Errors.Error = errors
+
   r := Response{}
-  r.Code = code
+
+  raw, err := json.Marshal(eres)
+  if err != nil {
+    return r, err
+  }
+
+  r.Code = errorCode
   r.Headers = make(http.Header)
-  r.Headers.Add("Content-Type", "text/plain")
-  r.Content = []byte(http.StatusText(code))
+  r.Headers.Add("Content-Type", "application/yang-data+json")
+  r.Content = raw
   return r, nil
 }
 
@@ -104,10 +194,11 @@ func WithTransaction(f func(*db.Tx) (Response, error)) (Response, error) {
 func WithClient(tx *db.Tx, customer *models.Customer, cuid string, f func(*data_models.Client) (Response, error)) (Response, error) {
   client, err := data_models.FindClientByCuid(tx, customer, cuid)
   if err != nil {
-    return ErrorResponse(http.StatusInternalServerError)
+    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get dot-client")
   }
   if client == nil {
-    return ErrorResponse(http.StatusNotFound)
+    return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found dot-client by specified cuid")
   }
   return f(client)
 }
+

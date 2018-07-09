@@ -25,14 +25,14 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   // Unmarshal
   ar := messages.AliasesOrACLsRequest{}
   err := Unmarshal(r, &ar)
   if err != nil {
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, "Invalid body data format")
   }
 
   log.Infof("[PostController] Post request=%#+v", ar)
@@ -40,7 +40,7 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
   // Validation
   ir, err := ar.ValidateExtract(r.Method)
   if err != nil {
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, err.Error())
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -50,16 +50,16 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
         alias := req.Aliases.Alias[0]
         e, err := data_models.FindAliasByName(tx, client, alias.Name, now)
         if err != nil {
-          return responseOf(err)
+          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alias")
         }
 
         if e != nil {
-          return EmptyResponse(http.StatusConflict)
+          return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, "Specified alias 'name' is already registered")
         } else {
           n := data_models.NewAlias(client, alias, now, defaultAliasLifetime)
           err = n.Save(tx)
           if err != nil {
-            return responseOf(err)
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save alias")
           }
           return EmptyResponse(http.StatusCreated)
         }
@@ -67,16 +67,16 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
         acl := req.ACLs.ACL[0]
         e, err := data_models.FindACLByName(tx, client, acl.Name, now)
         if err != nil {
-          return responseOf(err)
+          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alc")
         }
 
         if e != nil {
-          return EmptyResponse(http.StatusConflict)
+          return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, "Specified acl 'name' is already registered")
         } else {
           n := data_models.NewACL(client, acl, now, defaultACLLifetime)
           err = n.Save(tx)
           if err != nil {
-            return responseOf(err)
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
           }
           return EmptyResponse(http.StatusCreated)
         }

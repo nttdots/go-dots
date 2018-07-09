@@ -59,6 +59,7 @@ func Wrap(f Handle) httprouter.Handle {
         }
         w.WriteHeader(res.Code)
         w.Write(res.Content)
+
         log.Debugf("data_router.go#Wrap - response:")
         log.Debugf("- Response code: %+v", res.Code)
         log.Debugf("- Response body: %+v", string(res.Content))

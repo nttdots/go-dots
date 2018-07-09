@@ -31,7 +31,7 @@ func (c *ACLsController) GetAll(customer *models.Customer, r *http.Request, p ht
   // Check missing 'cuid'
  if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -71,13 +71,13 @@ func (c *ACLsController) Get(customer *models.Customer, r *http.Request, p httpr
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   // Check missing alias 'name'
   if name == "" {
     log.Error("Missing required acl 'name' attribute.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : acl 'name'")
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -87,7 +87,7 @@ func (c *ACLsController) Get(customer *models.Customer, r *http.Request, p httpr
         return
       }
       if acl == nil {
-        return ErrorResponse(http.StatusNotFound)
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found alc by specified name")
       }
 
       ta, err := acl.ToTypesACL(now)
@@ -122,13 +122,13 @@ func (c *ACLsController) Delete(customer *models.Customer, r *http.Request, p ht
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
-  // Check missing alias 'name'
+  // Check missing alc 'name'
   if name == "" {
-    log.Error("Missing required alias 'name' attribute.")
-    return ErrorResponse(http.StatusBadRequest)
+    log.Error("Missing required acl 'name' attribute.")
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : acl 'name'")
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -141,7 +141,7 @@ func (c *ACLsController) Delete(customer *models.Customer, r *http.Request, p ht
       if deleted == true {
         return EmptyResponse(http.StatusNoContent)
       } else {
-        return ErrorResponse(http.StatusNotFound)
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found alc by specified name")
       }
     })
   })
@@ -156,25 +156,26 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   // Check missing alias 'name'
   if name == "" {
     log.Error("Missing required path 'name' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : alias 'name'")
   }
 
   req := messages.ACLsRequest{}
   err := Unmarshal(r, &req)
   if err != nil {
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, "Invalid body data format")
   }
   log.Infof("[ACLsController] Put request=%#+v", req)
 
   // Validation
-  if !req.ValidateWithName(name) {
-    return ErrorResponse(http.StatusBadRequest)
+  bValid, errorMsg := req.ValidateWithName(name)
+  if !bValid {
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errorMsg)
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -182,7 +183,7 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       acl := req.ACLs.ACL[0]
       e, err := data_models.FindACLByName(tx, client, acl.Name, now)
       if err != nil {
-        return responseOf(err)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get acl")
       }
       status := http.StatusCreated
       if e == nil {
@@ -195,7 +196,7 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       }
       err = e.Save(tx)
       if err != nil {
-        return responseOf(err)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
       }
       return EmptyResponse(status)
     })

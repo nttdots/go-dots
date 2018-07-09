@@ -23,13 +23,14 @@ func (c *ClientsController) Post(customer *models.Customer, r *http.Request, p h
   req := messages.ClientRequest{}
   err := Unmarshal(r, &req)
   if err != nil {
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, "Invalid body data format")
   }
   log.Infof("[ClientsController] Post: %#+v", req)
 
   // Validation
-  if !req.Validate() {
-    return ErrorResponse(http.StatusBadRequest)
+  bValid, errorMsg := req.Validate()
+  if !bValid {
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errorMsg)
   }
   client := req.DotsClient[0]
 
@@ -39,7 +40,7 @@ func (c *ClientsController) Post(customer *models.Customer, r *http.Request, p h
       return
     }
     if found {
-      return ErrorResponse(http.StatusConflict)
+      return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, "Specified 'cuid' is already registered")
     }
     p := &data_models.Client{
       Customer: customer,
@@ -61,19 +62,19 @@ func (c *ClientsController) Delete(customer *models.Customer, r *http.Request, p
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   return WithTransaction(func (tx *db.Tx) (_ Response, err error) {
     deleted, err := data_models.DeleteClientByCuid(tx, customer, cuid)
     if err != nil {
-      return EmptyResponse(http.StatusInternalServerError)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to delete dot-client")
     }
 
     if deleted {
       return EmptyResponse(http.StatusNoContent)
     } else {
-      return ErrorResponse(http.StatusNotFound)
+      return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found dot-client by specified cuid")
     }
   })
 }
@@ -85,27 +86,28 @@ func (c *ClientsController) Put(customer *models.Customer, r *http.Request, p ht
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   // Unmarshal
   req := messages.ClientRequest{}
   err := Unmarshal(r, &req)
   if err != nil {
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, "Invalid body data format")
   }
   log.Infof("[ClientsController] Put: %#+v", req)
 
   // Validation
-  if !req.ValidateWithCuid(cuid) {
-    return ErrorResponse(http.StatusBadRequest)
+  bValid, errorMsg := req.ValidateWithCuid(cuid)
+  if !bValid {
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errorMsg)
   }
   client := req.DotsClient[0]
 
   return WithTransaction(func (tx *db.Tx) (_ Response, err error) {
     p, err := data_models.FindClientByCuid(tx, customer, client.Cuid)
     if err != nil {
-      return responseOf(err)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get dot-client")
     }
     status := http.StatusNoContent
     if p == nil {
@@ -118,7 +120,7 @@ func (c *ClientsController) Put(customer *models.Customer, r *http.Request, p ht
 
     err = p.Save(tx)
     if err != nil {
-      return responseOf(err)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save dot-client")
     }
     return EmptyResponse(status)
   })
@@ -132,26 +134,26 @@ func (c *ClientsController) Get(customer *models.Customer, r *http.Request, p ht
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
     p, err := data_models.FindClientByCuid(tx, customer, cuid)
     if err != nil {
-      return responseOf(err)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get dot-client")
     }
     if p == nil {
-      return ErrorResponse(http.StatusNotFound)
+      return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found dot-client by specified cuid")
     }
 
     // Find aliases
     aliases, err := data_models.FindAliases(tx, p, now)
     if err != nil {
-      return responseOf(err)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get aliases")
     }
     tasAliases, err := aliases.ToTypesAliases(now)
     if err != nil {
-      return responseOf(err)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to convert aliases")
     }
     if len(tasAliases.Alias) == 0 {
       tasAliases = aliases.GetEmptyTypesAliases()
@@ -160,11 +162,11 @@ func (c *ClientsController) Get(customer *models.Customer, r *http.Request, p ht
     // Find acls
     acls, err := data_models.FindACLs(tx, p, now)
     if err != nil {
-      return responseOf(err)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get acls")
     }
     tasAcls, err := acls.ToTypesACLs(now)
     if err != nil {
-      return responseOf(err)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to convert acls")
     }
     if len(tasAcls.ACL) == 0 {
       tasAcls = acls.GetEmptyTypesACLs()
@@ -178,12 +180,12 @@ func (c *ClientsController) Get(customer *models.Customer, r *http.Request, p ht
 
     cp, err := messages.ContentFromRequest(r)
     if err != nil {
-      return responseOf(err)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get content request")
     }
 
     m, err := messages.ToMap(s, cp)
     if err != nil {
-      return responseOf(err)
+      return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to filter content data")
     }
     return YangJsonResponse(m)
   })

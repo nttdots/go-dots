@@ -31,7 +31,7 @@ func (c *AliasesController) GetAll(customer *models.Customer, r *http.Request, p
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -71,13 +71,13 @@ func (c *AliasesController) Get(customer *models.Customer, r *http.Request, p ht
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   // Check missing alias 'name'
   if name == "" {
     log.Error("Missing required alias 'name' attribute.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : alias 'name'")
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -87,7 +87,7 @@ func (c *AliasesController) Get(customer *models.Customer, r *http.Request, p ht
         return
       }
       if alias == nil {
-        return ErrorResponse(http.StatusNotFound)
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found alias by specified name")
       }
 
       ta, err := alias.ToTypesAlias(now)
@@ -120,13 +120,13 @@ func (c *AliasesController) Delete(customer *models.Customer, r *http.Request, p
    // Check missing 'cuid'
    if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   // Check missing alias 'name'
   if name == "" {
     log.Error("Missing required alias 'name' attribute.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : alias 'name'")
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -139,7 +139,7 @@ func (c *AliasesController) Delete(customer *models.Customer, r *http.Request, p
       if deleted == true {
         return EmptyResponse(http.StatusNoContent)
       } else {
-        return ErrorResponse(http.StatusNotFound)
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found alias by specified name")
       }
     })
   })
@@ -154,25 +154,26 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
   }
 
   // Check missing alias 'name'
   if name == "" {
     log.Error("Missing required path 'name' value.")
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : alias 'name'")
   }
 
   req := messages.AliasesRequest{}
   err := Unmarshal(r, &req)
   if err != nil {
-    return ErrorResponse(http.StatusBadRequest)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, "Invalid body data format")
   }
   log.Infof("[AliasesController] Put request=%#+v", req)
 
   // Validation
-  if !req.ValidateWithName(name, r.Method) {
-    return ErrorResponse(http.StatusBadRequest)
+  bValid, errorMsg := req.ValidateWithName(name, r.Method)
+  if !bValid {
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errorMsg)
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -180,7 +181,7 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
       alias := req.Aliases.Alias[0]
       e, err := data_models.FindAliasByName(tx, client, alias.Name, now)
       if err != nil {
-        return responseOf(err)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alias")
       }
       status := http.StatusCreated
       if e == nil {
@@ -193,7 +194,7 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
       }
       err = e.Save(tx)
       if err != nil {
-        return responseOf(err)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save alias")
       }
       return EmptyResponse(status)
     })
