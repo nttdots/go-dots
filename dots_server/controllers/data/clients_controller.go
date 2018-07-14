@@ -2,6 +2,7 @@ package data_controllers
 
 import (
   "net/http"
+  "fmt"
 
   "github.com/julienschmidt/httprouter"
   log "github.com/sirupsen/logrus"
