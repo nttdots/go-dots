@@ -24,13 +24,11 @@ func validatePort(p *types.PortRangeOrOperator) bool {
       log.Error("Both 'lower-port' and 'port' specified.")
       return false
     }
-    if p.UpperPort == nil {
-      log.Error("'upper-port' unspecified.")
-      return false
-    }
-    if *p.UpperPort < *p.LowerPort {
-      log.WithField("lower-port", *p.LowerPort).WithField("upper-port", *p.UpperPort).Error( "'upper-port' must be greater than or equal to 'lower-port'.")
-      return false
+    if p.UpperPort != nil {
+      if *p.UpperPort < *p.LowerPort {
+        log.WithField("lower-port", *p.LowerPort).WithField("upper-port", *p.UpperPort).Error( "'upper-port' must be greater than or equal to 'lower-port'.")
+        return false
+      }
     }
   } else {
     if p.Port == nil {
