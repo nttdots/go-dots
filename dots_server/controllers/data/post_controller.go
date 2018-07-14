@@ -32,7 +32,8 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
   ar := messages.AliasesOrACLsRequest{}
   err := Unmarshal(r, &ar)
   if err != nil {
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, "Invalid body data format")
+    errString := fmt.Sprintf("Invalid body data format: %+v", err)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errString)
   }
 
   log.Infof("[PostController] Post request=%#+v", ar)

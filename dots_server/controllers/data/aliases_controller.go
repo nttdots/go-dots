@@ -166,7 +166,8 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
   req := messages.AliasesRequest{}
   err := Unmarshal(r, &req)
   if err != nil {
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, "Invalid body data format")
+    errString := fmt.Sprintf("Invalid body data format: %+v", err)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errString)
   }
   log.Infof("[AliasesController] Put request=%#+v", req)
 
