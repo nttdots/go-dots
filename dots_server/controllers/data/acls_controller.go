@@ -87,7 +87,7 @@ func (c *ACLsController) Get(customer *models.Customer, r *http.Request, p httpr
         return
       }
       if acl == nil {
-        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found alc by specified name")
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found acl by specified name")
       }
 
       ta, err := acl.ToTypesACL(now)
@@ -141,7 +141,7 @@ func (c *ACLsController) Delete(customer *models.Customer, r *http.Request, p ht
       if deleted == true {
         return EmptyResponse(http.StatusNoContent)
       } else {
-        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found alc by specified name")
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found acl by specified name")
       }
     })
   })
