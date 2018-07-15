@@ -154,12 +154,12 @@ type SignalConfigs struct {
 
 type IntCurrent struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue int `json:"current-value" codec:"36"`
+	CurrentValue int `json:"current-value" codec:"36,omitempty"`
 }
 
 type DecimalCurrent struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue decimal.Decimal `json:"current-value-decimal" codec:"43"`
+	CurrentValue decimal.Decimal `json:"current-value-decimal" codec:"43,omitempty"`
 }
 
 type SignalConfig struct {
@@ -169,18 +169,18 @@ type SignalConfig struct {
 	// identifier is generated. This is a mandatory attribute.
 	SessionId int `json:"sid" codec:"31,omitempty"`
 	// Heartbeat interval to check the DOTS peer health.  This is an optional attribute.
-	HeartbeatInterval IntCurrent `json:"heartbeat-interval" codec:"33"`
+	HeartbeatInterval IntCurrent `json:"heartbeat-interval" codec:"33,omitempty"`
 	// Maximum number of missing heartbeat response allowed. This is an optional attribute.
-	MissingHbAllowed IntCurrent `json:"missing-hb-allowed" codec:"37"`
+	MissingHbAllowed IntCurrent `json:"missing-hb-allowed" codec:"37,omitempty"`
 	// Maximum number of retransmissions for a message (referred to as MAX_RETRANSMIT parameter in CoAP).
 	// This is an optional attribute.
-	MaxRetransmit IntCurrent `json:"max-retransmit" codec:"38"`
+	MaxRetransmit IntCurrent `json:"max-retransmit" codec:"38,omitempty"`
 	// Timeout value in seconds used to calculate the initial retransmission timeout value (referred to as ACK_TIMEOUT
 	// parameter in CoAP). This is an optional attribute.
-	AckTimeout DecimalCurrent `json:"ack-timeout" codec:"39"`
+	AckTimeout DecimalCurrent `json:"ack-timeout" codec:"39,omitempty"`
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
-	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40"`
+	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40,omitempty"`
 }
 
 type HelloRequest struct {
