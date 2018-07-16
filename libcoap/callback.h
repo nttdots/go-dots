@@ -2,6 +2,7 @@
 
 #include <coap/coap.h>
 #include <openssl/ssl.h>
+#include <openssl/err.h>
 
 void response_handler(struct coap_context_t *,
                       coap_session_t *,
@@ -32,15 +33,6 @@ void nack_handler(struct coap_context_t *,
 int coap_dtls_get_peer_common_name(coap_session_t *session,
                                     char *buf,
                                     size_t buf_len);
-
-/**
- * Verify certificate data and set list of available ciphers for context
- * @param ctx     The CoAP context
- * @param setup_data  certificate data
- * @return            Return 1 for success, 0 for failure
- */
-int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t *setup_data);
-
 
 typedef struct coap_dtls_context_t {
   SSL_CTX *ctx;

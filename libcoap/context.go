@@ -2,8 +2,55 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
+#cgo darwin LDFLAGS: -L /usr/local/opt/openssl@1.1/lib
 #include <coap/coap.h>
 #include "callback.h"
+
+// Verify certificate data and set list of available ciphers for context
+// @param ctx     The CoAP context
+// @param setup_data  certificate data
+// @return            Return 1 for success, 0 for failure
+int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t * setup_data) {
+    char* ciphers = "TLSv1.2:TLSv1.0:!PSK";
+    coap_openssl_context_t *context = (coap_openssl_context_t *)(ctx->dtls_context);
+    if (context->dtls.ctx) {
+        if (setup_data->ca_file) {
+            SSL_CTX_set_verify(context->dtls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+            if (0 == SSL_CTX_load_verify_locations(context->dtls.ctx, setup_data->ca_file, NULL)) {
+                ERR_print_errors_fp(stderr);
+                coap_log(LOG_WARNING, "*** verify_certificate: DTLS: %s: Unable to load verify locations\n", setup_data->ca_file);
+                return 0;
+            }
+        }
+
+        if (setup_data->public_cert && setup_data->public_cert[0]) {
+            if (0 == SSL_CTX_set_cipher_list(context->dtls.ctx, ciphers)){
+                ERR_print_errors_fp(stderr);
+                coap_log(LOG_WARNING, "*** verify_certificate: DTLS Unable to set ciphers %s \n",  ciphers);
+                return 0;
+            }
+        }
+    }
+
+    if (context->tls.ctx) {
+        if (setup_data->ca_file) {
+            SSL_CTX_set_verify(context->tls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
+            if (0 == SSL_CTX_load_verify_locations(context->tls.ctx, setup_data->ca_file, NULL)) {
+                ERR_print_errors_fp(stderr);
+                coap_log(LOG_WARNING, "*** verify_certificate: TLS: %s: Unable to load verify locations\n", setup_data->ca_file);
+                return 0;
+            }
+        }
+        if (setup_data->public_cert && setup_data->public_cert[0]) {
+            if (0 == SSL_CTX_set_cipher_list(context->tls.ctx, ciphers)){
+                ERR_print_errors_fp(stderr);
+                coap_log(LOG_WARNING, "*** verify_certificate: TLS Unable to set ciphers %s \n",  ciphers);
+                return 0;
+            }
+        }
+    }
+    return 1;
+}
 */
 import "C"
 import "time"
