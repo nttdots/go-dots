@@ -211,10 +211,10 @@ Uregistering DOTS Clients
 Create Aliases
 
     Post alias:
-    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAlias.jon
+    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAlias.json
 
     Put alias:
-    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAlias.jon
+    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=xxx sampleAlias.json
 
 Retrieve Installed Aliases
 
@@ -267,7 +267,7 @@ Install Filtering Rules
     $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAcl.json
 
     Put acl:
-    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAcl.json
+    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=xxx sampleAcl.json
 
 Retrieve Installed Filtering Rules
 
