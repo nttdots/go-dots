@@ -99,10 +99,17 @@ func (r *ACLsRequest) Validate() (bool, string) {
         return false, errorMsg
       }
 
-      if *acl.ActivationType == types.ActivationType_Immediate && matches.IPv4.DestinationIPv4Network == nil{
-        log.Error("Missing destination-ipv4-network value when ’activation-type’ is ’immediate’")
-        errorMsg = fmt.Sprintf("Body Data Error : 'destination-ipv4-network' value is required when ’activation-type’ is ’immediate’")
-        return false, errorMsg
+      if *acl.ActivationType == types.ActivationType_Immediate {
+        if matches.IPv4 != nil && matches.IPv4.DestinationIPv4Network == nil {
+          log.Error("Missing 'destination-ipv4-network' value when ’activation-type’ is ’immediate’")
+          errorMsg = fmt.Sprintf("Body Data Error : 'destination-ipv4-network' value is required when ’activation-type’ is ’immediate’")
+          return false, errorMsg
+        }
+        if matches.IPv6 != nil && matches.IPv6.DestinationIPv6Network == nil {
+          log.Error("Missing 'destination-ipv6-network' value when ’activation-type’ is ’immediate’")
+          errorMsg = fmt.Sprintf("Body Data Error : 'destination-ipv6-network' value is required when ’activation-type’ is ’immediate’")
+          return false, errorMsg
+        }
       }
 
       if (matches.TCP != nil && matches.UDP  != nil) ||
