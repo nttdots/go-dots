@@ -3,7 +3,6 @@ package models
 import (
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/dots_common/messages"
-	"github.com/shopspring/decimal"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -133,12 +132,11 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 func (v *SignalConfigurationValidator) CheckMissingSessionConfiguration(data *messages.SignalConfigs, c Customer) (ret bool) {
 	// Default return value
 	ret = true
-	if ((data.MitigatingConfig.HeartbeatInterval.CurrentValue == 0) && (data.MitigatingConfig.MissingHbAllowed.CurrentValue == 0) &&
-		(data.MitigatingConfig.MaxRetransmit.CurrentValue == 0) && (data.MitigatingConfig.AckTimeout.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0) &&
-		(data.MitigatingConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0)) &&
-		((data.IdleConfig.HeartbeatInterval.CurrentValue == 0) && (data.IdleConfig.MissingHbAllowed.CurrentValue == 0) &&
-		(data.IdleConfig.MaxRetransmit.CurrentValue == 0) && (data.IdleConfig.AckTimeout.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0) &&
-		(data.IdleConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0)) {
+	if ((data.MitigatingConfig.HeartbeatInterval.CurrentValue == nil) && (data.MitigatingConfig.MissingHbAllowed.CurrentValue == nil) &&
+		(data.MitigatingConfig.MaxRetransmit.CurrentValue == nil) && (data.MitigatingConfig.AckTimeout.CurrentValue == nil) &&
+		(data.MitigatingConfig.AckRandomFactor.CurrentValue == nil)) && ((data.IdleConfig.HeartbeatInterval.CurrentValue == nil) && 
+		(data.IdleConfig.MissingHbAllowed.CurrentValue == nil) && (data.IdleConfig.MaxRetransmit.CurrentValue == nil) && 
+		(data.IdleConfig.AckTimeout.CurrentValue == nil) && (data.IdleConfig.AckRandomFactor.CurrentValue == nil)) {
 			log.Error("At least one of the attributes 'heartbeat-interval', 'missing-hb-allowed', 'max-retransmit', 'ack-timeout', 'ack-random-factor', and 'trigger-mitigation' MUST be present in the PUT request")
 			ret = false
 		}

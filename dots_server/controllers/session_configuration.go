@@ -147,14 +147,14 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 	// validate
 	signalSessionConfiguration := models.NewSignalSessionConfiguration(
 		sid,
-		payload.MitigatingConfig.HeartbeatInterval.CurrentValue,
-		payload.MitigatingConfig.MissingHbAllowed.CurrentValue,
-		payload.MitigatingConfig.MaxRetransmit.CurrentValue,
+		*payload.MitigatingConfig.HeartbeatInterval.CurrentValue,
+		*payload.MitigatingConfig.MissingHbAllowed.CurrentValue,
+		*payload.MitigatingConfig.MaxRetransmit.CurrentValue,
 		ackTimeout,
 		ackRandomFactor,
-		payload.IdleConfig.HeartbeatInterval.CurrentValue,
-		payload.IdleConfig.MissingHbAllowed.CurrentValue,
-		payload.IdleConfig.MaxRetransmit.CurrentValue,
+		*payload.IdleConfig.HeartbeatInterval.CurrentValue,
+		*payload.IdleConfig.MissingHbAllowed.CurrentValue,
+		*payload.IdleConfig.MaxRetransmit.CurrentValue,
 		ackTimeoutIdle,
 		ackRandomFactorIdle,
 		payload.TriggerMitigation,
@@ -243,35 +243,39 @@ func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models
 
 func setDefaultValues (data *messages.SignalConfigs) {
 	defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
-	if data.MitigatingConfig.HeartbeatInterval.CurrentValue == 0 {
-		data.MitigatingConfig.HeartbeatInterval.CurrentValue = defaultValue.HeartbeatInterval
+	if data.MitigatingConfig.HeartbeatInterval.CurrentValue == nil {
+		data.MitigatingConfig.HeartbeatInterval.CurrentValue = &defaultValue.HeartbeatInterval
 	}
-	if data.MitigatingConfig.MissingHbAllowed.CurrentValue == 0 {
-		data.MitigatingConfig.MissingHbAllowed.CurrentValue = defaultValue.MissingHbAllowed
+	if data.MitigatingConfig.MissingHbAllowed.CurrentValue == nil {
+		data.MitigatingConfig.MissingHbAllowed.CurrentValue = &defaultValue.MissingHbAllowed
 	}
-	if data.MitigatingConfig.MaxRetransmit.CurrentValue == 0 {
-		data.MitigatingConfig.MaxRetransmit.CurrentValue = defaultValue.MaxRetransmit
+	if data.MitigatingConfig.MaxRetransmit.CurrentValue == nil {
+		data.MitigatingConfig.MaxRetransmit.CurrentValue = &defaultValue.MaxRetransmit
 	}
-	if data.MitigatingConfig.AckTimeout.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0 {
-		data.MitigatingConfig.AckTimeout.CurrentValue = decimal.NewFromFloat(defaultValue.AckTimeout)
+	if data.MitigatingConfig.AckTimeout.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.AckTimeout)
+		data.MitigatingConfig.AckTimeout.CurrentValue = &temp
 	}
-	if data.MitigatingConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0 {
-		data.MitigatingConfig.AckRandomFactor.CurrentValue = decimal.NewFromFloat(defaultValue.AckRandomFactor)
+	if data.MitigatingConfig.AckRandomFactor.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.AckRandomFactor)
+		data.MitigatingConfig.AckRandomFactor.CurrentValue = &temp
 	}
-	if data.IdleConfig.HeartbeatInterval.CurrentValue == 0 {
-		data.IdleConfig.HeartbeatInterval.CurrentValue = defaultValue.HeartbeatIntervalIdle
+	if data.IdleConfig.HeartbeatInterval.CurrentValue == nil {
+		data.IdleConfig.HeartbeatInterval.CurrentValue = &defaultValue.HeartbeatIntervalIdle
 	}
-	if data.IdleConfig.MissingHbAllowed.CurrentValue == 0 {
-		data.IdleConfig.MissingHbAllowed.CurrentValue = defaultValue.MissingHbAllowedIdle
+	if data.IdleConfig.MissingHbAllowed.CurrentValue == nil {
+		data.IdleConfig.MissingHbAllowed.CurrentValue = &defaultValue.MissingHbAllowedIdle
 	}
-	if data.IdleConfig.MaxRetransmit.CurrentValue == 0 {
-		data.IdleConfig.MaxRetransmit.CurrentValue = defaultValue.MaxRetransmitIdle
+	if data.IdleConfig.MaxRetransmit.CurrentValue == nil {
+		data.IdleConfig.MaxRetransmit.CurrentValue = &defaultValue.MaxRetransmitIdle
 	}
-	if data.IdleConfig.AckTimeout.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0 {
-		data.IdleConfig.AckTimeout.CurrentValue = decimal.NewFromFloat(defaultValue.AckTimeoutIdle)
+	if data.IdleConfig.AckTimeout.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.AckTimeoutIdle)
+		data.IdleConfig.AckTimeout.CurrentValue = &temp
 	}
-	if data.IdleConfig.AckRandomFactor.CurrentValue.Cmp(decimal.NewFromFloat(0)) == 0 {
-		data.IdleConfig.AckRandomFactor.CurrentValue = decimal.NewFromFloat(defaultValue.AckRandomFactorIdle)
+	if data.IdleConfig.AckRandomFactor.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.AckRandomFactorIdle)
+		data.IdleConfig.AckRandomFactor.CurrentValue = &temp
 	}
 	if data.TriggerMitigation == false {
 		data.TriggerMitigation = true

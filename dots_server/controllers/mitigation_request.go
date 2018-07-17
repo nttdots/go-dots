@@ -189,8 +189,17 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 		// Lifetime is required in body
 		lifetime := body.MitigationScope.Scopes[0].Lifetime
-		if lifetime <= 0 {
-			log.Errorf("Invalid lifetime value : %+v.", lifetime)
+		if lifetime == nil {
+			log.Errorf("lifetime is mandatory field")
+			res = Response{
+				Type: common.NonConfirmable,
+				Code: common.BadRequest,
+				Body: nil,
+			}
+			return
+		}
+		if *lifetime <= 0 {
+			log.Errorf("Invalid lifetime value : %+v.", *lifetime)
 			res = Response{
 				Type: common.NonConfirmable,
 				Code: common.BadRequest,
@@ -278,7 +287,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			// Update
 			config := dots_config.GetServerSystemConfig().LifetimeConfiguration
 			if currentScope.Status == models.ActiveButTerminating {
-				body.MitigationScope.Scopes[0].Lifetime = config.MaxActiveButTerminatingPeriod
+				body.MitigationScope.Scopes[0].Lifetime = &config.MaxActiveButTerminatingPeriod
 			}
 
 			// Cannot rollback :P
@@ -378,8 +387,10 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	m.FQDN.AddList(req.FQDN)
 	m.URI.AddList(req.URI)
 	m.AliasName.AddList(req.AliasName)
-	m.Lifetime = req.Lifetime
-	m.AttackStatus = req.AttackStatus
+	m.Lifetime = *req.Lifetime
+	if req.AttackStatus != nil {
+		m.AttackStatus = *req.AttackStatus
+	}
 	m.TargetPrefix, err = newTargetPrefix(req.TargetPrefix)
 	m.ClientDomainIdentifier = clientDomainIdentifier
 	if err != nil {
@@ -858,8 +869,12 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 	}
 
 	attackStatus := body.MitigationScope.Scopes[0].AttackStatus
-	if attackStatus != int(models.UnderAttack) && attackStatus != int(models.AttackSuccessfullyMitigated) {
-		log.Errorf("Invalid attack-status value: %+v. Expected values includes 1: under-attack, 2: attack-successfully-mitigated.", attackStatus)
+	if attackStatus == nil {
+		log.Errorf("attack-status is mandatory field.")
+		return false
+	}
+	if  (*attackStatus != int(models.UnderAttack) && *attackStatus != int(models.AttackSuccessfullyMitigated)) {
+		log.Errorf("Invalid attack-status value: %+v. Expected values includes 1: under-attack, 2: attack-successfully-mitigated.", *attackStatus)
 		return false
 	}
 
