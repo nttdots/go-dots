@@ -29,7 +29,7 @@ func (v *mitigationScopeValidator) Validate(m MessageEntity, c *Customer) (ret b
 		log.Printf("addressrange: %+v", c.CustomerNetworkInformation.AddressRange)
 		for _, prefix := range mc.TargetList() {
 			if !c.CustomerNetworkInformation.AddressRange.Includes(prefix) {
-				log.Printf("invalid prefix: %+v", prefix)
+				log.Warnf("invalid prefix: %+v", prefix)
 				return false
 			}
 		}

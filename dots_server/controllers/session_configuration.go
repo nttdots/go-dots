@@ -225,12 +225,7 @@ func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models
 
 	_, err = models.CreateSignalSessionConfiguration(*signalSessionConfiguration, *customer)
 	if err != nil {
-		res = Response{
-			Type: common.Acknowledgement,
-			Code: common.InternalServerError,
-			Body: nil,
-		}
-		return
+		return Response{}, err
 	}
 
 	res = Response{
