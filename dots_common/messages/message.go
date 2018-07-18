@@ -20,8 +20,6 @@ const (
 	HEARTBEAT
 	REGISTRATION_CANCELLING_RESPONSE
 	REGISTRATION_RESPONSE
-	HELLO
-	HELLO_DATA
 	CREATE_IDENTIFIERS
 	INSTALL_FILTERING_RULE
 	SIGNAL_CHANNEL
@@ -89,9 +87,6 @@ func register(code Code, role Role, libcoapType libcoap.Type, channelType Channe
 func init() {
 	register(MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/v1/mitigate", MitigationRequest{})
 	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/v1/config", SignalConfigRequest{})
-
-	// for test
-	register(HELLO, REQUEST, libcoap.TypeCon, SIGNAL, "hello", ".well-known/v1/dots-signal/hello", HelloRequest{})
 
 	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots/v1", SignalChannelRequest{})
 }

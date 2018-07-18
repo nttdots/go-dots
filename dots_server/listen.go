@@ -296,8 +296,6 @@ func listenSignal(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ 
     if err != nil {
         return
     }
-
-    addHandler(ctx, messages.HELLO,                 &controllers.Hello{})
     
     addPrefixHandler(ctx, messages.SIGNAL_CHANNEL, &controllers.SignalChannel{})
 

@@ -183,14 +183,6 @@ type SignalConfig struct {
 	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40,omitempty"`
 }
 
-type HelloRequest struct {
-	Message string `json:"message" cbor:"message"`
-}
-
-type HelloResponse struct {
-	Message string `json:"message" cbor:"message"`
-}
-
 type SignalChannelRequest struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 }
