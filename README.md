@@ -6,11 +6,11 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-signal-channel-18
-* draft-ietf-dots-data-channel-02 
-* draft-ietf-dots-architecture-05 
-* draft-ietf-dots-requirements-11 
-* draft-ietf-dots-use-cases-09 
+* draft-ietf-dots-signal-channel-20
+* draft-ietf-dots-data-channel-16 
+* draft-ietf-dots-architecture-06 
+* draft-ietf-dots-requirements-14 
+* draft-ietf-dots-use-cases-14 
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
@@ -29,7 +29,7 @@ Licensed under Apache License 2.0.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.0 or higher (for libcoap)
 
-* MySQL 5.7 or higher and its development package
+* MySQL 5.7.x and its development package (MySQL 8.0.x or higher not yet supported)
   * Install mysql development package in Ubuntu:
     $ sudo apt-get install libmysqld-dev
 
