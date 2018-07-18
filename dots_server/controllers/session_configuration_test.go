@@ -20,7 +20,7 @@ func TestSessionConfiguration_Put(t *testing.T) {
 				HeartbeatInterval: 15,
 				MissingHbAllowed:  5,
 				MaxRetransmit:     3,
-				AckTimeout:        1,
+				AckTimeout:        decimal.NewFromFloat(1.0),
 				AckRandomFactor:   decimal.NewFromFloat(1.0),
 				TriggerMitigation: true,
 	} } }

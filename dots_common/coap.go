@@ -3,7 +3,7 @@ package dots_common
 import (
     "math/rand"
 
-	"github.com/nttdots/go-dots/coap"
+	"github.com/nttdots/go-dots/libcoap"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -22,16 +22,16 @@ const (
 /*
  * CoAPType is a function to obtain given CoAP types.
  */
-func (t Type) CoAPType() coap.COAPType {
+func (t Type) CoAPType() libcoap.Type {
 	switch t {
 	case Confirmable:
-		return coap.Confirmable
+		return libcoap.TypeCon
 	case NonConfirmable:
-		return coap.NonConfirmable
+		return libcoap.TypeNon
 	case Acknowledgement:
-		return coap.Acknowledgement
+		return libcoap.TypeAck
 	case Reset:
-		return coap.Reset
+		return libcoap.TypeRst
 	default:
 		panic("unexpected Type")
 	}
@@ -131,52 +131,52 @@ func (c Code) String() string {
 /*
  * CoAPCode is a function to obtain given CoAP codes.
  */
-func (c Code) CoAPCode() coap.COAPCode {
+func (c Code) CoAPCode() libcoap.Code {
 	switch c {
 	case Created:
-		return coap.Created
+		return libcoap.ResponseCreated
 	case Deleted:
-		return coap.Deleted
+		return libcoap.ResponseDeleted
 	case Valid:
-		return coap.Valid
+		return libcoap.ResponseValid
 	case Changed:
-		return coap.Changed
+		return libcoap.ResponseChanged
 	case Content:
-		return coap.Content
+		return libcoap.ResponseContent
 	case BadRequest:
-		return coap.BadRequest
+		return libcoap.ResponseBadRequest
 	case Unauthorized:
-		return coap.Unauthorized
+		return libcoap.ResponseUnauthorized
 	case BadOption:
-		return coap.BadOption
+		return libcoap.ResponseBadOption
 	case Forbidden:
-		return coap.Forbidden
+		return libcoap.ResponseForbidden
 	case NotFound:
-		return coap.NotFound
+		return libcoap.ResponseNotFound
 	case MethodNotAllowed:
-		return coap.MethodNotAllowed
+		return libcoap.ResponseMethodNotAllowed
 	case NotAcceptable:
-		return coap.NotAcceptable
+		return libcoap.ResponseNotAcceptable
 	case PreconditionFailed:
-		return coap.PreconditionFailed
+		return libcoap.ResponsePreconditionFailed
 	case RequestEntityTooLarge:
-		return coap.RequestEntityTooLarge
+		return libcoap.RequestEntityTooLarge
 	case UnsupportedMediaType:
-		return coap.UnsupportedMediaType
+		return libcoap.ResponseUnsupportedMediaType
 	case InternalServerError:
-		return coap.InternalServerError
+		return libcoap.ResponseInternalServerError
 	case NotImplemented:
-		return coap.NotImplemented
+		return libcoap.ResponseNotImplemented
 	case BadGateway:
-		return coap.BadGateway
+		return libcoap.ResponseBadGateway
 	case ServiceUnavailable:
-		return coap.ServiceUnavailable
+		return libcoap.ResponseServiceUnavailable
 	case GatewayTimeout:
-		return coap.GatewayTimeout
+		return libcoap.ResponseGatewayTimeout
 	case ProxyingNotSupported:
-		return coap.ProxyingNotSupported
+		return libcoap.ResponseProxyingNotSupported
 	default:
 		log.WithFields(log.Fields{"code": int(c)}).Error("invalid coap code")
-		return coap.InternalServerError
+		return libcoap.ResponseInternalServerError
 	}
 }

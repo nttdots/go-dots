@@ -24,7 +24,7 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 
 	// same session_id data check
 	dbSignalSessionConfiguration := new(db_models.SignalSessionConfiguration)
-	_, err = engine.Where("customer_id = ? AND session_id = ?", customer.Id, signalSessionConfiguration.SessionId).Get(dbSignalSessionConfiguration)
+	_, err = engine.Where("customer_id = ?", customer.Id).Get(dbSignalSessionConfiguration)
 	if err != nil {
 		log.Errorf("database query error: %s", err)
 		return
@@ -52,6 +52,11 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 		MaxRetransmit:     signalSessionConfiguration.MaxRetransmit,
 		AckTimeout:        signalSessionConfiguration.AckTimeout,
 		AckRandomFactor:   signalSessionConfiguration.AckRandomFactor,
+		HeartbeatIntervalIdle: signalSessionConfiguration.HeartbeatIntervalIdle,
+		MissingHbAllowedIdle:  signalSessionConfiguration.MissingHbAllowedIdle,
+		MaxRetransmitIdle:     signalSessionConfiguration.MaxRetransmitIdle,
+		AckTimeoutIdle:        signalSessionConfiguration.AckTimeoutIdle,
+		AckRandomFactorIdle:   signalSessionConfiguration.AckRandomFactorIdle,
 		TriggerMitigation: signalSessionConfiguration.TriggerMitigation,
 	}
 	_, err = session.Insert(&newSignalSessionConfiguration)
@@ -96,7 +101,7 @@ func UpdateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 
 	// Updated signalSessionConfiguration
 	updSignalSessionConfiguration := new(db_models.SignalSessionConfiguration)
-	_, err = engine.Where("customer_id = ? AND session_id = ?", customer.Id, signalSessionConfiguration.SessionId).Get(updSignalSessionConfiguration)
+	_, err = engine.Where("customer_id = ?", customer.Id).Get(updSignalSessionConfiguration)
 	if err != nil {
 		return
 	}
@@ -105,14 +110,19 @@ func UpdateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 		log.Infof("signal_session_configuration update data exitst err: %s", err)
 		return
 	}
-
+	updSignalSessionConfiguration.SessionId = signalSessionConfiguration.SessionId
 	updSignalSessionConfiguration.HeartbeatInterval = signalSessionConfiguration.HeartbeatInterval
 	updSignalSessionConfiguration.MissingHbAllowed = signalSessionConfiguration.MissingHbAllowed
 	updSignalSessionConfiguration.MaxRetransmit = signalSessionConfiguration.MaxRetransmit
 	updSignalSessionConfiguration.AckTimeout = signalSessionConfiguration.AckTimeout
 	updSignalSessionConfiguration.AckRandomFactor = signalSessionConfiguration.AckRandomFactor
+	updSignalSessionConfiguration.HeartbeatIntervalIdle = signalSessionConfiguration.HeartbeatIntervalIdle
+	updSignalSessionConfiguration.MissingHbAllowedIdle = signalSessionConfiguration.MissingHbAllowedIdle
+	updSignalSessionConfiguration.MaxRetransmitIdle = signalSessionConfiguration.MaxRetransmitIdle
+	updSignalSessionConfiguration.AckTimeoutIdle = signalSessionConfiguration.AckTimeoutIdle
+	updSignalSessionConfiguration.AckRandomFactorIdle = signalSessionConfiguration.AckRandomFactorIdle
 	updSignalSessionConfiguration.TriggerMitigation = signalSessionConfiguration.TriggerMitigation
-	_, err = session.Id(updSignalSessionConfiguration.Id).Cols("heartbeat_interval", "missing_hb_allowed", "max_retransmit", "ack_timeout", "ack_random_factor", "trigger_mitigation").Update(updSignalSessionConfiguration)
+	_, err = session.Id(updSignalSessionConfiguration.Id).Update(updSignalSessionConfiguration)
 	if err != nil {
 		log.Infof("customer update err: %s", err)
 		goto Rollback
@@ -226,10 +236,7 @@ Rollback:
  *  signalSessionConfiguration SignalSessionConfiguration
  *  error error
  */
-func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfiguration SignalSessionConfiguration, err error) {
-	// default value setting
-	signalSessionConfiguration = SignalSessionConfiguration{}
-
+func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfiguration *SignalSessionConfiguration, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -247,12 +254,18 @@ func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfigur
 		// no data
 		return
 	}
+	signalSessionConfiguration = &SignalSessionConfiguration{}
 	signalSessionConfiguration.SessionId = dbSignalSessionConfiguration.SessionId
 	signalSessionConfiguration.HeartbeatInterval = dbSignalSessionConfiguration.HeartbeatInterval
 	signalSessionConfiguration.MissingHbAllowed = dbSignalSessionConfiguration.MissingHbAllowed
 	signalSessionConfiguration.MaxRetransmit = dbSignalSessionConfiguration.MaxRetransmit
 	signalSessionConfiguration.AckTimeout = dbSignalSessionConfiguration.AckTimeout
 	signalSessionConfiguration.AckRandomFactor = dbSignalSessionConfiguration.AckRandomFactor
+	signalSessionConfiguration.HeartbeatIntervalIdle = dbSignalSessionConfiguration.HeartbeatIntervalIdle
+	signalSessionConfiguration.MissingHbAllowedIdle = dbSignalSessionConfiguration.MissingHbAllowedIdle
+	signalSessionConfiguration.MaxRetransmitIdle = dbSignalSessionConfiguration.MaxRetransmitIdle
+	signalSessionConfiguration.AckTimeoutIdle = dbSignalSessionConfiguration.AckTimeoutIdle
+	signalSessionConfiguration.AckRandomFactorIdle = dbSignalSessionConfiguration.AckRandomFactorIdle
 	signalSessionConfiguration.TriggerMitigation = dbSignalSessionConfiguration.TriggerMitigation
 
 	return

@@ -1,16 +1,29 @@
 system:
   signalConfigurationParameter:
-    heartbeatInterval: 30-60
+    heartbeatInterval: 15-240
     missingHbAllowed: 3-9
-    maxRetransmit: 3-10
-    ackTimeout: 30-120
-    ackRandomFactor: 0-8888
+    maxRetransmit: 2-15
+    ackTimeout: 1.0-30.0
+    ackRandomFactor: 1.1-4.0
+    heartbeatIntervalIdle: 15-240
+    missingHbAllowedIdle: 3-9
+    maxRetransmitIdle: 2-15
+    ackTimeoutIdle: 1.0-30.0
+    ackRandomFactorIdle: 1.1-4.0
+
+# Default current values of session configuration
   defaultSignalConfiguration:
     heartbeatInterval: 30
     missingHbAllowed: 5
     maxRetransmit: 3
-    ackTimeout: 2
+    ackTimeout: 2.0
     ackRandomFactor: 1.5
+    heartbeatIntervalIdle: 30
+    missingHbAllowedIdle: 5
+    maxRetransmitIdle: 3
+    ackTimeoutIdle: 2.0
+    ackRandomFactorIdle: 1.5
+
   secureFile:
     serverCertFile: ../certs/server-cert.pem
     serverKeyFile: ../certs/server-key.pem
@@ -19,7 +32,10 @@ system:
   network:
     bindAddress: "::"
     signalChannelPort: 4646
-    dataChannelPort: 4647
+    dbNotificationPort: 9999
+    dataChannelPort: 10443
+    hrefOrigin: https://13.115.156.186
+    hrefPathname: /v1/restconf
   database:
     username: root
     password: 
@@ -27,3 +43,8 @@ system:
     host: localhost
     port: 3306
     databaseName: dots
+
+  lifetimeConfiguration:
+    activeButTerminatingPeriod: 120
+    maxActiveButTerminatingPeriod: 300
+    manageLifetimeInterval: 100

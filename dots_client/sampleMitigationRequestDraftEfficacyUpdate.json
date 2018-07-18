@@ -1,0 +1,28 @@
+{
+    "ietf-dots-signal-channel:mitigation-scope": {
+      "scope": [
+        {
+          "target-prefix": [
+           "2001:db8:6401::1/128",
+           "2001:db8:6401::2/128"
+          ],
+          "target-port-range": [
+            {
+              "lower-port": 80
+            },
+            {
+              "lower-port": 443
+            },
+            {
+             "lower-port": 8080
+            }
+          ],
+          "target-protocol": [
+           6
+          ],
+          "lifetime": 100,
+          "attack-status": 2
+        }
+      ]
+    }
+}

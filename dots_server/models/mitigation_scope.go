@@ -32,13 +32,33 @@ func NewPortRange(lower_port int, upper_port int) PortRange {
 	return PortRange{lower_port, upper_port}
 }
 
+const (
+	AnyMitigationScopeId   int64 = 0
+	InProgress             int = 1
+	SuccessfullyMitigated  int = 2
+	Stopped                int = 3
+	ExceedCapability       int = 4
+	ActiveButTerminating   int = 5
+	Terminated             int = 6
+	Withdrawn              int = 7
+)
+
+type AttackStatus int
+const (
+	UnderAttack			AttackStatus = iota+1
+	AttackSuccessfullyMitigated
+)
+
 type MitigationScope struct {
 	MitigationId     int
+	MitigationScopeId int64
 	TargetProtocol   SetInt
 	FQDN             SetString
 	URI              SetString
 	AliasName        SetString
 	Lifetime         int
+	Status			 int
+	AttackStatus	 int
 	TargetIP         []Prefix
 	TargetPrefix     []Prefix
 	TargetPortRange  []PortRange
@@ -50,10 +70,13 @@ type MitigationScope struct {
 func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScope) {
 	s = &MitigationScope{
 		0,
+		0,
 		NewSetInt(),
 		NewSetString(),
 		NewSetString(),
 		NewSetString(),
+		0,
+		0,
 		0,
 		make([]Prefix, 0),
 		make([]Prefix, 0),

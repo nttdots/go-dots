@@ -4,6 +4,7 @@ import (
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
+	"time"
 )
 
 /*
@@ -29,14 +30,22 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	dbMitigationScope := new(db_models.MitigationScope)
 	clientIdentifier := mitigationScope.ClientIdentifier
 	clientDomainIdentifier := mitigationScope.ClientDomainIdentifier
-	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customer.Id, clientIdentifier, mitigationScope.MitigationId).Get(dbMitigationScope)
+	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customer.Id, clientIdentifier, mitigationScope.MitigationId).Desc("id").Get(dbMitigationScope)
 	if err != nil {
 		log.Errorf("mitigation_scope select error: %s", err)
 		return
 	}
 	if dbMitigationScope.Id != 0 {
-		err = UpdateMitigationScope(mitigationScope, customer)
-		return
+		// Calculate the remaining lifetime
+		currentTime := time.Now()
+		remainingLifetime := dbMitigationScope.Lifetime - int(currentTime.Sub(dbMitigationScope.Updated).Seconds())
+		if remainingLifetime > 0 {
+			// If existing mitigation is still 'alive', update on it.
+			// Otherwise, leave it for lifetime thread to handle, just create new one
+			mitigationScope.MitigationScopeId = dbMitigationScope.Id
+			err = UpdateMitigationScope(mitigationScope, customer)
+			return
+		}
 	}
 
 	// transaction start
@@ -57,6 +66,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		MitigationId:     mitigationScope.MitigationId,
 		Lifetime:         mitigationScope.Lifetime,
 	}
+	newMitigationScope.Status = InProgress
 	_, err = session.Insert(&newMitigationScope)
 	if err != nil {
 		session.Rollback()
@@ -97,6 +107,9 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	// add Commit() after all actions
 	err = session.Commit()
 
+	// Add Active Mitigation to ManageList
+	AddActiveMitigationRequest(newMitigationScope.Id, newMitigationScope.Lifetime, newMitigationScope.Created)
+
 	return
 }
 
@@ -131,7 +144,11 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	// for customer
 	dbMitigationScope := new(db_models.MitigationScope)
 	clientIdentifier := mitigationScope.ClientIdentifier
-	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customer.Id, clientIdentifier, mitigationScope.MitigationId).Get(dbMitigationScope)
+	if mitigationScope.MitigationScopeId == 0 {
+		_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customer.Id, clientIdentifier, mitigationScope.MitigationId).Desc("id").Get(dbMitigationScope)
+	} else {
+		_, err = engine.Where("id = ?", mitigationScope.MitigationScopeId).Get(dbMitigationScope)
+	}
 	if err != nil {
 		return
 	}
@@ -145,8 +162,10 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	// for mitigation_scope
 	updMitigationScope := db_models.MitigationScope{
 		Lifetime: mitigationScope.Lifetime,
+		Status:   mitigationScope.Status,
+		AttackStatus: mitigationScope.AttackStatus,
 	}
-	_, err = session.Id(dbMitigationScope.Id).Update(updMitigationScope)
+	_, err = session.Id(dbMitigationScope.Id).Update(&updMitigationScope)
 	if err != nil {
 		session.Rollback()
 		log.Errorf("mitigationScope update err: %s", err)
@@ -191,6 +210,9 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 
 	// add Commit() after all actions
 	err = session.Commit()
+
+	// Update Active Mitigation to ManageList
+	AddActiveMitigationRequest(dbMitigationScope.Id, updMitigationScope.Lifetime, updMitigationScope.Updated)
 
 	return
 }
@@ -389,15 +411,17 @@ func GetMitigationIds(customerId int, clientIdentifier string) (mitigationIds []
 
 /*
  * Obtains a mitigation scope object by a customerId and a mitigationId.
+ * Indicate either mitigationScopeId or set of (customerId, clientIdentifier, mitigationId)
  *
  * parameter:
  *  customerId id of the Customer
  *  mitigationId mitigation id of the mitigation scope object
+ *  mitigationScopeId mitigatoin scope id of the mitigation scope object 
  * return:
  *  mitigationScope mitigation-scope
  *  error error
  */
-func GetMitigationScope(customerId int, clientIdentifier string, mitigationId int) (mitigationScope *MitigationScope, err error) {
+func GetMitigationScope(customerId int, clientIdentifier string, mitigationId int, mitigationScopeId int64) (mitigationScope *MitigationScope, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -412,8 +436,13 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	}
 
 	// Get customer table data
+	var chk bool
 	dbMitigationScope := db_models.MitigationScope{}
-	chk, err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&dbMitigationScope)
+	if mitigationScopeId == 0 {
+		chk, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Desc("id").Get(&dbMitigationScope)
+	} else {
+		chk, err = engine.Where("id = ?", mitigationScopeId).Get(&dbMitigationScope)
+	}
 	if err != nil {
 		return
 	}
@@ -425,10 +454,20 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	// default value setting
 	mitigationScope = NewMitigationScope(&customer, clientIdentifier)
 
-	// Get mitigationId and Lifetime
+	// Get mitigation scope information
+	mitigationScope.MitigationScopeId = dbMitigationScope.Id
 	mitigationScope.MitigationId = dbMitigationScope.MitigationId
-	mitigationScope.Lifetime = dbMitigationScope.Lifetime
 	mitigationScope.ClientDomainIdentifier = dbMitigationScope.ClientDomainIdentifier
+	mitigationScope.Status = dbMitigationScope.Status
+
+	// Calculate the remaining lifetime
+	currentTime := time.Now()
+	remainingLifetime := dbMitigationScope.Lifetime - int(currentTime.Sub(dbMitigationScope.Updated).Seconds())
+	if remainingLifetime > 0 {
+		mitigationScope.Lifetime = remainingLifetime
+	} else {
+		mitigationScope.Lifetime = 0
+	}
 
 	// Get FQDN data
 	dbParameterValueFqdnList := []db_models.ParameterValue{}
@@ -528,14 +567,15 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 
 /*
  * Deletes a mitigation scope object by a customerId and a mitigationId.
- *
+ * Indicate either mitigationScopeId or set of (customerId, clientIdentifier, mitigationId)
  *  customerId id of the Customer
  *  mitigationId mitigation id of the mitigation scope object
+ *  mitigationScopeId mitigatoin scope id of the mitigation scope object 
  * return:
  *  mitigationScope mitigation-scope
  *  error error
  */
-func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId int) (err error) {
+func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId int, mitigationScopeId int64) (err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -555,7 +595,11 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 
 	// Get mitigation_scope table data
 	dbMitigationScope := db_models.MitigationScope{}
-	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&dbMitigationScope)
+	if mitigationScopeId == 0 {
+		_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Desc("id").Get(&dbMitigationScope)
+	} else {
+		_, err = engine.Where("id = ?", mitigationScopeId).Get(&dbMitigationScope)
+	}
 	if err != nil {
 		session.Rollback()
 		log.Errorf("get mitigationScope err: %s", err)
@@ -587,7 +631,7 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 	}
 
 	// Delete mitigation_scope table data
-	_, err = session.Delete(db_models.MitigationScope{CustomerId: customerId, MitigationId: mitigationId})
+	_, err = session.Delete(db_models.MitigationScope{Id: dbMitigationScope.Id})
 	if err != nil {
 		session.Rollback()
 		log.Errorf("delete mitigationScope error: %s", err)
@@ -596,6 +640,35 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 
 	session.Commit()
 
+	// Remove Active Mitigation from ManageList
+	RemoveActiveMitigationRequest(dbMitigationScope.Id)
+
 	return
 
+}
+
+/*
+ * Get all mitigationScope.
+ *
+ * parameter:
+ * return:
+ *  mitigations list of mitigation request
+ *  err error
+ */
+func GetAllMitigationScopes() (mitigations []db_models.MitigationScope, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+
+	// Get customer table data
+	err = engine.Table("mitigation_scope").Where("status <> 6").Find(&mitigations)
+	if err != nil {
+		log.Printf("Get mitigations error: %s\n", err)
+		return
+	}
+
+	return
 }

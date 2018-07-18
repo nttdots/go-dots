@@ -280,7 +280,9 @@ CREATE TABLE `mitigation_scope` (
   `client_identifier` varchar(255) DEFAULT NULL,
   `client_domain_identifier` varchar(255) DEFAULT NULL,
   `mitigation_id` int(11) DEFAULT NULL,
+  `status` int(1) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
+  `attack-status` int(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -288,6 +290,23 @@ CREATE TABLE `mitigation_scope` (
 
 ####### Basically the table 'mitigation_scope' is modified by the system only.
 
+# mitigation_scope trigger when status change
+# ------------------------------------------------------------
+
+DROP FUNCTION IF EXISTS MySQLNotification;
+CREATE FUNCTION MySQLNotification RETURNS INTEGER SONAME 'mysql-notification.so';
+
+DELIMITER @@
+
+CREATE TRIGGER status_changed_trigger AFTER UPDATE ON mitigation_scope
+FOR EACH ROW
+BEGIN
+  IF NEW.status <> OLD.status THEN
+    SELECT MySQLNotification('mitigation_scope', NEW.id, NEW.customer_id, NEW.client_identifier, NEW.mitigation_id, NEW.status) INTO @x;
+  END IF;
+END@@
+
+DELIMITER ;
 
 # signal_session_configuration
 # ------------------------------------------------------------
@@ -301,8 +320,13 @@ CREATE TABLE `signal_session_configuration` (
   `heartbeat_interval` int(11) DEFAULT NULL,
   `missing_hb_allowed` int(11) DEFAULT NULL,
   `max_retransmit` int(11) DEFAULT NULL,
-  `ack_timeout` int(11) DEFAULT NULL,
+  `ack_timeout` double DEFAULT NULL,
   `ack_random_factor` double DEFAULT NULL,
+  `heartbeat_interval_idle` int(11) DEFAULT NULL,
+  `missing_hb_allowed_idle` int(11) DEFAULT NULL,
+  `max_retransmit_idle` int(11) DEFAULT NULL,
+  `ack_timeout_idle` double DEFAULT NULL,
+  `ack_random_factor_idle` double DEFAULT NULL,
   `trigger_mitigation` tinyint(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
@@ -313,6 +337,27 @@ CREATE TABLE `signal_session_configuration` (
 
 ####### Basically the table 'signal_session_configuration' is modified by the system only.
 
+# signal_session_configuration trigger when any configuration change
+# ------------------------------------------------------------------------------
+
+
+DELIMITER @@
+
+CREATE TRIGGER session_configuration_changed_trigger AFTER UPDATE ON signal_session_configuration
+FOR EACH ROW
+BEGIN
+  IF (NEW.heartbeat_interval <> OLD.heartbeat_interval) OR (NEW.missing_hb_allowed <> OLD.missing_hb_allowed)
+    OR (NEW.max_retransmit <> OLD.max_retransmit) OR (NEW.ack_timeout <> OLD.ack_timeout)
+    OR (NEW.ack_random_factor <> OLD.ack_random_factor) OR (NEW.heartbeat_interval_idle <> OLD.heartbeat_interval_idle)
+    OR (NEW.missing_hb_allowed_idle <> OLD.missing_hb_allowed_idle) OR (NEW.max_retransmit_idle <> OLD.max_retransmit_idle)
+    OR (NEW.ack_timeout_idle <> OLD.ack_timeout_idle) OR (NEW.ack_random_factor_idle <> OLD.ack_random_factor_idle)
+    OR (NEW.trigger_mitigation <> OLD.trigger_mitigation) THEN
+    SELECT MySQLNotification('signal_session_configuration', NEW.customer_id, NEW.session_id) INTO @x;
+  END IF;
+END@@
+
+DELIMITER ;
+
 
 # protection
 # ------------------------------------------------------------
@@ -321,9 +366,7 @@ DROP TABLE IF EXISTS `protection`;
 
 CREATE TABLE `protection` (
   `id`                     BIGINT(20)   NOT NULL AUTO_INCREMENT,
-  `customer_id`            INT(11)      NOT NULL,
-  `client_identifier`      VARCHAR(255) NOT NULL,
-  `mitigation_id`          INT(11)      NOT NULL,
+  `mitigation_scope_id`    BIGINT(20)            DEFAULT NULL,
   `is_enabled`             TINYINT(1)   NOT NULL,
   `type`                   VARCHAR(255) NOT NULL,
   `target_blocker_id`      BIGINT(20)            DEFAULT NULL,
@@ -334,8 +377,7 @@ CREATE TABLE `protection` (
   `blocked_data_info_id`   BIGINT(20)            DEFAULT NULL,
   `created`                DATETIME              DEFAULT NULL,
   `updated`                DATETIME              DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  KEY `IDX_protection_idx_mitigation_id` (`mitigation_id`)
+  PRIMARY KEY (`id`)
 )
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
@@ -445,3 +487,59 @@ CREATE TABLE `acl_rule_action` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ####### Basically the table 'acl_rule_action' is modified by the system only.
+
+# data_clients
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `data_clients`;
+
+CREATE TABLE `data_clients` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `customer_id` INT(11) NOT NULL,
+  `cuid` VARCHAR(255) NOT NULL,
+  `cdid` VARCHAR(255),
+  PRIMARY KEY (`id`),
+  KEY `IDX_data_clients_idx_customer_id_cuid` (`customer_id`, `cuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `data_clients` ADD CONSTRAINT UC_dots_clients UNIQUE (`customer_id`, `cuid`);
+
+####### Basically the table 'data_clients' is modified by the system only.
+
+# data_aliases
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `data_aliases`;
+
+CREATE TABLE `data_aliases` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `data_client_id` BIGINT(20) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `content` TEXT NOT NULL,
+  `valid_through` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `IDX_data_aliases_idx_data_client_id_name` (`data_client_id`, `name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `data_aliases` ADD CONSTRAINT UC_dots_aliases UNIQUE (`data_client_id`, `name`);
+
+####### Basically the table 'data_clients' is modified by the system only.
+
+# data_acls
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `data_acls`;
+
+CREATE TABLE `data_acls` (
+  `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
+  `data_client_id` BIGINT(20) NOT NULL,
+  `name` VARCHAR(255) NOT NULL,
+  `content` TEXT NOT NULL,
+  `valid_through` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `IDX_data_acls_idx_data_client_id_name` (`data_client_id`, `name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+ALTER TABLE `data_acls` ADD CONSTRAINT UC_dots_acls UNIQUE (`data_client_id`, `name`);
+
+####### Basically the table 'data_clients' is modified by the system only.

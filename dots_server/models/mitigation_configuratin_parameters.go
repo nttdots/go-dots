@@ -62,8 +62,13 @@ type SignalSessionConfiguration struct {
 	HeartbeatInterval int
 	MissingHbAllowed  int
 	MaxRetransmit     int
-	AckTimeout        int
+	AckTimeout        float64
 	AckRandomFactor   float64
+	HeartbeatIntervalIdle int
+	MissingHbAllowedIdle  int
+	MaxRetransmitIdle     int
+	AckTimeoutIdle        float64
+	AckRandomFactorIdle   float64
 	TriggerMitigation bool
 }
 
@@ -81,7 +86,9 @@ type SignalSessionConfiguration struct {
  * return:
  *  s SignalSessionConfiguration
  */
-func NewSignalSessionConfiguration(sessionId int, heartbeatInterval int, missingHbAllowed int, maxRetransmit int, ackTimeout int, ackRandomFactor float64, triggerMitigation bool) (s *SignalSessionConfiguration) {
+func NewSignalSessionConfiguration(sessionId int, heartbeatInterval int, missingHbAllowed int, maxRetransmit int, ackTimeout float64,
+	ackRandomFactor float64, heartbeatIntervalIdle int, missingHbAllowedIdle int, maxRetransmitIdle int, ackTimeoutIdle float64,
+	ackRandomFactorIdle float64, triggerMitigation bool) (s *SignalSessionConfiguration) {
 	s = &SignalSessionConfiguration{
 		SessionId:         sessionId,
 		HeartbeatInterval: heartbeatInterval,
@@ -89,10 +96,13 @@ func NewSignalSessionConfiguration(sessionId int, heartbeatInterval int, missing
 		MaxRetransmit:     maxRetransmit,
 		AckTimeout:        ackTimeout,
 		AckRandomFactor:   ackRandomFactor,
+		HeartbeatIntervalIdle: heartbeatIntervalIdle,
+		MissingHbAllowedIdle:  missingHbAllowedIdle,
+		MaxRetransmitIdle:     maxRetransmitIdle,
+		AckTimeoutIdle:        ackTimeoutIdle,
+		AckRandomFactorIdle:   ackRandomFactorIdle,
 		TriggerMitigation: triggerMitigation,
 	}
-
-
 	return
 }
 
@@ -102,4 +112,9 @@ type SignalConfigurationParameter struct {
 	max_retransmit     ConfigurationParameterRange
 	ack_timeout        ConfigurationParameterRange
 	ack_random_factor  ConfigurationParameterRange
+	heartbeat_interval_idle ConfigurationParameterRange
+	missing_hb_allowed_idle ConfigurationParameterRange
+	max_retransmit_idle     ConfigurationParameterRange
+	ack_timeout_idle        ConfigurationParameterRange
+	ack_random_factor_idle  ConfigurationParameterRange
 }

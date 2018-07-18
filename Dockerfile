@@ -1,24 +1,43 @@
-FROM centos:7
+FROM ubuntu:trusty
 
-ENV GOPATH /go
-ENV PATH /usr/local/go/bin:${PATH}
-RUN yum install -y git make gcc gnutls-devel nc which && \
-    mkdir go && \
-    cd /usr/local/ &&  \
-    curl https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz > go1.8.1.linux-amd64.tar.gz && \
-    tar xf go1.8.1.linux-amd64.tar.gz && rm go1.8.1.linux-amd64.tar.gz &&\
-    curl https://raw.githubusercontent.com/vishnubob/wait-for-it/master/wait-for-it.sh > /usr/bin/wait-for-it.sh && \
-    chmod 755  /usr/bin/wait-for-it.sh
+USER root
+ENV HOME /root
 
-ENV dots_dir /go/src/github.com/nttdots/go-dots
+# install packages
+RUN apt-get update && apt-get -y install wget curl git build-essential libtool autoconf pkgconf
+RUN apt-get install -q -y mysql-server libmysqld-dev
 
-ENV PATH /go/bin:${PATH}
+# install go1.9.3
+RUN wget https://dl.google.com/go/go1.9.3.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.9.3.linux-amd64.tar.gz
 
-RUN go get "github.com/nttdots/go-dots/..."
+RUN mkdir $HOME/go
 
-ADD https://api.github.com/repos/nttdots/go-dots/git/refs/heads/master .
+ENV PATH $PATH:/usr/local/go/bin
+ENV GOPATH $HOME/go
+RUN echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
+RUN echo "export GOPATH=$HOME/go" >> ~/.bashrc
 
-RUN go get "github.com/nttdots/go-dots/..."
+# intall openssl 1.1.1
+RUN wget https://www.openssl.org/source/openssl-1.1.1-pre7.tar.gz
+RUN tar -C $HOME -xzf openssl-1.1.1-pre7.tar.gz
+WORKDIR $HOME/openssl-1.1.1-pre7
+RUN $HOME/openssl-1.1.1-pre7/config
+RUN make && make install
+RUN echo '/usr/local/lib' >> /etc/ld.so.conf
 
-RUN chmod 755 ${dots_dir}/dots_client/entry_point.sh && \
-    chmod 755 ${dots_dir}/dots_server/entry_point.sh
+# install libcoap
+WORKDIR $HOME
+RUN git clone https://github.com/obgm/libcoap.git
+WORKDIR $HOME/libcoap
+RUN git checkout 1365dea39a6129a9b7e8c579537e12ffef1558f6
+RUN ./autogen.sh
+RUN ./configure --disable-documentation --with-openssl
+RUN make && make install
+RUN ldconfig
+
+# install go-dots
+WORKDIR $HOME
+RUN go get -u github.com/nttdots/go-dots/...
+WORKDIR $GOPATH/src/github.com/nttdots/go-dots/
+RUN make && make install

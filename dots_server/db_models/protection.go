@@ -4,9 +4,7 @@ import "time"
 
 type Protection struct {
 	Id                  int64     `xorm:"'id' pk autoincr"`
-	CustomerId          int       `xorm:"'customer_id'"`
-	ClientIdentifier    string    `xorm:"'client_identifier'"`
-	MitigationId        int       `xorm:"'mitigation_id' not null index(idx_mitigation_id)"`
+	MitigationScopeId   int64     `xorm:"'mitigation_scope_id'"`
 	IsEnabled           bool      `xorm:"'is_enabled' not null"`
 	Type                string    `xorm:"'type' not null"`
 	TargetBlockerId     int64     `xorm:"'target_blocker_id'"`

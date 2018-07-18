@@ -34,7 +34,7 @@
                   "$ref": "#/definitions/IntCurrent"
               },
               "ack-timeout": {
-                  "$ref": "#/definitions/IntCurrent"
+                  "$ref": "#/definitions/DecimalCurrent"
               },
               "ack-random-factor": {
                   "$ref": "#/definitions/DecimalCurrent"

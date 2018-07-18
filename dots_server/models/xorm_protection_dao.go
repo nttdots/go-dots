@@ -210,7 +210,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		err = storeThroughputData(session, data)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationId": newProtection.MitigationId,
+				"MitigationScopeId": newProtection.MitigationScopeId,
 				"Pps":          data.Pps,
 				"Bps":          data.Bps,
 				"Err":          err,
@@ -242,7 +242,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		_, err = session.Insert(forwardedDataInfo)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationId":                  newProtection.MitigationId,
+				"MitigationScopeId":                  newProtection.MitigationScopeId,
 				"ForwardedDataInfoTotalPackets": forwardedDataInfo.TotalPackets,
 				"ForwardedDataInfoTotalBits":    forwardedDataInfo.TotalBits,
 				"Err": err,
@@ -272,7 +272,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		_, err = session.Insert(blockedDataInfo)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationId":                newProtection.MitigationId,
+				"MitigationScopeId":                newProtection.MitigationScopeId,
 				"BlockedDataInfoTotalPackets": blockedDataInfo.TotalPackets,
 				"BlockedDataInfoTotalBits":    blockedDataInfo.TotalBits,
 				"Err": err,
@@ -288,9 +288,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	// Registered protection
 	newProtection = db_models.Protection{
 		Type:                string(protection.Type()),
-		CustomerId:          protection.CustomerId(),
-		ClientIdentifier:    protection.ClientIdentifier(),
-		MitigationId:        protection.MitigationId(),
+		MitigationScopeId:   protection.MitigationScopeId(),
 		TargetBlockerId:     blockerId,
 		IsEnabled:           protection.IsEnabled(),
 		StartedAt:           protection.StartedAt(),
@@ -327,7 +325,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		_, err = session.InsertMulti(protectionParameters)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationId": newProtection.MitigationId,
+				"MitigationScopeId": newProtection.MitigationScopeId,
 				"Err":          err,
 			}).Error("insert ProtectionParameter error")
 			goto Rollback
@@ -387,7 +385,7 @@ func UpdateProtection(protection Protection) (err error) {
 		err = storeThroughputData(session, data)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationId": protection.MitigationId,
+				"MitigationScopeId": protection.MitigationScopeId,
 				"Pps":          data.Pps,
 				"Bps":          data.Bps,
 				"Err":          err,
@@ -404,7 +402,7 @@ func UpdateProtection(protection Protection) (err error) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"id":           protection.Id(),
-			"MitigationId": protection.MitigationId(),
+			"MitigationScopeId": protection.MitigationScopeId(),
 			"Err":          err,
 		}).Error("select Protection error")
 		goto Rollback
@@ -413,7 +411,7 @@ func UpdateProtection(protection Protection) (err error) {
 		// no data found
 		log.WithFields(log.Fields{
 			"id":           protection.Id(),
-			"MitigationId": protection.MitigationId(),
+			"MitigationScopeId": protection.MitigationScopeId(),
 		}).Info("update Protection data not exist.")
 		goto Rollback
 	}
@@ -448,7 +446,7 @@ func UpdateProtection(protection Protection) (err error) {
 		err = storeProtectionStatus(session, protection.ForwardedDataInfo())
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationId":                  updProtection.MitigationId,
+				"MitigationScopeId":                  updProtection.MitigationScopeId,
 				"ForwardedDataInfoTotalPackets": updForwardedDataInfo.TotalPackets,
 				"ForwardedDataInfoTotalBits":    updForwardedDataInfo.TotalBits,
 				"Err": err,
@@ -472,7 +470,7 @@ func UpdateProtection(protection Protection) (err error) {
 		err = storeProtectionStatus(session, protection.BlockedDataInfo())
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationId":                updProtection.MitigationId,
+				"MitigationScopeId":                updProtection.MitigationScopeId,
 				"BlockedDataInfoTotalPackets": updBlockedDataInfo.TotalPackets,
 				"BlockedDataInfoTotalBits":    updBlockedDataInfo.TotalBits,
 				"Err": err,
@@ -487,7 +485,7 @@ func UpdateProtection(protection Protection) (err error) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"ProtectionId": updProtection.Id,
-			"MitigationId": updProtection.MitigationId,
+			"MitigationScopeId": updProtection.MitigationScopeId,
 			"Err":          err,
 		}).Error("delete ParameterValue error")
 		goto Rollback
@@ -500,7 +498,7 @@ func UpdateProtection(protection Protection) (err error) {
 		if err != nil {
 			log.WithFields(log.Fields{
 				"ProtectionId": updProtection.Id,
-				"MitigationId": updProtection.MitigationId,
+				"MitigationScopeId": updProtection.MitigationScopeId,
 				"Err":          err,
 			}).Error("insert ParameterValue error")
 			goto Rollback
@@ -518,7 +516,7 @@ Rollback:
 /*
 
  */
-func GetActiveProtectionByMitigationId(customerId int, clientIdentifier string, mitigationId int) (p Protection, err error) {
+func GetActiveProtectionByMitigationScopeId(mitigationScopeId int64) (p Protection, err error) {
 
 	engine, err := ConnectDB()
 	if err != nil {
@@ -527,7 +525,7 @@ func GetActiveProtectionByMitigationId(customerId int, clientIdentifier string, 
 	}
 
 	var ps []db_models.Protection
-	err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ? AND is_enabled = 1", customerId, clientIdentifier, mitigationId).Find(&ps)
+	err = engine.Where("mitigation_scope_id = ? AND is_enabled = 1", mitigationScopeId).Find(&ps)
 	if err != nil {
 		return nil, err
 	}
@@ -603,9 +601,7 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 
 	pb := ProtectionBase{
 		dbp.Id,
-		dbp.CustomerId,
-		dbp.ClientIdentifier,
-		dbp.MitigationId,
+		dbp.MitigationScopeId,
 		blocker,
 		dbp.IsEnabled,
 		dbp.StartedAt,
@@ -647,7 +643,7 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
  *  protection Protection
  *  error error
  */
-func GetProtectionBase(customerId int, clientIdentifier string, mitigationId int) (protection ProtectionBase, err error) {
+func GetProtectionBase(mitigationScopeId int64) (protection ProtectionBase, err error) {
 	// default value setting
 	dbProtection := db_models.Protection{}
 
@@ -661,10 +657,10 @@ func GetProtectionBase(customerId int, clientIdentifier string, mitigationId int
 	}
 
 	// Get protection
-	ok, err := engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&dbProtection)
+	ok, err := engine.Where("mitigation_scope_id = ?", mitigationScopeId).Get(&dbProtection)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"MitigationId": mitigationId,
+			"MitigationScopeId": mitigationScopeId,
 			"Err":          err,
 		}).Error("select Protection error")
 		return
@@ -676,7 +672,7 @@ func GetProtectionBase(customerId int, clientIdentifier string, mitigationId int
 	forwardInfo, err := loadProtectionStatus(engine, dbProtection.ForwardedDataInfoId)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"MitigationId": mitigationId,
+			"MitigationScopeId": mitigationScopeId,
 			"Err":          err,
 		}).Error("load forwarded_data_info error")
 		return
@@ -684,7 +680,7 @@ func GetProtectionBase(customerId int, clientIdentifier string, mitigationId int
 	blockedInfo, err := loadProtectionStatus(engine, dbProtection.BlockedDataInfoId)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"MitigationId": mitigationId,
+			"MitigationScopeId": mitigationScopeId,
 			"Err":          err,
 		}).Error("load blocked_data_info error")
 		return
@@ -707,7 +703,7 @@ func GetProtectionBase(customerId int, clientIdentifier string, mitigationId int
 	// from db_models to models
 	protection = ProtectionBase{
 		id:                dbProtection.Id,
-		mitigationId:      dbProtection.MitigationId,
+		mitigationScopeId: dbProtection.MitigationScopeId,
 		targetBlocker:     blocker,
 		isEnabled:         dbProtection.IsEnabled,
 		startedAt:         dbProtection.StartedAt,
@@ -855,7 +851,7 @@ Error:
  * return:
  *  error error
  */
-func DeleteProtection(customerId int, clientIdentifier string, mitigationId int) (err error) {
+func DeleteProtection(mitigationScopeId int64) (err error) {
 	var protection db_models.Protection
 	var chk bool
 
@@ -882,12 +878,10 @@ func DeleteProtection(customerId int, clientIdentifier string, mitigationId int)
 
 	// Get Protection
 	protection = db_models.Protection{}
-	chk, err = session.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Get(&protection)
+	chk, err = session.Where("mitigation_scope_id = ?", mitigationScopeId).Get(&protection)
 	if err != nil {
 		log.WithFields(log.Fields{
-			"CustomerId":       customerId,
-			"ClientIdentifier": clientIdentifier,
-			"MitigationId":     mitigationId,
+			"MitigationScopeId": mitigationScopeId,
 			"Err":              err,
 		}).Error("select Protection error")
 		goto Rollback

@@ -1,7 +1,7 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-1
+#cgo LDFLAGS: -lcoap-2-openssl
 #include <coap/coap.h>
 #include "callback.h"
 */
@@ -45,12 +45,18 @@ func ResourceInit(uri *string, flags ResourceFlags) *Resource {
     return resource
 }
 
-func (context *Context) AddResource(resource *Resource) {
-    C.coap_add_resource(context.ptr, resource.ptr)
+func ResourceUnknownInit() *Resource {
+
+	ptr := C.coap_resource_unknown_init(nil)
+
+	resource := &Resource{ptr, make(map[Code]MethodHandler)}
+	resources[ptr] = resource
+	return resource
+
 }
 
-func (context *Context) AddResourceUnknown(resource *Resource) {
-    C.coap_add_resource_unknown(context.ptr, resource.ptr)
+func (context *Context) AddResource(resource *Resource) {
+    C.coap_add_resource(context.ptr, resource.ptr)
 }
 
 func (context *Context) DeleteResource(resource *Resource) {
@@ -58,7 +64,7 @@ func (context *Context) DeleteResource(resource *Resource) {
     delete(resources, ptr)
     resource.ptr = nil
 
-    C.coap_delete_resource(context.ptr, &ptr.key[0])
+    C.coap_delete_resource(context.ptr, ptr)
 }
 
 func (context *Context) DeleteAllResources() {
@@ -87,4 +93,49 @@ func (resource *Resource) AddAttr(name string, value *string) *Attr {
     } else {
         return &Attr{ ptr }
     }
+}
+
+func (resource *Resource) TurnOnResourceObservable() {
+    C.coap_resource_set_get_observable(resource.ptr, 1)
+}
+
+func (context *Context) DeleteResourceByQuery(query string) {
+    resource := context.GetResourceByQuery(query)
+    if resource != nil {
+        C.coap_delete_resource(context.ptr, resource.ptr)
+    }
+}
+
+func (context *Context) GetResourceByQuery(query string) (res *Resource) {
+    if query == "" {
+        return nil
+    }
+    var queryStr *C.str = C.coap_new_string(C.size_t(len(query)))
+    queryStr.s = (*C.uchar)(unsafe.Pointer(C.CString(query)))
+    queryStr.length = C.size_t(len(query))
+    resource := C.coap_get_resource_from_uri_path(context.ptr, *queryStr)
+    if resource != nil {
+        res = &Resource{resource, nil}
+        return
+    }
+    return nil
+}
+
+func (resource *Resource) AddObserver(session *Session, query string, token []byte) {
+    temp := string(token)
+    var tokenStr *C.str = C.coap_new_string(C.size_t(len(temp)))
+    var queryStr *C.str = C.coap_new_string(C.size_t(len(query)))
+    tokenStr.s = (*C.uchar)(unsafe.Pointer(C.CString(temp)))
+    tokenStr.length = C.size_t(len(temp))
+    queryStr.s = (*C.uchar)(unsafe.Pointer(C.CString(query)))
+    queryStr.length = C.size_t(len(query))
+    C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr)
+}
+
+func (resource *Resource) DeleteObserver(session *Session, token []byte) {
+    temp := string(token)
+    var tokenStr *C.str = C.coap_new_string(C.size_t(len(temp)))
+    tokenStr.s = (*C.uchar)(unsafe.Pointer(C.CString(temp)))
+    tokenStr.length = C.size_t(len(temp))
+    C.coap_delete_observer(resource.ptr, session.ptr, tokenStr)
 }

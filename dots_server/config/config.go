@@ -38,6 +38,11 @@ type SignalConfigurationParameterNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
+	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
+	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
+	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
+	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
 }
 
 type DefaultSignalConfigurationNode struct {
@@ -46,25 +51,54 @@ type DefaultSignalConfigurationNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
+	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
+	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
+	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
+	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
+}
+
+type LifetimeConfigurationNode struct {
+	ActiveButTerminatingPeriod    string `yaml:"activeButTerminatingPeriod"`
+	MaxActiveButTerminatingPeriod string `yaml:"maxActiveButTerminatingPeriod"`
+	ManageLifetimeInterval        string `yaml:"manageLifetimeInterval"`
 }
 
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	return &SignalConfigurationParameter{
-		HeartbeatInterval: parseParameterRange(scpn.HeartbeatInterval),
-		MissingHbAllowed:  parseParameterRange(scpn.MissingHbAllowed),
-		MaxRetransmit:     parseParameterRange(scpn.MaxRetransmit),
-		AckTimeout:        parseParameterRange(scpn.AckTimeout),
-		AckRandomFactor:   parseParameterRange(scpn.AckRandomFactor),
+		HeartbeatInterval: parseIntegerParameterRange(scpn.HeartbeatInterval),
+		MissingHbAllowed:  parseIntegerParameterRange(scpn.MissingHbAllowed),
+		MaxRetransmit:     parseIntegerParameterRange(scpn.MaxRetransmit),
+		AckTimeout:        parseFloatParameterRange(scpn.AckTimeout),
+		AckRandomFactor:   parseFloatParameterRange(scpn.AckRandomFactor),
+		HeartbeatIntervalIdle: parseIntegerParameterRange(scpn.HeartbeatIntervalIdle),
+		MissingHbAllowedIdle:  parseIntegerParameterRange(scpn.MissingHbAllowedIdle),
+		MaxRetransmitIdle:     parseIntegerParameterRange(scpn.MaxRetransmitIdle),
+		AckTimeoutIdle:        parseFloatParameterRange(scpn.AckTimeoutIdle),
+		AckRandomFactorIdle:   parseFloatParameterRange(scpn.AckRandomFactorIdle),
 	}, nil
 }
 
-func (scpn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
+func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 	return &DefaultSignalConfiguration{
-		HeartbeatInterval: parseIntegerValue(scpn.HeartbeatInterval),
-		MissingHbAllowed:  parseIntegerValue(scpn.MissingHbAllowed),
-		MaxRetransmit:     parseIntegerValue(scpn.MaxRetransmit),
-		AckTimeout:        parseIntegerValue(scpn.AckTimeout),
-		AckRandomFactor:   parseFloatValue(scpn.AckRandomFactor),
+		HeartbeatInterval: parseIntegerValue(dscn.HeartbeatInterval),
+		MissingHbAllowed:  parseIntegerValue(dscn.MissingHbAllowed),
+		MaxRetransmit:     parseIntegerValue(dscn.MaxRetransmit),
+		AckTimeout:        parseFloatValue(dscn.AckTimeout),
+		AckRandomFactor:   parseFloatValue(dscn.AckRandomFactor),
+		HeartbeatIntervalIdle: parseIntegerValue(dscn.HeartbeatIntervalIdle),
+		MissingHbAllowedIdle:  parseIntegerValue(dscn.MissingHbAllowedIdle),
+		MaxRetransmitIdle:     parseIntegerValue(dscn.MaxRetransmitIdle),
+		AckTimeoutIdle:        parseFloatValue(dscn.AckTimeoutIdle),
+		AckRandomFactorIdle:   parseFloatValue(dscn.AckRandomFactorIdle),
+	}, nil
+}
+
+func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
+	return &LifetimeConfiguration{
+		ActiveButTerminatingPeriod:    parseIntegerValue(lcn.ActiveButTerminatingPeriod),
+		MaxActiveButTerminatingPeriod: parseIntegerValue(lcn.MaxActiveButTerminatingPeriod),
+		ManageLifetimeInterval:        parseIntegerValue(lcn.ManageLifetimeInterval),
 	}, nil
 }
 
@@ -78,6 +112,9 @@ type NetworkNode struct {
 	BindAddress       string `yaml:"bindAddress"`
 	SignalChannelPort int    `yaml:"signalChannelPort"`
 	DataChannelPort   int    `yaml:"dataChannelPort"`
+	DBNotificationPort int   `yaml:"dbNotificationPort"`
+	HrefOrigin         string `yaml:"hrefOrigin"`
+	HrefPathname       string `yaml:"hrefPathname"`
 }
 
 func (ncn NetworkNode) Convert() (interface{}, error) {
@@ -94,14 +131,29 @@ func (ncn NetworkNode) Convert() (interface{}, error) {
 		return nil, errors.New("dataChannelPort must be between 1 and 65,535")
 	}
 
+	if ncn.DBNotificationPort < 1 || ncn.DBNotificationPort > 65535 {
+		return nil, errors.New("dbNotificationPort must be between 1 and 65,535")
+	}
+
 	if ncn.SignalChannelPort == ncn.DataChannelPort {
 		return nil, errors.New("dataChannelPort must be different from signalChannelPort")
+	}
+
+	if ncn.HrefOrigin == "" {
+		return nil, errors.New("hrefOrigin must not be empty")
+	}
+
+	if ncn.HrefPathname == "" {
+		return nil, errors.New("hrefPathname must not be empty")
 	}
 
 	return &Network{
 		BindAddress:       ncn.BindAddress,
 		SignalChannelPort: ncn.SignalChannelPort,
 		DataChannelPort:   ncn.DataChannelPort,
+		DBNotificationPort: ncn.DBNotificationPort,
+		HrefOrigin:         ncn.HrefOrigin,
+		HrefPathname:       ncn.HrefPathname,
 	}, nil
 }
 
@@ -114,6 +166,9 @@ type Network struct {
 	BindAddress       string
 	SignalChannelPort int
 	DataChannelPort   int
+	DBNotificationPort int
+	HrefOrigin         string
+	HrefPathname       string
 }
 
 // Secure file config
@@ -191,6 +246,7 @@ type ServerSystemConfig struct {
 	SecureFile                   *SecureFile
 	Network                      *Network
 	Database                     *Database
+	LifetimeConfiguration        *LifetimeConfiguration
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -199,6 +255,7 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setSecureFile(*sc.SecureFile)
 	GetServerSystemConfig().setNetwork(*sc.Network)
 	GetServerSystemConfig().setDatabase(*sc.Database)
+	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
 }
 
 type ServerSystemConfigNode struct {
@@ -207,6 +264,7 @@ type ServerSystemConfigNode struct {
 	SecureFile                   SecureFileNode                   `yaml:"secureFile"`
 	Network                      NetworkNode                      `yaml:"network"`
 	Database                     DatabaseNode                     `yaml:"database"`
+	LifetimeConfiguration        LifetimeConfigurationNode        `yaml:"lifetimeConfiguration"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -235,12 +293,18 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
+	lifetimeConfiguration, err := scn.LifetimeConfiguration.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		DefaultSignalConfiguration:   defaultSignalConfiguration.(*DefaultSignalConfiguration),
 		SecureFile:                   secureFilePath.(*SecureFile),
 		Network:                      network.(*Network),
 		Database:                     database.(*Database),
+		LifetimeConfiguration:        lifetimeConfiguration.(*LifetimeConfiguration),
 	}, nil
 }
 
@@ -262,6 +326,10 @@ func (sc *ServerSystemConfig) setNetwork(config Network) {
 
 func (sc *ServerSystemConfig) setDatabase(config Database) {
 	sc.Database = &config
+}
+
+func (sc *ServerSystemConfig) setLifetimeConfiguration(parameter LifetimeConfiguration) {
+	sc.LifetimeConfiguration = &parameter
 }
 
 var systemConfigInstance *ServerSystemConfig
@@ -368,21 +436,40 @@ type ServerConfiguration struct {
 	signalConfigurationParameter SignalConfigurationParameter
 }
 
-type ParameterRange struct {
+type IntegerParameterRange struct {
 	start int
 	end   int
 }
 
-func (pm *ParameterRange) Start() interface{} {
+type FloatParameterRange struct {
+	start float64
+	end   float64
+}
+
+// Integer parameter range method
+func (pm *IntegerParameterRange) Start() interface{} {
 	return pm.start
 }
-
-func (pm *ParameterRange) End() interface{} {
+func (pm *IntegerParameterRange) End() interface{} {
 	return pm.end
 }
-
-func (pm *ParameterRange) Includes(i interface{}) bool {
+func (pm *IntegerParameterRange) Includes(i interface{}) bool {
 	x, ok := i.(int)
+	if !ok {
+		return false
+	}
+	return pm.start <= x && x <= pm.end
+}
+
+// Float parameter range method
+func (pm *FloatParameterRange) Start() interface{} {
+	return pm.start
+}
+func (pm *FloatParameterRange) End() interface{} {
+	return pm.end
+}
+func (pm *FloatParameterRange) Includes(i interface{}) bool {
+	x, ok := i.(float64)
 	if !ok {
 		return false
 	}
@@ -392,7 +479,7 @@ func (pm *ParameterRange) Includes(i interface{}) bool {
 // input format examples: "5", "100-120"
 // error input examples: "-5", "120-100", "0.5-90.0"
 // return nil on the parseServerConfig failures
-func parseParameterRange(input string) *ParameterRange {
+func parseIntegerParameterRange(input string) *IntegerParameterRange {
 	var start, end int
 
 	var err error
@@ -420,7 +507,44 @@ func parseParameterRange(input string) *ParameterRange {
 		return nil
 	}
 
-	return &ParameterRange{
+	return &IntegerParameterRange{
+		start: start,
+		end:   end,
+	}
+}
+
+// input format examples: "5.0", "100.0-120.0"
+// error input examples: "-5.0", "120.0-100.0"
+// return nil on the parseServerConfig failures
+func parseFloatParameterRange(input string) *FloatParameterRange {
+	var start, end float64
+
+	var err error
+	if strings.Index(input, "-") >= 0 {
+		array := strings.Split(input, "-")
+		if len(array) != 2 {
+			return nil
+		}
+
+		if start, err = strconv.ParseFloat(array[0], 64); err != nil {
+			// negative values must be dropped here
+			return nil
+		}
+		if end, err = strconv.ParseFloat(array[1], 64); err != nil {
+			return nil
+		}
+	} else {
+		if start, err = strconv.ParseFloat(input, 64); err != nil {
+			return nil
+		}
+		end = start
+	}
+
+	if start > end {
+		return nil
+	}
+
+	return &FloatParameterRange{
 		start: start,
 		end:   end,
 	}
@@ -459,25 +583,45 @@ func parseFloatValue(input string) (res float64) {
 }
 
 type SignalConfigurationParameter struct {
-	HeartbeatInterval *ParameterRange
-	MissingHbAllowed  *ParameterRange
-	MaxRetransmit     *ParameterRange
-	AckTimeout        *ParameterRange
-	AckRandomFactor   *ParameterRange
+	HeartbeatInterval *IntegerParameterRange
+	MissingHbAllowed  *IntegerParameterRange
+	MaxRetransmit     *IntegerParameterRange
+	AckTimeout        *FloatParameterRange
+	AckRandomFactor   *FloatParameterRange
+	HeartbeatIntervalIdle *IntegerParameterRange
+	MissingHbAllowedIdle  *IntegerParameterRange
+	MaxRetransmitIdle     *IntegerParameterRange
+	AckTimeoutIdle        *FloatParameterRange
+	AckRandomFactorIdle   *FloatParameterRange
 }
 
 type DefaultSignalConfiguration struct {
 	HeartbeatInterval int
 	MissingHbAllowed  int
 	MaxRetransmit     int
-	AckTimeout        int
+	AckTimeout        float64
 	AckRandomFactor   float64
+	HeartbeatIntervalIdle int
+	MissingHbAllowedIdle  int
+	MaxRetransmitIdle     int
+	AckTimeoutIdle        float64
+	AckRandomFactorIdle   float64
+}
+
+type LifetimeConfiguration struct {
+	ActiveButTerminatingPeriod     int
+	MaxActiveButTerminatingPeriod  int
+	ManageLifetimeInterval	       int
 }
 
 func (scp *SignalConfigurationParameter) Store() {
 	GetServerSystemConfig().setSignalConfigurationParameter(*scp)
 }
 
-func (scp *DefaultSignalConfiguration) Store() {
-	GetServerSystemConfig().setDefaultSignalConfiguration(*scp)
+func (dsc *DefaultSignalConfiguration) Store() {
+	GetServerSystemConfig().setDefaultSignalConfiguration(*dsc)
+}
+
+func (sc *LifetimeConfiguration) Store() {
+	GetServerSystemConfig().setLifetimeConfiguration(*sc)
 }

@@ -9,8 +9,13 @@ type SignalSessionConfiguration struct {
 	HeartbeatInterval int       `xorm:"'heartbeat_interval'"`
 	MissingHbAllowed  int       `xorm:"'missing_hb_allowed'"`
 	MaxRetransmit     int       `xorm:"'max_retransmit'"`
-	AckTimeout        int       `xorm:"'ack_timeout'"`
+	AckTimeout        float64       `xorm:"'ack_timeout'"`
 	AckRandomFactor   float64   `xorm:"'ack_random_factor'"`
+	HeartbeatIntervalIdle int       `xorm:"'heartbeat_interval_idle'"`
+	MissingHbAllowedIdle  int       `xorm:"'missing_hb_allowed_idle'"`
+	MaxRetransmitIdle     int       `xorm:"'max_retransmit_idle'"`
+	AckTimeoutIdle        float64       `xorm:"'ack_timeout_idle'"`
+	AckRandomFactorIdle   float64   `xorm:"'ack_random_factor_idle'"`
 	TriggerMitigation bool      `xorm:"'trigger_mitigation'"`
 	Created           time.Time `xorm:"created"`
 	Updated           time.Time `xorm:"updated"`

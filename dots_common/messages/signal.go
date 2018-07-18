@@ -11,9 +11,9 @@ type TargetPortRange struct {
 
 type MitigationScope struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	Scopes            []Scope  `json:"scope"             codec:"3"`
+	Scopes            []Scope  `json:"scope"             codec:"2"`
 	// only used in response
-	ClientDomainIdentifier string `json:"cdid" codec:"2,omitempty"`
+	ClientDomainIdentifier string `json:"cdid" codec:"3,omitempty"`
 }
 
 type Scope struct {
@@ -35,7 +35,9 @@ type Scope struct {
 	// alias name
 	AliasName []string `json:"alias-name" codec:"13,omitempty"`
 	// lifetime
-	Lifetime int `json:"lifetime" codec:"14,omitempty"`
+	Lifetime *int `json:"lifetime" codec:"14,omitempty"`
+	// attack-status
+	AttackStatus *int `json:"attack-status" codec:"29,omitempty"`
 }
 
 type MitigationRequest struct {
@@ -55,6 +57,13 @@ func (m *MitigationRequest) EffectiveClientIdentifier() string {
  */
 func (m *MitigationRequest) EffectiveClientDomainIdentifier() string {
 	return m.MitigationScope.ClientDomainIdentifier
+}
+
+/*
+ * get last client-domain-identifier
+ */
+ func (m *MitigationRequest) EffectiveMitigationId() int {
+	return m.MitigationScope.Scopes[0].MitigationId
 }
 
 /*
@@ -120,8 +129,11 @@ func (m *MitigationRequest) String() (result string) {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
 			}
 		}
-		if scope.Lifetime != 0 {
+		if scope.Lifetime != nil {
 			result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+		}
+		if scope.AttackStatus != nil {
+			result += fmt.Sprintf("     \"%s\": %d\n", "attack-status", scope.AttackStatus)
 		}
 	}
 	return
@@ -134,18 +146,20 @@ type SignalConfigRequest struct {
 
 type SignalConfigs struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	MitigationConfig SignalConfig `json:"mitigating-config" codec:"32"`
+	MitigatingConfig SignalConfig `json:"mitigating-config" codec:"32"`
 	IdleConfig SignalConfig       `json:"idle-config"       codec:"44"`
+	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
+	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
 }
 
 type IntCurrent struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue int `json:"current-value" codec:"36"`
+	CurrentValue *int `json:"current-value" codec:"36,omitempty"`
 }
 
 type DecimalCurrent struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue decimal.Decimal `json:"current-value-decimal" codec:"43"`
+	CurrentValue *decimal.Decimal `json:"current-value-decimal" codec:"43,omitempty"`
 }
 
 type SignalConfig struct {
@@ -155,28 +169,18 @@ type SignalConfig struct {
 	// identifier is generated. This is a mandatory attribute.
 	SessionId int `json:"sid" codec:"31,omitempty"`
 	// Heartbeat interval to check the DOTS peer health.  This is an optional attribute.
-	HeartbeatInterval IntCurrent `json:"heartbeat-interval" codec:"33"`
+	HeartbeatInterval IntCurrent `json:"heartbeat-interval" codec:"33,omitempty"`
 	// Maximum number of missing heartbeat response allowed. This is an optional attribute.
-	MissingHbAllowed IntCurrent `json:"missing-hb-allowed" codec:"37"`
+	MissingHbAllowed IntCurrent `json:"missing-hb-allowed" codec:"37,omitempty"`
 	// Maximum number of retransmissions for a message (referred to as MAX_RETRANSMIT parameter in CoAP).
 	// This is an optional attribute.
-	MaxRetransmit IntCurrent `json:"max-retransmit" codec:"38"`
+	MaxRetransmit IntCurrent `json:"max-retransmit" codec:"38,omitempty"`
 	// Timeout value in seconds used to calculate the initial retransmission timeout value (referred to as ACK_TIMEOUT
 	// parameter in CoAP). This is an optional attribute.
-	AckTimeout IntCurrent `json:"ack-timeout" codec:"39"`
+	AckTimeout DecimalCurrent `json:"ack-timeout" codec:"39,omitempty"`
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
-	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40"`
-	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
-	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
-}
-
-type HelloRequest struct {
-	Message string `json:"message" cbor:"message"`
-}
-
-type HelloResponse struct {
-	Message string `json:"message" cbor:"message"`
+	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40,omitempty"`
 }
 
 type SignalChannelRequest struct {

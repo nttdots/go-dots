@@ -79,6 +79,7 @@ type Request struct {
 	PathInfo []string     // URI-Paths after with prefix
 	Queries  []string     // Uri-Queries
 	Body     interface{}
+	Options  []libcoap.Option
 }
 
 /*

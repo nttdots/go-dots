@@ -1,10 +1,32 @@
 system:
   signalConfigurationParameter:
-    heartbeatInterval: 30-60
+    heartbeatInterval: 15-240
     missingHbAllowed: 3-9
-    maxRetransmit: 3-10
-    ackTimeout: 30-120
-    ackRandomFactor: 0-8888
+    maxRetransmit: 2-15
+    ackTimeout: 1.0-30.0
+    # ack-random-factor min-value must not be below 1.0
+    ackRandomFactor: 1.1-4.0
+    heartbeatIntervalIdle: 15-240
+    missingHbAllowedIdle: 3-9
+    maxRetransmitIdle: 2-15
+    ackTimeoutIdle: 1.0-30.0
+    # ack-random-factor min-value must not be below 1.0
+    ackRandomFactorIdle: 1.1-4.0
+
+  # Default current values of session configuration
+  defaultSignalConfiguration:
+    heartbeatInterval: 30
+    missingHbAllowed: 5
+    maxRetransmit: 3
+    ackTimeout: 2.0
+    ackRandomFactor: 1.5
+    heartbeatIntervalIdle: 30
+    missingHbAllowedIdle: 5
+    maxRetransmitIdle: 3
+    ackTimeoutIdle: 2.0
+    ackRandomFactorIdle: 1.5
+
+
   secureFile:
     serverCertFile: ../certs/server-cert.pem
     serverKeyFile: ../certs/server-key.pem
@@ -14,9 +36,22 @@ system:
     bindAddress: "::"
     signalChannelPort: 4646
     dataChannelPort: 4647
+    # Port number where DOTS server listens to DB notification. In case you change this value, it is necessary to change the corresponding value defined in mysql-notification.c
+    dbNotificationPort: 9999
+    # Host name and root resource name for dots client request to datachannel
+    hrefOrigin: https://13.115.156.186
+    hrefPathname: /v1/restconf
   database:
     username: root
     protocol: tcp
     host: db
     port: 3306
     databaseName: dots
+
+  lifetimeConfiguration:
+    # The active-but-terminating period in case client withdraws a mitigation request
+    activeButTerminatingPeriod: 120
+    # If the client requests the active-but-terminating mitigation again, the DOTS server may exponentially increase the active-but-terminating period
+    maxActiveButTerminatingPeriod: 300
+    # The lifetime interval to manage expired mitigation request
+    manageLifetimeInterval: 100
