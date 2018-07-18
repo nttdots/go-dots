@@ -216,7 +216,7 @@ func (r *Request) Send() {
 }
 
 func (r *Request) logMessage(pdu *libcoap.Pdu) {
-	log.Infof("Message Code: %v", pdu.Code)
+	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
 
 	if pdu.Data == nil {
 		return

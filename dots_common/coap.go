@@ -65,6 +65,7 @@ const (
 	NotFound              Code = 132
 	MethodNotAllowed      Code = 133
 	NotAcceptable         Code = 134
+	Conflict              Code = 137
 	PreconditionFailed    Code = 140
 	RequestEntityTooLarge Code = 141
 	UnsupportedMediaType  Code = 143
@@ -105,6 +106,8 @@ func (c Code) String() string {
 		return "MethodNotAllowed"
 	case NotAcceptable:
 		return "NotAcceptable"
+	case Conflict:
+		return "Conflict"
 	case PreconditionFailed:
 		return "PreconditionFailed"
 	case RequestEntityTooLarge:
@@ -157,6 +160,8 @@ func (c Code) CoAPCode() libcoap.Code {
 		return libcoap.ResponseMethodNotAllowed
 	case NotAcceptable:
 		return libcoap.ResponseNotAcceptable
+	case Conflict:
+		return libcoap.ResponseConflict
 	case PreconditionFailed:
 		return libcoap.ResponsePreconditionFailed
 	case RequestEntityTooLarge:
