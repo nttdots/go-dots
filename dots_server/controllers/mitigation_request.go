@@ -23,6 +23,8 @@ type MitigationRequest struct {
 	Controller
 }
 
+const validationError string = "validation error."
+
 /*
  * Handles mitigationRequest GET requests.
  */
@@ -53,9 +55,11 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		return
 	}
 
-	mpp, err := loadMitigations(customer, cuid, mid)
+	var mpp []mpPair
+	mpp, err = loadMitigations(customer, cuid, mid)
 	if err != nil {
 		log.WithError(err).Error("loadMitigation failed.")
+		return
 	}
 
 	scopes := make([]messages.ScopeStatus, 0)
@@ -154,70 +158,45 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 	// Get cuid, mid from Uri-Path
 	cdid, cuid, mid, err := parseURIPath(request.PathInfo)
-	if(err != nil){
+	if err != nil {
 		log.Errorf("Failed to parse Uri-Path, error: %s", err)
-		res = Response{
-			Type: common.NonConfirmable,
-			Code: common.BadRequest,
-			Body: nil,
-		}
-		return	
+		goto ResponseNG
 	}
 
 	// cuid, mid are required Uri-Paths
 	if  mid == 0 || cuid == "" {
 		log.Error("Missing required Uri-Path Parameter(cuid, mid).")
-		res = Response{
-			Type: common.NonConfirmable,
-			Code: common.BadRequest,
-			Body: nil,
-		}
-		return
+		goto ResponseNG
 	}
 	
 
 	if len(body.MitigationScope.Scopes) != 1  {
 
 		// Zero or multiple scope
-		res = Response{
-			Type: common.NonConfirmable,
-			Code: common.BadRequest,
-			Body: nil,
-		}
+		goto ResponseNG
 
 	} else {
 
 		// Lifetime is required in body
 		lifetime := body.MitigationScope.Scopes[0].Lifetime
-		if lifetime <= 0 {
-			log.Errorf("Invalid lifetime value : %+v.", lifetime)
-			res = Response{
-				Type: common.NonConfirmable,
-				Code: common.BadRequest,
-				Body: nil,
-			}
-			return
+		if lifetime == nil {
+			log.Errorf("lifetime is mandatory field")
+			goto ResponseNG
+		}
+		if *lifetime <= 0 {
+			log.Errorf("Invalid lifetime value : %+v.", *lifetime)
+			goto ResponseNG
 		}
 
 		if len(body.MitigationScope.Scopes[0].TargetPrefix) == 0 && len(body.MitigationScope.Scopes[0].FQDN) == 0 &&
 		   len(body.MitigationScope.Scopes[0].URI) == 0 && len(body.MitigationScope.Scopes[0].AliasName) == 0 {
 			log.Error("At least one of the attributes 'target-prefix','target-fqdn','target-uri', or 'alias-name' MUST be present.")
-			res = Response{
-				Type: common.NonConfirmable,
-				Code: common.BadRequest,
-				Body: nil,
-			}
-			return
+			goto ResponseNG
 		}
 
 		if body.EffectiveClientIdentifier() != "" || body.EffectiveClientDomainIdentifier() != "" || body.EffectiveMitigationId() != 0 {
 			log.Errorf("Client Identifier, Client Domain Identifier and Mitigation Id are forbidden in body request")
-			res = Response{
-				Type: common.NonConfirmable,
-				Code: common.BadRequest,
-				Body: nil,
-			}
-			return
+			goto ResponseNG
 		}
 
 		// Update cuid, mid to body
@@ -253,18 +232,20 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			log.Debug("Handle efficacy update.")
 			valid := validateForEfficacyUpdate(request.Options[indexIfMatch].Value, customer, body, currentScope)
 			if !valid {
-				res = Response{
-					Type: common.NonConfirmable,
-					Code: common.BadRequest,
-					Body: nil,
-				}
-				return
+				goto ResponseNG
 			}
 		}
 
 		if (currentScope == nil || currentScope.MitigationId == 0) && !isIfMatchOption {
 
-			CreateMitigation(body, customer, nil)
+			err = CreateMitigation(body, customer, nil)
+			if err != nil {
+				if err.Error() == validationError {
+					goto ResponseNG
+				}
+				log.Error("Failed to Create Mitigation.")
+				return Response{}, err
+			}
 
 			// return status
 			res = Response{
@@ -272,13 +253,14 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				Code: common.Created,
 				Body: messages.NewMitigationResponsePut(body),
 			}
+			return res, nil
 
 		} else if currentScope != nil  {
 
 			// Update
 			config := dots_config.GetServerSystemConfig().LifetimeConfiguration
 			if currentScope.Status == models.ActiveButTerminating {
-				body.MitigationScope.Scopes[0].Lifetime = config.MaxActiveButTerminatingPeriod
+				body.MitigationScope.Scopes[0].Lifetime = &config.MaxActiveButTerminatingPeriod
 			}
 
 			// Cannot rollback :P
@@ -288,17 +270,32 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				return
 			}
 
-			CreateMitigation(body, customer, currentScope)
+			err = CreateMitigation(body, customer, currentScope)
+			if err != nil {
+				if err.Error() == validationError {
+					goto ResponseNG
+				}
+				log.Error("Failed to Create Mitigation.")
+				return Response{}, err
+			}
 
 			res = Response{
 				Type: common.NonConfirmable,
 				Code: common.Changed,
 				Body: messages.NewMitigationResponsePut(body),
 			}
+			return res, nil
 		}
+		
 	}
 
-	return
+ResponseNG:
+	res = Response{
+		Type: common.NonConfirmable,
+		Code: common.BadRequest,
+		Body: nil,
+	}
+	return res, nil
 }
 
 /*
@@ -378,8 +375,10 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	m.FQDN.AddList(req.FQDN)
 	m.URI.AddList(req.URI)
 	m.AliasName.AddList(req.AliasName)
-	m.Lifetime = req.Lifetime
-	m.AttackStatus = req.AttackStatus
+	m.Lifetime = *req.Lifetime
+	if req.AttackStatus != nil {
+		m.AttackStatus = *req.AttackStatus
+	}
 	m.TargetPrefix, err = newTargetPrefix(req.TargetPrefix)
 	m.ClientDomainIdentifier = clientDomainIdentifier
 	if err != nil {
@@ -439,7 +438,7 @@ func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges 
 			return mitigationScopeIds, err
 		}
 		if !models.MitigationScopeValidator.Validate(models.MessageEntity(scope), customer) {
-			continue
+			return mitigationScopeIds, errors.New(validationError)
 		}
 		// store them to the mitigationScope table
 		mitigationScope, err := models.CreateMitigationScope(*scope, *customer)
@@ -645,9 +644,11 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer, mitigatio
 		if err != nil {
 			return err
 		}
-		scope.MitigationScopeId = mitigationScopeIds[counter]
+		if len(mitigationScopeIds) != 0 {
+			scope.MitigationScopeId = mitigationScopeIds[counter]
+		}
 		if !models.MitigationScopeValidator.Validate(models.MessageEntity(scope), c) {
-			return errors.New("validation error.")
+			return errors.New(validationError)
 		}
 		// send a blocker request to the blockerselectionservice.
 		// we receive the blocker the selection service propose via a dedicated channel.
@@ -751,23 +752,23 @@ func ManageExpiredMitigation(lifetimeInterval int) {
 	}
 }
 
-func CreateMitigation (body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope) {
+func CreateMitigation(body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope) (error) {
 	// Create New
 	mitigationScopeIds, err := createMitigationScope(body, customer)
 	if err != nil {
 		log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
-		return
-	}
+		return err
+	} 
 
 	if currentScope != nil && len(mitigationScopeIds) == 0 {
 		mitigationScopeIds = append(mitigationScopeIds, currentScope.MitigationScopeId)
-	}
+	} 
 
 	err = callBlocker(body, customer, mitigationScopeIds)
 	if err != nil {
 		log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
-		return
-	}
+		return err
+	} 
 
 	// Set Status to InProgress
 	if currentScope == nil {
@@ -775,7 +776,7 @@ func CreateMitigation (body *messages.MitigationRequest, customer *models.Custom
 			body.MitigationScope.Scopes[0].MitigationId, mitigationScopeIds[0])
 		if err != nil {
 			log.WithError(err).Error("MitigationScope load error.")
-			return
+			return err
 		}
 
 		currentScope.Status = models.SuccessfullyMitigated
@@ -783,9 +784,10 @@ func CreateMitigation (body *messages.MitigationRequest, customer *models.Custom
 		err = models.UpdateMitigationScope(*currentScope, *customer)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope update error.")
-			return
+			return err
 		}
 	}
+	return nil
 }
 
 func TerminateMitigation(customerId int, cuid string, mid int, mitigationScopeId int64) {
@@ -858,8 +860,12 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 	}
 
 	attackStatus := body.MitigationScope.Scopes[0].AttackStatus
-	if attackStatus != int(models.UnderAttack) && attackStatus != int(models.AttackSuccessfullyMitigated) {
-		log.Errorf("Invalid attack-status value: %+v. Expected values includes 1: under-attack, 2: attack-successfully-mitigated.", attackStatus)
+	if attackStatus == nil {
+		log.Errorf("attack-status is mandatory field.")
+		return false
+	}
+	if  (*attackStatus != int(models.UnderAttack) && *attackStatus != int(models.AttackSuccessfullyMitigated)) {
+		log.Errorf("Invalid attack-status value: %+v. Expected values includes 1: under-attack, 2: attack-successfully-mitigated.", *attackStatus)
 		return false
 	}
 

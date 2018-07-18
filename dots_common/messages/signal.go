@@ -35,9 +35,9 @@ type Scope struct {
 	// alias name
 	AliasName []string `json:"alias-name" codec:"13,omitempty"`
 	// lifetime
-	Lifetime int `json:"lifetime" codec:"14,omitempty"`
+	Lifetime *int `json:"lifetime" codec:"14,omitempty"`
 	// attack-status
-	AttackStatus int `json:"attack-status" codec:"29,omitempty"`
+	AttackStatus *int `json:"attack-status" codec:"29,omitempty"`
 }
 
 type MitigationRequest struct {
@@ -129,10 +129,10 @@ func (m *MitigationRequest) String() (result string) {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
 			}
 		}
-		if scope.Lifetime != 0 {
+		if scope.Lifetime != nil {
 			result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
 		}
-		if scope.AttackStatus != 0 {
+		if scope.AttackStatus != nil {
 			result += fmt.Sprintf("     \"%s\": %d\n", "attack-status", scope.AttackStatus)
 		}
 	}
@@ -154,12 +154,12 @@ type SignalConfigs struct {
 
 type IntCurrent struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue int `json:"current-value" codec:"36,omitempty"`
+	CurrentValue *int `json:"current-value" codec:"36,omitempty"`
 }
 
 type DecimalCurrent struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	CurrentValue decimal.Decimal `json:"current-value-decimal" codec:"43,omitempty"`
+	CurrentValue *decimal.Decimal `json:"current-value-decimal" codec:"43,omitempty"`
 }
 
 type SignalConfig struct {

@@ -103,7 +103,7 @@ func NewMitigationResponsePut(req *MitigationRequest) MitigationResponsePut {
 	if req.MitigationScope.Scopes != nil {
 		res.MitigationScope.Scopes = make([]ScopePut, len(req.MitigationScope.Scopes))
 		for i := range req.MitigationScope.Scopes {
-			res.MitigationScope.Scopes[i] = ScopePut{ MitigationId: req.MitigationScope.Scopes[i].MitigationId, Lifetime: req.MitigationScope.Scopes[i].Lifetime }
+			res.MitigationScope.Scopes[i] = ScopePut{ MitigationId: req.MitigationScope.Scopes[i].MitigationId, Lifetime: *req.MitigationScope.Scopes[i].Lifetime }
 		}
 	}
 
