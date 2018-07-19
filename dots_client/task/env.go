@@ -8,6 +8,11 @@ import (
     "reflect"
     client_message "github.com/nttdots/go-dots/dots_client/messages"
     "bytes"
+    "strings"
+	"encoding/hex"
+	"github.com/ugorji/go/codec"
+    "github.com/nttdots/go-dots/dots_common"
+    "github.com/nttdots/go-dots/dots_common/messages"
 )
 
 type Env struct {
@@ -91,6 +96,7 @@ func (env *Env) HandleResponse(pdu *libcoap.Pdu) {
     if !ok {
         if env.isTokenExist(pdu.Token) {
             log.Debugf("Success incoming PDU(NotificationResponse): %+v", pdu)
+            LogNotification(pdu)
         } else {
             log.Debugf("Unexpected incoming PDU: %+v", pdu)
         }
@@ -183,4 +189,45 @@ func (env *Env) isTokenExist(key []byte) (bool) {
         }
     }
     return false
+}
+
+/*
+ * Print log of notification when observe the mitigation
+ * parameter:
+ *  pdu response pdu notification
+ */
+func LogNotification(pdu *libcoap.Pdu) {
+    log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
+
+	if pdu.Data == nil {
+		return
+	}
+
+    log.Infof("        Raw payload: %s", pdu.Data)
+    hex := hex.Dump(pdu.Data)
+	log.Infof("        Raw payload hex: \n%s", hex)
+
+    dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
+
+    var err error
+    var logStr string
+
+    // Identify response is mitigation or session configuration by cbor data in heximal
+    if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
+        var v messages.MitigationResponse
+        err = dec.Decode(&v)
+        logStr = fmt.Sprintf("%+v", v)
+    } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
+        var v messages.ConfigurationResponse
+        err = dec.Decode(&v)
+        logStr = fmt.Sprintf("%+v", v)
+    } else {
+        log.Warnf("Unknown notification is received.")
+    }
+
+    if err != nil {
+        log.WithError(err).Warn("CBOR Decode failed.")
+        return
+    }
+    log.Infof("        CBOR decoded: %s", logStr)
 }
