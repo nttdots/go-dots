@@ -40,18 +40,55 @@ const (
     ResponseNotFound           Code = 132
     ResponseMethodNotAllowed   Code = 133
     ResponseNotAcceptable      Code = 134
+    ResponseConflict           Code = 137
     ResponsePreconditionFailed Code = 140
 
     RequestEntityTooLarge        Code = 141
-	ResponseUnsupportedMediaType Code = 143
+    ResponseUnsupportedMediaType Code = 143
 
     ResponseInternalServerError Code = 160
     ResponseNotImplemented      Code = 161
     ResponseServiceUnavailable  Code = 163
 
     ResponseBadGateway           Code = 162
-	ResponseGatewayTimeout       Code = 164
-	ResponseProxyingNotSupported Code = 165
+    ResponseGatewayTimeout       Code = 164
+    ResponseProxyingNotSupported Code = 165
+)
+
+type CoapCode string
+const (
+    CoapCreated               CoapCode = "2.01 Created"
+    CoapDeleted               CoapCode = "2.02 Deleted"
+    CoapValid                 CoapCode = "2.03 Valid"
+    CoapChanged               CoapCode = "2.04 Changed"
+    CoapContent               CoapCode = "2.05 Content"
+
+    CoapBadRequest            CoapCode = "4.00 Bad Request"
+    CoapUnauthorized          CoapCode = "4.01 Unauthorized"
+    CoapBadOption             CoapCode = "4.02 Bad Option"
+    CoapForbidden             CoapCode = "4.03 Forbidden"
+    CoapNotFound              CoapCode = "4.04 Not Found"
+    CoapMethodNotAllowed      CoapCode = "4.05 Method Not Allowed"
+    CoapNotAcceptable         CoapCode = "4.06 Not Acceptable"
+    CoapConflict              CoapCode = "4.09 Conflict"
+    CoapPreconditionFailed    CoapCode = "4.12 Precondition Failed"
+
+    CoapRequestEntityTooLarge CoapCode = "4.13 Request Entity Too Large"
+    CoapUnsupportedMediaType  CoapCode = "4.15 Unsupported Media Type"
+
+    CoapInternalServerError   CoapCode = "5.00 Internal Server Error"
+    CoapNotImplemented        CoapCode = "5.01 Not Implemented"
+    CoapServiceUnavailable    CoapCode = "5.03 Service Unavailable"
+
+    CoapBadGateway            CoapCode = "5.02 Bad Gateway"
+    CoapGatewayTimeout        CoapCode = "5.04 Gateway Timeout"
+    CoapProxyingNotSupported  CoapCode = "5.05 Proxying Not Supported"
+)
+
+type HexCBOR string
+const (
+    IETF_MITIGATION_SCOPE_HEX      HexCBOR = "a1 01"    // "ietf-dots-signal-channel:mitigation-scope"
+    IETF_SESSION_CONFIGURATION_HEX HexCBOR = "a1 18 1e" // "ietf-dots-signal-channel:signal-config"
 )
 
 // MediaType specifies the content type of a message.
@@ -319,4 +356,39 @@ func (pdu *Pdu) AddOption(key OptionKey, val interface{}) {
 func (pdu *Pdu) SetOption(key OptionKey, val interface{}) {
 	pdu.RemoveOption(key)
 	pdu.AddOption(key, val)
+}
+
+/*
+ * Get full coap code to print debug log when receive response
+ * parameter:
+ *  code response code
+ * return CoapCode:
+ *  CoapCode: full coap code that user can easy to read and understand (Ex: 2.01 Created)
+ */
+func (pdu *Pdu) CoapCode(code Code) CoapCode {
+    switch code {
+        case ResponseCreated:              return CoapCreated
+        case RequestDelete:                return CoapDeleted
+        case ResponseValid:                return CoapValid
+        case ResponseChanged:              return CoapChanged
+        case ResponseContent:              return CoapContent
+        case ResponseBadRequest:           return CoapBadRequest
+        case ResponseUnauthorized:         return CoapUnauthorized
+        case ResponseBadOption:            return CoapBadOption
+        case ResponseForbidden:            return CoapForbidden
+        case ResponseNotFound:             return CoapNotFound
+        case ResponseMethodNotAllowed:     return CoapMethodNotAllowed
+        case ResponseNotAcceptable:        return CoapNotAcceptable
+        case ResponseConflict:             return CoapConflict
+        case ResponsePreconditionFailed:   return CoapPreconditionFailed
+        case RequestEntityTooLarge:        return CoapRequestEntityTooLarge
+        case ResponseUnsupportedMediaType: return CoapUnsupportedMediaType
+        case ResponseInternalServerError:  return CoapInternalServerError
+        case ResponseNotImplemented:       return CoapNotImplemented
+        case ResponseBadGateway:           return CoapBadGateway
+        case ResponseServiceUnavailable:   return CoapServiceUnavailable
+        case ResponseGatewayTimeout:       return CoapGatewayTimeout
+        case ResponseProxyingNotSupported: return CoapProxyingNotSupported
+    }
+    return CoapCode("")
 }
