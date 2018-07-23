@@ -5,7 +5,7 @@ type Aliases struct {
 }
 
 type Alias struct {
-  Name             string      `yang:"config" json:"name"`
+  Name             string      `json:"name"`
   TargetPrefix     []IPPrefix  `yang:"config" json:"target-prefix"`
   TargetPortRange  []PortRange `yang:"config" json:"target-port-range"`
   TargetProtocol   UInt8List   `yang:"config" json:"target-protocol"`

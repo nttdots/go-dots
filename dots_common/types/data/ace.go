@@ -7,7 +7,7 @@ type ACLs struct {
 }
 
 type ACL struct {
-  Name            string          `yang:"config" json:"name"`
+  Name            string          `json:"name"`
   Type            *ACLType        `yang:"config" json:"type"`
   ActivationType  *ActivationType `yang:"config" json:"activation-type"`
   PendingLifetime *int32          `yang:"nonconfig" json:"pending-lifetime"`
