@@ -39,7 +39,7 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
   log.Infof("[PostController] Post request=%#+v", ar)
 
   // Validation
-  ir, err := ar.ValidateExtract(r.Method)
+  ir, err := ar.ValidateExtract(r.Method, customer)
   if err != nil {
     return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, err.Error())
   }

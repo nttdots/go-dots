@@ -4,6 +4,7 @@ import (
 	"fmt"
   log "github.com/sirupsen/logrus"
   types "github.com/nttdots/go-dots/dots_common/types/data"
+  "github.com/nttdots/go-dots/dots_server/models"
 )
 
 type ACLsRequest struct {
@@ -43,17 +44,12 @@ func validatePort(p *types.PortRangeOrOperator) bool {
   return true
 }
 
-func (r *ACLsRequest) Validate() (bool, string) {
+func (r *ACLsRequest) Validate(customer *models.Customer) (bool, string) {
   errorMsg := ""
 
   if len(r.ACLs.ACL) <= 0 {
     log.WithField("len", len(r.ACLs.ACL)).Error("'acl' is not exist.")
     errorMsg = fmt.Sprintf("Body Data Error : 'acl' is not exist")
-    return false, errorMsg
-  }
-  if len(r.ACLs.ACL) > 1 {
-    log.WithField("len", len(r.ACLs.ACL)).Error("multiple 'acl'.")
-    errorMsg = fmt.Sprintf("Body Data Error : Have multiple 'acl' (%d)", len(r.ACLs.ACL))
     return false, errorMsg
   }
 
@@ -137,6 +133,26 @@ func (r *ACLsRequest) Validate() (bool, string) {
         }
       }
 
+      if matches.IPv4 != nil && matches.IPv4.DestinationIPv4Network != nil{
+        destinationIpv4Network,_ := models.NewPrefix(matches.IPv4.DestinationIPv4Network.String())
+        validAddress,addressRange := destinationIpv4Network.CheckValidRangeIpAddress(customer.CustomerNetworkInformation.AddressRange)
+        if !validAddress {
+          log. Errorf("'destination-ipv4-network'with value = %+v is not supported within Portal ex-portal1 %+v", destinationIpv4Network, addressRange)
+          errorMsg = fmt.Sprintf("Body Data Error : 'destination-ipv4-network' with value = %+v is not supported within Portal ex-portal1 %+v", destinationIpv4Network, addressRange)
+          return false, errorMsg
+        }
+      }
+
+      if matches.IPv6 != nil  && matches.IPv6.DestinationIPv6Network != nil{
+        destinationIpv6Network,_ := models.NewPrefix(matches.IPv6.DestinationIPv6Network.String())
+        validAddress,addressRange := destinationIpv6Network.CheckValidRangeIpAddress(customer.CustomerNetworkInformation.AddressRange)
+        if !validAddress {
+          log. Errorf("'destination-ipv6-network'with value = %+v is not supported within Portal ex-portal1 %+v", destinationIpv6Network, addressRange)
+          errorMsg = fmt.Sprintf("Body Data Error : 'destination-ipv6-network' with value = %+v is not supported within Portal ex-portal1 %+v", destinationIpv6Network, addressRange)
+          return false, errorMsg
+        }
+      }
+
       if matches.TCP != nil {
         tcp := matches.TCP
         if tcp.SourcePort != nil && validatePort(tcp.SourcePort) == false {
@@ -170,9 +186,9 @@ func (r *ACLsRequest) Validate() (bool, string) {
 }
 
 
-func (r *ACLsRequest) ValidateWithName(name string) (bool, string) {
+func (r *ACLsRequest) ValidateWithName(name string, customer *models.Customer) (bool, string) {
 
-  bValid, errorMsg := r.Validate()
+  bValid, errorMsg := r.Validate(customer)
   if !bValid {
     return false, errorMsg
   }

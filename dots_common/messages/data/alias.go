@@ -4,6 +4,7 @@ import (
   "fmt"
   log "github.com/sirupsen/logrus"
   types "github.com/nttdots/go-dots/dots_common/types/data"
+  "github.com/nttdots/go-dots/dots_server/models"
 )
 
 type AliasesRequest struct {
@@ -14,7 +15,7 @@ type AliasesResponse struct {
   Aliases types.Aliases `json:"ietf-dots-data-channel:aliases"`
 }
 
-func (r *AliasesRequest) Validate(method string) (bool, string) {
+func (r *AliasesRequest) Validate(method string, customer *models.Customer) (bool, string) {
   errorMsg := ""
 
   if len(r.Aliases.Alias) <= 0 {
@@ -41,16 +42,31 @@ func (r *AliasesRequest) Validate(method string) (bool, string) {
     return false, errorMsg
   }
 
-  if method == "POST" && (len(alias.TargetPrefix) == 0 && len(alias.TargetFQDN) == 0 && len(alias.TargetURI) == 0) {
+  if len(alias.TargetPrefix) == 0 && len(alias.TargetFQDN) == 0 && len(alias.TargetURI) == 0 {
     log. Error("At least one of the 'target-prefix', 'target-fqdn', or 'target-uri' attributes MUST be present.")
     errorMsg = fmt.Sprintf("Body Data Error : At least one of the 'target-prefix', 'target-fqdn', or 'target-uri' attributes MUST be present")
     return false, errorMsg
-  } else if method == "PUT" && len(alias.TargetPrefix) == 0 {
+  }
+  if method == "PUT" && len(alias.TargetPrefix) == 0 {
     log. Error("Missing required 'target-prefix' attribute.")
     errorMsg = fmt.Sprintf("Body Data Error : Missing 'target-prefix'")
     return false, errorMsg
   }
 
+  for _,targetPrefix := range alias.TargetPrefix {
+    prefix,_ := models.NewPrefix(targetPrefix.String())
+    if prefix.IsMulticast() || prefix.IsLoopback() || prefix.IsBroadCast() {
+      log.WithField("'target-prefix'", targetPrefix).Errorf("The prefix  MUST NOT include broadcast, loopback, or multicast addresses")
+      errorMsg = fmt.Sprintf("Body Data Error : The prefix MUST NOT include broadcast, loopback, or multicast addresses.'target-prefix'=%+v", targetPrefix)
+      return false, errorMsg
+    }
+    validAddress,addressRange := prefix.CheckValidRangeIpAddress(customer.CustomerNetworkInformation.AddressRange)
+    if !validAddress {
+      log. Errorf("'target-prefix'with value = %+v is not supported within Portal ex-portal1 %+v", prefix, addressRange)
+      errorMsg = fmt.Sprintf("Body Data Error : 'target-prefix' with value = %+v is not supported within Portal ex-portal1 %+v", prefix, addressRange)
+      return false, errorMsg
+    }
+  }
 
   for _, pr := range alias.TargetPortRange {
     if pr.UpperPort != nil {
@@ -65,8 +81,8 @@ func (r *AliasesRequest) Validate(method string) (bool, string) {
   return true, ""
 }
 
-func (r *AliasesRequest) ValidateWithName(name string, method string) (bool, string) {
-  bValid, errorMsg := r.Validate(method)
+func (r *AliasesRequest) ValidateWithName(name string, method string, customer *models.Customer) (bool, string) {
+  bValid, errorMsg := r.Validate(method, customer)
   if !bValid {
     return false, errorMsg
   }

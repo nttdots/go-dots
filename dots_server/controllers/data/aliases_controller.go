@@ -173,7 +173,7 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
   log.Infof("[AliasesController] Put request=%#+v", req)
 
   // Validation
-  bValid, errorMsg := req.ValidateWithName(name, r.Method)
+  bValid, errorMsg := req.ValidateWithName(name, r.Method, customer)
   if !bValid {
     return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errorMsg)
   }

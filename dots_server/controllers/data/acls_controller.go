@@ -175,7 +175,7 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
   log.Infof("[ACLsController] Put request=%#+v", req)
 
   // Validation
-  bValid, errorMsg := req.ValidateWithName(name)
+  bValid, errorMsg := req.ValidateWithName(name, customer)
   if !bValid {
     return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errorMsg)
   }

@@ -2,6 +2,7 @@ package models
 
 import (
 	"net"
+	"strconv"
 )
 
 // Object to store CIDR
@@ -75,4 +76,35 @@ func ConvertAddrStringToPrefix(addrString []string) []Prefix {
 	}
 
 	return ret
+}
+
+// IsBroadCast reports whether ip is a broadcast address.
+func (prefix *Prefix) IsBroadCast() bool {
+	targetPrefix := prefix.net.IP.String()
+	if ip4 := prefix.net.IP.To4(); ip4 != nil {
+		return targetPrefix == prefix.LastIP().String()
+	}
+	return false
+}
+
+// IsMulticast reports whether ip is a multicast address.
+func (prefix *Prefix) IsMulticast() bool {
+	return prefix.net.IP.IsMulticast()
+}
+
+// IsLoopback reports whether ip is a loopback address.
+func (prefix *Prefix) IsLoopback() bool {
+	return prefix.net.IP.IsLoopback()
+}
+
+// Check validate range ip address
+func (prefix Prefix) CheckValidRangeIpAddress(addressRangePrefixes AddressRange) (bool, []string){
+	if !addressRangePrefixes.Validate(prefix) {
+		var addressRange []string
+        for _,address := range addressRangePrefixes.Prefixes {
+          addressRange = append(addressRange, address.Addr+"/"+ strconv.Itoa(address.PrefixLen))
+        }
+		return false, addressRange
+	}
+	return true, nil
 }
