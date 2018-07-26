@@ -108,3 +108,49 @@ func (prefix Prefix) CheckValidRangeIpAddress(addressRangePrefixes AddressRange)
 	}
 	return true, nil
 }
+
+// Remove overlap prefix
+func RemoveOverlapPrefix(prefixlst []Prefix) ([]Prefix){
+    pl := make([]Prefix, len(prefixlst))
+
+    copy(pl, prefixlst)
+    currentIdex := 0
+    checkIndex := 1
+
+    for currentIdex < len(pl){
+
+        if checkIndex >= len(pl){
+            currentIdex++
+            checkIndex = currentIdex + 1
+            continue
+        }
+
+        if pl[currentIdex].Includes(&pl[checkIndex]){
+            if checkIndex == len(pl) - 1{
+                pl = pl[:checkIndex]
+            } else if checkIndex < len(pl) - 1{
+                pl = append(pl[:checkIndex], pl[checkIndex+1:]...)
+            }else{
+                break;
+            }
+            currentIdex = 0
+            checkIndex = currentIdex + 1
+            continue
+        }
+
+        if pl[checkIndex].Includes(&pl[currentIdex]){
+			if currentIdex == 0{
+				pl = pl[currentIdex+1:]
+			} else if currentIdex > 0{
+				pl = append(pl[:currentIdex], pl[currentIdex+1:]...)
+			}
+            currentIdex = 0
+            checkIndex = currentIdex + 1
+            continue
+        }
+
+        checkIndex++
+    }
+
+    return pl
+}

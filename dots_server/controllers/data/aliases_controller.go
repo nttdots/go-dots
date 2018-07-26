@@ -185,6 +185,7 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
       if err != nil {
         return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alias")
       }
+      alias.TargetPrefix = data_models.RemoveOverlapIPPrefix(alias.TargetPrefix)
       status := http.StatusCreated
       if e == nil {
         t := data_models.NewAlias(client, alias, now, defaultAliasLifetime)

@@ -49,22 +49,27 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (Response, error) {
       switch req := ir.(type) {
       case *messages.AliasesRequest:
-        alias := req.Aliases.Alias[0]
-        e, err := data_models.FindAliasByName(tx, client, alias.Name, now)
-        if err != nil {
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alias")
+        n := []data_models.Alias{}
+        for _,alias := range req.Aliases.Alias {
+          e, err := data_models.FindAliasByName(tx, client, alias.Name, now)
+          if err != nil {
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alias")
+          }
+          if e != nil {
+            return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, "Specified alias 'name' is already registered")
+          } else {
+            alias.TargetPrefix = data_models.RemoveOverlapIPPrefix(alias.TargetPrefix)
+            n = append(n, data_models.NewAlias(client, alias, now, defaultAliasLifetime))
+          }
         }
 
-        if e != nil {
-          return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, "Specified alias 'name' is already registered")
-        } else {
-          n := data_models.NewAlias(client, alias, now, defaultAliasLifetime)
-          err = n.Save(tx)
+        for _,alias := range n {
+          err = alias.Save(tx)
           if err != nil {
             return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save alias")
           }
-          return EmptyResponse(http.StatusCreated)
         }
+        return EmptyResponse(http.StatusCreated)
       case *messages.ACLsRequest:
         n := []data_models.ACL{}
         for _,acl := range req.ACLs.ACL {

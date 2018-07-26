@@ -3,11 +3,13 @@ package data_models
 import (
   "encoding/json"
   "time"
+  "net"
   log "github.com/sirupsen/logrus"
 
   types "github.com/nttdots/go-dots/dots_common/types/data"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/db_models/data"
+  "github.com/nttdots/go-dots/dots_server/models"
 )
 
 type Alias struct {
@@ -174,4 +176,20 @@ func DeleteAliasByName(tx *db.Tx, client *Client, name string, now time.Time) (b
     return false, nil
   }
   return deleteAlias(tx, a)
+}
+
+// Remove overlap IPPrefix
+func RemoveOverlapIPPrefix(targetPrefix []types.IPPrefix) ([]types.IPPrefix) {
+	targetPrefixs := []types.IPPrefix{}
+	prefixs := []models.Prefix{}
+
+	for _,prefix := range targetPrefix {
+    p,_ := models.NewPrefix(prefix.String())
+	  prefixs = append(prefixs, p)
+	}
+	prefixs = models.RemoveOverlapPrefix(prefixs)
+	for _,prefix := range prefixs {
+	  targetPrefixs = append(targetPrefixs, types.IPPrefix{net.ParseIP(prefix.Addr), prefix.PrefixLen})
+	}
+	return targetPrefixs
 }
