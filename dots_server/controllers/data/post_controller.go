@@ -9,6 +9,7 @@ import (
   log "github.com/sirupsen/logrus"
 
   messages "github.com/nttdots/go-dots/dots_common/messages/data"
+  types "github.com/nttdots/go-dots/dots_common/types/data"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_server/models/data"
@@ -65,22 +66,30 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
           return EmptyResponse(http.StatusCreated)
         }
       case *messages.ACLsRequest:
-        acl := req.ACLs.ACL[0]
-        e, err := data_models.FindACLByName(tx, client, acl.Name, now)
-        if err != nil {
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alc")
+        n := []data_models.ACL{}
+        for _,acl := range req.ACLs.ACL {
+          e, err := data_models.FindACLByName(tx, client, acl.Name, now)
+          if err != nil {
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alc")
+          }
+          if e != nil {
+            return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, "Specified acl 'name' is already registered")
+          } else {
+            if acl.ActivationType == nil {
+              defValue := types.ActivationType_ActivateWhenMitigating
+              acl.ActivationType = &defValue
+            }
+            n = append(n, data_models.NewACL(client, acl, now, defaultACLLifetime))
+          }
         }
 
-        if e != nil {
-          return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, "Specified acl 'name' is already registered")
-        } else {
-          n := data_models.NewACL(client, acl, now, defaultACLLifetime)
-          err = n.Save(tx)
+        for _,acl := range n {
+          err = acl.Save(tx)
           if err != nil {
             return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
           }
-          return EmptyResponse(http.StatusCreated)
         }
+        return EmptyResponse(http.StatusCreated)
       default:
         return responseOf(fmt.Errorf("Unexpected request: %#+v", req))
       }

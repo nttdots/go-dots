@@ -187,6 +187,10 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       if err != nil {
         return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get acl")
       }
+      if acl.ActivationType == nil {
+        defValue := types.ActivationType_ActivateWhenMitigating
+        acl.ActivationType = &defValue
+      }
       status := http.StatusCreated
       if e == nil {
         t := data_models.NewACL(client, acl, now, defaultACLLifetime)

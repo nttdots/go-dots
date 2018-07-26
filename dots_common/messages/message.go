@@ -162,3 +162,13 @@ func GetChannelType(message string) ChannelType {
 	}
 	panic(fmt.Sprintf("%s is not valide Message Name", message))
 }
+
+// string list contains string return bool
+func Contains(stringList []string, target string) bool {
+	for _, s := range stringList {
+		if s == target {
+			return true
+		}
+	}
+	return false
+}
