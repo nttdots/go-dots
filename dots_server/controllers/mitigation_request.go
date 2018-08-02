@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +22,7 @@ type MitigationRequest struct {
 	Controller
 }
 
-const validationError string = "validation error."
+const validationError string = "Validation error."
 
 /*
  * Handles mitigationRequest GET requests.
@@ -101,7 +100,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		}
 		
 		for _, item := range mp.mitigation.TargetPortRange {
-			portRange := messages.TargetPortRange{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
+			portRange := messages.TargetPortRange{LowerPort: &item.LowerPort, UpperPort: &item.UpperPort}
 			scopeStates.TargetPortRange = append(scopeStates.TargetPortRange, portRange)
 		}
 		scopes = append(scopes, scopeStates)
@@ -194,7 +193,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			goto ResponseNG
 		}
 
-		if body.EffectiveClientIdentifier() != "" || body.EffectiveClientDomainIdentifier() != "" || body.EffectiveMitigationId() != 0 {
+		if body.EffectiveClientIdentifier() != "" || body.EffectiveClientDomainIdentifier() != "" || body.EffectiveMitigationId() != nil {
 			log.Errorf("Client Identifier, Client Domain Identifier and Mitigation Id are forbidden in body request")
 			goto ResponseNG
 		}
@@ -370,7 +369,7 @@ Response:
 func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier string, clientDomainIdentifier string) (m *models.MitigationScope, err error) {
 	log.Debugf("newMitigationScope req=%+v, c=%+v, clientIdentifier=%+v, clientDomainIdentifier=%+v", req, c, clientIdentifier, clientDomainIdentifier)
 	m = models.NewMitigationScope(c, clientIdentifier)
-	m.MitigationId = req.MitigationId
+	m.MitigationId = *req.MitigationId
 	m.TargetProtocol.AddList(req.TargetProtocol)
 	m.FQDN.AddList(req.FQDN)
 	m.URI.AddList(req.URI)
@@ -410,19 +409,31 @@ func newTargetPrefix(targetPrefix []string) (prefixes []models.Prefix, err error
 /*
  * Parse the 'targetPortRange' field in a mitigationScope and return a list of PortRange objects.
  */
-func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges []models.PortRange, err error) {
+ func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges []models.PortRange, err error) {
 	portRanges = make([]models.PortRange, len(targetPortRange))
 	for i, r := range targetPortRange {
-		if r.LowerPort < 0 || 0xffff < r.LowerPort || r.UpperPort < 0 || 0xffff < r.UpperPort {
-			return nil, errors.New(fmt.Sprintf("invalid port number. lower:%d, upper:%d", r.LowerPort, r.UpperPort))
-		}
-		// TODO: optional int
-		if r.UpperPort == 0 {
-			portRanges[i] = models.NewPortRange(r.LowerPort, r.LowerPort)
-		} else if r.LowerPort <= r.UpperPort {
-			portRanges[i] = models.NewPortRange(r.LowerPort, r.UpperPort)
+		if r.LowerPort == nil {
+			log.Error("lower port is mandatory for target-port-range data.")
+			return nil, errors.New(validationError)
+		} else if r.UpperPort != nil {
+			if *r.LowerPort < 0 || 0xffff < *r.LowerPort || *r.UpperPort < 0 || 0xffff < *r.UpperPort {
+				log.Errorf("invalid port number. lower:%d, upper:%d", r.LowerPort, *r.UpperPort)
+				return nil, errors.New(validationError)
+			}
+			// TODO: optional int
+			if *r.LowerPort <= *r.UpperPort {
+				portRanges[i] = models.NewPortRange(*r.LowerPort, *r.UpperPort)
+			} else {
+				log.Errorf("invalid port number. lower:%d, upper:%d", r.LowerPort, *r.UpperPort)
+				return nil, errors.New(validationError)
+			}
 		} else {
-			return nil, errors.New(fmt.Sprintf("invalid port number. lower:%d, upper:%d", r.LowerPort, r.UpperPort))
+			if *r.LowerPort < 0 || 0xffff < *r.LowerPort {
+				log.Errorf("invalid port number. lower:%d", r.LowerPort)
+				return nil, errors.New(validationError)
+			}
+			// TODO: optional int
+			portRanges[i] = models.NewPortRange(*r.LowerPort, *r.LowerPort)
 		}
 	}
 	return
@@ -519,7 +530,7 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
  */
 func deleteMitigationByMessage(req *messages.MitigationRequest, customer *models.Customer) (err error) {
 	for _, scope := range req.MitigationScope.Scopes {
-		err = models.DeleteMitigationScope(customer.Id, req.EffectiveClientIdentifier(), scope.MitigationId, models.AnyMitigationScopeId)
+		err = models.DeleteMitigationScope(customer.Id, req.EffectiveClientIdentifier(), *scope.MitigationId, models.AnyMitigationScopeId)
 		if err != nil {
 			return
 		}
@@ -533,7 +544,7 @@ func deleteMitigationByMessage(req *messages.MitigationRequest, customer *models
 func cancelMitigationByMessage(req *messages.MitigationRequest, customer *models.Customer) error {
 	ids := make([]int, len(req.MitigationScope.Scopes))
 	for i, scope := range req.MitigationScope.Scopes {
-		ids[i] = scope.MitigationId
+		ids[i] = *scope.MitigationId
 	}
 	return cancelMitigationByIds(ids, req.EffectiveClientIdentifier(), customer)
 }
@@ -772,8 +783,8 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 
 	// Set Status to InProgress
 	if currentScope == nil {
-		currentScope, err = models.GetMitigationScope(customer.Id, body.MitigationScope.Scopes[0].ClientIdentifier,
-			body.MitigationScope.Scopes[0].MitigationId, mitigationScopeIds[0])
+		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(),
+			*body.EffectiveMitigationId(), mitigationScopeIds[0])
 		if err != nil {
 			log.WithError(err).Error("MitigationScope load error.")
 			return err

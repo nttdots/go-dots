@@ -288,9 +288,6 @@ func createMitigationScopeParameterValue(session *xorm.Session, mitigationScope 
 	// TargetProtocol is registered
 	newTargetProtocolList := []*db_models.ParameterValue{}
 	for _, v := range mitigationScope.TargetProtocol.List() {
-		if v == 0 {
-			continue
-		}
 		newTargetProtocol := db_models.CreateTargetProtocolParam(v)
 		newTargetProtocol.MitigationScopeId = mitigationScopeId
 		newTargetProtocolList = append(newTargetProtocolList, newTargetProtocol)
