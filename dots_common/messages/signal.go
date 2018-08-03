@@ -94,7 +94,9 @@ func (m *MitigationRequest) String() (result string) {
 	result = "\n \"ietf-dots-signal-channel:mitigation-scope\":\n"
 	for key, scope := range m.MitigationScope.Scopes {
 		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
-		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
+		if scope.MitigationId != nil {
+			result += fmt.Sprintf("     \"%s\": %d\n", "mid", *scope.MitigationId)
+		}
 		if scope.TargetPrefix != nil {
 			for k, v := range scope.TargetPrefix {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-prefix", k+1, v)
@@ -104,10 +106,10 @@ func (m *MitigationRequest) String() (result string) {
 			for k, v := range scope.TargetPortRange {
 				result += fmt.Sprintf("     \"%s[%d]\":\n", "target-port-range", k+1)
 				if v.LowerPort != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", v.LowerPort)
+					result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", *v.LowerPort)
 				}
 				if v.UpperPort != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", v.UpperPort)
+					result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", *v.UpperPort)
 				}
 			}
 		}
@@ -132,10 +134,10 @@ func (m *MitigationRequest) String() (result string) {
 			}
 		}
 		if scope.Lifetime != nil {
-			result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+			result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", *scope.Lifetime)
 		}
 		if scope.AttackStatus != nil {
-			result += fmt.Sprintf("     \"%s\": %d\n", "attack-status", scope.AttackStatus)
+			result += fmt.Sprintf("     \"%s\": %d\n", "attack-status", *scope.AttackStatus)
 		}
 	}
 	return

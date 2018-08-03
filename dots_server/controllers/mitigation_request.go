@@ -13,6 +13,9 @@ import (
 	"github.com/nttdots/go-dots/dots_server/models"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/libcoap"
+
+	data_controllers "github.com/nttdots/go-dots/dots_server/controllers/data"
+	types    "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
 /*
@@ -21,8 +24,6 @@ import (
 type MitigationRequest struct {
 	Controller
 }
-
-const validationError string = "Validation error."
 
 /*
  * Handles mitigationRequest GET requests.
@@ -84,6 +85,9 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			MitigationStart: float64(startedAt),
 			Lifetime: mp.mitigation.Lifetime,
 			Status: mp.mitigation.Status,
+			AliasName: mp.mitigation.AliasName.List(),
+			FQDN: mp.mitigation.FQDN.List(),
+			URI: mp.mitigation.URI.List(),
 			BytesDropped: 0,  // Just dummy for interop
 			BpsDropped: 0,    // Just dummy for interop
 			PktsDropped: 0,   // Just dummy for interop
@@ -94,13 +98,13 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		}
 		// Set TargetPrefix, TargetPortRange
 		scopeStates.TargetPrefix = make([]string, 0, len(mp.mitigation.TargetPrefix))
-		scopeStates.TargetPortRange = make([]messages.TargetPortRange, 0, len(mp.mitigation.TargetPortRange))
+		scopeStates.TargetPortRange = make([]messages.PortRangeResponse, 0, len(mp.mitigation.TargetPortRange))
 		for _, item := range mp.mitigation.TargetPrefix {
 			scopeStates.TargetPrefix = append(scopeStates.TargetPrefix, item.String())
 		}
 		
 		for _, item := range mp.mitigation.TargetPortRange {
-			portRange := messages.TargetPortRange{LowerPort: &item.LowerPort, UpperPort: &item.UpperPort}
+			portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
 			scopeStates.TargetPortRange = append(scopeStates.TargetPortRange, portRange)
 		}
 		scopes = append(scopes, scopeStates)
@@ -239,10 +243,10 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 			err = CreateMitigation(body, customer, nil)
 			if err != nil {
-				if err.Error() == validationError {
+				log.Error("Failed to Create Mitigation.")
+				if err.Error() == models.ValidationError {
 					goto ResponseNG
 				}
-				log.Error("Failed to Create Mitigation.")
 				return Response{}, err
 			}
 
@@ -271,10 +275,10 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 			err = CreateMitigation(body, customer, currentScope)
 			if err != nil {
-				if err.Error() == validationError {
+				log.Error("Failed to Create Mitigation.")
+				if err.Error() == models.ValidationError {
 					goto ResponseNG
 				}
-				log.Error("Failed to Create Mitigation.")
 				return Response{}, err
 			}
 
@@ -414,23 +418,23 @@ func newTargetPrefix(targetPrefix []string) (prefixes []models.Prefix, err error
 	for i, r := range targetPortRange {
 		if r.LowerPort == nil {
 			log.Error("lower port is mandatory for target-port-range data.")
-			return nil, errors.New(validationError)
+			return nil, errors.New(models.ValidationError)
 		} else if r.UpperPort != nil {
 			if *r.LowerPort < 0 || 0xffff < *r.LowerPort || *r.UpperPort < 0 || 0xffff < *r.UpperPort {
 				log.Errorf("invalid port number. lower:%d, upper:%d", r.LowerPort, *r.UpperPort)
-				return nil, errors.New(validationError)
+				return nil, errors.New(models.ValidationError)
 			}
 			// TODO: optional int
 			if *r.LowerPort <= *r.UpperPort {
 				portRanges[i] = models.NewPortRange(*r.LowerPort, *r.UpperPort)
 			} else {
 				log.Errorf("invalid port number. lower:%d, upper:%d", r.LowerPort, *r.UpperPort)
-				return nil, errors.New(validationError)
+				return nil, errors.New(models.ValidationError)
 			}
 		} else {
 			if *r.LowerPort < 0 || 0xffff < *r.LowerPort {
 				log.Errorf("invalid port number. lower:%d", r.LowerPort)
-				return nil, errors.New(validationError)
+				return nil, errors.New(models.ValidationError)
 			}
 			// TODO: optional int
 			portRanges[i] = models.NewPortRange(*r.LowerPort, *r.LowerPort)
@@ -449,7 +453,7 @@ func newTargetPrefix(targetPrefix []string) (prefixes []models.Prefix, err error
 			return mitigationScopeIds, err
 		}
 		if !models.MitigationScopeValidator.Validate(models.MessageEntity(scope), customer) {
-			return mitigationScopeIds, errors.New(validationError)
+			return mitigationScopeIds, errors.New(models.ValidationError)
 		}
 		// store them to the mitigationScope table
 		mitigationScope, err := models.CreateMitigationScope(*scope, *customer)
@@ -513,6 +517,18 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 		if s == nil {
 			log.WithField("mitigation_id", mid).Warn("mitigation_scope not found.")
 			continue
+		}
+
+		// Get alias data from data channel
+		aliases, err := data_controllers.GetDataAliasesByName(customer, clientIdentifier, s.AliasName.List())
+		if err != nil {
+			return nil, err
+		}
+
+		// Append alias data to new mitigation scope
+		err = appendAliasDataToMitigationScope(aliases, s)
+		if err != nil {
+			return nil, err
 		}
 
 		p, err := models.GetActiveProtectionByMitigationScopeId(s.MitigationScopeId)
@@ -659,7 +675,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer, mitigatio
 			scope.MitigationScopeId = mitigationScopeIds[counter]
 		}
 		if !models.MitigationScopeValidator.Validate(models.MessageEntity(scope), c) {
-			return errors.New(validationError)
+			return errors.New(models.ValidationError)
 		}
 		// send a blocker request to the blockerselectionservice.
 		// we receive the blocker the selection service propose via a dedicated channel.
@@ -764,6 +780,21 @@ func ManageExpiredMitigation(lifetimeInterval int) {
 }
 
 func CreateMitigation(body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope) (error) {
+
+	// Get data alias from data channel
+	aliases, err := data_controllers.GetDataAliasesByName(customer, body.EffectiveClientIdentifier(), body.MitigationScope.Scopes[0].AliasName)
+	if err != nil {
+		log.Errorf("Get data alias error: %+v", err)
+		return err
+	}
+	// Check is the alias with name registered
+	if len(aliases.Alias) != len(body.MitigationScope.Scopes[0].AliasName) {
+		err = errors.New(models.ValidationError)
+		return err
+	}
+
+	// TODO: Check overlap alias data with other mitigations
+
 	// Create New
 	mitigationScopeIds, err := createMitigationScope(body, customer)
 	if err != nil {
@@ -773,7 +804,14 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 
 	if currentScope != nil && len(mitigationScopeIds) == 0 {
 		mitigationScopeIds = append(mitigationScopeIds, currentScope.MitigationScopeId)
-	} 
+	}
+
+	// Append aliases data to mitigation scopes before sending to GoBGP server
+	err = appendAliasParametersToRequest(aliases, &body.MitigationScope.Scopes[0])
+	if err != nil {
+		log.Errorf("Append alias parameters to mitigation request failed.")
+		return err
+	}
 
 	err = callBlocker(body, customer, mitigationScopeIds)
 	if err != nil {
@@ -937,3 +975,84 @@ func checkAttributesEfficacyUpdate(customer *models.Customer, messageScope *mess
 
 	return false
 }
+
+/*
+ * append alias parameters to body request: the DOTS server appends the parameter values in ’alias-name’ with the corresponding parameter values
+ * in ’targetprefix’, ’target-port-range’, ’target-fqdn’, or ’target-uri’.
+ * parameter:
+ *  aliases list of alias data
+ *  scope mitigation scope
+ */
+func appendAliasParametersToRequest(aliases types.Aliases, scope *messages.Scope) (error) {
+	for _, alias := range aliases.Alias {
+		// append target prefix parameter, prefix overlap will be validated in createMitigationScope()
+		for _, prefix := range alias.TargetPrefix {
+			scope.TargetPrefix = append(scope.TargetPrefix, prefix.String())
+		}
+
+		// append target port range parameter
+		for _, portRange := range alias.TargetPortRange {
+			lower := int(portRange.LowerPort)
+			upper := lower
+			if portRange.UpperPort != nil {
+				upper = int(*portRange.UpperPort)
+			}
+			scope.TargetPortRange = append(scope.TargetPortRange, messages.TargetPortRange{ LowerPort: &lower, UpperPort: &upper })
+		}
+
+		// append target protocol parameter
+		for _, protocol := range alias.TargetProtocol {
+			scope.TargetProtocol = append(scope.TargetProtocol, int(protocol))
+		}
+
+		// append fqdn parameter, fqdn overlap will be validated in createMitigationScope()
+		scope.FQDN = append(scope.FQDN, alias.TargetFQDN...)
+
+		// append uri parameter, uri overlap will be validated in createMitigationScope()
+		scope.URI = append(scope.URI, alias.TargetURI...)
+	}
+
+	return nil
+ }
+
+ /*
+ * append alias parameters to a mitigation scope without validation
+ * parameter:
+ *  aliases list of alias data
+ * return:
+ *  scope mitigation scope
+ *  err error
+ */
+func appendAliasDataToMitigationScope(aliases types.Aliases, scope *models.MitigationScope) (error) {
+	// loop on list of alias data to convert them to mitigation scope
+	for _, alias := range aliases.Alias {
+		// append target prefix parameter
+		for _, prefix := range alias.TargetPrefix {
+			targetPrefix, err := models.NewPrefix(prefix.String())
+			if err != nil {
+				return err
+			}
+			scope.TargetPrefix = append(scope.TargetPrefix, targetPrefix)
+		}
+
+		// append target port range parameter
+		for _, portRange := range alias.TargetPortRange {
+			if portRange.UpperPort == nil {
+				portRange.UpperPort = &portRange.LowerPort
+			}
+			scope.TargetPortRange = append(scope.TargetPortRange, models.NewPortRange(int(portRange.LowerPort), int(*portRange.UpperPort)))
+		}
+
+		// append target protocol parameter
+		for _, protocol := range alias.TargetProtocol {
+			scope.TargetProtocol.Append(int(protocol))
+		}
+
+		// append fqdn parameter
+		scope.FQDN.AddList(alias.TargetFQDN)
+
+		// append uri parameter
+		scope.URI.AddList(alias.TargetURI)
+	}
+	return nil
+ }

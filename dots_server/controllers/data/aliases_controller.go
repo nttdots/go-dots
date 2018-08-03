@@ -203,3 +203,40 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
     })
   })
 }
+
+/*
+ * Validate aliases: have they been created by the client
+ * parameter:
+ *  customer request source Customer
+ *  cuid client identifier
+ *  aliases a list of alias-name
+ * return:
+ *  res: a list of alias data corresponding to alias-name
+ *  err: Error occur in validation progress
+ */
+func GetDataAliasesByName(customer *models.Customer, cuid string, aliases []string) (res types.Aliases, err error) {
+  now := time.Now()
+  for _, name := range aliases {
+    _, err = WithTransaction(func (tx *db.Tx) (Response, error) {
+      return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
+      alias, err := data_models.FindAliasByName(tx, client, name, now)
+      if err != nil {
+        return
+      }
+      if alias == nil {
+        log.Warnf("Alias with name: %+v has not been created by client: %+v", name, cuid)
+        return
+      }
+
+      ta, err := alias.ToTypesAlias(now)
+      if err != nil {
+        return
+      }
+
+      res.Alias = append(res.Alias, *ta)
+      return
+      })
+    })
+  }
+  return
+}
