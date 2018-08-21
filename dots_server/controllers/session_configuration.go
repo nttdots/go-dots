@@ -10,6 +10,7 @@ import (
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
+	"github.com/nttdots/go-dots/libcoap"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
 
@@ -78,9 +79,12 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue   	   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactorIdle).Round(2)
 		resp.SignalConfigs.TriggerMitigation                               = signalSessionConfiguration.TriggerMitigation
 	}
+	maxAgeOption := dots_config.GetServerSystemConfig().MaxAgeOption
+	request.Options = append(request.Options, libcoap.OptionMaxage.String(strconv.FormatUint(maxAgeOption,10)))
 	res = Response{
 			Type: common.Acknowledgement,
 			Code: common.Content,
+			Options: request.Options,
 			Body: resp,
 	}
 

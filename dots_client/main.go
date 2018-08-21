@@ -365,6 +365,7 @@ func loadConfig(env *task.Env) error{
 	env.SetMissingHbAllowed(config.MissingHbAllowed)
 	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
 	env.SetRetransmitParams(config.MaxRetransmit, decimal.NewFromFloat(config.AckTimeout).Round(2), decimal.NewFromFloat(config.AckRandomFactor).Round(2))
+	env.SetIntervalBeforeMaxAge(config.IntervalBeforeMaxAge)
 	return nil
 }
 

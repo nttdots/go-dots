@@ -153,8 +153,8 @@ func export_nack_handler(ctx *C.coap_context_t,
 		return
 	}
 
-    // If previous message is Ping message
-	if context.nackHandler != nil && req.Type == C.COAP_MESSAGE_CON && req.Code == 0 {
+    // If previous message is Ping message or Session Config message
+	if context.nackHandler != nil && req.Type == C.COAP_MESSAGE_CON && (req.Code == 0 || req.Code == C.COAP_REQUEST_GET){
 		context.nackHandler(context, session, req, NackReason(reason))
 	}
 }

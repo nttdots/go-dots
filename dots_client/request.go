@@ -207,7 +207,8 @@ func (r *Request) Send() {
 			// If this is response of session config Get without abnormal, restart ping task with latest parameters
 			if (r.requestName == "session_configuration") && (r.method == "GET") && 
 				(response.Code == libcoap.ResponseContent) {
-				r.RestartPingTask(response)
+				RestartPingTask(response, r.env)
+				RefreshSessionConfig(response, r.env, r.pdu)
 			}
 		},
 		handleTimeout)
@@ -217,6 +218,10 @@ func (r *Request) Send() {
 
 func (r *Request) logMessage(pdu *libcoap.Pdu) {
 	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
+	maxAgeRes:= pdu.GetOptionStringValue(libcoap.OptionMaxage)
+	if maxAgeRes != "" {
+		log.Infof("Max-Age Option: %v", maxAgeRes)
+	}
 
 	if pdu.Data == nil {
 		return
@@ -264,7 +269,7 @@ func (r *Request) logMessage(pdu *libcoap.Pdu) {
 	log.Infof("        CBOR decoded: %s", logStr)
 }
 
-func (r *Request) RestartPingTask(pdu *libcoap.Pdu) {
+func RestartPingTask(pdu *libcoap.Pdu, env *task.Env) {
 	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 	var v messages.ConfigurationResponse
 	err := dec.Decode(&v)
@@ -279,13 +284,13 @@ func (r *Request) RestartPingTask(pdu *libcoap.Pdu) {
 	var ackTimeout decimal.Decimal
 	var ackRandomFactor decimal.Decimal
 
-	if r.env.SessionConfigMode() == string(client_message.MITIGATING) {
+	if env.SessionConfigMode() == string(client_message.MITIGATING) {
 		heartbeatInterval = v.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue
 		missingHbAllowed = v.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue
 		maxRetransmit = v.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue
 		ackTimeout = v.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue.Round(2)
 		ackRandomFactor = v.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2)
-	} else if r.env.SessionConfigMode() == string(client_message.IDLE) {
+	} else if env.SessionConfigMode() == string(client_message.IDLE) {
 		heartbeatInterval = v.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue
 		missingHbAllowed = v.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue
 		maxRetransmit = v.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue
@@ -295,12 +300,81 @@ func (r *Request) RestartPingTask(pdu *libcoap.Pdu) {
 
 	log.Debugf("Got session configuration data from server. Restart ping task with heatbeat-interval=%v, missing-hb-allowed=%v...", heartbeatInterval, missingHbAllowed)
 	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
-	r.env.SetRetransmitParams(maxRetransmit, ackTimeout, ackRandomFactor)
+	env.SetRetransmitParams(maxRetransmit, ackTimeout, ackRandomFactor)
 	
-	r.env.StopPing()
-	r.env.SetMissingHbAllowed(missingHbAllowed)
-	r.env.Run(task.NewPingTask(
+	env.StopPing()
+	env.SetMissingHbAllowed(missingHbAllowed)
+	env.Run(task.NewPingTask(
 			time.Duration(heartbeatInterval) * time.Second,
 			pingResponseHandler,
 			pingTimeoutHandler))
+}
+
+/*
+ * Refresh session config
+ * 1. Stop current session config task
+ * 2. Check timeFresh = 'maxAgeOption' - 'intervalBeforeMaxAge'
+ *    If timeFresh > 0, Run new session config task
+ *    Else, Not run new session config task
+ * parameter:
+ *    pdu: result response from dots_server
+ *    env: env of session config
+ *    message: request message
+ */
+func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu) {
+	env.StopSessionConfig()
+	maxAgeRes,_ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
+	timeFresh := maxAgeRes - env.IntervalBeforeMaxAge()
+	if timeFresh > 0 {
+		env.Run(task.NewSessionConfigTask(
+			message,
+			time.Duration(timeFresh) * time.Second,
+			sessionConfigResponseHandler,
+			sessionConfigTimeoutHandler))
+	} else {
+		log.Infof("Max-Age Option has value %+v <= %+v value of intervalBeforeMaxAge. Don't refresh session config", maxAgeRes, env.IntervalBeforeMaxAge())
+	}
+}
+
+/*
+ * Session config response handler
+ * If Get session config is successfully
+ *   1. Restart Ping task
+ *   2. Refresh session config
+ * parameter:
+ *    t: session config task
+ *    pdu: result response from server
+ *    env: env session config
+ */
+func sessionConfigResponseHandler (t *task.SessionConfigTask, pdu *libcoap.Pdu, env *task.Env) {
+	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
+	maxAgeRes,_ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
+	log.Infof("Max-Age Option: %v", maxAgeRes)
+	log.Infof("        Raw payload: %s", pdu.Data)
+	log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
+
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
+	var v messages.ConfigurationResponse
+	err := dec.Decode(&v)
+	if err != nil {
+		log.WithError(err).Warn("CBOR Decode failed.")
+		return
+	}
+	log.Infof("        CBOR decoded: %+v", v)
+	if pdu.Code == libcoap.ResponseContent {
+		RestartPingTask(pdu, env)
+		RefreshSessionConfig(pdu, env, t.MessageTask())
+	}
+}
+
+/*
+ * Session config timeout handler
+ * Stop current session config task
+ * parameter:
+ *    _: session config task
+ *    env: env session config
+ */
+func sessionConfigTimeoutHandler(_ *task.SessionConfigTask, env *task.Env) {
+	log.Info("Session config refresh timeout")
+	env.StopSessionConfig()
 }

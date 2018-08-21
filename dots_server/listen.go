@@ -231,10 +231,16 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if is_unknown && res.Code > dots_common.Limit2xxCode {
             context.DeleteResourceByQuery(resourcePath)
         }
-
+        
         response.Code = libcoap.Code(res.Code)
         response.Data = payload
         response.Type = CoAPType(res.Type)
+
+        for _,option := range res.Options {
+            if option.Key == libcoap.OptionMaxage {
+                response.SetOption(libcoap.OptionMaxage, option.String())
+            }
+        }
         log.Debugf("response.Data=\n%s", hex.Dump(payload))
         // add content type cbor
         response.SetOption(libcoap.OptionContentType, uint16(libcoap.AppCbor))

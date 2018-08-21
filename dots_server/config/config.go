@@ -104,6 +104,22 @@ func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
 	}, nil
 }
 
+func  ConvertMaxAge(maxAge string) (uint64, error) {
+	var m int
+	if maxAge != "" {
+		mt,_ := strconv.Atoi(maxAge)
+		m = mt
+	} else {
+		m = 60
+	}
+
+	// (2^32)-1 = 4294967295
+	if m < 0 || m > 4294967295 {
+		return uint64(m), errors.New("maxAgeOption must be between 0 and (2^32)-1")
+	}
+	return uint64(m), nil
+}
+
 // Configuration root structure read from the system configuration file
 type ServerConfigTree struct {
 	ServerSystemConfig ServerSystemConfigNode `yaml:"system"`
@@ -249,6 +265,7 @@ type ServerSystemConfig struct {
 	Network                      *Network
 	Database                     *Database
 	LifetimeConfiguration        *LifetimeConfiguration
+	MaxAgeOption                 uint64
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -258,6 +275,7 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setNetwork(*sc.Network)
 	GetServerSystemConfig().setDatabase(*sc.Database)
 	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
+	GetServerSystemConfig().setMaxAgeOption(sc.MaxAgeOption)
 }
 
 type ServerSystemConfigNode struct {
@@ -267,6 +285,7 @@ type ServerSystemConfigNode struct {
 	Network                      NetworkNode                      `yaml:"network"`
 	Database                     DatabaseNode                     `yaml:"database"`
 	LifetimeConfiguration        LifetimeConfigurationNode        `yaml:"lifetimeConfiguration"`
+	MaxAgeOption                 string                           `yaml:"maxAgeOption"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -300,6 +319,11 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
+	maxAgeOption, err := ConvertMaxAge(scn.MaxAgeOption)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		DefaultSignalConfiguration:   defaultSignalConfiguration.(*DefaultSignalConfiguration),
@@ -307,6 +331,7 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		Network:                      network.(*Network),
 		Database:                     database.(*Database),
 		LifetimeConfiguration:        lifetimeConfiguration.(*LifetimeConfiguration),
+		MaxAgeOption:                 maxAgeOption,
 	}, nil
 }
 
@@ -332,6 +357,10 @@ func (sc *ServerSystemConfig) setDatabase(config Database) {
 
 func (sc *ServerSystemConfig) setLifetimeConfiguration(parameter LifetimeConfiguration) {
 	sc.LifetimeConfiguration = &parameter
+}
+
+func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint64) {
+	sc.MaxAgeOption = parameter
 }
 
 var systemConfigInstance *ServerSystemConfig

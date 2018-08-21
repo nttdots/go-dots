@@ -49,3 +49,6 @@ system:
     maxActiveButTerminatingPeriod: 300
     manageLifetimeInterval: 100
     conflictRetryTimer: 120
+
+  # Time(seconds) max-age of session configuration
+  maxAgeOption: 45

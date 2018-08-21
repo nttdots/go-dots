@@ -57,3 +57,6 @@ system:
     manageLifetimeInterval: 100
     # The retry-timer that is included in conflict-information for return to dots client when overlap occur and mitigation request is rejected.
     conflictRetryTimer: 120
+    
+  # Time (seconds) max-age of session configuration
+  maxAgeOption: 45

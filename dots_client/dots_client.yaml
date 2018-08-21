@@ -4,3 +4,6 @@ missingHbAllowed: 5
 maxRetransmit: 3
 ackTimeout: 2
 ackRandomFactor: 1.5
+
+# Time (seconds) before max-age to refresh Get session config
+intervalBeforeMaxAge: 15

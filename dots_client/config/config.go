@@ -13,6 +13,7 @@ type SignalConfiguration struct {
 	AckTimeout        float64 `yaml:"ackTimeout"`
 	AckRandomFactor   float64 `yaml:"ackRandomFactor"`
 	TriggerMitigation bool
+	IntervalBeforeMaxAge  int `yaml:"intervalBeforeMaxAge"`
 }
 
 /**

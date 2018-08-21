@@ -24,9 +24,11 @@ type Env struct {
     missing_hb_allowed int
     current_missing_hb int
     pingTask *PingTask
+    sessionConfigTask *SessionConfigTask
     tokens   map[string][]byte
 
     sessionConfigMode string
+    intervalBeforeMaxAge int
 }
 
 func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
@@ -38,8 +40,10 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         0,
         0,
         nil,
+        nil,
         make(map[string][]byte),
         string(client_message.IDLE),
+        0,
     }
 }
 
@@ -50,6 +54,7 @@ func (env *Env) RenewEnv(context *libcoap.Context, session *libcoap.Session) *En
     env.requests = make(map[string] *MessageTask)
     env.current_missing_hb = 0
     env.pingTask = nil
+    env.sessionConfigTask = nil
     env.tokens = make(map[string][]byte)
     return env
 }
@@ -72,6 +77,14 @@ func (env *Env) SessionConfigMode() string {
     return env.sessionConfigMode
 }
 
+func (env *Env) SetIntervalBeforeMaxAge(intervalBeforeMaxAge int) {
+    env.intervalBeforeMaxAge = intervalBeforeMaxAge
+}
+
+func (env *Env) IntervalBeforeMaxAge() int {
+    return env.intervalBeforeMaxAge
+}
+
 func (env *Env) Run(task Task) {
     if (reflect.TypeOf(task) == reflect.TypeOf(&PingTask{})) && (!task.(*PingTask).IsRunnable()) {
         log.Debug("Ping task is disabled. Do not start ping task.")
@@ -85,6 +98,9 @@ func (env *Env) Run(task Task) {
 
     case *PingTask:
         env.pingTask = t
+
+    case *SessionConfigTask:
+        env.sessionConfigTask = t
     }
     go task.run(env.channel)
 }
@@ -121,8 +137,10 @@ func (env *Env) HandleTimeout(sent *libcoap.Pdu) {
         t.stop()
 
         // Couting to missing-hb
-        env.current_missing_hb = env.current_missing_hb + 1
-
+        // 0: Code of Ping task
+        if sent.Code == 0 {
+            env.current_missing_hb = env.current_missing_hb + 1
+        }
         t.timeoutHandler(t)
     }
 }
@@ -152,6 +170,12 @@ func (env *Env) IsHeartbeatAllowed () bool {
 func (env *Env) StopPing() {
     if env.pingTask != nil {
         env.pingTask.stop()
+    }
+}
+
+func (env *Env) StopSessionConfig() {
+    if env.sessionConfigTask != nil {
+        env.sessionConfigTask.stop()
     }
 }
 
