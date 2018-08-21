@@ -239,9 +239,10 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			}
 		}
 
+		var conflictInfo *models.ConflictInformation
 		if (currentScope == nil || currentScope.MitigationId == 0) && !isIfMatchOption {
 
-			err = CreateMitigation(body, customer, nil)
+			conflictInfo, err = CreateMitigation(body, customer, nil, isIfMatchOption)
 			if err != nil {
 				log.Error("Failed to Create Mitigation.")
 				if err.Error() == models.ValidationError {
@@ -250,11 +251,15 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				return Response{}, err
 			}
 
+			if conflictInfo != nil {
+				goto ResponseConflict
+			}
+
 			// return status
 			res = Response{
 				Type: common.NonConfirmable,
 				Code: common.Created,
-				Body: messages.NewMitigationResponsePut(body),
+				Body: messages.NewMitigationResponsePut(body, nil),
 			}
 			return res, nil
 
@@ -273,7 +278,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				return
 			}
 
-			err = CreateMitigation(body, customer, currentScope)
+			conflictInfo, err = CreateMitigation(body, customer, currentScope, isIfMatchOption)
 			if err != nil {
 				log.Error("Failed to Create Mitigation.")
 				if err.Error() == models.ValidationError {
@@ -282,14 +287,25 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				return Response{}, err
 			}
 
+			if conflictInfo != nil {
+				goto ResponseConflict
+			}
+
 			res = Response{
 				Type: common.NonConfirmable,
 				Code: common.Changed,
-				Body: messages.NewMitigationResponsePut(body),
+				Body: messages.NewMitigationResponsePut(body, nil),
 			}
 			return res, nil
 		}
 		
+	ResponseConflict:
+		res = Response {
+			Type: common.NonConfirmable,
+			Code: common.Conflict,
+			Body: messages.NewMitigationResponsePut(body, conflictInfo.ParseToResponse()),
+		}
+		return res, nil
 	}
 
 ResponseNG:
@@ -413,60 +429,20 @@ func newTargetPrefix(targetPrefix []string) (prefixes []models.Prefix, err error
 /*
  * Parse the 'targetPortRange' field in a mitigationScope and return a list of PortRange objects.
  */
- func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges []models.PortRange, err error) {
+func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges []models.PortRange, err error) {
 	portRanges = make([]models.PortRange, len(targetPortRange))
 	for i, r := range targetPortRange {
 		if r.LowerPort == nil {
 			log.Error("lower port is mandatory for target-port-range data.")
 			return nil, errors.New(models.ValidationError)
-		} else if r.UpperPort != nil {
-			if *r.LowerPort < 0 || 0xffff < *r.LowerPort || *r.UpperPort < 0 || 0xffff < *r.UpperPort {
-				log.Errorf("invalid port number. lower:%d, upper:%d", r.LowerPort, *r.UpperPort)
-				return nil, errors.New(models.ValidationError)
-			}
-			// TODO: optional int
-			if *r.LowerPort <= *r.UpperPort {
-				portRanges[i] = models.NewPortRange(*r.LowerPort, *r.UpperPort)
-			} else {
-				log.Errorf("invalid port number. lower:%d, upper:%d", r.LowerPort, *r.UpperPort)
-				return nil, errors.New(models.ValidationError)
-			}
-		} else {
-			if *r.LowerPort < 0 || 0xffff < *r.LowerPort {
-				log.Errorf("invalid port number. lower:%d", r.LowerPort)
-				return nil, errors.New(models.ValidationError)
-			}
-			// TODO: optional int
-			portRanges[i] = models.NewPortRange(*r.LowerPort, *r.LowerPort)
 		}
+		if r.UpperPort == nil {
+			r.UpperPort = r.LowerPort
+		}
+		portRanges[i] = models.NewPortRange(*r.LowerPort, *r.UpperPort)
 	}
 	return
 }
-
-/*
- * Create MitigationScope objects based on received mitigation requests, and store the scopes into the database.
- */
- func createMitigationScope(req *messages.MitigationRequest, customer *models.Customer) (mitigationScopeIds []int64, err error) {
-	for _, messageScope := range req.MitigationScope.Scopes {
-		scope, err := newMitigationScope(messageScope, customer, req.EffectiveClientIdentifier(), req.EffectiveClientDomainIdentifier())
-		if err != nil {
-			return mitigationScopeIds, err
-		}
-		if !models.MitigationScopeValidator.Validate(models.MessageEntity(scope), customer) {
-			return mitigationScopeIds, errors.New(models.ValidationError)
-		}
-		// store them to the mitigationScope table
-		mitigationScope, err := models.CreateMitigationScope(*scope, *customer)
-		if err != nil {
-			return mitigationScopeIds, err
-		}
-		if mitigationScope.Id != 0 {
-			mitigationScopeIds = append(mitigationScopeIds, mitigationScope.Id)
-		}
-	}
-	return
-}
-
 
 type mpPair struct {
 	mitigation *models.MitigationScope
@@ -526,7 +502,7 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 		}
 
 		// Append alias data to new mitigation scope
-		err = appendAliasDataToMitigationScope(aliases, s)
+		err = appendAliasesDataToMitigationScope(aliases, s)
 		if err != nil {
 			return nil, err
 		}
@@ -651,7 +627,7 @@ func cancelMitigationById(mitigationId int, clientIdentifier string, customerId 
 /*
  * Invoke mitigations on blockers.
  */
-func callBlocker(data *messages.MitigationRequest, c *models.Customer, mitigationScopeIds []int64) (err error) {
+func callBlocker(data *messages.MitigationRequest, c *models.Customer, mitigationScopeId int64) (err error) {
 	// channel to receive selected blockers.
 	ch := make(chan *models.ScopeBlockerList, 10)
 	// channel to receive errors
@@ -671,12 +647,17 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer, mitigatio
 		if err != nil {
 			return err
 		}
-		if len(mitigationScopeIds) != 0 {
-			scope.MitigationScopeId = mitigationScopeIds[counter]
-		}
+		scope.MitigationScopeId = mitigationScopeId
 		if !models.MitigationScopeValidator.Validate(models.MessageEntity(scope), c) {
 			return errors.New(models.ValidationError)
 		}
+
+		// Get list of target ip (prefix, fqnd, uri) from mitigation scope if the validation succeeded.
+		scope.TargetList, err = scope.GetTargetList()
+		if err != nil {
+			return err
+		}
+
 		// send a blocker request to the blockerselectionservice.
 		// we receive the blocker the selection service propose via a dedicated channel.
 		models.BlockerSelectionService.Enqueue(scope, ch, errCh)
@@ -779,53 +760,66 @@ func ManageExpiredMitigation(lifetimeInterval int) {
 	}
 }
 
-func CreateMitigation(body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope) (error) {
+func CreateMitigation(body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope, isIfMatchOption bool) (*models.ConflictInformation, error) {
 
-	// Get data alias from data channel
-	aliases, err := data_controllers.GetDataAliasesByName(customer, body.EffectiveClientIdentifier(), body.MitigationScope.Scopes[0].AliasName)
+	// Create new mitigation scope from body request
+	requestScope, err := newMitigationScope(body.MitigationScope.Scopes[0], customer, body.EffectiveClientIdentifier(), body.EffectiveClientDomainIdentifier())
 	if err != nil {
-		log.Errorf("Get data alias error: %+v", err)
-		return err
-	}
-	// Check is the alias with name registered
-	if len(aliases.Alias) != len(body.MitigationScope.Scopes[0].AliasName) {
-		err = errors.New(models.ValidationError)
-		return err
+		return nil, err
 	}
 
-	// TODO: Check overlap alias data with other mitigations
+	// Skip validating mitigation request when efficacy update
+	var aliases types.Aliases
+	if isIfMatchOption == false {
+		// Get data alias from data channel
+		aliases, err = data_controllers.GetDataAliasesByName(customer, body.EffectiveClientIdentifier(), body.MitigationScope.Scopes[0].AliasName)
+		if err != nil {
+			log.Errorf("Get data alias error: %+v", err)
+			return nil, err
+		}
 
-	// Create New
-	mitigationScopeIds, err := createMitigationScope(body, customer)
+		// Validate and check overlap mitigation request
+		isSuccess, conflictInfo, err := ValidateAndCheckOverlap(customer, requestScope, currentScope, aliases)
+		if err != nil {
+			return nil, err
+		}
+		if conflictInfo != nil {
+			log.Errorf("[Overlap]: Failed to check overlap for mitigation request.")
+			return conflictInfo, nil
+		} else if !isSuccess {
+			err = errors.New(models.ValidationError)
+			return nil, err
+		}
+
+	}
+
+	// store mitigation request into the mitigationScope table
+	mitigationScope, err := models.CreateMitigationScope(*requestScope, *customer)
 	if err != nil {
-		log.Errorf("MitigationRequest.Put createMitigationScope error: %s\n", err)
-		return err
-	} 
+		return nil, err
+	}
 
-	if currentScope != nil && len(mitigationScopeIds) == 0 {
-		mitigationScopeIds = append(mitigationScopeIds, currentScope.MitigationScopeId)
+	newMitigationScopeId := mitigationScope.Id
+	if currentScope != nil && newMitigationScopeId == 0 {
+		newMitigationScopeId = currentScope.MitigationScopeId
 	}
 
 	// Append aliases data to mitigation scopes before sending to GoBGP server
-	err = appendAliasParametersToRequest(aliases, &body.MitigationScope.Scopes[0])
-	if err != nil {
-		log.Errorf("Append alias parameters to mitigation request failed.")
-		return err
-	}
+	appendAliasParametersToRequest(aliases, &body.MitigationScope.Scopes[0])
 
-	err = callBlocker(body, customer, mitigationScopeIds)
+	err = callBlocker(body, customer, newMitigationScopeId)
 	if err != nil {
 		log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
-		return err
-	} 
+		goto HandleErrorWhenCallBlockerFailed
+	}
 
 	// Set Status to InProgress
 	if currentScope == nil {
 		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(),
-			*body.EffectiveMitigationId(), mitigationScopeIds[0])
+			*body.EffectiveMitigationId(), newMitigationScopeId)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope load error.")
-			return err
+			return nil, err
 		}
 
 		currentScope.Status = models.SuccessfullyMitigated
@@ -833,10 +827,17 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 		err = models.UpdateMitigationScope(*currentScope, *customer)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope update error.")
-			return err
+			return nil, err
 		}
 	}
-	return nil
+	return nil, nil
+
+// Need to remove the mitigation scope in this case because the mitigation protection is not created by third party.
+//   => Register mitigation request failed
+HandleErrorWhenCallBlockerFailed:
+	models.DeleteMitigationScope(customer.Id, mitigationScope.ClientIdentifier, mitigationScope.MitigationId, newMitigationScopeId)
+	return nil, err
+
 }
 
 func TerminateMitigation(customerId int, cuid string, mid int, mitigationScopeId int64) {
@@ -983,7 +984,7 @@ func checkAttributesEfficacyUpdate(customer *models.Customer, messageScope *mess
  *  aliases list of alias data
  *  scope mitigation scope
  */
-func appendAliasParametersToRequest(aliases types.Aliases, scope *messages.Scope) (error) {
+ func appendAliasParametersToRequest(aliases types.Aliases, scope *messages.Scope) {
 	for _, alias := range aliases.Alias {
 		// append target prefix parameter, prefix overlap will be validated in createMitigationScope()
 		for _, prefix := range alias.TargetPrefix {
@@ -1011,9 +1012,7 @@ func appendAliasParametersToRequest(aliases types.Aliases, scope *messages.Scope
 		// append uri parameter, uri overlap will be validated in createMitigationScope()
 		scope.URI = append(scope.URI, alias.TargetURI...)
 	}
-
-	return nil
- }
+}
 
  /*
  * append alias parameters to a mitigation scope without validation
@@ -1023,36 +1022,226 @@ func appendAliasParametersToRequest(aliases types.Aliases, scope *messages.Scope
  *  scope mitigation scope
  *  err error
  */
-func appendAliasDataToMitigationScope(aliases types.Aliases, scope *models.MitigationScope) (error) {
+func appendAliasesDataToMitigationScope(aliases types.Aliases, scope *models.MitigationScope) (error) {
 	// loop on list of alias data to convert them to mitigation scope
 	for _, alias := range aliases.Alias {
-		// append target prefix parameter
-		for _, prefix := range alias.TargetPrefix {
-			targetPrefix, err := models.NewPrefix(prefix.String())
-			if err != nil {
-				return err
-			}
-			scope.TargetPrefix = append(scope.TargetPrefix, targetPrefix)
+		err := appendAliasDataToMitigationScope(alias, scope)
+		if err != nil {
+			return err
 		}
-
-		// append target port range parameter
-		for _, portRange := range alias.TargetPortRange {
-			if portRange.UpperPort == nil {
-				portRange.UpperPort = &portRange.LowerPort
-			}
-			scope.TargetPortRange = append(scope.TargetPortRange, models.NewPortRange(int(portRange.LowerPort), int(*portRange.UpperPort)))
-		}
-
-		// append target protocol parameter
-		for _, protocol := range alias.TargetProtocol {
-			scope.TargetProtocol.Append(int(protocol))
-		}
-
-		// append fqdn parameter
-		scope.FQDN.AddList(alias.TargetFQDN)
-
-		// append uri parameter
-		scope.URI.AddList(alias.TargetURI)
 	}
 	return nil
- }
+}
+
+ /*
+ * append alias parameters to a mitigation scope without validation
+ * parameter:
+ *  alias alias data
+ * return:
+ *  scope mitigation scope
+ *  err error
+ */
+ func appendAliasDataToMitigationScope(alias types.Alias, scope *models.MitigationScope) (error) {
+	// append target prefix parameter
+	for _, prefix := range alias.TargetPrefix {
+		targetPrefix, err := models.NewPrefix(prefix.String())
+		if err != nil {
+			return err
+		}
+		scope.TargetPrefix = append(scope.TargetPrefix, targetPrefix)
+	}
+
+	// append target port range parameter
+	for _, portRange := range alias.TargetPortRange {
+		if portRange.UpperPort == nil {
+			portRange.UpperPort = &portRange.LowerPort
+		}
+		scope.TargetPortRange = append(scope.TargetPortRange, models.NewPortRange(int(portRange.LowerPort), int(*portRange.UpperPort)))
+	}
+
+	// append target protocol parameter
+	for _, protocol := range alias.TargetProtocol {
+		scope.TargetProtocol.Append(int(protocol))
+	}
+
+	// append fqdn parameter
+	scope.FQDN.AddList(alias.TargetFQDN)
+
+	// append uri parameter
+	scope.URI.AddList(alias.TargetURI)
+	return nil
+}
+
+/*
+ * Get all active mitigations with appended alias data (if have)
+ * return:
+ *  scopes: list of active mitigations scope
+ *  err: error
+ */
+func GetOtherActiveMitigations(currentMitigationScopeId *int64) (scopes []models.MitigationScope, err error) {
+	for _, acm := range models.GetActiveMitigationMap() {
+
+		if currentMitigationScopeId != nil && *currentMitigationScopeId == acm.MitigationScopeId { continue }
+
+		currentTime := time.Now()
+		remainingLifetime := acm.Lifetime - int(currentTime.Sub(acm.LastModified).Seconds())
+		if remainingLifetime <= 0 { continue }
+
+		// get mitigation scope by mitigation scope id
+		mitigation, err := models.GetMitigationScope(0, "", 0, acm.MitigationScopeId)
+		if err != nil {
+			return nil, err
+		}
+
+		// Get alias data from data channel
+		aliases, err := data_controllers.GetDataAliasesByName(mitigation.Customer, mitigation.ClientIdentifier, mitigation.AliasName.List())
+		if err != nil {
+			return nil, err
+		}
+
+		// Append alias data to new mitigation scope
+		err = appendAliasesDataToMitigationScope(aliases, mitigation)
+		if err != nil {
+			return nil, err
+		}
+
+		scopes = append(scopes, *mitigation)
+	}
+	return
+}
+
+/*
+ * Validate request mitigation scope and check overlap for it with other active mitigations
+ * parameter:
+ *  customer      current requesting client
+ *  requestScope  request mitigation scope
+ *  currentScope  current mitigation scope that has the same ids (customer-id, cuid, mid) with request mitigation
+ *  aliases       list of alias scope data received from data channel
+ * return:
+ *  bool                 result of validating and checking process
+ *  ConflictInformation  conflict information when overlap occur
+ *  err                  error
+ */
+func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.MitigationScope, currentScope *models.MitigationScope,
+	aliases types.Aliases) (bool, *models.ConflictInformation, error) {
+
+	var err error
+	var mitigations []models.MitigationScope
+	var isOverride bool = false
+	var overridedMitigation models.MitigationScope
+
+	// Check if any of alias-name have not been registered in data channel
+	if len(requestScope.AliasName) != len(aliases.Alias) {
+		log.Error("[Validation]: Alias-name is invalid.")
+		return false, nil, nil
+	}
+
+	// Get list of target ip (prefix, fqnd, uri) from mitigation scope if the validation succeeded.
+	requestScope.TargetList, err = requestScope.GetTargetList()
+	if err != nil {
+		return false, nil, err
+	}
+
+	// Validate data(prefix, fqdn, uri, port-range, protocol, alias-name) inside mitigation scope
+	if !models.MitigationScopeValidator.Validate(models.MessageEntity(requestScope), customer) {
+		log.Error("[Validation]: Mitigation scope data is invalid.")
+		return false, nil, nil
+	}
+
+	// Get all active mitigation from DB
+	if currentScope != nil {
+		mitigations, err = GetOtherActiveMitigations(&currentScope.MitigationScopeId)
+	} else {
+		mitigations, err = GetOtherActiveMitigations(nil)
+	}
+	if err != nil {
+		log.Error("Failed to get active mitigations.")
+		return false, nil, err
+	}
+
+	// Loop on list of active mitigations that are protected by third party
+	for _, mitigation := range mitigations {
+		// Check cuid collision
+		log.Debugf("Check cuid collision for: %+v of client %+v compare with %+v of client %+v",
+		    requestScope.ClientIdentifier, customer.Id, mitigation.ClientIdentifier, mitigation.Customer.Id)
+		if currentScope == nil && customer.Id != mitigation.Customer.Id && requestScope.ClientIdentifier == mitigation.ClientIdentifier {
+			log.Errorf("[CUID collision]: Cuid: %+v has already been used by client: %+v", requestScope.ClientIdentifier, mitigation.Customer.Id)
+			// Response Conflict Information to client
+			conflictInfo := models.ConflictInformation {
+				ConflictCause:  models.CUID_COLLISION,
+				ConflictScope:  nil,
+			}
+			return false, &conflictInfo, nil
+		}
+
+		// Check overlap mitigation data with active mitigations
+		log.Debugf("Check overlap for mitigation scope data with id: %+v", requestScope.MitigationId)
+		isOverlap, conflictInfo, err := models.MitigationScopeValidator.CheckOverlap(requestScope, &mitigation, false)
+		if err != nil {
+			return false, nil, err
+		}
+		if isOverlap {
+			if conflictInfo != nil {
+				log.Warnf("[Overlap]: There is overlap between request mitigation: %+v and current mitigation: %+v", requestScope.MitigationId, mitigation.MitigationId)
+			} else {
+				isOverride = true
+				overridedMitigation = mitigation
+				continue
+			}
+		}
+
+		// Check overlap alias data with all active mitigations
+		for _, alias := range aliases.Alias {
+
+			aliasScope := models.NewMitigationScope(customer, requestScope.ClientIdentifier)
+			err = appendAliasDataToMitigationScope(alias, aliasScope)
+			if err != nil {
+				return false, nil, err
+			}
+
+			// Get target list from alias scope
+			aliasScope.TargetList, err = aliasScope.GetTargetList()
+			if err != nil {
+				return false, nil, err
+			}
+
+			// Check overlap mitigation data with active mitigations
+			log.Debugf("Check overlap for alias scope data with name: %+v", alias.Name)
+			var info *models.ConflictInformation
+			isOverlap, info, err = models.MitigationScopeValidator.CheckOverlap(aliasScope, &mitigation, true)
+			if err != nil {
+				return false, nil, err
+			}
+
+			if isOverlap {
+				if info != nil {
+					// Assign info from check overlap for alias to conflict information response when there is no overlap in mitigation request scope
+					if conflictInfo == nil { conflictInfo = info }
+
+					log.Warnf("[Overlap]: There is overlap data between request alias: %+v and current mitigation: %+v", alias.Name, mitigation.MitigationId)
+					if conflictInfo.ConflictScope.MitigationId == 0 {
+						conflictInfo.ConflictScope.AliasName.Append(alias.Name)
+					}
+				} else {
+					isOverride = true
+					overridedMitigation = mitigation
+					break
+				}
+			}
+		}
+
+		// return conflict info when check overlap for all data in mitigation request scope
+		if conflictInfo != nil {
+			return isOverlap, conflictInfo, nil
+		}
+
+	}
+
+	// The mitigation request will override the current mitigation
+	if isOverride {
+		log.Debugf("[Overlap]: Request mitigation: %+v will override current mitigation: %+v", requestScope.MitigationId, overridedMitigation.MitigationId)
+		TerminateMitigation(overridedMitigation.Customer.Id, overridedMitigation.ClientIdentifier,
+			overridedMitigation.MitigationId, overridedMitigation.MitigationScopeId)
+	}
+	return true, nil, nil
+}

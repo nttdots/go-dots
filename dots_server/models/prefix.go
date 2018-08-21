@@ -3,6 +3,8 @@ package models
 import (
 	"net"
 	"strconv"
+	"net/url"
+	log "github.com/sirupsen/logrus"
 )
 
 // Object to store CIDR
@@ -12,6 +14,8 @@ type Prefix struct {
 	Addr      string
 	PrefixLen int
 }
+
+const IP_PREFIX_LENGTH int = 32
 
 /*
  * Convert to CIDR strings.
@@ -29,6 +33,64 @@ func NewPrefix(addrString string) (p Prefix, err error) {
 	sz, _ := ipNet.Mask.Size()
 	p = Prefix{ipNet, ipNet.IP.String(), sz}
 
+	return
+}
+
+/*
+ * Create new prefixes from FQDN format strings.
+ * parameters:
+ *  fqdn     fqdn input string
+ * return:
+ *  p        ip prefix of the fqdn
+ *  err      error
+ */
+func NewPrefixFromFQDN(fqdn string) (p []Prefix, err error) {
+	ips, err := net.LookupIP(fqdn)
+	if err != nil {
+		log.Errorf("Failed to look-up ip from fqdn: %+v", fqdn)
+		return
+	}
+
+	p, err = NewPrefixFromIps(ips)
+	return
+}
+
+/*
+ * Create new prefixes from URI format strings.
+ * parameters:
+ *  uri      uri input string
+ * return:
+ *  p        ip prefix of the uri
+ *  err      error
+ */
+func NewPrefixFromURI(uri string) (p []Prefix, err error) {
+	url, err := url.Parse(uri)
+	if err != nil {
+		log.Errorf("Failed to parse uri: %+v to object", uri)
+		return
+	}
+
+	ips, err := net.LookupIP(url.Hostname())
+	if err != nil {
+		log.Errorf("Failed to look-up ip from fqdn: %+v", url.Hostname())
+		return
+	}
+
+	p, err = NewPrefixFromIps(ips)
+	return
+}
+
+func NewPrefixFromIps(ips []net.IP) (p []Prefix, err error) {
+	for _, ip := range ips {
+		cdir := ip.String() + "/" + strconv.Itoa(IP_PREFIX_LENGTH)
+		var ipNet *net.IPNet
+		_, ipNet, err = net.ParseCIDR(cdir)
+		if err != nil {
+			return
+		}
+		sz, _ := ipNet.Mask.Size()
+		p = append(p, Prefix{ ipNet, ipNet.IP.String(), sz })
+	}
 	return
 }
 

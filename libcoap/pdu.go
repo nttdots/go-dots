@@ -33,6 +33,8 @@ const (
     ResponseChanged Code = 68
     ResponseContent Code = 69
 
+    ResponseLimit2xxCode       Code = 100
+
     ResponseBadRequest         Code = 128
     ResponseUnauthorized       Code = 129
     ResponseBadOption          Code = 130

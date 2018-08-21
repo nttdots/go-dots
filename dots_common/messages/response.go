@@ -1,6 +1,8 @@
 package messages
 
 import (
+	"fmt"
+
 	config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/shopspring/decimal"
 )
@@ -101,17 +103,136 @@ type ScopePut struct {
 	MitigationId int `json:"mid" codec:"5"`
 	// lifetime
 	Lifetime int `json:"lifetime" codec:"14,omitempty"`
+	// Conflict Information
+	ConflictInformation *ConflictInformation `json:"conflict-information" codec:"17,omitempty"`
 }
 
-func NewMitigationResponsePut(req *MitigationRequest) MitigationResponsePut {
+func NewMitigationResponsePut(req *MitigationRequest, conflictInfo *ConflictInformation) MitigationResponsePut {
 	res := MitigationResponsePut{}
 	res.MitigationScope = MitigationScopePut{}
 	if req.MitigationScope.Scopes != nil {
 		res.MitigationScope.Scopes = make([]ScopePut, len(req.MitigationScope.Scopes))
 		for i := range req.MitigationScope.Scopes {
-			res.MitigationScope.Scopes[i] = ScopePut{ MitigationId: *req.MitigationScope.Scopes[i].MitigationId, Lifetime: *req.MitigationScope.Scopes[i].Lifetime }
+			res.MitigationScope.Scopes[i] = ScopePut{ MitigationId: *req.MitigationScope.Scopes[i].MitigationId,
+				Lifetime: *req.MitigationScope.Scopes[i].Lifetime, ConflictInformation: conflictInfo }
 		}
 	}
 
 	return res
+}
+
+// Conflict information for response when mitigation request is rejected by dots server by conflicting with another mitigation
+type ConflictInformation struct {
+	_struct        bool          `codec:",uint"`        //encode struct with "unsigned integer" keys
+	ConflictStatus int           `json:"conflict-status" codec:"18,omitempty"`
+	ConflictCause  int           `json:"conflict-cause"  codec:"19,omitempty"`
+	RetryTimer     int           `json:"retry-timer"     codec:"20,omitempty"`
+	ConflictScope  *ConflictScope `json:"conflict-scope"  codec:"21,omitempty"`
+}
+
+// Conflict scope that contains conflicted scope data
+type ConflictScope struct {
+	_struct         bool                `codec:",uint"`        //encode struct with "unsigned integer" keys
+	TargetPrefix    []string            `json:"target-prefix" codec:"6,omitempty"`
+	TargetPortRange []PortRangeResponse `json:"target-port-range" codec:"7,omitempty"`
+	TargetProtocol  []int               `json:"target-protocol"   codec:"10,omitempty"`
+	FQDN            []string            `json:"target-fqdn" codec:"11,omitempty"`
+	URI             []string            `json:"target-uri" codec:"12,omitempty"`
+	AliasName       []string            `json:"alias-name" codec:"13,omitempty"`
+	AclList         []Acl               `json:"acl-list" codec:"22,omitempty"`
+	MitigationId    int                 `json:"mid" codec:"5,omitempty"`
+}
+
+// Acl filtering rule for white list that conflict with attacking target (not implemented)
+type Acl struct {
+	_struct   bool    `codec:",uint"`        //encode struct with "unsigned integer" keys
+	AclName   string  `json:"alc-name" codec:"23,omitempty"`
+	AclType   string  `json:"acl-type" codec:"24,omitempty"`
+}
+
+/*
+ * Parse Mitigation Response model to string for log
+ * parameter:
+ *  m Mitigation Response model
+ * return: Mitigation Response in string
+ */
+ func (m *MitigationResponse) String() (result string) {
+	result = "\n \"ietf-dots-signal-channel:mitigation-scope\":\n"
+	for key, scope := range m.MitigationScope.Scopes {
+		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
+		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
+		for k, v := range scope.TargetPrefix {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-prefix", k+1, v)
+		}
+		for k, v := range scope.TargetPortRange {
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "target-port-range", k+1)
+			result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", v.LowerPort)
+			result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", v.UpperPort)
+		}
+		for k, v := range scope.TargetProtocol {
+			result += fmt.Sprintf("     \"%s[%d]\": %d\n", "target-protocol", k+1, v)
+		}
+		for k, v := range scope.FQDN {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-fqdn", k+1, v)
+		}
+		for k, v := range scope.URI {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-uri", k+1, v)
+		}
+		for k, v := range scope.AliasName {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
+		}
+		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+	}
+	return
+}
+
+/*
+ * Parse Mitigation Response Put model to string for log
+ * parameter:
+ *  m Mitigation Response Put model
+ * return: Mitigation Response Put in string
+ */
+func (m *MitigationResponsePut) String() (result string) {
+	result = "\n \"ietf-dots-signal-channel:mitigation-scope\":\n"
+	for key, scope := range m.MitigationScope.Scopes {
+		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
+		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
+		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+		if scope.ConflictInformation != nil {
+			result += fmt.Sprintf("     \"%s\":\n", "conflict-information")
+			result += fmt.Sprintf("       \"%s\": %d\n", "conflict-status", scope.ConflictInformation.ConflictStatus)
+			result += fmt.Sprintf("       \"%s\": %d\n", "conflict-cause", scope.ConflictInformation.ConflictCause)
+			result += fmt.Sprintf("       \"%s\": %d\n", "retry-timer", scope.ConflictInformation.RetryTimer)
+			if scope.ConflictInformation.ConflictScope != nil {
+				result += fmt.Sprintf("     \"%s\":\n", "conflict-scope")
+				for k, v := range scope.ConflictInformation.ConflictScope.TargetPrefix {
+					result += fmt.Sprintf("       \"%s[%d]\": %s\n", "target-prefix", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.TargetPortRange {
+					result += fmt.Sprintf("       \"%s[%d]\":\n", "target-port-range", k+1)
+					result += fmt.Sprintf("         \"%s\": %d\n", "lower-port", v.LowerPort)
+					result += fmt.Sprintf("         \"%s\": %d\n", "upper-port", v.UpperPort)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.TargetProtocol {
+					result += fmt.Sprintf("       \"%s[%d]\": %d\n", "target-protocol", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.FQDN {
+					result += fmt.Sprintf("       \"%s[%d]\": %s\n", "target-fqdn", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.URI {
+					result += fmt.Sprintf("       \"%s[%d]\": %s\n", "target-uri", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.AliasName {
+					result += fmt.Sprintf("       \"%s[%d]\": %s\n", "alias-name", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.AclList {
+					result += fmt.Sprintf("       \"%s[%d]\":\n", "acl-list", k+1)
+					result += fmt.Sprintf("         \"%s\": %s\n", "acl-name", v.AclName)
+					result += fmt.Sprintf("         \"%s\": %s\n", "acl-type", v.AclType)
+				}
+				result += fmt.Sprintf("       \"%s\": %d\n", "mid", scope.ConflictInformation.ConflictScope.MitigationId)
+			}
+		}
+	}
+	return
 }

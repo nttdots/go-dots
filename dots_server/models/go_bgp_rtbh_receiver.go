@@ -281,8 +281,8 @@ func (g *GoBgpRtbhReceiver) RegisterProtection(m *MitigationScope) (p Protection
 	// persist to external storage
 	log.Debugf("stored external storage.  %+v", base)
 	cidr := make([]string, 0)
-	for _, prefix := range m.TargetList() {
-		cidr = append(cidr, prefix.String())
+	for _, target := range m.TargetList {
+		cidr = append(cidr, target.TargetPrefix.String())
 	}
 
 	p = &RTBH{base, m.Customer.Id, cidr}

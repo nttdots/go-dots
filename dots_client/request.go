@@ -236,11 +236,11 @@ func (r *Request) logMessage(pdu *libcoap.Pdu) {
 		case "GET":
 			var v messages.MitigationResponse
 			err = dec.Decode(&v)
-			logStr = fmt.Sprintf("%+v", v)
+			logStr = v.String()
 		case "PUT":
 			var v messages.MitigationResponsePut
 			err = dec.Decode(&v)
-			logStr = fmt.Sprintf("%+v", v)
+			logStr = v.String()
 		default:
 			var v messages.MitigationRequest
 			err = dec.Decode(&v)

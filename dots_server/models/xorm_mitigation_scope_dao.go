@@ -439,6 +439,12 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 		chk, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Desc("id").Get(&dbMitigationScope)
 	} else {
 		chk, err = engine.Where("id = ?", mitigationScopeId).Get(&dbMitigationScope)
+		// get customer in case customer id from input is not provided
+		customer, err = GetCustomer(dbMitigationScope.CustomerId)
+		if err != nil {
+			return
+		}
+		clientIdentifier = dbMitigationScope.ClientIdentifier
 	}
 	if err != nil {
 		return

@@ -58,6 +58,7 @@ const (
 	Valid                 Code = 67
 	Changed               Code = 68
 	Content               Code = 69
+	Limit2xxCode          Code = 100
 	BadRequest            Code = 128
 	Unauthorized          Code = 129
 	BadOption             Code = 130

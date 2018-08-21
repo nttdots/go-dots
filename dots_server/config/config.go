@@ -62,6 +62,7 @@ type LifetimeConfigurationNode struct {
 	ActiveButTerminatingPeriod    string `yaml:"activeButTerminatingPeriod"`
 	MaxActiveButTerminatingPeriod string `yaml:"maxActiveButTerminatingPeriod"`
 	ManageLifetimeInterval        string `yaml:"manageLifetimeInterval"`
+	ConflictRetryTimer            string `yaml:"conflictRetryTimer"`
 }
 
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
@@ -99,6 +100,7 @@ func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
 		ActiveButTerminatingPeriod:    parseIntegerValue(lcn.ActiveButTerminatingPeriod),
 		MaxActiveButTerminatingPeriod: parseIntegerValue(lcn.MaxActiveButTerminatingPeriod),
 		ManageLifetimeInterval:        parseIntegerValue(lcn.ManageLifetimeInterval),
+		ConflictRetryTimer:            parseIntegerValue(lcn.ConflictRetryTimer),
 	}, nil
 }
 
@@ -612,6 +614,7 @@ type LifetimeConfiguration struct {
 	ActiveButTerminatingPeriod     int
 	MaxActiveButTerminatingPeriod  int
 	ManageLifetimeInterval	       int
+	ConflictRetryTimer             int
 }
 
 func (scp *SignalConfigurationParameter) Store() {

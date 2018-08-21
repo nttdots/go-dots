@@ -116,6 +116,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
 
         var body interface{}
 
+        var resourcePath string
         if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
             uri := request.Path()
             for i := range uri {
@@ -128,6 +129,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                     sfPut := reflect.ValueOf(controller.HandlePut)
                     if is_unknown && sfMed.Pointer() == sfPut.Pointer() {
                         p := request.PathString()
+                        resourcePath = p
                         r := libcoap.ResourceInit(&p, 0)
                         r.TurnOnResourceObservable()
                         r.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
@@ -149,7 +151,6 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                     sfGet := reflect.ValueOf(controller.HandleGet)
 
                     p := request.PathString()
-                    var resourcePath string
                     if strings.Contains(p, "sid") {
                         resourcePath = p[:strings.LastIndex(p, "/")]
                     } else {
@@ -224,6 +225,11 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             log.WithError(err).Error("marshalCbor failed.")
             response.Code = libcoap.ResponseInternalServerError
             return
+        }
+
+        // Remove sub-resource that is just created above
+        if is_unknown && res.Code > dots_common.Limit2xxCode {
+            context.DeleteResourceByQuery(resourcePath)
         }
 
         response.Code = libcoap.Code(res.Code)
