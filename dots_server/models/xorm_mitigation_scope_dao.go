@@ -5,6 +5,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
 	"time"
+	"github.com/nttdots/go-dots/dots_common/messages"
 )
 
 /*
@@ -39,7 +40,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		// Calculate the remaining lifetime
 		currentTime := time.Now()
 		remainingLifetime := dbMitigationScope.Lifetime - int(currentTime.Sub(dbMitigationScope.Updated).Seconds())
-		if remainingLifetime > 0 {
+		if remainingLifetime > 0 || dbMitigationScope.Lifetime == int(messages.INDEFINITE_LIFETIME){
 			// If existing mitigation is still 'alive', update on it.
 			// Otherwise, leave it for lifetime thread to handle, just create new one
 			mitigationScope.MitigationScopeId = dbMitigationScope.Id
@@ -213,7 +214,6 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 
 	// Update Active Mitigation to ManageList
 	AddActiveMitigationRequest(dbMitigationScope.Id, updMitigationScope.Lifetime, updMitigationScope.Updated)
-
 	return
 }
 
@@ -468,6 +468,8 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	remainingLifetime := dbMitigationScope.Lifetime - int(currentTime.Sub(dbMitigationScope.Updated).Seconds())
 	if remainingLifetime > 0 {
 		mitigationScope.Lifetime = remainingLifetime
+	} else if dbMitigationScope.Lifetime == int(messages.INDEFINITE_LIFETIME) {
+		mitigationScope.Lifetime = dbMitigationScope.Lifetime
 	} else {
 		mitigationScope.Lifetime = 0
 	}

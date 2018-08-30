@@ -186,7 +186,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			log.Errorf("lifetime is mandatory field")
 			goto ResponseNG
 		}
-		if *lifetime <= 0 {
+		if *lifetime <= 0 && *lifetime != int(messages.INDEFINITE_LIFETIME) {
 			log.Errorf("Invalid lifetime value : %+v.", *lifetime)
 			goto ResponseNG
 		}
@@ -745,14 +745,18 @@ func ManageExpiredMitigation(lifetimeInterval int) {
     // Manage expired Mitigation
     for {
         for _, acm := range models.GetActiveMitigationMap() {
-            currentTime := time.Now()
-			remainingLifetime := acm.Lifetime - int(currentTime.Sub(acm.LastModified).Seconds())
-			log.Debugf("[Lifetime Mngt Thread]: mitigation-scope-id= %+v, actual-remaining-lifetime=%+v", acm.MitigationScopeId, remainingLifetime)
-            if remainingLifetime <= 0{
-				log.Debugf("[Lifetime Mngt Thread]: Remaining lifetime < 0, change mitigation status to %+v", models.Terminated)
-				// CustomerId, ClientIdentifier and MitigationId is unnecessary in case MitigationScopeId has value. 
-				// 0 and "" are fake values.
-				TerminateMitigation(0, "", 0, acm.MitigationScopeId)
+            if acm.Lifetime == int(messages.INDEFINITE_LIFETIME) {
+                log.Debugf("A lifetime of negative one (%+v) indicates indefinite lifetime for the mitigation request", acm.Lifetime)
+            } else {
+                currentTime := time.Now()
+                remainingLifetime := acm.Lifetime - int(currentTime.Sub(acm.LastModified).Seconds())
+                log.Debugf("[Lifetime Mngt Thread]: mitigation-scope-id= %+v, actual-remaining-lifetime=%+v", acm.MitigationScopeId, remainingLifetime)
+                if remainingLifetime <= 0{
+                    log.Debugf("[Lifetime Mngt Thread]: Remaining lifetime < 0, change mitigation status to %+v", models.Terminated)
+                    // CustomerId, ClientIdentifier and MitigationId is unnecessary in case MitigationScopeId has value.
+                    // 0 and "" are fake values.
+                    TerminateMitigation(0, "", 0, acm.MitigationScopeId)
+                }
             }
         }
 
@@ -1083,10 +1087,11 @@ func GetOtherActiveMitigations(currentMitigationScopeId *int64) (scopes []models
 
 		if currentMitigationScopeId != nil && *currentMitigationScopeId == acm.MitigationScopeId { continue }
 
-		currentTime := time.Now()
-		remainingLifetime := acm.Lifetime - int(currentTime.Sub(acm.LastModified).Seconds())
-		if remainingLifetime <= 0 { continue }
-
+		if acm.Lifetime != int(messages.INDEFINITE_LIFETIME) {
+			currentTime := time.Now()
+			remainingLifetime := acm.Lifetime - int(currentTime.Sub(acm.LastModified).Seconds())
+			if remainingLifetime <= 0 { continue }
+		}
 		// get mitigation scope by mitigation scope id
 		mitigation, err := models.GetMitigationScope(0, "", 0, acm.MitigationScopeId)
 		if err != nil {

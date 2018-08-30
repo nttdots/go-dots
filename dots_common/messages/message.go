@@ -53,6 +53,12 @@ const (
 	DATA
 )
 
+type Lifetime int
+
+const (
+	INDEFINITE_LIFETIME Lifetime = -1
+)
+
 /*
  * Dots message structure.
  */
