@@ -108,7 +108,7 @@ func (c *ACLsController) Get(customer *models.Customer, r *http.Request, p httpr
       if err != nil {
         return
       }
-log.Infof("%#+v", m)
+      log.Infof("%#+v", m)
       return YangJsonResponse(m)
     })
   })
@@ -190,6 +190,21 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       if acl.ActivationType == nil {
         defValue := types.ActivationType_ActivateWhenMitigating
         acl.ActivationType = &defValue
+      }
+      if acl.ACEs.ACE != nil {
+        for _,ace := range acl.ACEs.ACE {
+          if ace.Matches.IPv4 != nil && ace.Matches.IPv4.Fragment != nil && ace.Matches.IPv4.Fragment.Operator == nil {
+            defValue := types.Operator_MATCH
+            ace.Matches.IPv4.Fragment.Operator = &defValue
+          } else if ace.Matches.IPv6 != nil && ace.Matches.IPv6.Fragment != nil && ace.Matches.IPv6.Fragment.Operator == nil {
+            defValue := types.Operator_MATCH
+            ace.Matches.IPv6.Fragment.Operator = &defValue
+          }
+          if ace.Matches.TCP != nil && ace.Matches.TCP.FlagsBitmask != nil && ace.Matches.TCP.FlagsBitmask.Operator == nil {
+            defValue := types.Operator_MATCH
+            ace.Matches.TCP.FlagsBitmask.Operator = &defValue
+          }
+        }
       }
       status := http.StatusCreated
       if e == nil {

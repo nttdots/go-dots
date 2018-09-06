@@ -19,7 +19,7 @@ type ACEs struct {
 }
 
 type ACE struct {
-  Name       string      `yang:"config" json:"name"`
+  Name       string      `json:"name"`
   Matches    *Matches    `json:"matches"`
   Actions    *Actions     `json:"actions"`
   Statistics *Statistics `yang:"nonconfig" json:"statistics"`
@@ -55,6 +55,7 @@ type IPv4 struct {
   DestinationIPv4Network *IPv4Prefix `yang:"config" json:"destination-ipv4-network"`
   SourceIPv4Network      *IPv4Prefix `yang:"config" json:"source-ipv4-network"`
   Identification         *uint16     `yang:"config" json:"identification"`
+  Fragment               *Fragment   `yang:"config" json:"fragment"`
 }
 
 type IPv6 struct {
@@ -66,7 +67,7 @@ type IPv6 struct {
   DestinationIPv6Network *IPv6Prefix `yang:"config" json:"destination-ipv6-network"`
   SourceIPv6Network      *IPv6Prefix `yang:"config" json:"source-ipv6-network"`
   FlowLabel              *uint32     `yang:"config" json:"flow-label"`          //TODO: value range(0..01048575)
-  Fragment               *Empty      `yang:"config" json:"fragment"`
+  Fragment               *Fragment   `yang:"config" json:"fragment"`
 }
 
 type TCP struct {
@@ -74,10 +75,11 @@ type TCP struct {
   AcknowledgementNumber *uint32              `yang:"config" json:"acknowledgement-number"`
   DataOffset            *uint8               `yang:"config" json:"data-offset"`
   Reserved              *uint8               `yang:"config" json:"reserved"`
-  Flags                 *TCPFlags             `yang:"config" json:"flags"`
+  Flags                 *TCPFlags            `yang:"config" json:"flags"`
   WindowSize            *uint16              `yang:"config" json:"window-size"`
   UrgentPointer         *uint16              `yang:"config" json:"urgent-pointer"`
   Options               *uint32              `yang:"config" json:"options"`
+  FlagsBitmask          *FlagsBitmask        `yang:"config" json:"flags-bitmask"`
   SourcePort            *PortRangeOrOperator `yang:"config" json:"source-port"`
   DestinationPort       *PortRangeOrOperator `yang:"config" json:"destination-port"`
 }

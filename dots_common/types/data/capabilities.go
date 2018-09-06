@@ -4,7 +4,6 @@ type Capabilities struct {
   AddressFamily      []AddressFamily    `yang:"nonconfig" json:"address-family"`
   ForwardingActions  []ForwardingAction `yang:"nonconfig" json:"forwarding-actions"`
   RateLimit          *bool              `yang:"nonconfig" json:"rate-limit"`
-  Fragment           []Fragment         `yang:"nonconfig" json:"fragment"`
   TransportProtocols UInt8List          `yang:"nonconfig" json:"transport-protocols"`
 
   IPv4               *Capabilities_IPv4 `yang:"nonconfig" json:"ipv4"`
@@ -26,6 +25,7 @@ type Capabilities_IPv4 struct {
   Identification    *bool `yang:"nonconfig" json:"identification"`
   SourcePrefix      *bool `yang:"nonconfig" json:"source-prefix"`
   DestinationPrefix *bool `yang:"nonconfig" json:"destination-prefix"`
+  Fragment          *bool `yang:"nonconfig" json:"fragment"`
 }
 
 type Capabilities_IPv6 struct {
@@ -38,6 +38,7 @@ type Capabilities_IPv6 struct {
   Identification    *bool `yang:"nonconfig" json:"identification"`
   SourcePrefix      *bool `yang:"nonconfig" json:"source-prefix"`
   DestinationPrefix *bool `yang:"nonconfig" json:"destination-prefix"`
+  Fragment          *bool `yang:"nonconfig" json:"fragment"`
 }
 
 type Capabilities_TCP struct {
@@ -46,6 +47,7 @@ type Capabilities_TCP struct {
   DataOffset            *bool `yang:"nonconfig" json:"data-offset"`
   Reserved              *bool `yang:"nonconfig" json:"reserved"`
   Flags                 *bool `yang:"nonconfig" json:"flags"`
+  FlagsBitmask          *bool `yang:"nonconfig" json:"flags-bitmask"`
   WindowSize            *bool `yang:"nonconfig" json:"window-size"`
   UrgentPointer         *bool `yang:"nonconfig" json:"urgent-pointer"`
   Options               *bool `yang:"nonconfig" json:"options"`
