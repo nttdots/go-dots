@@ -65,7 +65,7 @@ const (
 )
 
 type IPv4Flag string
-type IPv4Flags string
+type IPv4Flags []IPv4Flag
 
 const (
   IPv4Flag_Reserved IPv4Flag = "reserved"
@@ -74,7 +74,7 @@ const (
 )
 
 type TCPFlag string
-type TCPFlags string
+type TCPFlags []TCPFlag
 
 const (
   TCPFlag_CWR TCPFlag = "cwr"
@@ -309,7 +309,11 @@ func (e IPv4Flag) String() string {
 }
 
 func (e IPv4Flags) String() string {
-  return string(e)
+  a := make([]string, len(e))
+  for i, v := range e {
+    a[i] = v.String()
+  }
+  return strings.Join(a, " ")
 }
 
 func (e IPv4Flags) MarshalJSON() ([]byte, error) {
@@ -338,7 +342,13 @@ func (p *IPv4Flags) UnmarshalJSON(data []byte) error {
     }
   }
 
-  *p = IPv4Flags(s)
+  r := make(IPv4Flags, len(m))
+  i := 0
+  for k := range m {
+    r[i] = k
+    i++
+  }
+  *p = r
   return nil
 }
 
@@ -347,7 +357,15 @@ func (e TCPFlag) String() string {
 }
 
 func (e TCPFlags) String() string {
-  return string(e)
+  a := make([]string, len(e))
+  for i, v := range e {
+    a[i] = v.String()
+  }
+  return strings.Join(a, " ")
+}
+
+func (e TCPFlags) MarshalJSON() ([]byte, error) {
+  return json.Marshal(e.String())
 }
 
 func (p *TCPFlags) UnmarshalJSON(data []byte) error {
@@ -382,6 +400,12 @@ func (p *TCPFlags) UnmarshalJSON(data []byte) error {
     }
   }
 
-  *p = TCPFlags(s)
+  r := make(TCPFlags, len(m))
+  i := 0
+  for k := range m {
+    r[i] = k
+    i++
+  }
+  *p = r
   return nil
 }
