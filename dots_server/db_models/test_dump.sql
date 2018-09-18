@@ -237,16 +237,17 @@ CREATE TABLE `mitigation_scope` (
   `mitigation_id` int(11) DEFAULT NULL,
   `status` int(1) DEFAULT NULL,
   `lifetime` int(11) DEFAULT NULL,
+  `trigger-mitigation` tinyint(1) DEFAULT NULL,
   `attack-status` int(1) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `mitigation_scope` (`id`, `customer_id`, `client_identifier`, `client_domain_identifier`, `mitigation_id`, `lifetime`, `created`, `updated`)
+INSERT INTO `mitigation_scope` (`id`, `customer_id`, `client_identifier`, `client_domain_identifier`, `mitigation_id`, `status`, `lifetime`, `trigger-mitigation`,`created`, `updated`)
 VALUES
-  (1,128,'','',12332,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
-  (2,128,'','',12333,1000,'2017-04-13 13:44:34','2017-04-13 13:44:34');
+  (1,128,'','',12332,6,1000, 1,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
+  (2,128,'','',12333,6,1000, 1,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 # mitigation_scope trigger when status change
 # ------------------------------------------------------------

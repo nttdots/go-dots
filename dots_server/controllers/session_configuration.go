@@ -65,7 +65,6 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue           = defaultValue.MaxRetransmitIdle
 		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue              = decimal.NewFromFloat(defaultValue.AckTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue         = decimal.NewFromFloat(defaultValue.AckRandomFactorIdle).Round(2)
-		resp.SignalConfigs.TriggerMitigation                               = true
 	}else {
 		resp.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
 		resp.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
@@ -77,7 +76,6 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue    	   = signalSessionConfiguration.MaxRetransmitIdle
 		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue       	   = decimal.NewFromFloat(signalSessionConfiguration.AckTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue   	   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactorIdle).Round(2)
-		resp.SignalConfigs.TriggerMitigation                               = signalSessionConfiguration.TriggerMitigation
 	}
 	maxAgeOption := dots_config.GetServerSystemConfig().MaxAgeOption
 	request.Options = append(request.Options, libcoap.OptionMaxage.String(strconv.FormatUint(maxAgeOption,10)))
@@ -161,7 +159,6 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 		*payload.IdleConfig.MaxRetransmit.CurrentValue,
 		ackTimeoutIdle,
 		ackRandomFactorIdle,
-		payload.TriggerMitigation,
 	)
 	validateResult, isPresent := v.Validate(signalSessionConfiguration, *customer)
 	if !validateResult {
@@ -224,7 +221,6 @@ func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models
 		defaultValue.MaxRetransmitIdle,
 		defaultValue.AckTimeoutIdle,
 		defaultValue.AckRandomFactorIdle,
-		true,
 	)
 
 	_, err = models.CreateSignalSessionConfiguration(*signalSessionConfiguration, *customer)
@@ -276,9 +272,6 @@ func setDefaultValues (data *messages.SignalConfigs) {
 		temp := decimal.NewFromFloat(defaultValue.AckRandomFactorIdle)
 		data.IdleConfig.AckRandomFactor.CurrentValue = &temp
 	}
-	if data.TriggerMitigation == false {
-		data.TriggerMitigation = true
-	}
 }
 
 /*
@@ -297,7 +290,6 @@ func sessionConfigurationPayloadDisplay(data *messages.SignalConfigs) {
 	result += fmt.Sprintf("   \"%s\": %d\n", "max-retransmit-idle", data.IdleConfig.MaxRetransmit)
 	result += fmt.Sprintf("   \"%s\": %d\n", "ack-timeout-idle", data.IdleConfig.AckTimeout)
 	result += fmt.Sprintf("   \"%s\": %f\n", "ack-random-factor-idle", data.IdleConfig.AckRandomFactor)
-	result += fmt.Sprintf("   \"%s\": %f\n", "trigger-mitigation", data.TriggerMitigation)
 	log.Infoln(result)
 }
 

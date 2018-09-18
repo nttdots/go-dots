@@ -12,7 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/models"
 	"github.com/nttdots/go-dots/libcoap"
-	"github.com/nttdots/go-dots/dots_server/controllers"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
@@ -111,8 +110,12 @@ ILOOP:
 
 				// If mitigation status was changed to 6: (attack mitigation is now terminated), delete this mitigation after notifying
 				if status == models.Terminated {
-					log.Debugf("[MySQL-Notification]: Mitigation was terminated. Delete corresponding sub-resource and mitigation request.", models.Terminated)
-					controllers.DeleteMitigation(cid, cuid, mid, id)
+					log.Debugf("[MySQL-Notification]: Mitigation was terminated. Delete corresponding sub-resource and mitigation request.")
+					err = models.DeleteMitigationScope(cid, cuid, mid, id)
+					if err != nil {
+						log.Errorf("[MySQL-Notification]: Delete mitigation scope error: %+v", err)
+						return
+					}
 					// Keep resource when there is a duplication
 					if !dup {
 						context.DeleteResourceByQuery(query)

@@ -78,7 +78,7 @@ func (v *mitigationScopeValidator) Validate(m MessageEntity, c *Customer) (ret b
  *    retry-timer: active mitigation lifetime.
  * err: error
  */
-func (v *mitigationScopeValidator) CheckOverlap(requestScope *MitigationScope, currentScope *MitigationScope, isAliasData bool) (isOverlap bool, conflictInfo *ConflictInformation, err error) {
+func (v *mitigationScopeValidator) CheckOverlap(requestScope *MitigationScope, currentScope *MitigationScope, isStopWhenOverlap bool) (isOverlap bool, conflictInfo *ConflictInformation, err error) {
 	// Conflict information for response in case overlap occur
 	conflictScope := NewConflictScope()
 	conflictInfo = &ConflictInformation{
@@ -98,20 +98,36 @@ func (v *mitigationScopeValidator) CheckOverlap(requestScope *MitigationScope, c
 			if requestTarget.TargetPrefix.Includes(&currentTarget.TargetPrefix) || currentTarget.TargetPrefix.Includes(&requestTarget.TargetPrefix) {
 				isOverlap = true
 				// If overlap on request alias data, no need to append target info to conflict scope
-				if isAliasData == true {
+				if isStopWhenOverlap == true {
 					return
 				}
-
+				
+				// Handle conflict scope data in case overlap at the same client
 				if requestScope.Customer.Id == currentScope.Customer.Id {
-					// Handle conflict scope data in case overlap at the same client
-					if requestScope.MitigationId < currentScope.MitigationId {
-						log.Warnf("[Overlap]: request mitigation id: %+v is less than current: %+v.", requestScope.MitigationId, currentScope.MitigationId)
-						conflictScope.MitigationId = requestScope.MitigationId
-						return
+					// Handle overlap in case the same trigger mitigation
+					if requestScope.TriggerMitigation == currentScope.TriggerMitigation {
+						if requestScope.MitigationId < currentScope.MitigationId {
+							log.Warnf("[Overlap]: request mitigation id: %+v is less than current: %+v.", requestScope.MitigationId, currentScope.MitigationId)
+							conflictScope.MitigationId = requestScope.MitigationId
+							return
+						} else if requestScope.MitigationId > currentScope.MitigationId {
+							// Overlap without return conflict information => override mitigation
+							log.Debugf("[Overlap]: request mitigation id: %+v is greater than current: %+v ==> Override", requestScope.MitigationId, currentScope.MitigationId)
+							return true, nil, nil
+						}
+					} else if requestScope.TriggerMitigation != currentScope.TriggerMitigation {
+						// Handle overlap in case different trigger mitigation
+						// Reject the pre-configured mitigation request in case overlap with the active immediate mitigation
+						if requestScope.TriggerMitigation == false {
+							log.Warnf("[Overlap]: request mitigation id: %+v is pre-configured. Rejected.", requestScope.MitigationId)
+							conflictScope.MitigationId = requestScope.MitigationId
+							return
+						} else {
+							// Withdraw the pre-configured mitigation in case overlap with the immediate mitigation request
+							log.Debugf("[Overlap]: request mitigation id: %+v is greater than current: %+v ==> Override", requestScope.MitigationId, currentScope.MitigationId)
+							return true, nil, nil
+						}
 					}
-					// Overlap without return conflict information => override mitigation
-					log.Debugf("[Overlap]: request mitigation id: %+v is greater than current: %+v ==> Override", requestScope.MitigationId, currentScope.MitigationId)
-					return true, nil, nil
 				} else if requestScope.Customer.Id != currentScope.Customer.Id {
 					// Handle conflict scope data in case overlap between 2 different clients
 					// When overlap occur, need to check all targets to append to conflict scope

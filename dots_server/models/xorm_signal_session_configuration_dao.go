@@ -57,7 +57,6 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 		MaxRetransmitIdle:     signalSessionConfiguration.MaxRetransmitIdle,
 		AckTimeoutIdle:        signalSessionConfiguration.AckTimeoutIdle,
 		AckRandomFactorIdle:   signalSessionConfiguration.AckRandomFactorIdle,
-		TriggerMitigation: signalSessionConfiguration.TriggerMitigation,
 	}
 	_, err = session.Insert(&newSignalSessionConfiguration)
 	if err != nil {
@@ -121,7 +120,6 @@ func UpdateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 	updSignalSessionConfiguration.MaxRetransmitIdle = signalSessionConfiguration.MaxRetransmitIdle
 	updSignalSessionConfiguration.AckTimeoutIdle = signalSessionConfiguration.AckTimeoutIdle
 	updSignalSessionConfiguration.AckRandomFactorIdle = signalSessionConfiguration.AckRandomFactorIdle
-	updSignalSessionConfiguration.TriggerMitigation = signalSessionConfiguration.TriggerMitigation
 	_, err = session.Id(updSignalSessionConfiguration.Id).Update(updSignalSessionConfiguration)
 	if err != nil {
 		log.Infof("customer update err: %s", err)
@@ -172,7 +170,6 @@ func GetSignalSessionConfiguration(customerId int, sessionId int) (signalSession
 	signalSessionConfiguration.MaxRetransmit = dbSignalSessionConfiguration.MaxRetransmit
 	signalSessionConfiguration.AckTimeout = dbSignalSessionConfiguration.AckTimeout
 	signalSessionConfiguration.AckRandomFactor = dbSignalSessionConfiguration.AckRandomFactor
-	signalSessionConfiguration.TriggerMitigation = dbSignalSessionConfiguration.TriggerMitigation
 
 	return
 
@@ -266,7 +263,6 @@ func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfigur
 	signalSessionConfiguration.MaxRetransmitIdle = dbSignalSessionConfiguration.MaxRetransmitIdle
 	signalSessionConfiguration.AckTimeoutIdle = dbSignalSessionConfiguration.AckTimeoutIdle
 	signalSessionConfiguration.AckRandomFactorIdle = dbSignalSessionConfiguration.AckRandomFactorIdle
-	signalSessionConfiguration.TriggerMitigation = dbSignalSessionConfiguration.TriggerMitigation
 
 	return
 

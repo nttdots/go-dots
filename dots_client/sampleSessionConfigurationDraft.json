@@ -33,7 +33,6 @@
             "ack-random-factor": {
                 "current-value-decimal": 1.5
             }
-        },
-        "trigger-mitigation": true
+        }
     }
 }

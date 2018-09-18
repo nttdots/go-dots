@@ -27,6 +27,12 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	}
 	log.Debugf("CreateMitigationScope mitigationScope=%+v\n", mitigationScope)
 
+	// If trigger-mitigation is true, set status = 1 (InProgress). Otherwise, set status = 8 (Triggered)
+	if mitigationScope.TriggerMitigation == true {
+		mitigationScope.Status = InProgress
+	} else {
+		mitigationScope.Status = Triggered
+	}
 	// same data check
 	dbMitigationScope := new(db_models.MitigationScope)
 	clientIdentifier := mitigationScope.ClientIdentifier
@@ -66,8 +72,10 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		ClientDomainIdentifier: clientDomainIdentifier,
 		MitigationId:     mitigationScope.MitigationId,
 		Lifetime:         mitigationScope.Lifetime,
+		Status:           mitigationScope.Status,
+		TriggerMitigation: mitigationScope.TriggerMitigation,
 	}
-	newMitigationScope.Status = InProgress
+
 	_, err = session.Insert(&newMitigationScope)
 	if err != nil {
 		session.Rollback()
@@ -165,6 +173,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		Lifetime: mitigationScope.Lifetime,
 		Status:   mitigationScope.Status,
 		AttackStatus: mitigationScope.AttackStatus,
+		TriggerMitigation: mitigationScope.TriggerMitigation,
 	}
 	_, err = session.Id(dbMitigationScope.Id).Update(&updMitigationScope)
 	if err != nil {
@@ -173,6 +182,13 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		return
 	}
 
+	// update trigger-mitigation boolean column
+	_, err = session.Id(dbMitigationScope.Id).Cols("trigger-mitigation").Update(&updMitigationScope)
+	if err != nil {
+		session.Rollback()
+		log.Errorf("mitigationScope update err: %s", err)
+		return
+	}
 	// Delete target data of ParameterValue, then register new data
 	err = db_models.DeleteMitigationScopeParameterValue(session, dbMitigationScope.Id)
 	if err != nil {
@@ -462,6 +478,7 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	mitigationScope.MitigationId = dbMitigationScope.MitigationId
 	mitigationScope.ClientDomainIdentifier = dbMitigationScope.ClientDomainIdentifier
 	mitigationScope.Status = dbMitigationScope.Status
+	mitigationScope.TriggerMitigation = dbMitigationScope.TriggerMitigation
 
 	// Calculate the remaining lifetime
 	currentTime := time.Now()
@@ -669,7 +686,7 @@ func GetAllMitigationScopes() (mitigations []db_models.MitigationScope, err erro
 	}
 
 	// Get customer table data
-	err = engine.Table("mitigation_scope").Where("status <> 6").Find(&mitigations)
+	err = engine.Table("mitigation_scope").Find(&mitigations)
 	if err != nil {
 		log.Printf("Get mitigations error: %s\n", err)
 		return

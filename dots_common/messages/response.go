@@ -34,6 +34,7 @@ type ScopeStatus struct {
 	FQDN            []string `json:"target-fqdn" codec:"11,omitempty"`
 	URI             []string `json:"target-uri" codec:"12,omitempty"`
 	AliasName       []string `json:"alias-name" codec:"13,omitempty"`
+	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
 	Status          int   `json:"status"           codec:"16"`
 	BytesDropped    int   `json:"bytes-dropped"    codec:"25"`
@@ -65,7 +66,6 @@ type ConfigurationResponseConfigs struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigatingConfig ConfigurationResponseConfig `json:"mitigating-config" codec:"32"`
 	IdleConfig ConfigurationResponseConfig       `json:"idle-config"       codec:"44"`
-	TriggerMitigation bool                       `json:"trigger-mitigation" codec:"45"`
 }
 
 type ConfigurationResponseConfig struct {
@@ -156,11 +156,12 @@ type Acl struct {
  *  m Mitigation Response model
  * return: Mitigation Response in string
  */
- func (m *MitigationResponse) String() (result string) {
+func (m *MitigationResponse) String() (result string) {
 	result = "\n \"ietf-dots-signal-channel:mitigation-scope\":\n"
 	for key, scope := range m.MitigationScope.Scopes {
 		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
 		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
+		result += fmt.Sprintf("     \"%s\": %f\n", "mitigation-start", scope.MitigationStart)
 		for k, v := range scope.TargetPrefix {
 			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-prefix", k+1, v)
 		}
@@ -182,6 +183,11 @@ type Acl struct {
 			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
 		}
 		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+		result += fmt.Sprintf("     \"%s\": %d\n", "status", scope.Status)
+		result += fmt.Sprintf("     \"%s\": %d\n", "bytes-dropped", scope.BytesDropped)
+		result += fmt.Sprintf("     \"%s\": %d\n", "bps-dropped", scope.BpsDropped)
+		result += fmt.Sprintf("     \"%s\": %d\n", "pkts-dropped", scope.PktsDropped)
+		result += fmt.Sprintf("     \"%s\": %d\n", "pps-dropped", scope.PpsDropped)
 	}
 	return
 }
