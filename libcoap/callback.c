@@ -21,6 +21,15 @@ extern void export_nack_handler(coap_context_t *ctx,
                     coap_nack_reason_t reason,
                     coap_tid_t id);
 
+extern void export_ping_handler(coap_context_t *ctx,
+                    coap_session_t *sess,
+                    coap_pdu_t *sent,
+                    coap_tid_t id);
+
+extern void export_event_handler(coap_context_t *ctx,
+                    coap_event_t event,
+                    coap_session_t *sess);
+
 void response_handler(coap_context_t *context,
                       coap_session_t *session,
                       coap_pdu_t *sent,
@@ -48,6 +57,21 @@ void nack_handler(coap_context_t *context,
                     const coap_tid_t id){
 
     export_nack_handler(context, session, sent, reason, id);
+}
+
+void ping_handler(coap_context_t *context,
+                      coap_session_t *session,
+                      coap_pdu_t *sent,
+                      const coap_tid_t id) {
+
+    export_ping_handler(context, session, sent, id);
+}
+
+void event_handler(coap_context_t *context,
+                      coap_event_t event,
+                      void *data) {
+
+    export_event_handler(context, event, (coap_session_t *)data);
 }
 
 int coap_dtls_get_peer_common_name(coap_session_t *session,

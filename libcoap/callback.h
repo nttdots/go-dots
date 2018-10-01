@@ -23,6 +23,15 @@ void nack_handler(struct coap_context_t *,
                     coap_pdu_t *,
                     coap_nack_reason_t,
                     const coap_tid_t);
+
+void ping_handler(struct coap_context_t *,
+                    coap_session_t *,
+                    coap_pdu_t *,
+                    const coap_tid_t);
+
+void event_handler(coap_context_t *context,
+                    coap_event_t event,
+                    void *data);
 /**
  * Get peer common name (from certificate issuer names)
  * @param session   The CoAP session

@@ -423,6 +423,33 @@ func GetMitigationIds(customerId int, clientIdentifier string) (mitigationIds []
 }
 
 /*
+ * Find all mitigationId by a customerId.
+ *
+ * parameter:
+ *  customerId id of the Customer
+ * return:
+ *  mitigationIds list of mitigation id
+ *  error error
+ */
+ func GetPreConfiguredMitigationIds(customerId int) (mitigationscopeIds []int64, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+
+	// Get customer table data
+	err = engine.Table("mitigation_scope").Where("customer_id = ? AND status = 8", customerId).Cols("id").Find(&mitigationscopeIds)
+	if err != nil {
+		log.Printf("find pre-configured mitigation ids error: %s\n", err)
+		return
+	}
+
+	return
+}
+
+/*
  * Obtains a mitigation scope object by a customerId and a mitigationId.
  * Indicate either mitigationScopeId or set of (customerId, clientIdentifier, mitigationId)
  *

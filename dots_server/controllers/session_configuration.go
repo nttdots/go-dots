@@ -313,3 +313,44 @@ func parseSidFromUriPath(uriPath []string) (sid int, err error){
 	log.Debugf("Parsing URI-Path result : sid=%+v", sid)
 	return
 }
+
+/*
+ *  Get session config by customer
+ */
+func GetSessionConfig(customer *models.Customer) (*models.SignalSessionConfiguration, error){
+	resp := models.SignalSessionConfiguration{}
+	signalSessionConfiguration, err := models.GetCurrentSignalSessionConfiguration(customer.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	if signalSessionConfiguration == nil {
+		// If dots client has not registered custom session configuration. Return default configured value.
+		defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
+
+		resp.HeartbeatInterval     = defaultValue.HeartbeatInterval
+		resp.MissingHbAllowed      = defaultValue.MissingHbAllowed
+		resp.MaxRetransmit         = defaultValue.MaxRetransmit
+		resp.AckTimeout            = defaultValue.AckTimeout
+		resp.AckRandomFactor       = defaultValue.AckRandomFactor
+		resp.HeartbeatIntervalIdle = defaultValue.HeartbeatIntervalIdle
+		resp.MissingHbAllowedIdle  = defaultValue.MissingHbAllowedIdle
+		resp.MaxRetransmitIdle     = defaultValue.MaxRetransmitIdle
+		resp.AckTimeoutIdle        = defaultValue.AckTimeoutIdle
+		resp.AckRandomFactorIdle   = defaultValue.AckRandomFactorIdle
+	} else {
+		// If dots client has registered custom session configuration. Return this configured value.
+		resp.HeartbeatInterval     = signalSessionConfiguration.HeartbeatInterval
+		resp.MissingHbAllowed      = signalSessionConfiguration.MissingHbAllowed
+		resp.MaxRetransmit         = signalSessionConfiguration.MaxRetransmit
+		resp.AckTimeout            = signalSessionConfiguration.AckTimeout
+		resp.AckRandomFactor       = signalSessionConfiguration.AckRandomFactor
+		resp.HeartbeatIntervalIdle = signalSessionConfiguration.HeartbeatIntervalIdle
+		resp.MissingHbAllowedIdle  = signalSessionConfiguration.MissingHbAllowedIdle
+		resp.MaxRetransmitIdle     = signalSessionConfiguration.MaxRetransmitIdle
+		resp.AckTimeoutIdle        = signalSessionConfiguration.AckTimeoutIdle
+		resp.AckRandomFactorIdle   = signalSessionConfiguration.AckRandomFactorIdle
+	}
+
+	return &resp, nil
+}

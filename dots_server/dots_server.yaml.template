@@ -60,3 +60,5 @@ system:
     
   # Time (seconds) max-age of session configuration
   maxAgeOption: 45
+  # dots server monitoring thread interval that manage session ping task
+  manageSessionInterval: 100

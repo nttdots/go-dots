@@ -179,7 +179,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		// Zero or multiple scope
 		goto ResponseNG
 
-	} else {
+		} else {
 		// If mid = 0, load all current available mitigation requests for validatation
 		if *mid == 0 {
 			mitigations, err := loadMitigations(customer, cuid, nil)
@@ -192,7 +192,8 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			for _, mitigation := range mitigations {
 				if mitigation.mitigation.Status == models.InProgress || mitigation.mitigation.Status == models.SuccessfullyMitigated ||
 					mitigation.mitigation.Status == models.Stopped || mitigation.mitigation.Status == models.ActiveButTerminating {
-					log.Errorf("mid is not allowed")
+					log.Errorf("The mitigation request (mid=%+v) is not accepted in non-peace time because the mitigation (mid=%+v) is active",
+						*mid, mitigation.mitigation.MitigationId)
 					goto ResponseNG
 				}
 			}
@@ -1305,12 +1306,79 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 			if err != nil {
 				log.Errorf("Terminate expired mitigation (id = %+v) failed. Error: %+v", overridedMitigation.MitigationId, err)
 			}
-		} else if currentScope.TriggerMitigation == false {
+		} else if overridedMitigation.TriggerMitigation == false {
 			// The current mitigation will be withdrawn
 			log.Debugf("[Overlap]: The current mitigation: %+v will be deactivated because overlap with the request mitigation: %+v", overridedMitigation.MitigationId, requestScope.MitigationId)
 			UpdateMitigationStatus(overridedMitigation.Customer.Id, overridedMitigation.ClientIdentifier,
 				overridedMitigation.MitigationId, overridedMitigation.MitigationScopeId, models.Withdrawn)
 		}
-	} 
+	}
 	return true, nil, nil
+}
+
+/*
+ * Trigger mitigation mechanism: activate all pre-configured mitigations (status = 8: triggered) when session lost
+ * parameter:
+ *  customer      current requesting client
+ */
+func TriggerMitigation(customer *models.Customer) (error) {
+	mitigations := make([]*models.MitigationScope, 0)
+
+	// Get pre-configured mitigation ids from DB of this customer
+	mitigationscopeIds, err := models.GetPreConfiguredMitigationIds(customer.Id)
+	if err != nil {
+		return err
+	}
+
+	// Get all pre-configured mitigation ids from DB of this customer by id
+	for _, scopeId := range mitigationscopeIds {
+		s, err := models.GetMitigationScope(customer.Id, "", 0, scopeId)
+		if err != nil {
+			return err
+		}
+		if s == nil {
+			log.WithField("mitigation_id", scopeId).Warn("mitigation_scope not found.")
+			continue
+		}
+		if s.Lifetime == 0 {
+			log.Warnf("Mitigation (id = %+v) has already expired.", s.MitigationId)
+			continue
+		}
+
+		// Get alias data from data channel
+		aliases, err := data_controllers.GetDataAliasesByName(customer, s.ClientIdentifier, s.AliasName.List())
+		if err != nil {
+			return err
+		}
+
+		// Append alias data to new mitigation scope
+		err = appendAliasesDataToMitigationScope(aliases, s)
+		if err != nil {
+			return err
+		}
+
+		mitigations = append(mitigations, s)
+
+	}
+
+	// Activate all pre-configured mitigations
+	for _, mitigation := range mitigations {
+		log.Debugf("Activating the pre-configured mitigation (id = %+v).", mitigation.MitigationId)
+		err = UpdateMitigationStatus(mitigation.Customer.Id, mitigation.ClientIdentifier,
+			mitigation.MitigationId, mitigation.MitigationScopeId, models.InProgress)
+		if err != nil {
+			log.Errorf("Activate the pre-configured mitigation (id = %+v) failed. Error: %+v", mitigation.MitigationId, err)
+			return err
+		}
+
+		// Update mitigation status to 2 (Successfully Mitigated) after connecting to third party
+		err = UpdateMitigationStatus(mitigation.Customer.Id, mitigation.ClientIdentifier,
+			mitigation.MitigationId, mitigation.MitigationScopeId, models.SuccessfullyMitigated)
+		if err != nil {
+			log.Errorf("Activate the pre-configured mitigation (id = %+v) failed. Error: %+v", mitigation.MitigationId, err)
+			return err
+		}
+	}
+
+    return nil
 }
