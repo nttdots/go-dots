@@ -22,7 +22,6 @@ func TestSessionConfiguration_Put(t *testing.T) {
 				MaxRetransmit:     3,
 				AckTimeout:        decimal.NewFromFloat(1.0),
 				AckRandomFactor:   decimal.NewFromFloat(1.0),
-				TriggerMitigation: true,
 	} } }
 	customer := models.Customer{}
 	response, err := sessionConfiguration.HandlePut(controllers.Request{ Body: &request }, &customer)

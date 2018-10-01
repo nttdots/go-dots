@@ -45,6 +45,7 @@ const (
 	ActiveButTerminating   int = 5
 	Terminated             int = 6
 	Withdrawn              int = 7
+	Triggered              int = 8
 )
 
 type AttackStatus int
@@ -115,6 +116,7 @@ type MitigationScope struct {
 	Lifetime         int
 	Status			 int
 	AttackStatus	 int
+	TriggerMitigation bool
 	TargetIP         []Prefix
 	TargetPrefix     []Prefix
 	TargetPortRange  []PortRange
@@ -152,6 +154,7 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 		0,
 		0,
 		0,
+		true,
 		make([]Prefix, 0),
 		make([]Prefix, 0),
 		make([]PortRange, 0),

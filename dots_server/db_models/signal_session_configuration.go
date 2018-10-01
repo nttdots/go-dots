@@ -16,7 +16,6 @@ type SignalSessionConfiguration struct {
 	MaxRetransmitIdle     int       `xorm:"'max_retransmit_idle'"`
 	AckTimeoutIdle        float64       `xorm:"'ack_timeout_idle'"`
 	AckRandomFactorIdle   float64   `xorm:"'ack_random_factor_idle'"`
-	TriggerMitigation bool      `xorm:"'trigger_mitigation'"`
 	Created           time.Time `xorm:"created"`
 	Updated           time.Time `xorm:"updated"`
 }

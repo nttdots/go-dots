@@ -240,7 +240,7 @@ func LogNotification(pdu *libcoap.Pdu) {
     if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
         var v messages.MitigationResponse
         err = dec.Decode(&v)
-        logStr = fmt.Sprintf("%+v", v)
+        logStr = v.String()
     } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
         var v messages.ConfigurationResponse
         err = dec.Decode(&v)

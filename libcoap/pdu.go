@@ -370,7 +370,7 @@ func (pdu *Pdu) SetOption(key OptionKey, val interface{}) {
 func (pdu *Pdu) CoapCode(code Code) CoapCode {
     switch code {
         case ResponseCreated:              return CoapCreated
-        case RequestDelete:                return CoapDeleted
+        case ResponseDeleted:              return CoapDeleted
         case ResponseValid:                return CoapValid
         case ResponseChanged:              return CoapChanged
         case ResponseContent:              return CoapContent

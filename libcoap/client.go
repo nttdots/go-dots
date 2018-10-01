@@ -35,7 +35,7 @@ func (ctx *Context) NewClientSession(dst Address, proto Proto) *Session {
                                      &dst.value,
                                      C.coap_proto_t(proto))
     if ptr != nil {
-        session := &Session{ ptr }
+        session := &Session{ ptr, nil }
         sessions[ptr] = session
         return session
     } else {
@@ -55,7 +55,7 @@ func (ctx *Context) NewClientSessionPSK(dst Address, proto Proto, identity strin
                                          (*C.uint8_t)(&key[0]),
                                          C.uint(len(key)))
     if ptr != nil {
-        session := &Session{ ptr }
+        session := &Session{ ptr, nil }
         sessions[ptr] = session
         return session
     } else {
@@ -70,7 +70,7 @@ func (ctx *Context) NewClientSessionDTLS(dst Address, proto Proto) *Session {
                                           &dst.value,
                                           C.coap_proto_t(proto))
     if ptr != nil {
-        session := &Session{ ptr }
+        session := &Session{ ptr, nil }
         sessions[ptr] = session
         return session
     }

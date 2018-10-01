@@ -38,6 +38,8 @@ type Scope struct {
 	Lifetime *int `json:"lifetime" codec:"14,omitempty"`
 	// attack-status
 	AttackStatus *int `json:"attack-status" codec:"29,omitempty"`
+	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
+	TriggerMitigation *bool `json:"trigger-mitigation" codec:"45"`
 }
 
 type MitigationRequest struct {
@@ -83,8 +85,8 @@ func (m *MitigationRequest) UpdateClientDomainIdentifier(cdid string) {
 /*
  * set mitigation-id
  */
-func (m *MitigationRequest) UpdateMitigationId(mid int) {
-	m.MitigationScope.Scopes[0].MitigationId = &mid
+func (m *MitigationRequest) UpdateMitigationId(mid *int) {
+	m.MitigationScope.Scopes[0].MitigationId = mid
 }
 
 /*
@@ -139,6 +141,9 @@ func (m *MitigationRequest) String() (result string) {
 		if scope.AttackStatus != nil {
 			result += fmt.Sprintf("     \"%s\": %d\n", "attack-status", *scope.AttackStatus)
 		}
+		if scope.TriggerMitigation != nil {
+			result += fmt.Sprintf("     \"%s\": %t\n", "trigger-mitigation", *scope.TriggerMitigation)
+		}
 	}
 	return
 }
@@ -152,8 +157,6 @@ type SignalConfigs struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigatingConfig SignalConfig `json:"mitigating-config" codec:"32"`
 	IdleConfig SignalConfig       `json:"idle-config"       codec:"44"`
-	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
-	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
 }
 
 type IntCurrent struct {

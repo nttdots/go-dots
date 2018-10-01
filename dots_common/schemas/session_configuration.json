@@ -38,9 +38,6 @@
               },
               "ack-random-factor": {
                   "$ref": "#/definitions/DecimalCurrent"
-              },
-              "trigger-mitigation": {
-                  "type": "boolean"
               }
           }
       },

@@ -266,6 +266,7 @@ type ServerSystemConfig struct {
 	Database                     *Database
 	LifetimeConfiguration        *LifetimeConfiguration
 	MaxAgeOption                 uint64
+	SessionInterval				 int
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -276,6 +277,7 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setDatabase(*sc.Database)
 	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
 	GetServerSystemConfig().setMaxAgeOption(sc.MaxAgeOption)
+	GetServerSystemConfig().setSessionInterval(sc.SessionInterval)
 }
 
 type ServerSystemConfigNode struct {
@@ -286,6 +288,7 @@ type ServerSystemConfigNode struct {
 	Database                     DatabaseNode                     `yaml:"database"`
 	LifetimeConfiguration        LifetimeConfigurationNode        `yaml:"lifetimeConfiguration"`
 	MaxAgeOption                 string                           `yaml:"maxAgeOption"`
+	SessionInterval              string                           `yaml:"manageSessionInterval"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -324,6 +327,8 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
+	sessionInterval := parseIntegerValue(scn.SessionInterval)
+
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		DefaultSignalConfiguration:   defaultSignalConfiguration.(*DefaultSignalConfiguration),
@@ -332,6 +337,7 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		Database:                     database.(*Database),
 		LifetimeConfiguration:        lifetimeConfiguration.(*LifetimeConfiguration),
 		MaxAgeOption:                 maxAgeOption,
+		SessionInterval:              sessionInterval,
 	}, nil
 }
 
@@ -361,6 +367,10 @@ func (sc *ServerSystemConfig) setLifetimeConfiguration(parameter LifetimeConfigu
 
 func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint64) {
 	sc.MaxAgeOption = parameter
+}
+
+func (sc *ServerSystemConfig) setSessionInterval(parameter int) {
+	sc.SessionInterval = parameter
 }
 
 var systemConfigInstance *ServerSystemConfig
