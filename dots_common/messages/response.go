@@ -27,7 +27,7 @@ type PortRangeResponse struct {
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mid"    codec:"5"`
-	MitigationStart float64 `json:"mitigation-start" codec:"15"`
+	MitigationStart float64 `json:"mitigation-start" codec:"15,omitempty"`
 	TargetPrefix    []string `json:"target-prefix" codec:"6,omitempty"`
 	TargetPortRange []PortRangeResponse `json:"target-port-range" codec:"7,omitempty"`
 	TargetProtocol  []int  `json:"target-protocol"   codec:"10,omitempty"`
