@@ -209,23 +209,6 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			}
 		}
 
-		// Lifetime is required in body
-		lifetime := body.MitigationScope.Scopes[0].Lifetime
-		if lifetime == nil {
-			log.Errorf("lifetime is mandatory field")
-			goto ResponseNG
-		}
-		if *lifetime <= 0 && *lifetime != int(messages.INDEFINITE_LIFETIME) {
-			log.Errorf("Invalid lifetime value : %+v.", *lifetime)
-			goto ResponseNG
-		}
-
-		if len(body.MitigationScope.Scopes[0].TargetPrefix) == 0 && len(body.MitigationScope.Scopes[0].FQDN) == 0 &&
-		   len(body.MitigationScope.Scopes[0].URI) == 0 && len(body.MitigationScope.Scopes[0].AliasName) == 0 {
-			log.Error("At least one of the attributes 'target-prefix','target-fqdn','target-uri', or 'alias-name' MUST be present.")
-			goto ResponseNG
-		}
-
 		if body.EffectiveClientIdentifier() != "" || body.EffectiveClientDomainIdentifier() != "" || body.EffectiveMitigationId() != nil {
 			log.Errorf("Client Identifier, Client Domain Identifier and Mitigation Id are forbidden in body request")
 			goto ResponseNG
@@ -424,6 +407,10 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	m.FQDN.AddList(req.FQDN)
 	m.URI.AddList(req.URI)
 	m.AliasName.AddList(req.AliasName)
+	if req.Lifetime == nil {
+		log.Warn("lifetime is mandatory field")
+		return nil, errors.New(models.ValidationError)
+	}
 	m.Lifetime = *req.Lifetime
 	if req.AttackStatus != nil {
 		m.AttackStatus = *req.AttackStatus
@@ -434,10 +421,10 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 		m.TriggerMitigation = *req.TriggerMitigation
 	}
 	m.TargetPrefix, err = newTargetPrefix(req.TargetPrefix)
-	m.ClientDomainIdentifier = clientDomainIdentifier
 	if err != nil {
 		return
 	}
+	m.ClientDomainIdentifier = clientDomainIdentifier
 	m.TargetPortRange, err = newTargetPortRange(req.TargetPortRange)
 	if err != nil {
 		return
@@ -454,7 +441,8 @@ func newTargetPrefix(targetPrefix []string) (prefixes []models.Prefix, err error
 	for i, cidr := range targetPrefix {
 		prefix, err := models.NewPrefix(cidr)
 		if err != nil {
-			return nil, err
+			log.Warnf("%+v", err)
+			return nil, errors.New(models.ValidationError)
 		}
 		prefixes[i] = prefix
 	}
@@ -468,7 +456,7 @@ func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges 
 	portRanges = make([]models.PortRange, len(targetPortRange))
 	for i, r := range targetPortRange {
 		if r.LowerPort == nil {
-			log.Error("lower port is mandatory for target-port-range data.")
+			log.Warn("lower port is mandatory for target-port-range data.")
 			return nil, errors.New(models.ValidationError)
 		}
 		if r.UpperPort == nil {
@@ -669,7 +657,8 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer, mitigatio
 			return err
 		}
 		scope.MitigationScopeId = mitigationScopeId
-		if !models.MitigationScopeValidator.Validate(models.MessageEntity(scope), c) {
+		validator := models.GetMitigationScopeValidator(models.BLOCKER_TYPE_GoBGP_RTBH)
+		if !validator.ValidateScope(models.MessageEntity(scope), c, nil) {
 			return errors.New(models.ValidationError)
 		}
 
@@ -796,11 +785,10 @@ func ManageExpiredMitigation(lifetimeInterval int) {
     for {
         for _, acm := range models.GetActiveMitigationMap() {
             if acm.Lifetime == int(messages.INDEFINITE_LIFETIME) {
-                log.Debugf("A lifetime of negative one (%+v) indicates indefinite lifetime for the mitigation request", acm.Lifetime)
+				// A lifetime of negative one indicates the mitigation request with indefinite lifetime
             } else {
                 currentTime := time.Now()
                 remainingLifetime := acm.Lifetime - int(currentTime.Sub(acm.LastModified).Seconds())
-                log.Debugf("[Lifetime Mngt Thread]: mitigation-scope-id= %+v, actual-remaining-lifetime=%+v", acm.MitigationScopeId, remainingLifetime)
                 if remainingLifetime <= 0{
                     log.Debugf("[Lifetime Mngt Thread]: Remaining lifetime < 0, change mitigation status to %+v", models.Terminated)
                     // CustomerId, ClientIdentifier and MitigationId is unnecessary in case MitigationScopeId has value.
@@ -1190,20 +1178,9 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 	var isOverride bool = false
 	var overridedMitigation models.MitigationScope
 
-	// Check if any of alias-name have not been registered in data channel
-	if len(requestScope.AliasName) != len(aliases.Alias) {
-		log.Error("[Validation]: Alias-name is invalid.")
-		return false, nil, nil
-	}
-
-	// Get list of target ip (prefix, fqnd, uri) from mitigation scope if the validation succeeded.
-	requestScope.TargetList, err = requestScope.GetTargetList()
-	if err != nil {
-		return false, nil, err
-	}
-
 	// Validate data(prefix, fqdn, uri, port-range, protocol, alias-name) inside mitigation scope
-	if !models.MitigationScopeValidator.Validate(models.MessageEntity(requestScope), customer) {
+	validator := models.GetMitigationScopeValidator(models.BLOCKER_TYPE_GoBGP_RTBH)
+	if !validator.ValidateScope(models.MessageEntity(requestScope), customer, &aliases) {
 		log.Error("[Validation]: Mitigation scope data is invalid.")
 		return false, nil, nil
 	}
@@ -1236,7 +1213,7 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 
 		// Check overlap mitigation data with active mitigations
 		log.Debugf("Check overlap for mitigation scope data with id: %+v", requestScope.MitigationId)
-		isOverlap, conflictInfo, err := models.MitigationScopeValidator.CheckOverlap(requestScope, &mitigation, false)
+		isOverlap, conflictInfo, err := validator.CheckOverlap(requestScope, &mitigation, false)
 		if err != nil {
 			return false, nil, err
 		}
@@ -1268,7 +1245,7 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 			// Check overlap mitigation data with active mitigations
 			log.Debugf("Check overlap for alias scope data with name: %+v", alias.Name)
 			var info *models.ConflictInformation
-			isOverlap, info, err = models.MitigationScopeValidator.CheckOverlap(aliasScope, &mitigation, true)
+			isOverlap, info, err = validator.CheckOverlap(aliasScope, &mitigation, true)
 			if err != nil {
 				return false, nil, err
 			}

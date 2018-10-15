@@ -193,7 +193,6 @@ func (env *Env) ManageSessionTraffic() {
     for { 
         // loop on sessions in map that connecting to server
         time.Sleep(time.Duration(config.SessionInterval) * time.Second)
-        log.Debugf("[Session Mngt Thread]: The number of connecting session: %+v", len(libcoap.ConnectingSessions()))
         for _, session := range libcoap.ConnectingSessions() {
             if session.GetIsAlive() == false {
                 if session.GetIsPingTask() == true {
@@ -219,6 +218,7 @@ func (env *Env) ManageSessionTraffic() {
                 sessionConfig, err := controllers.GetSessionConfig(customer)
                 if err != nil {
                     log.Errorf("[Session Mngt Thread]: Get session configuration failed.")
+                    return
                 }
 
                 // Update session configuration and start to run ping task
@@ -232,7 +232,7 @@ func (env *Env) ManageSessionTraffic() {
                     pingResponseHandler, pingTimeoutHandler ))
             } else {
                 // Set false for checking session at next cycle 
-                log.Debug("[Session Mngt Thread]: Skip ping task message. Dots client has just negotiated recently.")
+                // Skip ping task message. Dots client has just negotiated recently.
                 session.SetIsAlive(false)
             }
         }

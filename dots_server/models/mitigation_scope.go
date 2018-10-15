@@ -174,6 +174,26 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
  *  err         error
  */
 func (s *MitigationScope) GetTargetList() (targetList []Target, err error) {
+	targetPrefixes := s.GetPrefixAsTarget()
+	targetFqdns, err := s.GetFqdnAsTarget()
+	if err != nil { return nil, err }
+	targetUris, err := s.GetUriAsTarget()
+	if err != nil { return nil, err }
+
+	targetList = append(targetList, targetPrefixes...)
+	targetList = append(targetList, targetFqdns...)
+	targetList = append(targetList, targetUris...)
+
+	return
+}
+
+/*
+ * Get mitigation prefixes as target type
+ *
+ * return:
+ *  targetList  list of the target Prefixes
+ */
+func (s *MitigationScope) GetPrefixAsTarget() (targetList []Target) {
 	// Append target ip address
 	for _, ip := range s.TargetIP {
 		targetList = append(targetList, Target{ TargetType: IP_ADDRESS, TargetPrefix: ip, TargetValue: ip.String() })
@@ -183,7 +203,17 @@ func (s *MitigationScope) GetTargetList() (targetList []Target, err error) {
 	for _, prefix := range s.TargetPrefix {
 		targetList = append(targetList, Target{ TargetType: IP_PREFIX, TargetPrefix: prefix, TargetValue: prefix.String() })
 	}
+	return
+}
 
+/*
+ * Get mitigation FQDNs as target type
+ *
+ * return:
+ *  targetList  list of the target FQDNs
+ *  err         error
+ */
+func (s *MitigationScope) GetFqdnAsTarget() (targetList []Target, err error) {
 	// Append target fqdn
 	for _, fqdn := range s.FQDN.List() {
 		prefixes, err := NewPrefixFromFQDN(fqdn)
@@ -194,7 +224,17 @@ func (s *MitigationScope) GetTargetList() (targetList []Target, err error) {
 			targetList = append(targetList, Target{ TargetType: FQDN, TargetPrefix: prefix, TargetValue: fqdn })
 		}
 	}
+	return
+}
 
+/*
+ * Get mitigation URIs as target type
+ *
+ * return:
+ *  targetList  list of the target URIs
+ *  err         error
+ */
+ func (s *MitigationScope) GetUriAsTarget() (targetList []Target, err error) {
 	// Append target uri
 	for _, uri := range s.URI.List() {
 		prefixes, err := NewPrefixFromURI(uri)

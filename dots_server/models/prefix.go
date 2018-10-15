@@ -47,7 +47,7 @@ func NewPrefix(addrString string) (p Prefix, err error) {
 func NewPrefixFromFQDN(fqdn string) (p []Prefix, err error) {
 	ips, err := net.LookupIP(fqdn)
 	if err != nil {
-		log.Errorf("Failed to look-up ip from fqdn: %+v", fqdn)
+		log.Warnf("Failed to look-up ip from fqdn: %+v", fqdn)
 		return
 	}
 
@@ -66,13 +66,13 @@ func NewPrefixFromFQDN(fqdn string) (p []Prefix, err error) {
 func NewPrefixFromURI(uri string) (p []Prefix, err error) {
 	url, err := url.Parse(uri)
 	if err != nil {
-		log.Errorf("Failed to parse uri: %+v to object", uri)
+		log.Warnf("Failed to parse uri: %+v to object", uri)
 		return
 	}
 
 	ips, err := net.LookupIP(url.Hostname())
 	if err != nil {
-		log.Errorf("Failed to look-up ip from fqdn: %+v", url.Hostname())
+		log.Warnf("Failed to look-up ip from fqdn: %+v", url.Hostname())
 		return
 	}
 
@@ -142,6 +142,10 @@ func ConvertAddrStringToPrefix(addrString []string) []Prefix {
 
 // IsBroadCast reports whether ip is a broadcast address.
 func (prefix *Prefix) IsBroadCast() bool {
+	// This is an ip-address
+	if prefix.PrefixLen == IP_PREFIX_LENGTH {
+		return false
+	}
 	targetPrefix := prefix.net.IP.String()
 	if ip4 := prefix.net.IP.To4(); ip4 != nil {
 		return targetPrefix == prefix.LastIP().String()
