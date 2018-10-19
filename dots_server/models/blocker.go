@@ -6,6 +6,7 @@ import (
 
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
+	types "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
 type BlockerType string
@@ -15,7 +16,7 @@ type Blocker interface {
 	Connect() error
 	ExecuteProtection(protection Protection) error
 	StopProtection(protection Protection) error
-	RegisterProtection(scope *MitigationScope) (Protection, error)
+	RegisterProtection(r *MitigationOrDataChannelACL, targetID int64, customerID int, targetType string) (Protection, error)
 	UnregisterProtection(protection Protection) error
 
 	Id() int64
@@ -90,7 +91,7 @@ func (b *BlockerBase) Sync() {
 
 // Blocker selection algorithm interface
 type BlockerSelectionStrategy interface {
-	selection(scope *MitigationScope) (Blocker, error)
+	selection(targetID int64, blockerConfig *db_models.BlockerConfiguration) (Blocker, error)
 }
 
 // Blocker selection strategy which select the blockers with lowest loads.
@@ -100,10 +101,10 @@ type LoadBaseBlockerSelection struct{}
 /*
  * Selects blockers based on their loads.
  */
-func (d *LoadBaseBlockerSelection) selection(scope *MitigationScope) (b Blocker, err error) {
-	log.WithField("mitigation_id", scope.MitigationId).Debug("LoadBaseBlockerSelection")
+func (d *LoadBaseBlockerSelection) selection(targetID int64, blockerConfig *db_models.BlockerConfiguration) (b Blocker, err error) {
+	log.WithField("target_id", targetID).Debug("LoadBaseBlockerSelection")
 
-	blocker, err := GetLowestLoadBlocker()
+	blocker, err := GetLowestLoadBlocker(blockerConfig.BlockerType)
 	if err != nil {
 		return
 	}
@@ -118,7 +119,7 @@ func (d *LoadBaseBlockerSelection) selection(scope *MitigationScope) (b Blocker,
 			"load":    blocker.Load,
 		}).Debug("blocker selected")
 
-		return toBlocker(blocker)
+		return toBlocker(blocker, blockerConfig)
 	}
 }
 
@@ -140,14 +141,34 @@ type ScopeBlockerList struct {
 	Blocker Blocker
 }
 
-// define BlockerSelectionService.enqueue method
-func (b *blockerSelectionService) Enqueue(scope *MitigationScope, ch chan<- *ScopeBlockerList, errCh chan<- error) {
+type ACLBlockerList struct {
+	ACLID      int64
+	CustomerID int
+	ACL        *types.ACL
+	Blocker    Blocker
+}
+
+// define BlockerSelectionService.enqueue method for mitigation request
+func (b *blockerSelectionService) Enqueue(scope *MitigationScope, blockerConfig *db_models.BlockerConfiguration, ch chan<- *ScopeBlockerList, errCh chan<- error) {
 	go func() {
-		blocker, err := b.strategy.selection(scope)
+		blocker, err := b.strategy.selection(scope.MitigationScopeId, blockerConfig)
 		if err != nil {
 			errCh <- err
 		} else {
 			ch <- &ScopeBlockerList{scope, blocker}
+		}
+	}()
+}
+
+
+// define BlockerSelectionService.enqueue method for data channel acl
+func (b *blockerSelectionService) EnqueueDataChannelACL(acl types.ACL, blockerConfig *db_models.BlockerConfiguration, customerID int, aclID int64, ch chan<- *ACLBlockerList, errCh chan<- error) {
+	go func() {
+		blocker, err := b.strategy.selection(aclID, blockerConfig)
+		if err != nil {
+			errCh <- err
+		} else {
+			ch <- &ACLBlockerList{aclID, customerID, &acl, blocker}
 		}
 	}()
 }

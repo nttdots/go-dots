@@ -59,6 +59,19 @@ const (
 	INDEFINITE_LIFETIME Lifetime = -1
 )
 
+type TargetType string
+
+const (
+	MITIGATION_REQUEST_ACL TargetType = "mitigation_request"
+	DATACHANNEL_ACL TargetType = "datachannel_acl"
+)
+
+type MitigationAcl string
+
+const (
+	MITIGATION_ACL MitigationAcl = "mitigation-acl-"
+)
+
 /*
  * Dots message structure.
  */

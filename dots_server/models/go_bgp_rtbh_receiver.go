@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"fmt"
+	"github.com/nttdots/go-dots/dots_server/db_models"
 	"github.com/osrg/gobgp/client"
 	"github.com/osrg/gobgp/packet/bgp"
 	"github.com/osrg/gobgp/table"
@@ -118,8 +119,8 @@ func (g *GoBgpRtbhReceiver) ExecuteProtection(p Protection) (err error) {
 	}
 
 	log.WithFields(log.Fields{
-		"customer.id":   b.rtbhCustomerId,
-		"mitigation-scope.id": b.mitigationScopeId,
+		"customer.id":   p.CustomerId(),
+		"mitigation-scope.id": b.targetId,
 	}).Info("GoBgpRtbhReceiver.ExecuteProtection")
 
 	blockerClient, err := g.connect()
@@ -174,8 +175,8 @@ func (g *GoBgpRtbhReceiver) StopProtection(p Protection) (err error) {
 	}
 
 	log.WithFields(log.Fields{
-		"customer.id":   b.RtbhCustomerId(),
-		"mitigation-scope.id": b.MitigationScopeId(),
+		"customer.id":   p.CustomerId(),
+		"mitigation-scope.id": b.TargetId(),
 		"load":          g.Load(),
 	}).Infof("GoBgpRtbhReceiver.StopProtection")
 
@@ -254,7 +255,7 @@ func (g *GoBgpRtbhReceiver) toPath(b *RTBH) []*table.Path {
 	return paths
 }
 
-func (g *GoBgpRtbhReceiver) RegisterProtection(m *MitigationScope) (p Protection, err error) {
+func (g *GoBgpRtbhReceiver) RegisterProtection(r *MitigationOrDataChannelACL, targetID int64, customerID int, targetType string) (p Protection, err error) {
 	forwardedStatus := NewProtectionStatus(
 		0, 0, 0,
 		NewThroughputData(0, 0, 0),
@@ -266,26 +267,32 @@ func (g *GoBgpRtbhReceiver) RegisterProtection(m *MitigationScope) (p Protection
 		NewThroughputData(0, 0, 0),
 	)
 
-	base := ProtectionBase{
-		0,
-		m.MitigationScopeId,
-		g,
-		false,
-		time.Unix(0, 0),
-		time.Unix(0, 0),
-		time.Unix(0, 0),
-		forwardedStatus,
-		blockedStatus,
+	if r.MitigationRequest != nil {
+		base := ProtectionBase{
+			0,
+			customerID,
+			targetID,
+			targetType,
+			"",
+			g,
+			false,
+			time.Unix(0, 0),
+			time.Unix(0, 0),
+			time.Unix(0, 0),
+			forwardedStatus,
+			blockedStatus,
+		}
+
+		// persist to external storage
+		log.Debugf("stored external storage.  %+v", base)
+		cidr := make([]string, 0)
+		for _, target := range r.MitigationRequest.TargetList {
+			cidr = append(cidr, target.TargetPrefix.String())
+		}
+
+		p = &RTBH{base, cidr}
 	}
 
-	// persist to external storage
-	log.Debugf("stored external storage.  %+v", base)
-	cidr := make([]string, 0)
-	for _, target := range m.TargetList {
-		cidr = append(cidr, target.TargetPrefix.String())
-	}
-
-	p = &RTBH{base, m.Customer.Id, cidr}
 	dbP, err := CreateProtection2(p)
 	if err != nil {
 		return
@@ -312,20 +319,11 @@ func (g *GoBgpRtbhReceiver) UnregisterProtection(p Protection) (err error) {
 }
 
 const PROTECTION_TYPE_RTBH = "RTBH"
-const (
-	RTBH_PROTECTION_CUSTOMER_ID = "rtbhCustomerId"
-	RTBH_PROTECTION_TARGET      = "rtbhTarget"
-)
 
 // implements Protection
 type RTBH struct {
 	ProtectionBase
-	rtbhCustomerId int
 	rtbhTargets    []string
-}
-
-func (r *RTBH) RtbhCustomerId() int {
-	return r.rtbhCustomerId
 }
 
 func (r *RTBH) RtbhTargets() []string {
@@ -336,28 +334,16 @@ func (r RTBH) Type() ProtectionType {
 	return PROTECTION_TYPE_RTBH
 }
 
-func NewRTBHProtection(base ProtectionBase, params map[string][]string) *RTBH {
-	var customerId int
+func NewRTBHProtection(base ProtectionBase, params []db_models.GoBgpParameter) *RTBH {
 	var targets []string
-	var a []string
 
-	a, ok := params[RTBH_PROTECTION_CUSTOMER_ID]
-	if ok {
-		customerId, _ = strconv.Atoi(a[0])
-	} else {
-		customerId = 0
-	}
-
-	a, ok = params[RTBH_PROTECTION_TARGET]
-	if ok {
-		targets = a
-	} else {
-		targets = make([]string, 0)
+	targets = make([]string, 0)
+	for _,param := range params {
+		targets = append(targets, param.TargetAddress)
 	}
 
 	return &RTBH{
 		base,
-		customerId,
 		targets,
 	}
 }

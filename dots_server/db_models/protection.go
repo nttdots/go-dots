@@ -4,9 +4,12 @@ import "time"
 
 type Protection struct {
 	Id                  int64     `xorm:"'id' pk autoincr"`
-	MitigationScopeId   int64     `xorm:"'mitigation_scope_id'"`
+	CustomerId          int       `xorm:"'customer_id' not null"`
+	TargetId            int64     `xorm:"'target_id' not null"`
+	TargetType          string    `xorm:"'target_type' not null"`
+	AclName             string    `xorm:"'acl_name'"`
 	IsEnabled           bool      `xorm:"'is_enabled' not null"`
-	Type                string    `xorm:"'type' not null"`
+	ProtectionType      string    `xorm:"'protection_type' not null"`
 	TargetBlockerId     int64     `xorm:"'target_blocker_id'"`
 	StartedAt           time.Time `xorm:"'started_at'"`
 	FinishedAt          time.Time `xorm:"'finished_at'"`

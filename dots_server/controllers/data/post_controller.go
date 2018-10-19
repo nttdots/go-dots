@@ -103,13 +103,25 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
           }
         }
 
+        acls := []data_models.ACL{}
         for _,acl := range n {
           err = acl.Save(tx)
           if err != nil {
             return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
           }
+          acls = append(acls, acl)
         }
-        return EmptyResponse(http.StatusCreated)
+        // Call blocker
+        err := data_models.CallBlocker(acls, customer.Id, http.StatusCreated)
+        if err != nil{
+          log.Errorf("Data channel POST ACL. CallBlocker is error: %s\n", err)
+          // handle error when call blocker failed
+          for _,acl := range acls {
+            data_models.DeleteACLByName(tx, client, acl.ACL.Name, now)
+          }
+          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to call blocker")
+        }
+          return EmptyResponse(http.StatusCreated)
       default:
         return responseOf(fmt.Errorf("Unexpected request: %#+v", req))
       }

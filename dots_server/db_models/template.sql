@@ -284,6 +284,7 @@ CREATE TABLE `mitigation_scope` (
   `lifetime` int(11) DEFAULT NULL,
   `trigger-mitigation` tinyint(1) DEFAULT NULL,
   `attack-status` int(1) DEFAULT NULL,
+  `acl_name` varchar(255) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -367,9 +368,12 @@ DROP TABLE IF EXISTS `protection`;
 
 CREATE TABLE `protection` (
   `id`                     BIGINT(20)   NOT NULL AUTO_INCREMENT,
-  `mitigation_scope_id`    BIGINT(20)            DEFAULT NULL,
+  `customer_id`            INT(11)      NOT NULL,
+  `target_id`              BIGINT(20)   NOT NULL,
+  `target_type`            VARCHAR(255) NOT NULL,
+  `acl_name`               VARCHAR(255)          DEFAULT NULL,
   `is_enabled`             TINYINT(1)   NOT NULL,
-  `type`                   VARCHAR(255) NOT NULL,
+  `protection_type`        VARCHAR(255) NOT NULL,
   `target_blocker_id`      BIGINT(20)            DEFAULT NULL,
   `started_at`             DATETIME              DEFAULT NULL,
   `finished_at`            DATETIME              DEFAULT NULL,
@@ -385,22 +389,21 @@ CREATE TABLE `protection` (
 
 ####### Basically the table 'protection' is modified by the system only.
 
-# protection_parameter
+# gobgp_parameter
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `protection_parameter`;
+DROP TABLE IF EXISTS `go_bgp_parameter`;
 
-CREATE TABLE `protection_parameter` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `protection_id` BIGINT(20) NOT NULL,
-  `key` varchar(255) NOT NULL,
-  `value` varchar(255) NOT NULL,
+CREATE TABLE `go_bgp_parameter` (
+  `id` bigint(20)  NOT NULL AUTO_INCREMENT,
+  `protection_id`  BIGINT(20) NOT NULL,
+  `target_address` varchar(255) NOT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-####### Basically the table 'protection_parameter' is modified by the system only.
+####### Basically the table 'gobgp_parameter' is modified by the system only.
 
 # protection_status
 # ------------------------------------------------------------
@@ -544,3 +547,35 @@ CREATE TABLE `data_acls` (
 ALTER TABLE `data_acls` ADD CONSTRAINT UC_dots_acls UNIQUE (`data_client_id`, `name`);
 
 ####### Basically the table 'data_clients' is modified by the system only.
+
+# arista_parameter
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `arista_parameter`;
+
+CREATE TABLE `arista_parameter` (
+  `id`                  bigint(20) NOT NULL AUTO_INCREMENT,
+  `protection_id`       bigint(20) NOT NULL,
+  `acl_type`            varchar(255) NOT NULL,
+  `acl_filtering_rule`  text     NOT NULL,
+  `created`             datetime DEFAULT NULL,
+  `updated`             datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# blocker_configuration
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `blocker_configuration`;
+
+CREATE TABLE `blocker_configuration` (
+  `id`                bigint(20) NOT NULL AUTO_INCREMENT,
+  `customer_id`       int(11) NOT NULL,
+  `target_type`       VARCHAR(255) NOT NULL,
+  `blocker_type`      VARCHAR(255) NOT NULL,
+  `arista_connection` VARCHAR(255),
+  `arista_interface`  VARCHAR(255),
+  `created`           datetime DEFAULT NULL,
+  `updated`           datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

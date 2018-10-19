@@ -12,6 +12,7 @@ type MitigationScope struct {
 	Lifetime         int       `xorm:"'lifetime'"`
 	TriggerMitigation bool     `xorm:"'trigger-mitigation'"`
 	AttackStatus	 int	   `xorm:"'attack-status'"`
+	AclName          string    `xorm:"'acl_name'"`
 	Created          time.Time `xorm:"created"`
 	Updated          time.Time `xorm:"updated"`
 }

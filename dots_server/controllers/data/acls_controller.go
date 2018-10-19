@@ -136,7 +136,7 @@ func (c *ACLsController) Delete(customer *models.Customer, r *http.Request, p ht
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
       deleted, err := data_models.DeleteACLByName(tx, client, name, now)
       if err != nil {
-        return
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to delete acl")
       }
 
       if deleted == true {
@@ -219,6 +219,28 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       if err != nil {
         return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
       }
+
+      // Find ACL by name to call Blocker
+      acls := []data_models.ACL{}
+      acls = append(acls, *e)
+
+      // If ACL is update -> Stop protection
+      if status == http.StatusNoContent {
+        err := data_models.CancelBlocker(e.Id)
+        if err != nil {
+          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to cancle blocker")
+        }
+      }
+
+      // Call blocker
+      err = data_models.CallBlocker(acls, customer.Id, status)
+      if err != nil {
+        // Rollback
+        log.Errorf("Data channel PUT ACL. CallBlocker is error: %s\n", err)
+        data_models.DeleteACLByName(tx, client, e.ACL.Name, now)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to call blocker")
+      }
+
       return EmptyResponse(status)
     })
   })

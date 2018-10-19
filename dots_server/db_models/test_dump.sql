@@ -5,7 +5,7 @@ DROP TABLE IF EXISTS `blocker`;
 
 CREATE TABLE `blocker` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `type` VARCHAR(20) NOT NULL,
+  `blocker_type` VARCHAR(20) NOT NULL,
   `capacity` int(11) NOT NULL,
   `load` int(11) NOT NULL,
   `created` datetime DEFAULT NULL,
@@ -14,12 +14,12 @@ CREATE TABLE `blocker` (
   KEY `IDX_blocker_IDX_LOAD` (`load`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `blocker` (`id`, `type`, `capacity`, `load`, `created`, `updated`)
+INSERT INTO `blocker` (`id`, `blocker_type`, `capacity`, `load`, `created`, `updated`)
 VALUES
-  (1,'GoBGP-RTBH', 100, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (1,'Arista-ACL', 100, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
   (2,'GoBGP-RTBH', 100, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
   (3,'GoBGP-RTBH',  10, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-  (100, 'GoBGP-RTBH',  5, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+  (100,'GoBGP-RTBH',  5, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 
 # blocker_parameters
@@ -239,6 +239,7 @@ CREATE TABLE `mitigation_scope` (
   `lifetime` int(11) DEFAULT NULL,
   `trigger-mitigation` tinyint(1) DEFAULT NULL,
   `attack-status` int(1) DEFAULT NULL,
+  `acl_name` varchar(255) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -246,8 +247,8 @@ CREATE TABLE `mitigation_scope` (
 
 INSERT INTO `mitigation_scope` (`id`, `customer_id`, `client_identifier`, `client_domain_identifier`, `mitigation_id`, `status`, `lifetime`, `trigger-mitigation`,`created`, `updated`)
 VALUES
-  (1,128,'','',12332,6,1000, 1,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
-  (2,128,'','',12333,6,1000, 1,'2017-04-13 13:44:34','2017-04-13 13:44:34');
+  (1,128,'','',12332,7,1000, 1,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
+  (2,128,'','',12333,7,1000, 1,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 
 # mitigation_scope trigger when status change
 # ------------------------------------------------------------
@@ -324,9 +325,12 @@ DROP TABLE IF EXISTS `protection`;
 
 CREATE TABLE `protection` (
   `id`                     BIGINT(20)   NOT NULL AUTO_INCREMENT,
-  `mitigation_scope_id`    BIGINT(20)            DEFAULT NULL,
+  `customer_id`            INT(11)      NOT NULL,
+  `target_id`              BIGINT(20)   NOT NULL,
+  `target_type`            VARCHAR(255) NOT NULL,
+  `acl_name`               VARCHAR(255)          DEFAULT NULL,
   `is_enabled`             TINYINT(1)   NOT NULL,
-  `type`                   VARCHAR(255) NOT NULL,
+  `protection_type`        VARCHAR(255) NOT NULL,
   `target_blocker_id`      BIGINT(20)            DEFAULT NULL,
   `started_at`             DATETIME              DEFAULT NULL,
   `finished_at`            DATETIME              DEFAULT NULL,
@@ -340,32 +344,28 @@ CREATE TABLE `protection` (
   ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
 
-insert into `protection` (id, mitigation_scope_id, is_enabled, `type`, target_blocker_id, started_at, finished_at, record_time, forwarded_data_info_id, blocked_data_info_id, `created`, `updated`)
+insert into `protection` (id, customer_id, target_id, target_type, is_enabled, protection_type, target_blocker_id, started_at, finished_at, record_time, forwarded_data_info_id, blocked_data_info_id, `created`, `updated`)
 VALUES
-(100, 1, false, 'RTBH', 1, null, null, null, 1, 2, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-(101, 2, false, 'RTBH', 1, null, null, null, 3, 4, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+(100, 128, 1, 'mitigation_request', false, 'RTBH', 1, null, null, null, 1, 2, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+(101, 128, 2, 'datachannel_acl', false, 'RTBH', 1, null, null, null, 3, 4, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
-# protection_parameter
+# gobgp_parameter
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `protection_parameter`;
+DROP TABLE IF EXISTS `go_bgp_parameter`;
 
-CREATE TABLE `protection_parameter` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `protection_id` BIGINT(20) NOT NULL,
-  `key` varchar(255) NOT NULL,
-  `value` varchar(255) NOT NULL,
+CREATE TABLE `go_bgp_parameter` (
+  `id` bigint(20)  NOT NULL AUTO_INCREMENT,
+  `protection_id`  BIGINT(20) NOT NULL,
+  `target_address` varchar(255) NOT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-insert into `protection_parameter` (id, protection_id, `key`, `value`, `created`, `updated`)
+insert into `go_bgp_parameter` (id, protection_id, target_address, `created`, `updated`)
 VALUES
-(1, 100, 'customerId', '1', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-(2, 100, 'target', '192.168.240.0', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-(3, 101, 'customerId', '10', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-(4, 101, 'target', '192.168.241.0', '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+(1, 100, '192.168.240.0', '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 # protection_status
 # ------------------------------------------------------------
@@ -525,3 +525,40 @@ CREATE TABLE `data_acls` (
 ALTER TABLE `data_acls` ADD CONSTRAINT UC_dots_acls UNIQUE (`data_client_id`, `name`);
 
 ####### Basically the table 'data_clients' is modified by the system only.
+
+# arista_parameter
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `arista_parameter`;
+
+CREATE TABLE `arista_parameter` (
+  `id`                  bigint(20)   NOT NULL AUTO_INCREMENT,
+  `protection_id`       bigint(20)   NOT NULL,
+  `acl_type`            varchar(255) NOT NULL,
+  `acl_filtering_rule`  text     NOT NULL,
+  `created`             datetime DEFAULT NULL,
+  `updated`             datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# blocker_configuration
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `blocker_configuration`;
+
+CREATE TABLE `blocker_configuration` (
+  `id`                bigint(20) NOT NULL AUTO_INCREMENT,
+  `customer_id`       int(11) NOT NULL,
+  `target_type`       VARCHAR(255) NOT NULL,
+  `blocker_type`      VARCHAR(255) NOT NULL,
+  `arista_connection` VARCHAR(255),
+  `arista_interface`  VARCHAR(255),
+  `created`           datetime DEFAULT NULL,
+  `updated`           datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT INTO `blocker_configuration` (`id`, `customer_id`, `target_type`, `blocker_type`, `arista_connection`, `arista_interface`)
+VALUES
+(1, 128, "mitigation_request", "Arista-ACL", "arista", "Ethernet 1"),
+(2, 128, "datachannel_acl", "Arista-ACL", "arista", "Ethernet 1");

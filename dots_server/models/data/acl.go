@@ -3,11 +3,14 @@ package data_models
 import (
   "encoding/json"
   "time"
+  "errors"
   log "github.com/sirupsen/logrus"
 
   types "github.com/nttdots/go-dots/dots_common/types/data"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/db_models/data"
+  "github.com/nttdots/go-dots/dots_server/models"
+  "github.com/nttdots/go-dots/dots_common/messages"
 )
 
 type ACL struct {
@@ -140,6 +143,12 @@ func findAndCleanACL(tx *db.Tx, client *Client, name string, now time.Time) (*da
 }
 
 func deleteACL(tx *db.Tx, p *data_db_models.ACL) (bool, error) {
+  err := CancelBlocker(p.Id)
+  if err != nil {
+    log.WithError(err).Error("Stop Protection() failed.")
+    return false, err
+  }
+
   affected, err := tx.Session.Id(p.Id).Delete(p)
   if err != nil {
     log.WithError(err).Error("Delete() failed.")
@@ -174,4 +183,117 @@ func DeleteACLByName(tx *db.Tx, client *Client, name string, now time.Time) (boo
     return false, nil
   }
   return deleteACL(tx, a)
+}
+
+/*
+ * Call blocker (GoBGP or Arista)
+ */
+func CallBlocker(acls []ACL, customerID int, status int) (err error){
+
+  // channel to receive selected blockers.
+	ch := make(chan *models.ACLBlockerList, 10)
+	// channel to receive errors
+	errCh := make(chan error, 10)
+	defer func() {
+		close(ch)
+		close(errCh)
+	}()
+
+	unregisterCommands := make([]func(), 0)
+  counter := 0
+
+  // Get blocker configuration by customerId and target_type in table blocker_configuration
+  blockerConfig, err := models.GetBlockerConfiguration(customerID, string(messages.DATACHANNEL_ACL))
+  if err != nil {
+    return err
+  }
+  log.WithFields(log.Fields{
+    "blocker_type": blockerConfig.BlockerType,
+  }).Debug("Get blocker configuration")
+
+  for _,acl := range acls {
+    models.BlockerSelectionService.EnqueueDataChannelACL(acl.ACL, blockerConfig, customerID, acl.Id, ch, errCh)
+    counter++
+  }
+
+  // loop until we can obtain just enough blockers for the data channel acl
+	for counter > 0 {
+		select {
+    case aclList := <-ch: // if a blocker is available
+      if aclList.Blocker == nil {
+        counter --
+        err = errors.New("Blocker is not existed")
+        break
+      }
+
+      // register a MitigationScope to a Blocker and receive a Protection
+			p, e := aclList.Blocker.RegisterProtection(&models.MitigationOrDataChannelACL{nil, aclList.ACL}, aclList.ACLID, aclList.CustomerID, string(messages.DATACHANNEL_ACL))
+			if e != nil {
+        err = e
+				break
+      }
+
+      // register rollback sequences for the case if
+      // some errors occurred during this data channel handling.
+      unregisterCommands = append(unregisterCommands, func() {
+      aclList.Blocker.UnregisterProtection(p)
+      })
+
+			// invoke the protection on the blocker
+			e = aclList.Blocker.ExecuteProtection(p)
+			if e != nil {
+        counter--
+        err = e
+				break
+			}
+
+			counter--
+		case e := <-errCh: // case if some error occured while we obtain blockers.
+      counter--
+      err = e
+			break
+		}
+	}
+
+	if err != nil {
+		// rollback if the error is not nil.
+		for _, f := range unregisterCommands {
+			f()
+		}
+  }
+
+	return
+}
+
+/*
+ * Cancle blocker when update or delete data channel acl
+ */
+func CancelBlocker(aclID int64) (err error){
+  p, err := models.GetActiveProtectionByTargetIDAndTargetType(aclID, string(messages.DATACHANNEL_ACL))
+	if err != nil {
+		log.WithError(err).Error("models.GetActiveProtectionByTargetIDAndTargetType()")
+		return err
+	}
+	if p == nil {
+    log.WithField("data channel acl id", aclID).Error("protection not found.")
+    return
+	}
+	if !p.IsEnabled() {
+		log.WithFields(log.Fields{
+      "target_id":   aclID,
+      "target_type": p.TargetType(),
+			"is_enable":   p.IsEnabled(),
+			"started_at":  p.StartedAt(),
+			"finished_at": p.FinishedAt(),
+    }).Error("protection status error.")
+    return
+	}
+
+	// cancel
+	blocker := p.TargetBlocker()
+	err = blocker.StopProtection(p)
+	if err != nil {
+		return err
+  }
+  return
 }

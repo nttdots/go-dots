@@ -5,6 +5,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
 	"time"
+	"strconv"
 	"github.com/nttdots/go-dots/dots_common/messages"
 )
 
@@ -720,4 +721,42 @@ func GetAllMitigationScopes() (mitigations []db_models.MitigationScope, err erro
 	}
 
 	return
+}
+
+/*
+ * Update acl_name for mitigation scope
+ */
+func UpdateACLNameToMitigation(mitigationID int64) (string, error){
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return "", err
+	}
+
+	// transaction start
+	session := engine.NewSession()
+	defer session.Close()
+
+	err = session.Begin()
+	if err != nil {
+		session.Rollback()
+		return "", err
+	}
+
+	// registration data settings
+	// for mitigation_scope
+	aclName := string(messages.MITIGATION_ACL)+ strconv.Itoa(int(mitigationID))
+	updMitigationScope := db_models.MitigationScope{
+		AclName: aclName,
+	}
+	_, err = session.Id(mitigationID).Update(&updMitigationScope)
+	if err != nil {
+		session.Rollback()
+		log.Errorf("mitigationScope update err: %s", err)
+		return "", err
+	}
+
+	err = session.Commit()
+	return aclName, nil
 }

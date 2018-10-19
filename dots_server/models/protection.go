@@ -1,37 +1,38 @@
 package models
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/nttdots/go-dots/dots_server/db_models"
-	log "github.com/sirupsen/logrus"
+	//log "github.com/sirupsen/logrus"
 )
 
 /*
  * Convert this protection to a DB protection model.
  */
-func toProtectionParameters(obj Protection, protectionId int64) []db_models.ProtectionParameter {
-	result := make([]db_models.ProtectionParameter, 0)
+func toGoBGPParameters(obj Protection, protectionID int64) []db_models.GoBgpParameter {
+	result := make([]db_models.GoBgpParameter, 0)
+    t,_ := obj.(*RTBH)
+	for _, target := range t.RtbhTargets() {
+		result = append(result, db_models.GoBgpParameter{
+			ProtectionId: protectionID,
+			TargetAddress: target})
+	}
 
-	switch t := obj.(type) {
-	case *RTBH:
-		result = append(result, db_models.ProtectionParameter{
-			//ProtectionId: obj.Id(),
-			ProtectionId: protectionId,
-			Key:          RTBH_PROTECTION_CUSTOMER_ID,
-			Value:        strconv.Itoa(t.rtbhCustomerId)})
-		for _, target := range t.RtbhTargets() {
-			result = append(result, db_models.ProtectionParameter{
-				//ProtectionId: obj.Id(),
-				ProtectionId: protectionId,
-				Key:          RTBH_PROTECTION_TARGET,
-				Value:        target})
-		}
-	default:
-		log.WithFields(log.Fields{
-			"type": obj,
-		}).Panic("not implement")
+	return result
+}
+
+func toAristaParameters (obj Protection, protectionID int64) []db_models.AristaParameter {
+	result := make([]db_models.AristaParameter, 0)
+	t, _ := obj.(*AristaACL)
+	aclTargets := t.aclTargets
+
+	for _,target := range aclTargets {
+		result = append(result, db_models.AristaParameter{
+			ProtectionId:       protectionID,
+			AclType:            target.ACLType(),
+			AclFilteringRule:   target.ACLRule(),
+		})
 	}
 
 	return result
@@ -43,7 +44,10 @@ type Protection interface {
 	//GetByMitigationId(mitigationId int) Protection
 
 	Id() int64
-	MitigationScopeId() int64
+	CustomerId() int
+	TargetId() int64
+	TargetType() string
+	AclName() string
 	IsEnabled() bool
 	SetIsEnabled(b bool)
 	Type() ProtectionType
@@ -60,7 +64,10 @@ type Protection interface {
 // Protection Base
 type ProtectionBase struct {
 	id                int64
-	mitigationScopeId int64
+	customerId        int
+	targetId          int64
+	targetType        string
+	aclName           string
 	targetBlocker     Blocker
 	isEnabled         bool
 	startedAt         time.Time
@@ -74,8 +81,20 @@ func (p ProtectionBase) Id() int64 {
 	return p.id
 }
 
-func (p ProtectionBase) MitigationScopeId() int64 {
-	return p.mitigationScopeId
+func (p ProtectionBase) CustomerId() int {
+	return p.customerId
+}
+
+func (p ProtectionBase) TargetId() int64 {
+	return p.targetId
+}
+
+func (p ProtectionBase) TargetType() string {
+	return p.targetType
+}
+
+func (p ProtectionBase) AclName() string {
+	return p.aclName
 }
 
 func (p ProtectionBase) TargetBlocker() Blocker {

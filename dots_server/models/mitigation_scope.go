@@ -123,6 +123,7 @@ type MitigationScope struct {
 	Customer         *Customer
 	ClientIdentifier string
 	ClientDomainIdentifier string
+	AclName          string
 	TargetList       []Target     // List of target prefix/fqdn/uri
 }
 
@@ -161,6 +162,7 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 		c,
 		clientIdentifier,
 		"",
+		"",
 		make([]Target, 0),
 	}
 	return
@@ -173,7 +175,7 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
  *  targetList  list of the target Prefixes/FQDNs/URIs
  *  err         error
  */
-func (s *MitigationScope) GetTargetList() (targetList []Target, err error) {
+ func (s *MitigationScope) GetTargetList() (targetList []Target, err error) {
 	targetPrefixes := s.GetPrefixAsTarget()
 	targetFqdns, err := s.GetFqdnAsTarget()
 	if err != nil { return nil, err }
@@ -297,4 +299,34 @@ func (conflictScope *ConflictScope) ParseToResponse() (*messages.ConflictScope) 
 		res.TargetPortRange[i] = messages.PortRangeResponse{ LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort }
 	}
 	return res
+}
+
+/*
+ * Return mitigation status that is active or inactive
+ *
+ * return:
+ *  bool
+ *  true  mitigation is active
+ *  false mitigation is inactive
+ */
+ func (s *MitigationScope) IsActive() (bool) {
+	return IsActive(s.Status)
+}
+
+/*
+ * Return status that is active or inactive
+ *
+ * return:
+ *  bool
+ *  true  status is active
+ *  false status is inactive
+ */
+func IsActive(status int) (bool) {
+	switch (status) {
+	case InProgress, SuccessfullyMitigated, Stopped, ExceedCapability, ActiveButTerminating:
+		return true
+	case Terminated, Withdrawn, Triggered:
+		return false
+	default: return false
+	}
 }

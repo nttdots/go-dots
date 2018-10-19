@@ -26,9 +26,9 @@ func GetMitigationScopeValidator(blockerType string) (mitigationScopeValidator) 
 	case BLOCKER_TYPE_GoBGP_RTBH:
 		goBgpValidator.blockerType = blockerType
 		return goBgpValidator
-	// case BLOCKER_TYPE_GO_ARISTA:
-	// 	goAristaValidator.blockerType = blockerType
-	// 	return goAristaValidator
+	case BLOCKER_TYPE_GO_ARISTA:
+		goAristaValidator.blockerType = blockerType
+		return goAristaValidator
 	default:
 		log.Warnf("Unknown blocker type: %+v", blockerType)
 	}
@@ -358,16 +358,14 @@ func (v *mitigationScopeValidatorBase) ValidateAliasName(aliasNames SetString, a
 		return true
 	}
 
-	for i, name := range aliasNames.List() {
-		if i >= len(aliases.Alias) {
+	for _, name := range aliasNames.List() {
+		isRegistered := false
+		for _, alias := range aliases.Alias {
+			if name == alias.Name { isRegistered = true }
+		}
+		if !isRegistered {
 			log.Warnf("invalid alias-name: %+v", name)
 			return false
-		}
-		for _, alias := range aliases.Alias {
-			if name != alias.Name {
-				log.Warnf("invalid alias-name: %+v", name)
-				return false
-			}
 		}
 	}
 	return true
