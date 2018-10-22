@@ -286,14 +286,14 @@ func (pdu *Pdu) Queries() []string {
     return ret
 }
 
-func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (value uint32, err error) {
+func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (int32, error) {
     for _, option := range pdu.Options {
         if key == option.Key {
-            value, err = option.Uint()
-            return
+            v, err := option.Uint()
+            return int32(v), err
         }
     }
-    return 2, nil
+    return -1, nil
 }
 
 func (pdu *Pdu) GetOptionStringValue(key OptionKey) (value string) {
@@ -317,16 +317,6 @@ func (pdu *Pdu) OptionValues(o OptionKey) []interface{} {
 	}
 
 	return rv
-}
-
-// Option gets the first value for the given option ID.
-func (pdu *Pdu) OptionValue(o OptionKey) interface{} {
-	for _, v := range pdu.Options {
-		if o == v.Key {
-			return v.Value
-		}
-	}
-	return nil
 }
 
 // RemoveOption removes all references to an option

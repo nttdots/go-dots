@@ -110,7 +110,7 @@ ILOOP:
 
 				// If mitigation status was changed to 6: (attack mitigation is now terminated), delete this mitigation after notifying
 				if status == models.Terminated {
-					log.Debugf("[MySQL-Notification]: Mitigation was terminated. Delete corresponding sub-resource and mitigation request.")
+					log.Debugf("[MySQL-Notification]: Mitigation was expired => terminated. Delete sub-resource (query=%+v) and mitigation (id=%+v).", query, mid)
 					err = models.DeleteMitigationScope(cid, cuid, mid, id)
 					if err != nil {
 						log.Errorf("[MySQL-Notification]: Delete mitigation scope error: %+v", err)

@@ -73,8 +73,6 @@ func export_method_handler(ctx   *C.coap_context_t,
     if !ok {
 		return
     }
-    // session is alive
-    session.SetIsAlive(true)
 
     request, err := req.toGo()
     if err != nil {
@@ -92,6 +90,9 @@ func export_method_handler(ctx   *C.coap_context_t,
             request.Options = append(request.Options, OptionUriPath.String(path))
         }
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
+    } else {
+        // session is alive when receive a request, not when re-create a notification
+        session.SetIsAlive(true)
     }
     
 
@@ -102,6 +103,10 @@ func export_method_handler(ctx   *C.coap_context_t,
     if ok {
         response := Pdu{}
         handler(context, resource, session, request, token, queryString, &response)
+        // add observe option value to notification header
+        if is_observe {
+            response.SetOption(OptionObserve, rsrc.observe)
+        }
         response.fillC(resp)
     }
 }

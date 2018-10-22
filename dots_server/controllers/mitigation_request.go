@@ -113,7 +113,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 
 	// Return error when there is no Mitigation matched
 	if len(scopes) == 0 {
-		log.Infof("Not found any mitigations with cuid: %s, mid: %v", cuid, mid)
+		log.Infof("Not found any mitigations with cuid: %s, mid: %v", cuid, *mid)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.NotFound,

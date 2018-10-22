@@ -83,9 +83,9 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil {
             log.Warnf("Observer: %+v", err)
         } else {
-            if observe == uint32(messages.Register) {
+            if observe == int32(messages.Register) {
                 log.Debugf("Register Mitigation or Session Configuration Observe.")
-            } else if observe == uint32(messages.Deregister) {
+            } else if observe == int32(messages.Deregister) {
                 log.Debugf("Deregister Mitigation or Session Configuration Observe.")
             }
         }
@@ -175,12 +175,12 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                         // Create observer in sub resource to handle observation in case session configuration change
                         resource := context.GetResourceByQuery(resourcePath)
                         if resource != nil {
-                            if observe == uint32(messages.Register) {
+                            if observe == int32(messages.Register) {
                                 log.Debugf("Create observer in sub-resource with query: %+v", p)
                                 if resource != nil {
                                     resource.AddObserver(session, p, *token)
                                 }
-                            } else if observe == uint32(messages.Deregister) {
+                            } else if observe == int32(messages.Deregister) {
                                 log.Debugf("Delete observer in sub-resource")
                                 if resource != nil {
                                     resource.DeleteObserver(session, *token)
@@ -229,6 +229,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
 
         // Remove sub-resource that is just created above
         if is_unknown && res.Code > dots_common.Limit2xxCode {
+            log.Debugf("Delete sub resource (uri-path=%+v) when failed to register the mitigation request. Response code: %+v", resourcePath, res.Code)
             context.DeleteResourceByQuery(resourcePath)
         }
         

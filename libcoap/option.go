@@ -7,7 +7,6 @@ package libcoap
 import "C"
 import "encoding/binary"
 import "bytes"
-import "errors"
 
 type OptionKey uint16
 
@@ -58,7 +57,8 @@ func (opt Option) Uint() (res uint32, err error) {
 
     switch len(opt.Value) {
         case 0:
-            err = errors.New("Option Value is empty.")
+            // The number 0 is represented with an empty option value.
+            res = uint32(0)
         case 1:
             var temp uint8
             err = binary.Read(buf, binary.BigEndian, &temp)

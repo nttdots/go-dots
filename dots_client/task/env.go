@@ -225,16 +225,23 @@ func LogNotification(pdu *libcoap.Pdu) {
 
 	if pdu.Data == nil {
 		return
-	}
+    }
+
+    var err error
+    var logStr string
+
+    observe, err := pdu.GetOptionIntegerValue(libcoap.OptionObserve)
+    if err != nil {
+        log.WithError(err).Warn("Get observe option value failed.")
+        return
+    }
+    log.WithField("Observe Value:", observe).Info("Notification Message")
 
     log.Infof("        Raw payload: %s", pdu.Data)
     hex := hex.Dump(pdu.Data)
 	log.Infof("        Raw payload hex: \n%s", hex)
 
     dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
-
-    var err error
-    var logStr string
 
     // Identify response is mitigation or session configuration by cbor data in heximal
     if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
