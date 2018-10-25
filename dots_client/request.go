@@ -255,11 +255,11 @@ func (r *Request) logMessage(pdu *libcoap.Pdu) {
 		if r.method == "GET" {
 			var v messages.ConfigurationResponse
 			err = dec.Decode(&v)
-			logStr = fmt.Sprintf("%+v", v)
+			logStr = v.String()
 		} else {
 			var v messages.SignalConfigRequest
 			err = dec.Decode(&v)
-			logStr = fmt.Sprintf("%+v", v)
+			logStr = v.String()
 		}
 	}
 	if err != nil {
@@ -360,7 +360,7 @@ func sessionConfigResponseHandler (t *task.SessionConfigTask, pdu *libcoap.Pdu, 
 		log.WithError(err).Warn("CBOR Decode failed.")
 		return
 	}
-	log.Infof("        CBOR decoded: %+v", v)
+	log.Infof("        CBOR decoded: %+v", v.String())
 	if pdu.Code == libcoap.ResponseContent {
 		RestartPingTask(pdu, env)
 		RefreshSessionConfig(pdu, env, t.MessageTask())

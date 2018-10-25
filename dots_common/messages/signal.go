@@ -193,3 +193,59 @@ type SignalConfig struct {
 type SignalChannelRequest struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 }
+
+/*
+ * Convert SignalConfigRequest to strings
+ */
+func (m *SignalConfigRequest) String() (result string) {
+	var current_float float64
+	result = "\n \"ietf-dots-signal-channel:signal-config\":\n"
+	result += fmt.Sprintf("   \"%s\":\n", "mitigating-config")
+	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
+	if m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue != nil {
+		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue)
+	}
+	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
+	if m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue != nil {
+		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue)
+	}
+	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
+	if m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue != nil {
+		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue)
+	}
+	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	if m.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	if m.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	}
+
+	result += fmt.Sprintf("   \"%s\":\n", "idle-config")
+	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
+	if m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue != nil {
+		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue)
+	}
+	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
+	if m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue != nil {
+		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue)
+	}
+	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
+	if m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue != nil {
+		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue)
+	}
+	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	if m.SignalConfigs.IdleConfig.AckTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.AckTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	if m.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	}
+	return
+}

@@ -251,7 +251,7 @@ func LogNotification(pdu *libcoap.Pdu) {
     } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
         var v messages.ConfigurationResponse
         err = dec.Decode(&v)
-        logStr = fmt.Sprintf("%+v", v)
+        logStr = v.String()
     } else {
         log.Warnf("Unknown notification is received.")
     }
