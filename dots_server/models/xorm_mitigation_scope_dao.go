@@ -190,40 +190,45 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		log.Errorf("mitigationScope update err: %s", err)
 		return
 	}
-	// Delete target data of ParameterValue, then register new data
-	err = db_models.DeleteMitigationScopeParameterValue(session, dbMitigationScope.Id)
-	if err != nil {
-		session.Rollback()
-		log.Errorf("ParameterValue record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
-		return
-	}
-	err = db_models.DeleteMitigationScopePrefix(session, dbMitigationScope.Id)
-	if err != nil {
-		session.Rollback()
-		log.Errorf("Prefix record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
-		return
-	}
-	err = db_models.DeleteMitigationScopePortRange(session, dbMitigationScope.Id)
-	if err != nil {
-		session.Rollback()
-		log.Errorf("PortRange record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
-		return
-	}
 
-	// Registered FQDN, URI, alias-name and target_protocol
-	err = createMitigationScopeParameterValue(session, mitigationScope, dbMitigationScope.Id)
-	if err != nil {
-		return
-	}
-	// Registered TargetIP and TargetPrefix
-	err = createMitigationScopePrefix(session, mitigationScope, dbMitigationScope.Id)
-	if err != nil {
-		return
-	}
-	// Registered TragetPortRange
-	err = createMitigationScopePortRange(session, mitigationScope, dbMitigationScope.Id)
-	if err != nil {
-		return
+	// Skip delete mitigation parameter to avoid deadlock with DeleteMitigationScope()
+	// This mitigation parameter will be deleted when server execute DeleteMitigationScope()
+	if mitigationScope.Status == Terminated {
+		// Delete target data of ParameterValue, then register new data
+		err = db_models.DeleteMitigationScopeParameterValue(session, dbMitigationScope.Id)
+		if err != nil {
+			session.Rollback()
+			log.Errorf("ParameterValue record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
+			return
+		}
+		err = db_models.DeleteMitigationScopePrefix(session, dbMitigationScope.Id)
+		if err != nil {
+			session.Rollback()
+			log.Errorf("Prefix record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
+			return
+		}
+		err = db_models.DeleteMitigationScopePortRange(session, dbMitigationScope.Id)
+		if err != nil {
+			session.Rollback()
+			log.Errorf("PortRange record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
+			return
+		}
+
+		// Registered FQDN, URI, alias-name and target_protocol
+		err = createMitigationScopeParameterValue(session, mitigationScope, dbMitigationScope.Id)
+		if err != nil {
+			return
+		}
+		// Registered TargetIP and TargetPrefix
+		err = createMitigationScopePrefix(session, mitigationScope, dbMitigationScope.Id)
+		if err != nil {
+			return
+		}
+		// Registered TragetPortRange
+		err = createMitigationScopePortRange(session, mitigationScope, dbMitigationScope.Id)
+		if err != nil {
+			return
+		}
 	}
 
 	// add Commit() after all actions
