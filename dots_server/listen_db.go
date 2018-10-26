@@ -13,6 +13,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/models"
 	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_common/messages"
+	"github.com/nttdots/go-dots/dots_server/controllers"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
 
@@ -119,6 +120,12 @@ ILOOP:
 					// Keep resource when there is a duplication
 					if !dup {
 						context.DeleteResourceByQuery(query)
+					}
+					// DeActivate data channel acl
+					err = controllers.DeActivateDataChannelACL(cid, cuid)
+					if err != nil {
+						log.Errorf("[MySQL-Notification]: DeActivate data channel acl error: %+v", err)
+						return
 					}
 				}
 			} else if mapData["table_trigger"].(string) == string(SESSION_CONFIGURATION) {

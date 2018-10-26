@@ -10,6 +10,7 @@ import (
 
   messages "github.com/nttdots/go-dots/dots_common/messages/data"
   types    "github.com/nttdots/go-dots/dots_common/types/data"
+  messages_common "github.com/nttdots/go-dots/dots_common/messages"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_server/models/data"
@@ -207,10 +208,12 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
         }
       }
       status := http.StatusCreated
+      var oldActivateType types.ActivationType
       if e == nil {
         t := data_models.NewACL(client, acl, now, defaultACLLifetime)
         e = &t
       } else {
+        oldActivateType = *e.ACL.ActivationType
         e.ACL = types.ACL(acl)
         e.ValidThrough = now.Add(defaultACLLifetime)
         status = http.StatusNoContent
@@ -222,13 +225,24 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
 
       // Find ACL by name to call Blocker
       acls := []data_models.ACL{}
-      acls = append(acls, *e)
+      if *e.ACL.ActivationType == types.ActivationType_ActivateWhenMitigating {
+        // Get mitigation for activationType = active-when-mitigating
+        isPeaceTime,_ := models.CheckPeaceTimeSignalChannel(customer.Id, cuid)
+        if !isPeaceTime {
+          acls = append(acls, *e)
+        }
+      } else {
+        acls = append(acls, *e)
+      }
 
       // If ACL is update -> Stop protection
       if status == http.StatusNoContent {
-        err := data_models.CancelBlocker(e.Id)
-        if err != nil {
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to cancle blocker")
+        p,_ := models.GetActiveProtectionByTargetIDAndTargetType(e.Id, string(messages_common.DATACHANNEL_ACL))
+        if oldActivateType == types.ActivationType_Immediate || (oldActivateType == types.ActivationType_ActivateWhenMitigating && p != nil) {
+          err := data_models.CancelBlocker(e.Id, oldActivateType)
+          if err != nil {
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to cancle blocker")
+          }
         }
       }
 

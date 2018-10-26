@@ -20,6 +20,11 @@ type ACL struct {
   ValidThrough time.Time
 }
 
+type APPair struct {
+	Acl ACL
+	Protection models.Protection
+}
+
 type ACLs []ACL
 
 func NewACL(client *Client, acl types.ACL, now time.Time, lifetime time.Duration) ACL {
@@ -143,7 +148,7 @@ func findAndCleanACL(tx *db.Tx, client *Client, name string, now time.Time) (*da
 }
 
 func deleteACL(tx *db.Tx, p *data_db_models.ACL) (bool, error) {
-  err := CancelBlocker(p.Id)
+  err := CancelBlocker(p.Id, *p.ACL.ActivationType)
   if err != nil {
     log.WithError(err).Error("Stop Protection() failed.")
     return false, err
@@ -268,15 +273,20 @@ func CallBlocker(acls []ACL, customerID int, status int) (err error){
 /*
  * Cancle blocker when update or delete data channel acl
  */
-func CancelBlocker(aclID int64) (err error){
+func CancelBlocker(aclID int64, activationType types.ActivationType) (err error){
   p, err := models.GetActiveProtectionByTargetIDAndTargetType(aclID, string(messages.DATACHANNEL_ACL))
 	if err != nil {
 		log.WithError(err).Error("models.GetActiveProtectionByTargetIDAndTargetType()")
 		return err
-	}
+  }
+
 	if p == nil {
-    log.WithField("data channel acl id", aclID).Error("protection not found.")
-    return
+    if activationType == types.ActivationType_ActivateWhenMitigating {
+      return
+    } else {
+      log.WithField("data channel acl id", aclID).Error("protection not found.")
+      return
+    }
 	}
 	if !p.IsEnabled() {
 		log.WithFields(log.Fields{
@@ -296,4 +306,43 @@ func CancelBlocker(aclID int64) (err error){
 		return err
   }
   return
+}
+
+/*
+ * Get acl with activateType = 'activate-when-mitigating'
+ */
+func GetACLWithActivateWhenMitigating(customer *models.Customer, cuid string) ([]APPair, error){
+  engine, err := models.ConnectDB()
+  if err != nil {
+    log.WithError(err).Error("Failed connect to database.")
+    return nil, err
+  }
+
+  session := engine.NewSession()
+  tx := &db.Tx{ engine, session }
+  now := time.Now()
+  ap := make([]APPair, 0)
+
+  // Find data_client by cuid
+  client, err := FindClientByCuid(tx, customer, cuid)
+  if err != nil {
+    log.WithError(err).Error("Get() data client failed.")
+    return nil, err
+  }
+
+  // Find data_acl by data_client
+  if client != nil {
+    acls, err := FindACLs(tx, client, now)
+    if err != nil {
+      log.WithError(err).Error("Get() acl failed.")
+      return nil, err
+    }
+    for _,acl := range acls {
+      if *acl.ACL.ActivationType == types.ActivationType_ActivateWhenMitigating {
+        p,_ := models.GetActiveProtectionByTargetIDAndTargetType(acl.Id, string(messages.DATACHANNEL_ACL))
+        ap = append(ap, APPair{acl, p})
+      }
+    }
+  }
+  return ap, nil
 }

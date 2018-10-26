@@ -103,13 +103,19 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
           }
         }
 
+        // Get mitigation for activationType = active-when-mitigating
+        isPeaceTime,_ := models.CheckPeaceTimeSignalChannel(customer.Id, cuid)
+
         acls := []data_models.ACL{}
         for _,acl := range n {
           err = acl.Save(tx)
           if err != nil {
             return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
           }
-          acls = append(acls, acl)
+          if (*acl.ACL.ActivationType == types.ActivationType_ActivateWhenMitigating && !isPeaceTime) ||
+              *acl.ACL.ActivationType == types.ActivationType_Immediate {
+            acls = append(acls, acl)
+          }
         }
         // Call blocker
         err := data_models.CallBlocker(acls, customer.Id, http.StatusCreated)

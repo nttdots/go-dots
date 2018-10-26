@@ -6,11 +6,13 @@ import (
 	"strings"
 	"time"
 	"reflect"
+	"net/http"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
+	"github.com/nttdots/go-dots/dots_server/models/data"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/libcoap"
 
@@ -900,6 +902,18 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 			if err != nil {
 				return nil, err
 			}
+			// Activate data channel acl with activationType = 'activate-when-mitigating'
+			err = ActivateDataChannelACL(customer, requestScope.ClientIdentifier)
+			if err != nil {
+				log.Errorf("Activate the data channel ACL failed. Error: %+v", err)
+				return nil, err
+			}
+		}
+	} else {
+		err = DeActivateDataChannelACL(customer.Id, requestScope.ClientIdentifier)
+		if err != nil {
+			log.Errorf("DeActivate the data channel ACL failed. Error: %+v", err)
+			return nil, err
 		}
 	}
 	return nil,nil
@@ -1345,6 +1359,7 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
  */
 func TriggerMitigation(customer *models.Customer) (error) {
 	mitigations := make([]*models.MitigationScope, 0)
+	cuids := make(map[string]string)
 
 	// Get pre-configured mitigation ids from DB of this customer
 	mitigationscopeIds, err := models.GetPreConfiguredMitigationIds(customer.Id)
@@ -1388,7 +1403,79 @@ func TriggerMitigation(customer *models.Customer) (error) {
 			log.Errorf("Activate the pre-configured mitigation (id = %+v) failed. Error: %+v", mitigation.MitigationId, err)
 			return err
 		}
+
+		// if cuid has not existed, append cuid into array cuids
+		if cuids[mitigation.ClientIdentifier] != mitigation.ClientIdentifier {
+			cuids[mitigation.ClientIdentifier] =  mitigation.ClientIdentifier
+		}
+	}
+
+	for _,cuid := range cuids {
+		// Activate data channel acl with activationType = 'activate-when-mitigating'
+		err = ActivateDataChannelACL(customer, cuid)
+		if err != nil {
+			log.Errorf("Activate the data channel ACL failed. Error: %+v", err)
+			return err
+		}
 	}
 
     return nil
+}
+
+var app []data_models.APPair
+/*
+ * Activate data channel acl with activationType = 'activate-when-mitigating'
+ */
+func ActivateDataChannelACL(customer *models.Customer, clientIdentifier string)  error {
+	// Get acl with activationType = 'activate-when-mitigating' to call blocker
+	app, err := data_models.GetACLWithActivateWhenMitigating(customer, clientIdentifier)
+	if err != nil {
+		return err
+	}
+	acls := []data_models.ACL{}
+	for _,ap := range app {
+		if ap.Protection == nil {
+			acls = append(acls, ap.Acl)
+		}
+	}
+	// Call blocker acl with activationType = 'activate-when-mitigating' and has not actived
+	if len(acls) > 0 {
+		err = data_models.CallBlocker(acls, customer.Id, http.StatusCreated)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+/*
+ * DeActivate data channel acl
+ */
+func DeActivateDataChannelACL(customerID int, clientIdentifier string) error {
+	isPeaceTime, err := models.CheckPeaceTimeSignalChannel(customerID, clientIdentifier)
+	if err != nil {
+		return err
+	}
+	if isPeaceTime {
+		// Get customer
+		customer, err:= models.GetCustomer(customerID)
+		if err != nil {
+			return err
+		}
+		// Get acl with activationType = 'activate-when-mitigating' to call blocker
+		app, err = data_models.GetACLWithActivateWhenMitigating(&customer, clientIdentifier)
+		if err != nil {
+			return err
+		}
+		// Cancle blocker acl with activationType = 'activate-when-mitigating' and actived
+		for _,ap := range app {
+			if ap.Protection != nil {
+				err = data_models.CancelBlocker(ap.Acl.Id, *ap.Acl.ACL.ActivationType)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }

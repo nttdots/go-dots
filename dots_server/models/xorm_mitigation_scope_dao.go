@@ -765,3 +765,32 @@ func UpdateACLNameToMitigation(mitigationID int64) (string, error){
 	err = session.Commit()
 	return aclName, nil
 }
+
+/*
+ * Check peace time signal channel
+ */
+ func CheckPeaceTimeSignalChannel(customerID int, clientIdentifier string)(bool, error) {
+	dbMitigationScope := db_models.MitigationScope{}
+	isPeaceTime := true
+
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return isPeaceTime, err
+	}
+
+	// Get mitigation scope
+	_,err = engine.Where("customer_id = ? AND client_identifier = ? AND status >= ? AND status <= ?",
+		                customerID, clientIdentifier, InProgress, ActiveButTerminating).Limit(1).Get(&dbMitigationScope)
+	if err != nil {
+		log.Printf("find mitigation scope error: %s\n", err)
+		return isPeaceTime, err
+	}
+
+	if dbMitigationScope.Id != 0 {
+		isPeaceTime = false
+	}
+
+	return isPeaceTime, nil
+}
