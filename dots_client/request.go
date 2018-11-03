@@ -217,10 +217,22 @@ func (r *Request) Send() {
 }
 
 func (r *Request) logMessage(pdu *libcoap.Pdu) {
+	var err error
+	var logStr string
+
 	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
 	maxAgeRes:= pdu.GetOptionStringValue(libcoap.OptionMaxage)
 	if maxAgeRes != "" {
 		log.Infof("Max-Age Option: %v", maxAgeRes)
+	}
+
+	observe, err := pdu.GetOptionIntegerValue(libcoap.OptionObserve)
+    if err != nil {
+        log.WithError(err).Warn("Get observe option value failed.")
+        return
+	}
+	if observe >= 0 {
+		log.WithField("Observe Value:", observe).Info("Notification Message")
 	}
 
 	if pdu.Data == nil {
@@ -231,9 +243,6 @@ func (r *Request) logMessage(pdu *libcoap.Pdu) {
 	log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
 
 	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
-
-	var err error
-	var logStr string
 
 	switch r.requestName {
 	case "mitigation_request":
