@@ -115,7 +115,11 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 
 	// Return error when there is no Mitigation matched
 	if len(scopes) == 0 {
-		log.Infof("Not found any mitigations with cuid: %s, mid: %v", cuid, *mid)
+		if mid != nil {
+			log.Infof("Not found any mitigations with cuid: %s, mid: %v", cuid, *mid)
+		} else {
+			log.Infof("Not found any mitigations with cuid: %s", cuid)
+		}
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.NotFound,
@@ -862,7 +866,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 
 	}
 
-	// cancle mitigation scope when update mitigation
+	// cancel mitigation scope when update mitigation
 	if currentScope != nil && currentScope.IsActive() {
 		// Cannot rollback :P
 		err = cancelMitigationByModel(currentScope, body.EffectiveClientIdentifier(), customer)
@@ -1467,7 +1471,7 @@ func DeActivateDataChannelACL(customerID int, clientIdentifier string) error {
 		if err != nil {
 			return err
 		}
-		// Cancle blocker acl with activationType = 'activate-when-mitigating' and actived
+		// Cancel blocker acl with activationType = 'activate-when-mitigating' and actived
 		for _,ap := range app {
 			if ap.Protection != nil {
 				err = data_models.CancelBlocker(ap.Acl.Id, *ap.Acl.ACL.ActivationType)
