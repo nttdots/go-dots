@@ -193,7 +193,7 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 
 	// Skip delete mitigation parameter to avoid deadlock with DeleteMitigationScope()
 	// This mitigation parameter will be deleted when server execute DeleteMitigationScope()
-	if mitigationScope.Status == Terminated {
+	if mitigationScope.Status != Terminated {
 		// Delete target data of ParameterValue, then register new data
 		err = db_models.DeleteMitigationScopeParameterValue(session, dbMitigationScope.Id)
 		if err != nil {
