@@ -104,10 +104,10 @@ func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
 	}, nil
 }
 
-func  ConvertMaxAge(maxAge string) (uint64, error) {
-	var m int
+func  ConvertMaxAge(maxAge string) (uint, error) {
+	var m uint64
 	if maxAge != "" {
-		mt,_ := strconv.Atoi(maxAge)
+		mt,_ := strconv.ParseUint(maxAge, 10, 32)
 		m = mt
 	} else {
 		m = 60
@@ -115,9 +115,9 @@ func  ConvertMaxAge(maxAge string) (uint64, error) {
 
 	// (2^32)-1 = 4294967295
 	if m < 0 || m > 4294967295 {
-		return uint64(m), errors.New("maxAgeOption must be between 0 and (2^32)-1")
+		return uint(m), errors.New("maxAgeOption must be between 0 and (2^32)-1")
 	}
-	return uint64(m), nil
+	return uint(m), nil
 }
 
 // Configuration root structure read from the system configuration file
@@ -265,7 +265,7 @@ type ServerSystemConfig struct {
 	Network                      *Network
 	Database                     *Database
 	LifetimeConfiguration        *LifetimeConfiguration
-	MaxAgeOption                 uint64
+	MaxAgeOption                 uint
 	SessionInterval				 int
 }
 
@@ -365,7 +365,7 @@ func (sc *ServerSystemConfig) setLifetimeConfiguration(parameter LifetimeConfigu
 	sc.LifetimeConfiguration = &parameter
 }
 
-func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint64) {
+func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint) {
 	sc.MaxAgeOption = parameter
 }
 

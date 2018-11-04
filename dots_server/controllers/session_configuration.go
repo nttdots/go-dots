@@ -78,7 +78,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue   	   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactorIdle).Round(2)
 	}
 	maxAgeOption := dots_config.GetServerSystemConfig().MaxAgeOption
-	request.Options = append(request.Options, libcoap.OptionMaxage.String(strconv.FormatUint(maxAgeOption,10)))
+	request.Options = append(request.Options, libcoap.OptionMaxage.String(strconv.FormatUint(uint64(maxAgeOption), 10)))
 	res = Response{
 			Type: common.Acknowledgement,
 			Code: common.Content,
