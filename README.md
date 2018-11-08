@@ -6,11 +6,11 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-signal-channel-20
-* draft-ietf-dots-data-channel-16 
-* draft-ietf-dots-architecture-06 
-* draft-ietf-dots-requirements-14 
-* draft-ietf-dots-use-cases-14 
+* draft-ietf-dots-signal-channel-25
+* draft-ietf-dots-data-channel-22
+* draft-ietf-dots-architecture-06
+* draft-ietf-dots-requirements-14
+* draft-ietf-dots-use-cases-14
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
@@ -85,7 +85,7 @@ Then the server retrieves mitigation scopes contained in the received mitigation
 
 Server Configuration is done by the system configuration file and the database setup. The system configuration file is specified via '-config' option when the 'dots_server' is invoked. The sample configuration files are located as 'dots_server/dots_server.yaml' and 'dots_server/dots_server.yaml.template'. 
 
-To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)
+The blocker configuration of DOTS server is defined in database. For more detail about database, refer to the [Database configuration document](./docs/DATABASE.md)
 
 ## Server
     $ $GOPATH/bin/dots_server --config [config.yml file (ex: go-dots/dots_server/dots_server.yaml)]
@@ -94,16 +94,41 @@ To set up your database, refer to the [Database configuration document](./docs/D
 ## Client
     $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=5684 --config [config.yml file (ex: go-dots/dots_client/dots_client.yaml)] -vv
 
+
 ## GoBGP Server
 To install and run gobgp-server, refer to the following link:
 * [gobgp-server](https://github.com/osrg/gobgp)
 
-    
+
+## Arista Server
+The Arista Server (Arista Switch Hardware) is installed and executed on Arista Extensible Operating System (EOS) platform.
+In order to connect to Arista Server, DOTS server use 'goeapi' open source library that is provided by Arista Networks company and the configuration file (.eapi.conf) which contains information about the Arista networks such as: host, username, password, etc.
+
+```
+[connection:arista]
+    host=arista
+    username=admin
+    password=123456
+    enablepwd=passwd
+    transport=https
+```
+
+For more detailed information about the configuration of 'goeapi', refer to the following link:
+* [arista-goeapi](https://github.com/aristanetworks/goeapi)
+
+
 ### Client Controller [mitigation_request]
+
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraft.json
-   
+
+In order to handle out-of-order delivery of mitigation requests, 'mid' values MUST increase monotonically. Besides, if the 'mid' value has exceeded 3/4 of (2**32 - 1), it should be reset by sending a mitigation request with 'mid' is set to '0' to avoid 'mid' rollover. However, the reset request is only accepted by DOTS server at peace-time (have no any active mitigation request which is maintaining).
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=0 \
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraft.json
+
 ### Client Controller [mitigation_retrieve_all]
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw
@@ -117,8 +142,7 @@ To install and run gobgp-server, refer to the following link:
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
 ### Client Controller [mitigation_observe]
-A DOTS client can convey the 'observe' option set to '0' in the GET request to receive notification whenever status of mitigation request changed
-and unsubscribe itself by issuing GET request with 'observe' option set to '1'
+A DOTS client can convey the 'observe' option set to '0' in the GET request to receive notification whenever status of mitigation request changed and unsubscribe itself by issuing GET request with 'observe' option set to '1'
 
 Subscribe for resource observation:
 
@@ -130,9 +154,7 @@ Unsubscribe from resource observation:
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -observe=1
 
-Subscriptions are valid as long as current session exists. When session is renewed (e.g DOTS client does not receive response from DOTS server for its Ping message 
-in a period of time, it decided that server has been disconnected, then re-connects), all previous subscriptions will be lost. In such cases, DOTS clients will have to re-subscribe
-for observation. Below is recommended step: 
+Subscriptions are valid as long as current session exists. When session is renewed (e.g DOTS client does not receive response from DOTS server for its Ping message in a period of time, it decided that server has been disconnected, then re-connects), all previous subscriptions will be lost. In such cases, DOTS clients will have to re-subscribe for observation. Below is recommended step: 
 
     ・GET a list of all existing mitigations (that were created before server restarted)
     ・PUT mitigations  one by one
@@ -148,6 +170,8 @@ A DOTS client can convey the 'If-Match' option with empty value in the PUT reque
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Put \
      -sid 234 \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleSessionConfigurationDraft.json
+
+In order to handle out-of-order delivery of session configuration, 'sid' values MUST increase monotonically.
 
 ### Client Controller [session_configuration_retrieve_default]
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Get
@@ -332,3 +356,26 @@ Check the route is installed successfully in gobgp server
 Network              Next Hop             AS_PATH              Age        Attrs
 *> 172.16.238.100/32    172.16.238.254                            00:00:42   [{Origin: i}]
 ```
+
+# Arista
+Check the active Arista ACL that is installed successfully in Arista server
+
+    $ show running-config interfaces Ethernet 1
+
+```
+interface Ethernet1
+   description DDoS-Seg-to_internet
+   ip address 172.16.238.100/30
+   ip access-group mitigation-acl-1 in
+```
+
+Check the active rules in Arista ACL that is installed successfully in Arista server
+
+    $ show ip access-lists mitigation-acl-1
+
+```
+IP Access List mitigation-acl-1
+        10 deny 4 any 1.1.2.0/24
+        20 deny 4 any host 1.1.1.69
+```
+
