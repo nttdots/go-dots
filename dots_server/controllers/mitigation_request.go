@@ -37,7 +37,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	// Get cuid, mid from Uri-Path
 	_, cuid, mid, err := parseURIPath(request.PathInfo)
 	if err != nil {
-		log.Errorf("Failed to parse Uri-Path, error: %s", err)
+		log.Warnf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -48,7 +48,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 
 	// cuid is required Uri-Path
 	if cuid == "" {
-		log.Errorf("Missing required Uri-Path Parameter: cuid")
+		log.Warn("Missing required Uri-Path Parameter: cuid")
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -169,13 +169,13 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	// Get cuid, mid from Uri-Path
 	cdid, cuid, mid, err := parseURIPath(request.PathInfo)
 	if err != nil {
-		log.Errorf("Failed to parse Uri-Path, error: %s", err)
+		log.Warnf("Failed to parse Uri-Path, error: %s", err)
 		goto ResponseNG
 	}
 
 	// cuid, mid are required Uri-Paths
 	if  mid == nil || cuid == "" {
-		log.Error("Missing required Uri-Path Parameter(cuid, mid).")
+		log.Warn("Missing required Uri-Path Parameter(cuid, mid).")
 		goto ResponseNG
 	}
 	
@@ -197,7 +197,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			// If there are any active mitigation requests (status = 1,2,3,4,5), log "mid is not allowed" and return 4.00 Bad Request
 			for _, mitigation := range mitigations {
 				if mitigation.mitigation.IsActive() {
-					log.Errorf("The mitigation request (mid=%+v) is not accepted in non-peace time because the mitigation (mid=%+v) is active",
+					log.Warn("The mitigation request (mid=%+v) is not accepted in non-peace time because the mitigation (mid=%+v) is active",
 						*mid, mitigation.mitigation.MitigationId)
 					goto ResponseNG
 				}
@@ -214,7 +214,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		}
 
 		if body.EffectiveClientIdentifier() != "" || body.EffectiveClientDomainIdentifier() != "" || body.EffectiveMitigationId() != nil {
-			log.Errorf("Client Identifier, Client Domain Identifier and Mitigation Id are forbidden in body request")
+			log.Warn("Client Identifier, Client Domain Identifier and Mitigation Id are forbidden in body request")
 			goto ResponseNG
 		}
 
@@ -258,10 +258,10 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 			conflictInfo, err = CreateMitigation(body, customer, nil, isIfMatchOption)
 			if err != nil {
-				log.Error("Failed to Create Mitigation.")
 				if err.Error() == models.ValidationError {
 					goto ResponseNG
 				}
+				log.Error("Failed to Create Mitigation.")
 				return Response{}, err
 			}
 
@@ -287,10 +287,10 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 			conflictInfo, err = CreateMitigation(body, customer, currentScope, isIfMatchOption)
 			if err != nil {
-				log.Error("Failed to Create Mitigation.")
 				if err.Error() == models.ValidationError {
 					goto ResponseNG
 				}
+				log.Error("Failed to Create Mitigation.")
 				return Response{}, err
 			}
 
@@ -335,7 +335,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 	// Get cuid, mid from Uri-Path
 	_, cuid, mid, err := parseURIPath(request.PathInfo)
 	if err != nil {
-		log.Errorf("Failed to parse Uri-Path, error: %s", err)
+		log.Warnf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -346,7 +346,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 
 	// cuid, mid are required Uri-Paths
 	if mid == nil || cuid == "" {
-		log.Errorf("Missing required Uri-Path Parameter(cuid, mid).")
+		log.Warn("Missing required Uri-Path Parameter(cuid, mid).")
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
@@ -769,7 +769,7 @@ func parseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err err
 			midStr := uriPath[strings.Index(uriPath, "mid=")+4:]
 			midValue, err := strconv.Atoi(midStr)
 			if err != nil {
-				log.Errorf("Mid is not integer type.")
+				log.Warn("Mid is not integer type.")
 				return cdid, cuid, mid, err
 			}
 			if midStr == "" {
@@ -857,7 +857,6 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 			return nil, err
 		}
 		if conflictInfo != nil {
-			log.Errorf("[Overlap]: Failed to check overlap for mitigation request.")
 			return conflictInfo, nil
 		} else if !isSuccess {
 			err = errors.New(models.ValidationError)
@@ -893,6 +892,10 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 
 		err = callBlocker(body, customer, requestScope.MitigationScopeId, blockerConfig.BlockerType)
 		if err != nil {
+			if err.Error() == models.ValidationError {
+				log.Warn("MitigationRequest.Put callBlocker validation failed",)
+				return nil, err
+			}
 			log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
 			UpdateMitigationStatus(customer.Id, mitigationScope.ClientIdentifier, mitigationScope.MitigationId,
 				mitigationScope.Id, models.Terminated, false)

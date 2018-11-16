@@ -120,8 +120,7 @@ func (v *mitigationScopeValidatorBase) CheckOverlap(requestScope *MitigationScop
 					if requestScope.TriggerMitigation == currentScope.TriggerMitigation {
 						if requestScope.MitigationId < currentScope.MitigationId {
 							log.Warnf("[Overlap]: request mitigation id: %+v is less than current: %+v.", requestScope.MitigationId, currentScope.MitigationId)
-							conflictScope.MitigationId = requestScope.MitigationId
-							return
+							conflictScope.MitigationId = currentScope.MitigationId
 						} else if requestScope.MitigationId > currentScope.MitigationId {
 							// Overlap without return conflict information => override mitigation
 							log.Debugf("[Overlap]: request mitigation id: %+v is greater than current: %+v ==> Override", requestScope.MitigationId, currentScope.MitigationId)
@@ -132,34 +131,33 @@ func (v *mitigationScopeValidatorBase) CheckOverlap(requestScope *MitigationScop
 						// Reject the pre-configured mitigation request in case overlap with the active immediate mitigation
 						if requestScope.TriggerMitigation == false {
 							log.Warnf("[Overlap]: request mitigation id: %+v is pre-configured. Rejected.", requestScope.MitigationId)
-							conflictScope.MitigationId = requestScope.MitigationId
-							return
+							conflictScope.MitigationId = currentScope.MitigationId
 						} else {
 							// Withdraw the pre-configured mitigation in case overlap with the immediate mitigation request
 							log.Debugf("[Overlap]: request mitigation id: %+v is greater than current: %+v ==> Override", requestScope.MitigationId, currentScope.MitigationId)
 							return true, nil, nil
 						}
 					}
-				} else if requestScope.Customer.Id != currentScope.Customer.Id {
-					// Handle conflict scope data in case overlap between 2 different clients
-					// When overlap occur, need to check all targets to append to conflict scope
-
-					// Append data to conflict scope according to target type
-					if requestTarget.TargetType == IP_ADDRESS {
-						log.Warnf("[Overlap]: request ip: %+v and current %+v: %+v", requestTarget.TargetValue, currentTarget.TargetType, currentTarget.TargetValue)
-						conflictScope.TargetIP = append(conflictScope.TargetIP, requestTarget.TargetPrefix)
-					} else if requestTarget.TargetType == IP_PREFIX {
-						log.Warnf("[Overlap]: request prefix: %+v and current %+v: %+v", requestTarget.TargetValue, currentTarget.TargetType, currentTarget.TargetValue)
-						conflictScope.TargetPrefix = append(conflictScope.TargetPrefix, requestTarget.TargetPrefix)
-					} else if requestTarget.TargetType == FQDN {
-						log.Warnf("[Overlap]: request fqdn: %+v and current %+v: %+v", requestTarget.TargetValue, currentTarget.TargetType, currentTarget.TargetValue)
-						conflictScope.TargetFQDN.Append(requestTarget.TargetValue)
-					} else if requestTarget.TargetType == URI {
-						log.Warnf("[Overlap]: request uri: %+v and current %+v: %+v", requestTarget.TargetValue, currentTarget.TargetType, currentTarget.TargetValue)
-						conflictScope.TargetURI.Append(requestTarget.TargetValue)
-					}
-					break
 				}
+
+				// Handle conflict scope data in case overlap between 2 different clients
+				// When overlap occur, need to check all targets to append to conflict scope
+
+				// Append data to conflict scope according to target type
+				if requestTarget.TargetType == IP_ADDRESS {
+					log.Warnf("[Overlap]: request ip: %+v and current %+v: %+v", requestTarget.TargetValue, currentTarget.TargetType, currentTarget.TargetValue)
+					conflictScope.TargetIP = append(conflictScope.TargetIP, requestTarget.TargetPrefix)
+				} else if requestTarget.TargetType == IP_PREFIX {
+					log.Warnf("[Overlap]: request prefix: %+v and current %+v: %+v", requestTarget.TargetValue, currentTarget.TargetType, currentTarget.TargetValue)
+					conflictScope.TargetPrefix = append(conflictScope.TargetPrefix, requestTarget.TargetPrefix)
+				} else if requestTarget.TargetType == FQDN {
+					log.Warnf("[Overlap]: request fqdn: %+v and current %+v: %+v", requestTarget.TargetValue, currentTarget.TargetType, currentTarget.TargetValue)
+					conflictScope.TargetFQDN.Append(requestTarget.TargetValue)
+				} else if requestTarget.TargetType == URI {
+					log.Warnf("[Overlap]: request uri: %+v and current %+v: %+v", requestTarget.TargetValue, currentTarget.TargetType, currentTarget.TargetValue)
+					conflictScope.TargetURI.Append(requestTarget.TargetValue)
+				}
+				break
 			}
 		}
 	}
