@@ -148,9 +148,6 @@ error:
 }
 
 func cleanupSignalChannel(ctx *libcoap.Context, sess *libcoap.Session) {
-	if sess != nil {
-		sess.SessionRelease()
-	}
 	if ctx != nil {
 		ctx.FreeContext()
 	}
@@ -329,6 +326,7 @@ func pingTimeoutHandler(_ *task.PingTask, env *task.Env) {
 		env.StopPing()
 
 		restartConnection(env)
+		loadConfig(env)
 		env.Run(task.NewPingTask(
 			time.Duration(config.HeartbeatInterval) * time.Second,
 			pingResponseHandler,

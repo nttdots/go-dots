@@ -119,7 +119,7 @@ ILOOP:
 					}
 					// Keep resource when there is a duplication
 					if !dup {
-						context.DeleteResourceByQuery(query)
+						context.DeleteResourceByQuery(&query)
 					}
 					// DeActivate data channel acl
 					err = controllers.DeActivateDataChannelACL(cid, cuid)

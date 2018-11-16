@@ -2,7 +2,7 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
-#include <coap/coap.h>
+#include <coap2/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -36,9 +36,9 @@ func cstringOrNil(s *string) (*C.char, int) {
 func ResourceInit(uri *string, flags ResourceFlags) *Resource {
 
     curi, urilen := cstringOrNil(uri)
-    ptr := C.coap_resource_init((*C.uchar)(unsafe.Pointer(curi)),
-                                C.size_t(urilen),
-                                C.int(flags) | C.COAP_RESOURCE_FLAGS_RELEASE_URI)
+    if curi == nil { return nil }
+    uripath := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(curi)), C.size_t(urilen))
+    ptr := C.coap_resource_init(uripath, C.int(flags) | C.COAP_RESOURCE_FLAGS_RELEASE_URI)
 
     resource := &Resource{ ptr, make(map[Code]MethodHandler) }
     resources[ptr] = resource
@@ -81,12 +81,9 @@ func (context *Context) DeleteAllResources() {
 func (resource *Resource) AddAttr(name string, value *string) *Attr {
 
     cvalue, valuelen := cstringOrNil(value)
-
-    ptr := C.coap_add_attr(resource.ptr,
-                           (*C.uchar)(unsafe.Pointer(C.CString(name))),
-                           C.size_t(len(name)),
-                           (*C.uchar)(unsafe.Pointer(cvalue)),
-                           C.size_t(valuelen),
+    cname := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(C.CString(name))), C.size_t(len(name)))
+    cval  := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(cvalue)), C.size_t(valuelen))
+    ptr := C.coap_add_attr(resource.ptr, cname, cval,
                            C.COAP_ATTR_FLAGS_RELEASE_NAME | C.COAP_ATTR_FLAGS_RELEASE_VALUE)
     if ptr == nil {
         return nil
@@ -99,21 +96,18 @@ func (resource *Resource) TurnOnResourceObservable() {
     C.coap_resource_set_get_observable(resource.ptr, 1)
 }
 
-func (context *Context) DeleteResourceByQuery(query string) {
+func (context *Context) DeleteResourceByQuery(query *string) {
     resource := context.GetResourceByQuery(query)
     if resource != nil {
         C.coap_delete_resource(context.ptr, resource.ptr)
     }
 }
 
-func (context *Context) GetResourceByQuery(query string) (res *Resource) {
-    if query == "" {
-        return nil
-    }
-    var queryStr *C.str = C.coap_new_string(C.size_t(len(query)))
-    queryStr.s = (*C.uchar)(unsafe.Pointer(C.CString(query)))
-    queryStr.length = C.size_t(len(query))
-    resource := C.coap_get_resource_from_uri_path(context.ptr, *queryStr)
+func (context *Context) GetResourceByQuery(query *string) (res *Resource) {
+    cquery, clen := cstringOrNil(query)
+    if cquery == nil { return nil }
+    queryStr := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(cquery)), C.size_t(clen))
+    resource := C.coap_get_resource_from_uri_path(context.ptr, queryStr)
     if resource != nil {
         res = &Resource{resource, nil}
         return
@@ -121,21 +115,22 @@ func (context *Context) GetResourceByQuery(query string) (res *Resource) {
     return nil
 }
 
-func (resource *Resource) AddObserver(session *Session, query string, token []byte) {
+func (resource *Resource) AddObserver(session *Session, query *string, token []byte) {
     temp := string(token)
-    var tokenStr *C.str = C.coap_new_string(C.size_t(len(temp)))
-    var queryStr *C.str = C.coap_new_string(C.size_t(len(query)))
-    tokenStr.s = (*C.uchar)(unsafe.Pointer(C.CString(temp)))
+    tokenStr := &C.coap_binary_t{}
+    tokenStr.s = (*C.uint8_t)(unsafe.Pointer(C.CString(temp)))
     tokenStr.length = C.size_t(len(temp))
-    queryStr.s = (*C.uchar)(unsafe.Pointer(C.CString(query)))
-    queryStr.length = C.size_t(len(query))
-    C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr)
+    cquery, clen := cstringOrNil(query)
+    if cquery == nil { return }
+    queryStr := C.coap_new_string(C.size_t(clen))
+    queryStr.s = (*C.uint8_t)(unsafe.Pointer(cquery))
+    C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, 0, C.coap_block_t{})
 }
 
 func (resource *Resource) DeleteObserver(session *Session, token []byte) {
     temp := string(token)
-    var tokenStr *C.str = C.coap_new_string(C.size_t(len(temp)))
-    tokenStr.s = (*C.uchar)(unsafe.Pointer(C.CString(temp)))
+    tokenStr := &C.coap_binary_t{}
+    tokenStr.s = (*C.uint8_t)(unsafe.Pointer(C.CString(temp)))
     tokenStr.length = C.size_t(len(temp))
     C.coap_delete_observer(resource.ptr, session.ptr, tokenStr)
 }

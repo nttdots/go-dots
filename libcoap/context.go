@@ -1,9 +1,11 @@
 package libcoap
 
+import "C"
+
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
 #cgo darwin LDFLAGS: -L /usr/local/opt/openssl@1.1/lib
-#include <coap/coap.h>
+#include <coap2/coap.h>
 #include "callback.h"
 
 // Verify certificate data and set list of available ciphers for context
@@ -13,17 +15,20 @@ package libcoap
 int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t * setup_data) {
     char* ciphers = "TLSv1.2:TLSv1.0:!PSK";
     coap_openssl_context_t *context = (coap_openssl_context_t *)(ctx->dtls_context);
+    const char* ca_file = setup_data->pki_key.key.pem.ca_file;
+    const char* public_cert = setup_data->pki_key.key.pem.public_cert;
+
     if (context->dtls.ctx) {
-        if (setup_data->ca_file) {
+        if (ca_file) {
             SSL_CTX_set_verify(context->dtls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
-            if (0 == SSL_CTX_load_verify_locations(context->dtls.ctx, setup_data->ca_file, NULL)) {
+            if (0 == SSL_CTX_load_verify_locations(context->dtls.ctx, ca_file, NULL)) {
                 ERR_print_errors_fp(stderr);
-                coap_log(LOG_WARNING, "*** verify_certificate: DTLS: %s: Unable to load verify locations\n", setup_data->ca_file);
+                coap_log(LOG_WARNING, "*** verify_certificate: DTLS: %s: Unable to load verify locations\n", ca_file);
                 return 0;
             }
         }
 
-        if (setup_data->public_cert && setup_data->public_cert[0]) {
+        if (public_cert && public_cert[0]) {
             if (0 == SSL_CTX_set_cipher_list(context->dtls.ctx, ciphers)){
                 ERR_print_errors_fp(stderr);
                 coap_log(LOG_WARNING, "*** verify_certificate: DTLS Unable to set ciphers %s \n",  ciphers);
@@ -33,15 +38,15 @@ int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t * setup_data) {
     }
 
     if (context->tls.ctx) {
-        if (setup_data->ca_file) {
+        if (ca_file) {
             SSL_CTX_set_verify(context->tls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
-            if (0 == SSL_CTX_load_verify_locations(context->tls.ctx, setup_data->ca_file, NULL)) {
+            if (0 == SSL_CTX_load_verify_locations(context->tls.ctx, ca_file, NULL)) {
                 ERR_print_errors_fp(stderr);
-                coap_log(LOG_WARNING, "*** verify_certificate: TLS: %s: Unable to load verify locations\n", setup_data->ca_file);
+                coap_log(LOG_WARNING, "*** verify_certificate: TLS: %s: Unable to load verify locations\n", ca_file);
                 return 0;
             }
         }
-        if (setup_data->public_cert && setup_data->public_cert[0]) {
+        if (public_cert && public_cert[0]) {
             if (0 == SSL_CTX_set_cipher_list(context->tls.ctx, ciphers)){
                 ERR_print_errors_fp(stderr);
                 coap_log(LOG_WARNING, "*** verify_certificate: TLS Unable to set ciphers %s \n",  ciphers);
@@ -111,19 +116,39 @@ func NewContextDtls(addr *Address, dtls *DtlsParam) *Context {
     if (ptr != nil) && (dtls != nil) {
         // Enable PKI
         var setupData *C.coap_dtls_pki_t = &C.coap_dtls_pki_t{}
+
+        // Setup dtls pki configuration
+        setupData.version = C.COAP_DTLS_PKI_SETUP_VERSION
+        setupData.pki_key.key_type = C.COAP_PKI_KEY_PEM
+        setupData.verify_peer_cert        = 1
+        setupData.require_peer_cert       = 1
+        setupData.allow_self_signed       = 1
+        setupData.allow_expired_certs     = 1
+        setupData.cert_chain_validation   = 1
+        setupData.cert_chain_verify_depth = 2
+
+        // Use for check that is certificate in certificate revocation list (CRL) from actual server.
+        setupData.check_cert_revocation   = 1
+        setupData.allow_no_crl            = 1
+        setupData.allow_expired_crl       = 1
+
+        setupData.validate_cn_call_back   = nil
+        setupData.cn_call_back_arg        = nil
+        setupData.validate_sni_call_back  = nil
+        setupData.sni_call_back_arg       = nil
+
+        // Get variables inside union type of C language by using poiter
+        pem := (*C.coap_pki_key_pem_t)(unsafe.Pointer(&setupData.pki_key.key[0]))
         if dtls.CaFilename != nil {
-            setupData.ca_file  = C.CString(*dtls.CaFilename)
+            pem.ca_file  = C.CString(*dtls.CaFilename)
         }
         if dtls.CertificateFilename != nil {
-            setupData.public_cert = C.CString(*dtls.CertificateFilename)
+            pem.public_cert = C.CString(*dtls.CertificateFilename)
         }
         if dtls.PrivateKeyFilename != nil {
-            setupData.private_key = C.CString(*dtls.PrivateKeyFilename)
+            pem.private_key = C.CString(*dtls.PrivateKeyFilename)
         }
-        ok := C.verify_certificate(ptr, setupData)
-        if ok == 1 {
-            ok = C.coap_context_set_pki(ptr, setupData)
-        }
+        ok := C.coap_context_set_pki(ptr, setupData)
 
         if ok == 1 {
             context := &Context{ ptr, nil, nil, nil, nil, setupData }
@@ -145,24 +170,33 @@ func (context *Context) FreeContext() {
     context.ptr = nil
     C.coap_free_context(ptr)
 
+    // Get variables inside union type of C language by using poiter
+    pem := (*C.coap_pki_key_pem_t)(unsafe.Pointer(&context.dtls.pki_key.key[0]))
+    asn1 := (*C.coap_pki_key_asn1_t)(unsafe.Pointer(&context.dtls.pki_key.key[1]))
+
     if context.dtls != nil {
-        if context.dtls.ca_file != nil {
-            C.free(unsafe.Pointer(context.dtls.ca_file))
+        // C Union type: there are many parameters but only use one at same time
+        if context.dtls.pki_key.key_type == C.COAP_PKI_KEY_PEM && pem != nil {
+            if pem.ca_file != nil {
+                C.free(unsafe.Pointer(pem.ca_file))
+            }
+            if pem.public_cert != nil {
+                C.free(unsafe.Pointer(pem.public_cert))
+            }
+            if pem.private_key != nil {
+                C.free(unsafe.Pointer(pem.private_key))
+            }
         }
-        if context.dtls.public_cert != nil {
-            C.free(unsafe.Pointer(context.dtls.public_cert))
-        }
-        if context.dtls.private_key != nil {
-            C.free(unsafe.Pointer(context.dtls.private_key))
-        }
-        if context.dtls.asn1_ca_file != nil {
-            C.free(unsafe.Pointer(context.dtls.asn1_ca_file))
-        }
-        if context.dtls.asn1_public_cert != nil {
-            C.free(unsafe.Pointer(context.dtls.asn1_public_cert))
-        }
-        if context.dtls.asn1_private_key != nil {
-            C.free(unsafe.Pointer(context.dtls.asn1_private_key))
+        if context.dtls.pki_key.key_type == C.COAP_PKI_KEY_ASN1 && asn1 != nil {
+            if asn1.ca_cert != nil {
+                C.free(unsafe.Pointer(asn1.ca_cert))
+            }
+            if asn1.public_cert != nil {
+                C.free(unsafe.Pointer(asn1.public_cert))
+            }
+            if asn1.private_key != nil {
+                C.free(unsafe.Pointer(asn1.private_key))
+            }
         }
         context.dtls = nil
     }
@@ -181,7 +215,7 @@ func (context *Context) NotifyOnce(query string){
     log.Debugf("[NotifyOnce]: Data to notify: query: %+v", query)
 
     // Get sub-resource corresponding to uriPath
-    resource := context.GetResourceByQuery(query)
+    resource := context.GetResourceByQuery(&query)
 
     if (resource != nil) {
         log.Debugf("[NotifyOnce]: Found resource to notify= %+v ", resource)

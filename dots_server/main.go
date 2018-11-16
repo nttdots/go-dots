@@ -102,10 +102,9 @@ func main() {
 			// Session disconnected: Remove session from map
 			log.Debugf("Remove connecting session from dots server: %+v", session.String())
 			libcoap.RemoveConnectingSession(session)
-		} else if event == libcoap.EventSessionRenegotiate {
-			// Not supported yet
 		} else {
-			log.Warn("Unknown event.")
+			// Not support yet
+			log.Warnf("Unsupported event")
 		}
 	})
 

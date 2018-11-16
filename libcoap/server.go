@@ -2,7 +2,7 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
-#include <coap/coap.h>
+#include <coap2/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -90,10 +90,10 @@ func export_method_handler(ctx   *C.coap_context_t,
             request.Options = append(request.Options, OptionUriPath.String(path))
         }
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
-    } else {
-        // session is alive when receive a request, not when re-create a notification
-        session.SetIsAlive(true)
-    }
+        } else {
+            // session is alive when receive a request, not when re-create a notification
+            session.SetIsAlive(true)
+        }
     
 
     token := tok.toBytes()
@@ -184,7 +184,7 @@ func (context *Context) RegisterPingHandler(handler PingHandler) {
 // Register event handler to libcoap
 func (context *Context) RegisterEventHandler(handler EventHandler) {
 	context.eventHandler = handler
-	C.coap_set_event_handler(context.ptr, C.coap_event_handler_t(C.event_handler))
+	C.coap_register_event_handler(context.ptr, C.coap_event_handler_t(C.event_handler))
 }
 
 func (context *Context) NewEndpoint(address Address, proto Proto) *EndPoint {

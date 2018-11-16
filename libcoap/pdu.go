@@ -2,7 +2,7 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
-#include <coap/coap.h>
+#include <coap2/coap.h>
 */
 import "C"
 import "errors"
@@ -195,6 +195,8 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
     p._type = C.uint8_t(src.Type)
     p.code  = C.uint8_t(src.Code)
     p.tid   = C.uint16_t(src.MessageID)
+    // Set this field for coap_add_token()
+    p.used_size = 0
 
     if 0 < len(src.Token) {
         if 0 == C.coap_add_token(p,

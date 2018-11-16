@@ -2,7 +2,7 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
-#include <coap/coap.h>
+#include <coap2/coap.h>
 */
 import "C"
 import "strings"
@@ -10,7 +10,6 @@ import "strconv"
 import "github.com/shopspring/decimal"
 import "math"
 import dots_config "github.com/nttdots/go-dots/dots_server/config"
-import "unsafe"
 
 type Session struct {
     ptr *C.coap_session_t
@@ -202,6 +201,6 @@ func (session *Session) SetSessionConfig(missingHbAllowed int, maxRetransmit int
  * parameter:
  */
  func (session *Session) TerminateConnectingSession(context *Context) {
-    C.coap_handle_event(context.ptr, C.COAP_EVENT_DTLS_CLOSED, unsafe.Pointer(session.ptr))
+    C.coap_handle_event(context.ptr, C.COAP_EVENT_DTLS_CLOSED, session.ptr)
     C.coap_session_disconnected(session.ptr, C.COAP_NACK_TLS_FAILED)
 }

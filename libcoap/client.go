@@ -2,7 +2,7 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl -lssl -lcrypto
-#include <coap/coap.h>
+#include <coap2/coap.h>
 #include "callback.h"
 */
 import "C"

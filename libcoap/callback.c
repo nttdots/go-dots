@@ -11,8 +11,8 @@ extern void export_method_handler(coap_context_t *ctx,
                            coap_resource_t *rsrc,
                            coap_session_t *sess,
                            coap_pdu_t *req,
-                           str *tok,
-                           str *query,
+                           coap_string_t *tok,
+                           coap_string_t *query,
                            coap_pdu_t *resp);
 
 extern void export_nack_handler(coap_context_t *ctx,
@@ -43,8 +43,8 @@ void method_handler(coap_context_t *context,
                     coap_resource_t *resource,
                     coap_session_t *session,
                     coap_pdu_t *request,
-                    str *token,
-                    str *queryString,
+                    coap_string_t *token,
+                    coap_string_t *queryString,
                     coap_pdu_t *response) {
 
     export_method_handler(context, resource, session, request, token, queryString, response);
@@ -82,12 +82,39 @@ int coap_dtls_get_peer_common_name(coap_session_t *session,
     X509_NAME *name;
     int cn_len;
 
+    coap_openssl_context_t *ctx = (coap_openssl_context_t *)session->context->dtls_context;
+    coap_dtls_pki_t *setup_data = &ctx->setup_data;
+
     if (session->tls == NULL) {
         return -1;
     }
-
     ssl = (SSL *)session->tls;
-    if (X509_V_OK != SSL_get_verify_result(ssl)) {
+
+    long verify_result = SSL_get_verify_result(ssl);
+    switch (verify_result) {
+    case X509_V_ERR_CERT_NOT_YET_VALID:
+    case X509_V_ERR_CERT_HAS_EXPIRED:
+        if (setup_data->allow_expired_certs)
+            verify_result = X509_V_OK;
+        break;
+    case X509_V_ERR_SELF_SIGNED_CERT_IN_CHAIN:
+        if (setup_data->allow_self_signed)
+            verify_result = X509_V_OK;
+        break;
+    case X509_V_ERR_UNABLE_TO_GET_CRL:
+        if (setup_data->allow_no_crl)
+            verify_result = X509_V_OK;
+        break;
+    case X509_V_ERR_CRL_NOT_YET_VALID:
+    case X509_V_ERR_CRL_HAS_EXPIRED:
+        if (setup_data->allow_expired_crl)
+            verify_result = X509_V_OK;
+        break;
+    default:
+        break;
+    }
+    if (X509_V_OK != verify_result) {
+        coap_log(LOG_WARNING, "    %s\n", X509_verify_cert_error_string(verify_result));
         return -1;
     }
     cert = SSL_get_peer_certificate(ssl);
@@ -108,12 +135,12 @@ int coap_dtls_get_peer_common_name(coap_session_t *session,
 }
 
 void coap_set_dirty(coap_resource_t *resource, char *key, int length) {
-    if(*key == '\0' && length == 0){
-        coap_resource_set_dirty(resource, NULL);
+    if (*key == '\0' && length == 0) {
+        coap_resource_notify_observers(resource, NULL);
     } else {
-        str *query = coap_new_string(length);
-        query->s = key;
-        query->length = length;
-        coap_resource_set_dirty(resource, query);
+        coap_string_t *query = coap_new_string(length);
+        query->s = (uint8_t*)key;
+        query->length = (size_t)length;
+        coap_resource_notify_observers(resource, query);
     }
 }

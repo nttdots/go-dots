@@ -27,7 +27,7 @@ Licensed under Apache License 2.0.
   * go 1.9 or later is required. (for latest GoBGP)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
-  * OpenSSL 1.1.0 or higher (for libcoap)
+  * OpenSSL 1.1.1 or higher (for libcoap)
 
 * MySQL 5.7.x and its development package (MySQL 8.0.x or higher not yet supported)
   * Install mysql development package in Ubuntu:
@@ -40,11 +40,11 @@ Licensed under Apache License 2.0.
 ## How to build go-dots
 ### Build libcoap for go-dots
 
-Currenly supported libcoap version : 1365dea
+Currenly supported libcoap version : 1eadd91
 
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
-    $ git checkout 1365dea39a6129a9b7e8c579537e12ffef1558f6
+    $ git checkout 1eadd91366cab46767f26e4d10e005198246eac1
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
     $ make

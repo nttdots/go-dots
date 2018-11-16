@@ -2,7 +2,7 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
-#include <coap/coap.h>
+#include <coap2/coap.h>
 */
 import "C"
 import "encoding/binary"
