@@ -28,12 +28,6 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	}
 	log.Debugf("CreateMitigationScope mitigationScope=%+v\n", mitigationScope)
 
-	// If trigger-mitigation is true, set status = 1 (InProgress). Otherwise, set status = 8 (Triggered)
-	if mitigationScope.TriggerMitigation == true {
-		mitigationScope.Status = InProgress
-	} else {
-		mitigationScope.Status = Triggered
-	}
 	// same data check
 	dbMitigationScope := new(db_models.MitigationScope)
 	clientIdentifier := mitigationScope.ClientIdentifier
@@ -73,7 +67,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		ClientDomainIdentifier: clientDomainIdentifier,
 		MitigationId:     mitigationScope.MitigationId,
 		Lifetime:         mitigationScope.Lifetime,
-		Status:           mitigationScope.Status,
+		Status:           InProgress,
 		TriggerMitigation: mitigationScope.TriggerMitigation,
 	}
 

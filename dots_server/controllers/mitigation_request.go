@@ -876,6 +876,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
     }
 
 	// store mitigation request into the mitigationScope table
+	if requestScope.TriggerMitigation == false { requestScope.Status = models.Triggered }
 	mitigationScope, err := models.CreateMitigationScope(*requestScope, *customer)
 	if err != nil {
 		return nil, err
