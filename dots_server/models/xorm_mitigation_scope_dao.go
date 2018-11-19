@@ -124,6 +124,48 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 }
 
 /*
+ * Updates a MitigationScope status in the DB.
+ *
+ * parameter:
+ *  mitigationScopeId int64
+ *  status            int
+ * return:
+ *  err error
+ */
+func UpdateMitigationScopeStatus(mitigationScopeId int64, status int) (err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("database connect error: %s", err)
+		return
+	}
+
+	// transaction start
+	session := engine.NewSession()
+	defer session.Close()
+
+	err = session.Begin()
+	if err != nil {
+		session.Rollback()
+		return
+	}
+
+	// update mitigatin status column
+	updMitigationScope := db_models.MitigationScope{ Status: status }
+	_, err = session.Id(mitigationScopeId).Cols("status").Update(&updMitigationScope)
+	if err != nil {
+		session.Rollback()
+		log.Errorf("mitigationScope status update err: %s", err)
+		return
+	}
+
+	// add Commit() after all actions
+	err = session.Commit()
+
+	return
+}
+
+/*
  * Updates a MitigationScope object in the DB.
  *
  * parameter:

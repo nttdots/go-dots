@@ -990,7 +990,7 @@ func UpdateMitigationStatus(customerId int, cuid string, mid int, mitigationScop
 		}
 
 		currentScope.Status = newStatus
-		err = models.UpdateMitigationScope(*currentScope, *customer)
+		err = models.UpdateMitigationScopeStatus(currentScope.MitigationScopeId, newStatus)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope update error.")
 			return err
