@@ -75,6 +75,7 @@ var dataChannelAddress string
 func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	var ctx *libcoap.Context
 	var sess *libcoap.Session
+	var oSess *libcoap.Session
 	var addr libcoap.Address
 
 	libcoap.Startup()
@@ -104,11 +105,15 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 
 	} else {
 		dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile }
-		ctx = libcoap.NewContextDtls(nil, &dtlsParam)
-		if ctx == nil {
-			log.Error("NewContextDtls() -> nil")
-			err = errors.New("NewContextDtls() -> nil")
-			goto error
+		if orgEnv == nil {
+			ctx = libcoap.NewContextDtls(nil, &dtlsParam)
+			if ctx == nil {
+				log.Error("NewContextDtls() -> nil")
+				err = errors.New("NewContextDtls() -> nil")
+				goto error
+			}
+		} else {
+			ctx = orgEnv.CoapContext()
 		}
 
 		sess = ctx.NewClientSessionDTLS(addr, libcoap.ProtoDtls)
@@ -121,11 +126,38 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	if (orgEnv == nil){
 		env = task.NewEnv(ctx, sess)
 	} else {
-		env = orgEnv.RenewEnv(ctx, sess)
+		oSess = orgEnv.CoapSession()
+		env = orgEnv
 	}
+
+	ctx.RegisterEventHandler(func(_ *libcoap.Context, event libcoap.Event, session *libcoap.Session){
+		if event == libcoap.EventSessionConnected {
+			if orgEnv != nil {
+				env = orgEnv.RenewEnv(ctx, sess)
+				oSess.SessionRelease()
+				log.Debugf("Restarted connection successfully with new session: %+v.", sess.String())
+				loadConfig(env)
+				env.Run(task.NewPingTask(
+						time.Duration(config.HeartbeatInterval) * time.Second,
+						pingResponseHandler,
+						pingTimeoutHandler))
+			}
+		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
+			session.SessionRelease()
+			restartConnection(env)
+		}
+	})
 
 	ctx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
 		env.HandleResponse(received)
+		if received != nil && oSess != nil && oSess == env.CoapSession(){
+			sess.SessionRelease()
+			log.Debugf("Restarted connection successfully with current session: %+v.", oSess.String())
+			env.Run(task.NewPingTask(
+					time.Duration(config.HeartbeatInterval) * time.Second,
+					pingResponseHandler,
+					pingTimeoutHandler))
+		}
 	})
 
 	ctx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
@@ -326,24 +358,16 @@ func pingTimeoutHandler(_ *task.PingTask, env *task.Env) {
 		env.StopPing()
 
 		restartConnection(env)
-		loadConfig(env)
-		env.Run(task.NewPingTask(
-			time.Duration(config.HeartbeatInterval) * time.Second,
-			pingResponseHandler,
-			pingTimeoutHandler))
 	}
 }
 
 func restartConnection (env *task.Env) {
 	log.Debug("Restart connection to server...")
-	cleanupSignalChannel(env.CoapContext(), env.CoapSession())
 	_,err := connectSignalChannel(env)
 	if err != nil {
 		log.WithError(err).Errorf("connectSignalChannel() failed")
 		os.Exit(1)
 	}
-
-	log.Debug("Restarted connection successfully.")
 }
 
 var config *dots_config.SignalConfiguration
