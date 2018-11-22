@@ -97,6 +97,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil {
             log.WithError(err).Warn("DtlsGetPeercCommonName() failed")
             response.Code = libcoap.ResponseForbidden
+            response.Type = responseType(request.Type)
             return
         }
 
@@ -106,6 +107,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil || customer.Id == 0 {
             log.WithError(err).Warn("Customer not found.")
             response.Code = libcoap.ResponseForbidden
+            response.Type = responseType(request.Type)
             return
         }
 
@@ -196,6 +198,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil {
             log.WithError(err).Error("unmarshalCbor failed.")
             response.Code = libcoap.ResponseInternalServerError
+            response.Type = responseType(request.Type)
             return
         }
 
@@ -213,6 +216,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil {
             log.WithError(err).Error("controller returned error")
             response.Code = libcoap.ResponseInternalServerError
+            response.Type = responseType(request.Type)
             return
         }
 
@@ -221,6 +225,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil {
             log.WithError(err).Error("marshalCbor failed.")
             response.Code = libcoap.ResponseInternalServerError
+            response.Type = responseType(request.Type)
             return
         }
 
@@ -314,4 +319,14 @@ func listenSignal(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ 
     addPrefixHandler(ctx, messages.SIGNAL_CHANNEL, &controllers.SignalChannel{})
 
     return ctx, nil
+}
+
+
+func responseType(typeReq libcoap.Type) (typeRes libcoap.Type) {
+    if typeReq == libcoap.TypeCon {
+        typeRes = libcoap.TypeAck
+    } else if typeReq == libcoap.TypeNon {
+        typeRes = libcoap.TypeNon
+    }
+    return
 }
