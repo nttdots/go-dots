@@ -304,6 +304,12 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				Body: messages.NewMitigationResponsePut(body, nil),
 			}
 			return res, nil
+		} else {
+			log.Warnf("Not found any mitigation request (cuid=%+v, mid=%+v) for efficacy update", cuid, *mid)
+			res = Response{
+				Type: common.NonConfirmable,
+			}
+            return res, nil
 		}
 		
 	ResponseConflict:
