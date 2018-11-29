@@ -100,32 +100,31 @@ ILOOP:
 					return
 				}
 				dup := isDuplicateMitigation(mids, mid)
+
+				// Check observer resource and handle expired mitigation
 				if dup && status == models.Terminated {
 					// Skip notify, just delete the expired mitigation
 					log.Debugf("[MySQL-Notification]: Skip Notification for this mitigation (mid=%+v, id=%+v) due to duplicate with another existing active mitigation", mid, id)
+					controllers.DeleteMitigation(cid, cuid, mid, id)
 				} else {
 					// Notify status changed to those clients who are observing this mitigation request
 					log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-					context.NotifyOnce(query)
-				}
+					resource := context.EnableResourceDirty(query)
 
-				// If mitigation status was changed to 6: (attack mitigation is now terminated), delete this mitigation after notifying
-				if status == models.Terminated {
-					log.Debugf("[MySQL-Notification]: Mitigation was expired => terminated. Delete sub-resource (query=%+v) and mitigation (id=%+v).", query, mid)
-					err = models.DeleteMitigationScope(cid, cuid, mid, id)
-					if err != nil {
-						log.Errorf("[MySQL-Notification]: Delete mitigation scope error: %+v", err)
-						return
+					// If mitigation status was changed to Terminated and resource is being observed => set resource status to removable
+					var isObserved bool
+					if resource != nil {
+						isObserved = resource.IsObserved()
+					} else {
+						log.Warnf("[MySQL-Notification]: Not found any resource with query: %+v", query)
 					}
-					// Keep resource when there is a duplication
-					if !dup {
-						context.DeleteResourceByQuery(&query)
-					}
-					// DeActivate data channel acl
-					err = controllers.DeActivateDataChannelACL(cid, cuid)
-					if err != nil {
-						log.Errorf("[MySQL-Notification]: DeActivate data channel acl error: %+v", err)
-						return
+
+					if status == models.Terminated && !isObserved {
+						controllers.DeleteMitigation(cid, cuid, mid, id)
+						// Keep resource when there is a duplication
+						if !dup && resource != nil {
+							resource.ToRemovableResource()
+						}
 					}
 				}
 			} else if mapData["table_trigger"].(string) == string(SESSION_CONFIGURATION) {
@@ -135,7 +134,7 @@ ILOOP:
 				cid := mapData["cid"].(string)
 				uriPath := messages.MessageTypes[messages.SESSION_CONFIGURATION].Path
 				query := uriPath + "/customerId=" + cid
-				context.NotifyOnce(query)
+				context.EnableResourceDirty(query)
 			}
 		default:
 			log.Debugf("[MySQL-Notification]: Failed to receive data:%+v", err)

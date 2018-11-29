@@ -211,23 +211,33 @@ func (context *Context) RunOnce(timeout time.Duration) time.Duration {
     return time.Duration(d) * time.Millisecond
 }
 
-func (context *Context) NotifyOnce(query string){
-    log.Debugf("[NotifyOnce]: Data to notify: query: %+v", query)
+/*
+ * Enable resource dirty and return the resource
+ */
+func (context *Context) EnableResourceDirty(query string) (resource *Resource) {
+    log.Debugf("[EnableDirty]: Enable resource dirty: query: %+v", query)
 
     // Get sub-resource corresponding to uriPath
-    resource := context.GetResourceByQuery(&query)
-
+    resource = context.GetResourceByQuery(&query)
     if (resource != nil) {
-        log.Debugf("[NotifyOnce]: Found resource to notify= %+v ", resource)
+        log.Debugf("[EnableDirty]: Found resource to notify (uriPath=%+v)", resource.UriPath())
         // Mark resource as dirty and do notifying
-        log.Debug("[NotifyOnce]: Set resource dirty.")
+        log.Debug("[EnableDirty]: Set resource dirty.")
         C.coap_set_dirty(resource.ptr, C.CString(""), 0)
-        log.Debugf("[NotifyOnce]: Do coap_check_notify")
-        C.coap_check_notify(context.ptr)
-        log.Debug("[NotifyOnce]: Done coap_check_notify")
     } else {
-        log.Debug("[NotifyOnce]: Not found any resource to notify.")
+        log.Warn("[EnableDirty]: Not found any resource to set dirty.")
     }
-
     return
+}
+
+/*
+ * Check if there is resource that removable => remove it
+ */
+func (context *Context) CheckRemovableResources() {
+    for _, resource := range resources {
+        if resource.isRemovable == true {
+            log.Debugf("Delete the sub-resource (uri-path=%+v)", resource.UriPath())
+            context.DeleteResource(resource)
+        }
+    }
 }

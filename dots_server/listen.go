@@ -82,13 +82,13 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         observe, err := request.GetOptionIntegerValue(libcoap.OptionObserve)
         if err != nil {
             log.Warnf("Observer: %+v", err)
-            } else {
-                if observe == int32(messages.Register) {
-                    log.Debugf("Register Mitigation or Session Configuration Observe.")
-                } else if observe == int32(messages.Deregister) {
-                    log.Debugf("Deregister Mitigation or Session Configuration Observe.")
-                }
+        } else {
+            if observe == int32(messages.Register) {
+                log.Debugf("Register Mitigation or Session Configuration Observe.")
+            } else if observe == int32(messages.Deregister) {
+                log.Debugf("Deregister Mitigation or Session Configuration Observe.")
             }
+        }
 
         response.MessageID = request.MessageID
         response.Token     = request.Token
@@ -117,11 +117,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         log.Debugf("request.Path(): %+v", request.Path())
 
         var body interface{}
-
         var resourcePath string
-        sfMed := reflect.ValueOf(method)
-        sfPut := reflect.ValueOf(controller.HandlePut)
-        sfGet := reflect.ValueOf(controller.HandleGet)
         if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
             uri := request.Path()
             for i := range uri {
@@ -130,7 +126,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                     body, err = unmarshalCbor(request, reflect.TypeOf(messages.MitigationRequest{}))
 
                     // Create sub resource to handle observation on behalf of Unknown resource in case of mitigation PUT
-                    if is_unknown && sfMed.Pointer() == sfPut.Pointer() {
+                    if is_unknown && request.Code == libcoap.RequestPut {
                         p := request.PathString()
                         resourcePath = p
                         r := libcoap.ResourceInit(&p, 0)
@@ -156,7 +152,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                         resourcePath = p
                     }
                     resourcePath += "/customerId=" + strconv.Itoa(customer.Id)
-                    if is_unknown && sfMed.Pointer() == sfPut.Pointer() {
+                    if is_unknown && request.Code == libcoap.RequestPut {
                         resource := context.GetResourceByQuery(&resourcePath)
                         if resource == nil {
                             r := libcoap.ResourceInit(&resourcePath, 0)
@@ -170,7 +166,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                         } else {
                             log.Debugf("Resource with uri-path=%+v has already existed", resourcePath)
                         }
-                    } else if is_unknown && sfMed.Pointer() == sfGet.Pointer() {
+                    } else if is_unknown && request.Code == libcoap.RequestGet {
                         // Create observer in sub resource to handle observation in case session configuration change
                         resource := context.GetResourceByQuery(&resourcePath)
                         if resource != nil {
@@ -179,11 +175,11 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                                 if resource != nil {
                                     resource.AddObserver(session, &p, *token)
                                 }
-                                } else if observe == int32(messages.Deregister) {
-                                    log.Debugf("Delete observer in sub-resource")
-                                    if resource != nil {
-                                        resource.DeleteObserver(session, *token)
-                                    }
+                            } else if observe == int32(messages.Deregister) {
+                                log.Debugf("Delete observer in sub-resource with query: %+v", resource.UriPath())
+                                if resource != nil {
+                                    resource.DeleteObserver(session, *token)
+                                }
                             }
                         }
                     }
@@ -230,7 +226,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         }
 
         // Remove sub-resource that is just created above
-        if is_unknown && sfMed.Pointer() == sfPut.Pointer() && res.Code > dots_common.Limit2xxCode {
+        if is_unknown && request.Code == libcoap.RequestPut && res.Code > dots_common.Limit2xxCode {
             log.Debugf("Delete sub-resource: %+v when receive response error code: %+v", resourcePath, res.Code)
             context.DeleteResourceByQuery(&resourcePath)
         }
@@ -247,11 +243,16 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         log.Debugf("response.Data=\n%s", hex.Dump(payload))
         // add content type cbor
         response.SetOption(libcoap.OptionContentType, uint16(libcoap.AppCbor))
-                // add initial observe
-                if observe == int32(messages.Register) {
-                    response.SetOption(libcoap.OptionObserve, uint16(messages.Register))
-                }
+        // add initial observe
+        if observe == int32(messages.Register) {
+            response.SetOption(libcoap.OptionObserve, uint16(messages.Register))
+        }
 
+        // Set resource status to removable and delete the mitigation when it is terminated
+        if resource.IsNotifying() && request.Code == libcoap.RequestGet && res.Body != nil && 
+            res.Body.(messages.MitigationResponse).MitigationScope.Scopes[0].Status == models.Terminated {
+            handleExpiredMitigation(resource, customer)
+        }
         return
     }
 }
@@ -329,4 +330,30 @@ func responseType(typeReq libcoap.Type) (typeRes libcoap.Type) {
         typeRes = libcoap.TypeNon
     }
     return
+}
+
+/*
+ * Parsing mitigation ids from uri-path and check condition to set removable for the resource
+ */
+func handleExpiredMitigation(resource *libcoap.Resource, customer *models.Customer) {
+    _, cuid, mid, err := controllers.ParseURIPath(strings.Split(resource.UriPath(), "/"))
+    if err != nil {
+        log.Warnf("Failed to parse Uri-Path, error: %s", err)
+    }
+    if mid == nil {
+        log.Warn("Mid is not presented in uri-path")
+        return
+    }
+
+    mids, err := models.GetMitigationIds(customer.Id, cuid)
+    if err != nil {
+        log.Warnf("Get mitigation scopes error: %+v", err)
+        return
+    }
+    dup := isDuplicateMitigation(mids, *mid)
+
+    controllers.DeleteMitigation(customer.Id, cuid, *mid, 0)
+    if !dup {
+        resource.ToRemovableResource()
+    }
 }

@@ -35,7 +35,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	log.WithField("request", request).Debug("[GET] receive message")
 
 	// Get cuid, mid from Uri-Path
-	_, cuid, mid, err := parseURIPath(request.PathInfo)
+	_, cuid, mid, err := ParseURIPath(request.PathInfo)
 	if err != nil {
 		log.Warnf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
@@ -167,7 +167,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	log.WithField("message", body.String()).Debug("[PUT] receive message")
 
 	// Get cuid, mid from Uri-Path
-	cdid, cuid, mid, err := parseURIPath(request.PathInfo)
+	cdid, cuid, mid, err := ParseURIPath(request.PathInfo)
 	if err != nil {
 		log.Warnf("Failed to parse Uri-Path, error: %s", err)
 		goto ResponseNG
@@ -339,7 +339,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 	log.WithField("request", request).Debug("[DELETE] receive message")
 
 	// Get cuid, mid from Uri-Path
-	_, cuid, mid, err := parseURIPath(request.PathInfo)
+	_, cuid, mid, err := ParseURIPath(request.PathInfo)
 	if err != nil {
 		log.Warnf("Failed to parse Uri-Path, error: %s", err)
 		res = Response{
@@ -763,7 +763,7 @@ func callBlockerByScope(scope *models.MitigationScope, c *models.Customer) (err 
 /*
 *  Get cuid, mid value from URI-Path
 */
-func parseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err error){
+func ParseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err error){
 	log.Debugf("Parsing URI-Path : %+v", uriPath)
 	// Get cuid, mid from Uri-Path
 	for _, uriPath := range uriPath{
@@ -1007,6 +1007,35 @@ func UpdateMitigationStatus(customerId int, cuid string, mid int, mitigationScop
 	// Remove Active Mitigation from ManageList
 	if newStatus == models.Terminated {
 		models.RemoveActiveMitigationRequest(currentScope.MitigationScopeId)
+	}
+	return nil
+}
+
+
+/*
+ * Delete mitigation out of DB after terminating process
+ * parameter:
+ *  customerId the customer id
+ *  cuid       the client identifier
+ *  mid        the mitigation id
+ *  mitigationScopeId the mitigation scope id
+ * return:
+ *  err      the error
+ */
+func DeleteMitigation(customerId int, cuid string, mid int, mitigationScopeId int64) (err error) {
+	log.Debugf("Mitigation has been terminated => delete mitigation (id=%+v).", mid)
+
+	err = models.DeleteMitigationScope(customerId, cuid, mid, mitigationScopeId)
+	if err != nil {
+		log.Warnf("Delete mitigation scope error: %+v", err)
+		return
+	}
+
+	// DeActivate data channel acl
+	err = DeActivateDataChannelACL(customerId, cuid)
+	if err != nil {
+		log.Warnf("DeActivate data channel acl error: %+v", err)
+		return
 	}
 	return nil
 }

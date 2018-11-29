@@ -61,13 +61,14 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 
 	// registration data settings
 	// for customer
+	if mitigationScope.Status == 0 { mitigationScope.Status = InProgress }
 	newMitigationScope = db_models.MitigationScope{
 		CustomerId:       customer.Id,
 		ClientIdentifier: clientIdentifier,
 		ClientDomainIdentifier: clientDomainIdentifier,
 		MitigationId:     mitigationScope.MitigationId,
 		Lifetime:         mitigationScope.Lifetime,
-		Status:           InProgress,
+		Status:           mitigationScope.Status,
 		TriggerMitigation: mitigationScope.TriggerMitigation,
 	}
 
@@ -687,7 +688,7 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 	// Get mitigation_scope table data
 	dbMitigationScope := db_models.MitigationScope{}
 	if mitigationScopeId == 0 {
-		_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Desc("id").Get(&dbMitigationScope)
+		_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id = ?", customerId, clientIdentifier, mitigationId).Asc("id").Get(&dbMitigationScope)
 	} else {
 		_, err = engine.Where("id = ?", mitigationScopeId).Get(&dbMitigationScope)
 	}

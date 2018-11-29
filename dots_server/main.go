@@ -116,6 +116,7 @@ func main() {
 			e.Handle(env)
 		default:
 			signalCtx.RunOnce(time.Duration(100) * time.Millisecond)
+			signalCtx.CheckRemovableResources()
 		}
 	}
 }

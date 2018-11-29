@@ -71,3 +71,6 @@ typedef struct coap_openssl_context_t {
 } coap_openssl_context_t;
 
 void coap_set_dirty(coap_resource_t *resource, char *query, int length);
+
+int coap_check_subscribers(coap_resource_t *resource);
+int coap_check_dirty(coap_resource_t *resource);

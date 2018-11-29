@@ -11,6 +11,7 @@ import "unsafe"
 type Resource struct {
     ptr      *C.coap_resource_t
     handlers map[Code]MethodHandler
+    isRemovable bool
 }
 
 type ResourceFlags int
@@ -40,7 +41,7 @@ func ResourceInit(uri *string, flags ResourceFlags) *Resource {
     uripath := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(curi)), C.size_t(urilen))
     ptr := C.coap_resource_init(uripath, C.int(flags) | C.COAP_RESOURCE_FLAGS_RELEASE_URI)
 
-    resource := &Resource{ ptr, make(map[Code]MethodHandler) }
+    resource := &Resource{ ptr, make(map[Code]MethodHandler), false }
     resources[ptr] = resource
     return resource
 }
@@ -49,7 +50,7 @@ func ResourceUnknownInit() *Resource {
 
 	ptr := C.coap_resource_unknown_init(nil)
 
-	resource := &Resource{ptr, make(map[Code]MethodHandler)}
+	resource := &Resource{ ptr, make(map[Code]MethodHandler), false }
 	resources[ptr] = resource
 	return resource
 
@@ -99,7 +100,7 @@ func (resource *Resource) TurnOnResourceObservable() {
 func (context *Context) DeleteResourceByQuery(query *string) {
     resource := context.GetResourceByQuery(query)
     if resource != nil {
-        C.coap_delete_resource(context.ptr, resource.ptr)
+        context.DeleteResource(resource)
     }
 }
 
@@ -109,7 +110,7 @@ func (context *Context) GetResourceByQuery(query *string) (res *Resource) {
     queryStr := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(cquery)), C.size_t(clen))
     resource := C.coap_get_resource_from_uri_path(context.ptr, queryStr)
     if resource != nil {
-        res = &Resource{resource, nil}
+        res = resources[resource]
         return
     }
     return nil
@@ -133,4 +134,34 @@ func (resource *Resource) DeleteObserver(session *Session, token []byte) {
     tokenStr.s = (*C.uint8_t)(unsafe.Pointer(C.CString(temp)))
     tokenStr.length = C.size_t(len(temp))
     C.coap_delete_observer(resource.ptr, session.ptr, tokenStr)
+}
+
+func (resource *Resource) ToRemovableResource() {
+    resource.isRemovable = true
+}
+
+func (resource *Resource) UriPath() string {
+    str := C.coap_resource_get_uri_path(resource.ptr)
+    res := str.toString()
+    if res != nil {
+        return *res
+    }
+    return ""
+}
+
+func (resource *Resource) IsObserved() bool {
+    isObserved := C.coap_check_subscribers(resource.ptr)
+    if isObserved == 1 {
+        return true
+    } else {
+        return false
+    }
+}
+
+func (resource *Resource) IsNotifying() bool {
+    if C.coap_check_dirty(resource.ptr) == 1 {
+        return true
+    } else {
+        return false
+    }
 }

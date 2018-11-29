@@ -81,19 +81,19 @@ func export_method_handler(ctx   *C.coap_context_t,
 
     // Handle observe: 
     // Set request.uri-path from resource.uri-path (so that it can by-pass uri-path check inside PrefixFilter)
-    if (is_observe){
+    if is_observe {
         request.Code = RequestGet
         request.Options = make([]Option, 0)
-        
+
         uri := strings.Split(*(rsrc.uri_path.toString()), "/")
         for _, path := range uri {
             request.Options = append(request.Options, OptionUriPath.String(path))
         }
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
-        } else {
-            // session is alive when receive a request, not when re-create a notification
-            session.SetIsAlive(true)
-        }
+    } else {
+        // session is alive when receive a request, not when re-create a notification
+        session.SetIsAlive(true)
+    }
     
 
     token := tok.toBytes()

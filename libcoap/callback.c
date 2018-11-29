@@ -144,3 +144,11 @@ void coap_set_dirty(coap_resource_t *resource, char *key, int length) {
         coap_resource_notify_observers(resource, query);
     }
 }
+
+int coap_check_subscribers(coap_resource_t *resource) {
+    return !(resource->subscribers == NULL);
+}
+
+int coap_check_dirty(coap_resource_t *resource) {
+    return resource->dirty;
+}
