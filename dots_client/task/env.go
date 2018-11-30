@@ -29,6 +29,9 @@ type Env struct {
 
     sessionConfigMode string
     intervalBeforeMaxAge int
+
+    // The new connected session that will replace the current
+    replacingSession *libcoap.Session
 }
 
 func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
@@ -44,6 +47,7 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         make(map[string][]byte),
         string(client_message.IDLE),
         0,
+        nil,
     }
 }
 
@@ -56,6 +60,7 @@ func (env *Env) RenewEnv(context *libcoap.Context, session *libcoap.Session) *En
     env.pingTask = nil
     env.sessionConfigTask = nil
     env.tokens = make(map[string][]byte)
+    env.replacingSession = nil
     return env
 }
 
@@ -83,6 +88,10 @@ func (env *Env) SetIntervalBeforeMaxAge(intervalBeforeMaxAge int) {
 
 func (env *Env) IntervalBeforeMaxAge() int {
     return env.intervalBeforeMaxAge
+}
+
+func (env *Env) SetReplacingSession(session *libcoap.Session) {
+    env.replacingSession = session
 }
 
 func (env *Env) Run(task Task) {
@@ -261,4 +270,19 @@ func LogNotification(pdu *libcoap.Pdu) {
         return
     }
     log.Infof("        CBOR decoded: %s", logStr)
+}
+
+/*
+ * Check if there is session that need to be replaced => do replacing
+ */
+func (env *Env) CheckSessionReplacement() (bool) {
+    if env.replacingSession != nil {
+        session := env.session
+        log.Debugf("The new session (str=%+v) is replacing the current one (str=%+v)", env.replacingSession.String(), env.session.String())
+        env.RenewEnv(env.context, env.replacingSession)
+        session.SessionRelease()
+		log.Debugf("Restarted connection successfully with new session: %+v.", env.session.String())
+        return true
+    }
+    return false
 }

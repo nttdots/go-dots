@@ -133,14 +133,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	ctx.RegisterEventHandler(func(_ *libcoap.Context, event libcoap.Event, session *libcoap.Session){
 		if event == libcoap.EventSessionConnected {
 			if orgEnv != nil {
-				env = orgEnv.RenewEnv(ctx, sess)
-				oSess.SessionRelease()
-				log.Debugf("Restarted connection successfully with new session: %+v.", sess.String())
-				loadConfig(env)
-				env.Run(task.NewPingTask(
-						time.Duration(config.HeartbeatInterval) * time.Second,
-						pingResponseHandler,
-						pingTimeoutHandler))
+				orgEnv.SetReplacingSession(session)
 			}
 		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
 			session.SessionRelease()
@@ -374,7 +367,6 @@ var config *dots_config.SignalConfiguration
 
 /**
 * Load config file
-* 
 */
 func loadConfig(env *task.Env) error{
 	var err error
@@ -480,7 +472,19 @@ loop:
 			break loop
 		default:
 			env.CoapContext().RunOnce(time.Duration(100) * time.Millisecond)
+			CheckReplacingSession(env)
 		}
 	}
 	cleanupSignalChannel(env.CoapContext(), env.CoapSession())
+}
+
+func CheckReplacingSession(env *task.Env) {
+	isReplace := env.CheckSessionReplacement()
+	if isReplace {
+        loadConfig(env)
+		env.Run(task.NewPingTask(
+				time.Duration(config.HeartbeatInterval) * time.Second,
+				pingResponseHandler,
+				pingTimeoutHandler))
+	}
 }
