@@ -135,7 +135,7 @@ func (c *ACLsController) Delete(customer *models.Customer, r *http.Request, p ht
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
-      deleted, err := data_models.DeleteACLByName(tx, client, name, now)
+      deleted, err := data_models.DeleteACLByName(tx, client.Id, name, now)
       if err != nil {
         return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to delete acl")
       }
@@ -256,9 +256,12 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       if err != nil {
         // Rollback
         log.Errorf("Data channel PUT ACL. CallBlocker is error: %s\n", err)
-        data_models.DeleteACLByName(tx, client, e.ACL.Name, now)
+        data_models.DeleteACLByName(tx, client.Id, e.ACL.Name, now)
         return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to call blocker")
       }
+
+      // Add acl to check expired
+      data_models.AddActiveACLRequest(e.Id, e.Client.Id, e.ACL.Name, e.ValidThrough)
 
       return EmptyResponse(status)
     })

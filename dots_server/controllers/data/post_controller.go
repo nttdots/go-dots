@@ -50,6 +50,7 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
       switch req := ir.(type) {
       case *messages.AliasesRequest:
         n := []data_models.Alias{}
+        aliasMap := []data_models.Alias{}
         for _,alias := range req.Aliases.Alias {
           e, err := data_models.FindAliasByName(tx, client, alias.Name, now)
           if err != nil {
@@ -68,6 +69,12 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
           if err != nil {
             return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save alias")
           }
+          aliasMap = append(aliasMap, alias)
+        }
+
+        for _,alias := range aliasMap {
+          // Add alias to check expired
+          data_models.AddActiveAliasRequest(alias.Id, alias.Client.Id, alias.Alias.Name, alias.ValidThrough)
         }
         return EmptyResponse(http.StatusCreated)
       case *messages.ACLsRequest:
@@ -107,6 +114,7 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
         isPeaceTime,_ := models.CheckPeaceTimeSignalChannel(customer.Id, cuid)
 
         acls := []data_models.ACL{}
+        aclMap := []data_models.ACL{}
         for _,acl := range n {
           err = acl.Save(tx)
           if err != nil {
@@ -116,6 +124,7 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
               *acl.ACL.ActivationType == types.ActivationType_Immediate {
             acls = append(acls, acl)
           }
+          aclMap = append(aclMap, acl)
         }
         // Call blocker
         err := data_models.CallBlocker(acls, customer.Id, http.StatusCreated)
@@ -123,9 +132,13 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
           log.Errorf("Data channel POST ACL. CallBlocker is error: %s\n", err)
           // handle error when call blocker failed
           for _,acl := range acls {
-            data_models.DeleteACLByName(tx, client, acl.ACL.Name, now)
+            data_models.DeleteACLByName(tx, client.Id, acl.ACL.Name, now)
           }
           return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to call blocker")
+        }
+        for _,acl := range aclMap {
+          // Add acl to check expired
+          data_models.AddActiveACLRequest(acl.Id,acl.Client.Id, acl.ACL.Name, acl.ValidThrough)
         }
           return EmptyResponse(http.StatusCreated)
       default:

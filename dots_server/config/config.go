@@ -105,9 +105,9 @@ func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
 }
 
 func  ConvertMaxAge(maxAge string) (uint, error) {
-	var m uint64
+	var m int
 	if maxAge != "" {
-		mt,_ := strconv.ParseUint(maxAge, 10, 32)
+		mt,_ := strconv.Atoi(maxAge)
 		m = mt
 	} else {
 		m = 60

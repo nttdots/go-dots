@@ -132,7 +132,7 @@ func (c *AliasesController) Delete(customer *models.Customer, r *http.Request, p
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
-      deleted, err := data_models.DeleteAliasByName(tx, client, name, now)
+      deleted, err := data_models.DeleteAliasByName(tx, client.Id, name, now)
       if err != nil {
         return
       }
@@ -204,6 +204,10 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
       if err != nil {
         return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save alias")
       }
+
+      // Add alias to check expired
+      data_models.AddActiveAliasRequest(e.Id, e.Client.Id, e.Alias.Name, e.ValidThrough)
+
       return EmptyResponse(status)
     })
   })

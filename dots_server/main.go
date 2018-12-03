@@ -11,6 +11,7 @@ import (
 	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_server/controllers"
 	"github.com/nttdots/go-dots/dots_server/task"
+	"github.com/nttdots/go-dots/dots_server/models/data"
 )
 
 var (
@@ -46,6 +47,9 @@ func main() {
 
 	// Thread for monitoring remaining lifetime of mitigation requests
 	go controllers.ManageExpiredMitigation(config.LifetimeConfiguration.ManageLifetimeInterval)
+
+	// Thread for monitoring remaining lifetime of datachannel alias and acl requests
+	go data_models.ManageExpiredAliasAndAcl(config.LifetimeConfiguration.ManageLifetimeInterval)
 
 	log.Debug("listen Signal with DTLS param: %# v", dtlsParam)
 	signalCtx, err := listenSignal(config.Network.BindAddress, uint16(config.Network.SignalChannelPort), &dtlsParam)

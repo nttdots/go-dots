@@ -124,9 +124,9 @@ func FindACLs(tx *db.Tx, client *Client, now time.Time) (ACLs, error) {
   return acls, nil
 }
 
-func findAndCleanACL(tx *db.Tx, client *Client, name string, now time.Time) (*data_db_models.ACL, error) {
+func findAndCleanACL(tx *db.Tx, clientID int64, name string, now time.Time) (*data_db_models.ACL, error) {
   a := data_db_models.ACL{}
-  has, err := tx.Session.Where("data_client_id = ? AND name = ?", client.Id, name).Get(&a)
+  has, err := tx.Session.Where("data_client_id = ? AND name = ?", clientID, name).Get(&a)
   if err != nil {
     log.WithError(err).Error("Get() failed.")
     return nil, err
@@ -159,11 +159,15 @@ func deleteACL(tx *db.Tx, p *data_db_models.ACL) (bool, error) {
     log.WithError(err).Error("Delete() failed.")
     return false, err
   }
+
+  // Remove acl in map active acl
+  RemoveActiveACLRequest(p.Id)
+
   return 0 < affected, nil
 }
 
 func FindACLByName(tx *db.Tx, client *Client, name string, now time.Time) (*ACL, error) {
-  a, err := findAndCleanACL(tx, client, name, now)
+  a, err := findAndCleanACL(tx, client.Id, name, now)
   if err != nil {
     return nil, err
   }
@@ -179,8 +183,8 @@ func FindACLByName(tx *db.Tx, client *Client, name string, now time.Time) (*ACL,
   }, nil
 }
 
-func DeleteACLByName(tx *db.Tx, client *Client, name string, now time.Time) (bool, error) {
-  a, err := findAndCleanACL(tx, client, name, now)
+func DeleteACLByName(tx *db.Tx, clientID int64, name string, now time.Time) (bool, error) {
+  a, err := findAndCleanACL(tx, clientID, name, now)
   if err != nil {
     return false, err
   }
@@ -345,4 +349,25 @@ func GetACLWithActivateWhenMitigating(customer *models.Customer, cuid string) ([
     }
   }
   return ap, nil
+}
+
+/*
+ * Find all Acls in DB
+ */
+ func FindAllACLs() (acls []data_db_models.ACL, err error) {
+  // database connection create
+	engine, err := models.ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+
+	// Get data_acls table data
+	err = engine.Table("data_acls").Find(&acls)
+	if err != nil {
+		log.Printf("Get Acl error: %s\n", err)
+		return
+	}
+
+	return
 }

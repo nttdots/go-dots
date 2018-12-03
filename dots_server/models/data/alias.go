@@ -118,9 +118,9 @@ func FindAliases(tx *db.Tx, client *Client, now time.Time) (Aliases, error) {
   return aliases, nil
 }
 
-func findAndCleanAlias(tx *db.Tx, client *Client, name string, now time.Time) (*data_db_models.Alias, error) {
+func findAndCleanAlias(tx *db.Tx, clientID int64, name string, now time.Time) (*data_db_models.Alias, error) {
   a := data_db_models.Alias{}
-  has, err := tx.Session.Where("data_client_id = ? AND name = ?", client.Id, name).Get(&a)
+  has, err := tx.Session.Where("data_client_id = ? AND name = ?", clientID, name).Get(&a)
   if err != nil {
     log.WithError(err).Error("Get() failed.")
     return nil, err
@@ -147,11 +147,15 @@ func deleteAlias(tx *db.Tx, p *data_db_models.Alias) (bool, error) {
     log.WithError(err).Error("Delete() failed.")
     return false, err
   }
+
+  // Remove alias in map active acl
+  RemoveActiveAliasRequest(p.Id)
+
   return 0 < affected, nil
 }
 
 func FindAliasByName(tx *db.Tx, client *Client, name string, now time.Time) (*Alias, error) {
-  a, err := findAndCleanAlias(tx, client, name, now)
+  a, err := findAndCleanAlias(tx, client.Id, name, now)
   if err != nil {
     return nil, err
   }
@@ -167,8 +171,8 @@ func FindAliasByName(tx *db.Tx, client *Client, name string, now time.Time) (*Al
   }, nil
 }
 
-func DeleteAliasByName(tx *db.Tx, client *Client, name string, now time.Time) (bool, error) {
-  a, err := findAndCleanAlias(tx, client, name, now)
+func DeleteAliasByName(tx *db.Tx, clientID int64, name string, now time.Time) (bool, error) {
+  a, err := findAndCleanAlias(tx, clientID, name, now)
   if err != nil {
     return false, err
   }
@@ -252,5 +256,26 @@ func (a *Alias) GetUriAsTarget() (targetList []models.Target, err error) {
 			targetList = append(targetList, models.Target{ TargetType: models.URI, TargetPrefix: prefix, TargetValue: uri })
 		}
 	}
+	return
+}
+
+/*
+ * Find all Alias in DB
+ */
+func FindAllAliases() (aliases []data_db_models.Alias, err error) {
+  // database connection create
+	engine, err := models.ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+
+	// Get data_acls table data
+	err = engine.Table("data_aliases").Find(&aliases)
+	if err != nil {
+		log.Printf("Get Aliases error: %s\n", err)
+		return
+	}
+
 	return
 }
