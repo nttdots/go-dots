@@ -26,12 +26,12 @@ func (p *Prefix) String() string {
 
 // Create new prefixes from CIDR format strings.
 func NewPrefix(addrString string) (p Prefix, err error) {
-	_, ipNet, err := net.ParseCIDR(addrString)
+	ip, ipNet, err := net.ParseCIDR(addrString)
 	if err != nil {
 		return
 	}
 	sz, _ := ipNet.Mask.Size()
-	p = Prefix{ipNet, ipNet.IP.String(), sz}
+	p = Prefix{ipNet, ip.String(), sz}
 
 	return
 }
@@ -84,12 +84,12 @@ func NewPrefixFromIps(ips []net.IP) (p []Prefix, err error) {
 	for _, ip := range ips {
 		cdir := ip.String() + "/" + strconv.Itoa(IP_PREFIX_LENGTH)
 		var ipNet *net.IPNet
-		_, ipNet, err = net.ParseCIDR(cdir)
+		ip, ipNet, err = net.ParseCIDR(cdir)
 		if err != nil {
 			return
 		}
 		sz, _ := ipNet.Mask.Size()
-		p = append(p, Prefix{ ipNet, ipNet.IP.String(), sz })
+		p = append(p, Prefix{ ipNet, ip.String(), sz })
 	}
 	return
 }
@@ -146,7 +146,7 @@ func (prefix *Prefix) IsBroadCast() bool {
 	if prefix.PrefixLen == IP_PREFIX_LENGTH {
 		return false
 	}
-	targetPrefix := prefix.net.IP.String()
+	targetPrefix := prefix.Addr
 	if ip4 := prefix.net.IP.To4(); ip4 != nil {
 		return targetPrefix == prefix.LastIP().String()
 	}
@@ -168,7 +168,7 @@ func (prefix Prefix) CheckValidRangeIpAddress(addressRangePrefixes AddressRange)
 	if !addressRangePrefixes.Validate(prefix) {
 		var addressRange []string
         for _,address := range addressRangePrefixes.Prefixes {
-          addressRange = append(addressRange, address.Addr+"/"+ strconv.Itoa(address.PrefixLen))
+          addressRange = append(addressRange, address.String())
         }
 		return false, addressRange
 	}

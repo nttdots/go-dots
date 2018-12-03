@@ -193,3 +193,64 @@ func RemoveOverlapIPPrefix(targetPrefix []types.IPPrefix) ([]types.IPPrefix) {
 	}
 	return targetPrefixs
 }
+
+/*
+ * Get alias prefixes as target type
+ *
+ * return:
+ *  targetList  list of the target Prefixes
+ */
+func (a *Alias) GetPrefixAsTarget() (targetList []models.Target, err error) {
+  // Append target ip prefix
+  var targetPrefix models.Prefix
+	for _, prefix := range a.Alias.TargetPrefix {
+    targetPrefix, err = models.NewPrefix(prefix.String())
+    if err != nil {
+      return
+    }
+		targetList = append(targetList, models.Target{ TargetType: models.IP_PREFIX, TargetPrefix: targetPrefix, TargetValue: prefix.String() })
+	}
+	return
+}
+
+/*
+ * Get mitigation FQDNs as target type
+ *
+ * return:
+ *  targetList  list of the target FQDNs
+ *  err         error
+ */
+func (a *Alias) GetFqdnAsTarget() (targetList []models.Target, err error) {
+	// Append target fqdn
+	for _, fqdn := range a.Alias.TargetFQDN {
+		prefixes, err := models.NewPrefixFromFQDN(fqdn)
+		if err != nil {
+			return nil, err
+		}
+		for _, prefix := range prefixes {
+			targetList = append(targetList, models.Target{ TargetType: models.FQDN, TargetPrefix: prefix, TargetValue: fqdn })
+		}
+	}
+	return
+}
+
+/*
+ * Get mitigation URIs as target type
+ *
+ * return:
+ *  targetList  list of the target URIs
+ *  err         error
+ */
+func (a *Alias) GetUriAsTarget() (targetList []models.Target, err error) {
+	// Append target uri
+	for _, uri := range a.Alias.TargetURI {
+		prefixes, err := models.NewPrefixFromURI(uri)
+		if err != nil {
+			return nil, err
+		}
+		for _, prefix := range prefixes {
+			targetList = append(targetList, models.Target{ TargetType: models.URI, TargetPrefix: prefix, TargetValue: uri })
+		}
+	}
+	return
+}

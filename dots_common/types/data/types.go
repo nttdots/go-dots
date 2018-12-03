@@ -23,7 +23,7 @@ func (e UInt8List) MarshalJSON() ([]byte, error) {
 }
 
 type PortRange struct {
-  LowerPort PortNumber  `json:"lower-port"`
+  LowerPort *PortNumber `json:"lower-port"`
   UpperPort *PortNumber `json:"upper-port"`
 }
 
@@ -96,12 +96,12 @@ func (p *IPPrefix) UnmarshalJSON(data []byte) error {
     return fmt.Errorf("Could not unmarshal as string: %v", data)
   }
 
-  _, net, err := net.ParseCIDR(s)
+  ip, net, err := net.ParseCIDR(s)
   if err != nil {
     return fmt.Errorf("Bad ip-prefix: %v", s)
   }
   ones, _ := net.Mask.Size()
-  *p = IPPrefix{ net.IP, ones }
+  *p = IPPrefix{ ip, ones }
   return nil
 }
 

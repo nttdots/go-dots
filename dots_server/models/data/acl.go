@@ -271,7 +271,7 @@ func CallBlocker(acls []ACL, customerID int, status int) (err error){
 }
 
 /*
- * Cancle blocker when update or delete data channel acl
+ * Cancel blocker when update or delete data channel acl
  */
 func CancelBlocker(aclID int64, activationType types.ActivationType) (err error){
   p, err := models.GetActiveProtectionByTargetIDAndTargetType(aclID, string(messages.DATACHANNEL_ACL))

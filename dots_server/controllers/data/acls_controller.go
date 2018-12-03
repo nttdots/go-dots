@@ -176,7 +176,12 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
   log.Infof("[ACLsController] Put request=%#+v", req)
 
   // Validation
-  bValid, errorMsg := req.ValidateWithName(name, customer)
+  validator := messages.GetAclValidator(models.BLOCKER_TYPE_GO_ARISTA)
+  if validator == nil {
+    errString := fmt.Sprintf("Unknown blocker type: %+v", models.BLOCKER_TYPE_GO_ARISTA)
+    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Invalid_Value, errString)
+  }
+  bValid, errorMsg := validator.ValidateWithName(&req, customer, name)
   if !bValid {
     return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errorMsg)
   }
@@ -241,7 +246,7 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
         if oldActivateType == types.ActivationType_Immediate || (oldActivateType == types.ActivationType_ActivateWhenMitigating && p != nil) {
           err := data_models.CancelBlocker(e.Id, oldActivateType)
           if err != nil {
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to cancle blocker")
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to cancel blocker")
           }
         }
       }

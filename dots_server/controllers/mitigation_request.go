@@ -879,7 +879,10 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 			log.WithError(err).Error("MitigationRequest.Put")
 			return nil, err
 		}
-    }
+	}
+	
+	// set requestScope status equal to currentScope to keep current mitigation status
+	if currentScope != nil { requestScope.Status = currentScope.Status }
 
 	// store mitigation request into the mitigationScope table
 	if requestScope.TriggerMitigation == false { requestScope.Status = models.Triggered }
@@ -1141,7 +1144,7 @@ func appendAliasParametersToRequest(aliases types.Aliases, scope *messages.Scope
 
 		// append target port range parameter
 		for _, portRange := range alias.TargetPortRange {
-			lower := int(portRange.LowerPort)
+			lower := int(*portRange.LowerPort)
 			upper := lower
 			if portRange.UpperPort != nil {
 				upper = int(*portRange.UpperPort)
@@ -1202,9 +1205,9 @@ func appendAliasDataToMitigationScope(alias types.Alias, scope *models.Mitigatio
 	// append target port range parameter
 	for _, portRange := range alias.TargetPortRange {
 		if portRange.UpperPort == nil {
-			portRange.UpperPort = &portRange.LowerPort
+			portRange.UpperPort = portRange.LowerPort
 		}
-		scope.TargetPortRange = append(scope.TargetPortRange, models.NewPortRange(int(portRange.LowerPort), int(*portRange.UpperPort)))
+		scope.TargetPortRange = append(scope.TargetPortRange, models.NewPortRange(int(*portRange.LowerPort), int(*portRange.UpperPort)))
 	}
 
 	// append target protocol parameter

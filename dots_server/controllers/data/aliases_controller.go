@@ -173,7 +173,12 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
   log.Infof("[AliasesController] Put request=%#+v", req)
 
   // Validation
-  bValid, errorMsg := req.ValidateWithName(name, r.Method, customer)
+  validator := messages.GetAliasValidator(models.BLOCKER_TYPE_GO_ARISTA)
+  if validator == nil {
+    errString := fmt.Sprintf("Unknown blocker type: %+v", models.BLOCKER_TYPE_GO_ARISTA)
+    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Invalid_Value, errString)
+  }
+  bValid, errorMsg := validator.ValidateWithName(&req, customer, name)
   if !bValid {
     return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errorMsg)
   }

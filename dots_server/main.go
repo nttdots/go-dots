@@ -109,7 +109,7 @@ func main() {
 	})
 
 	go env.ManageSessionTraffic()
-
+	
 	for {
 		select {
 		case e := <- env.EventChannel():
