@@ -180,7 +180,9 @@ SKIP_OBSERVE:
 	log.Debugf("r.pdu=%+v", r.pdu)
 }
 
-func handleTimeout(task *task.MessageTask) {
+func handleTimeout(task *task.MessageTask, request map[string] *task.MessageTask) {
+	key := fmt.Sprintf("%x", task.GetMessage().MessageID)
+	delete(request, key)
 	log.Info("<<< handleTimeout >>>")
 }
 
@@ -202,6 +204,7 @@ func (r *Request) Send() {
 		time.Duration(interval) * time.Second,
 		retry,
 		time.Duration(timeout) * time.Second,
+		false,
 		func (_ *task.MessageTask, response *libcoap.Pdu) {
 			r.logMessage(response)
 			// If this is response of session config Get without abnormal, restart ping task with latest parameters
