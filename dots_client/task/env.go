@@ -170,8 +170,8 @@ func (env *Env) EventChannel() chan Event {
 
 func asMapKey(pdu *libcoap.Pdu) string {
     // return fmt.Sprintf("%d[%x]", pdu.MessageID, pdu.Token)
-    // return fmt.Sprintf("%x", pdu.Token)
-    return fmt.Sprintf("%d", pdu.MessageID)
+    return fmt.Sprintf("%x", pdu.Token)
+    // return fmt.Sprintf("%d", pdu.MessageID)
 }
 
 func (env *Env) IsHeartbeatAllowed () bool {

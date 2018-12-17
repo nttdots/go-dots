@@ -181,7 +181,7 @@ SKIP_OBSERVE:
 }
 
 func handleTimeout(task *task.MessageTask, request map[string] *task.MessageTask) {
-	key := fmt.Sprintf("%x", task.GetMessage().MessageID)
+	key := fmt.Sprintf("%x", task.GetMessage().Token)
 	delete(request, key)
 	log.Info("<<< handleTimeout >>>")
 }
