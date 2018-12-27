@@ -249,7 +249,8 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         }
 
         // Set resource status to removable and delete the mitigation when it is terminated
-        if resource.IsNotifying() && request.Code == libcoap.RequestGet && res.Body != nil && 
+        if resource.IsNotifying() && request.Code == libcoap.RequestGet && res.Body != nil &&
+           reflect.TypeOf(res.Body) == reflect.TypeOf(messages.MitigationResponse{}) &&
             res.Body.(messages.MitigationResponse).MitigationScope.Scopes[0].Status == models.Terminated {
             handleExpiredMitigation(resource, customer)
         }

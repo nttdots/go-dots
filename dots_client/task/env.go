@@ -125,7 +125,7 @@ func (env *Env) HandleResponse(pdu *libcoap.Pdu) {
         } else {
             log.Debugf("Unexpected incoming PDU: %+v", pdu)
         }
-    } else {
+    } else if !t.isStop {
         log.Debugf("Success incoming PDU(HandleResponse): %+v", pdu)
         delete(env.requests, key)
         t.stop()
@@ -142,15 +142,17 @@ func (env *Env) HandleTimeout(sent *libcoap.Pdu) {
     if !ok {
         log.Info("Unexpected PDU: %v", sent)
     } else {
-        delete(env.requests, key)
         t.stop()
 
         // Couting to missing-hb
         // 0: Code of Ping task
         if sent.Code == 0 {
             env.current_missing_hb = env.current_missing_hb + 1
+            delete(env.requests, key)
+        } else {
+            log.Debugf("Session config request timeout")
         }
-        t.timeoutHandler(t)
+        t.timeoutHandler(t, env.requests)
     }
 }
 
@@ -168,8 +170,8 @@ func (env *Env) EventChannel() chan Event {
 
 func asMapKey(pdu *libcoap.Pdu) string {
     // return fmt.Sprintf("%d[%x]", pdu.MessageID, pdu.Token)
-    // return fmt.Sprintf("%x", pdu.Token)
-    return fmt.Sprintf("%d", pdu.MessageID)
+    return fmt.Sprintf("%x", pdu.Token)
+    // return fmt.Sprintf("%d", pdu.MessageID)
 }
 
 func (env *Env) IsHeartbeatAllowed () bool {
