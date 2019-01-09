@@ -267,6 +267,7 @@ type ServerSystemConfig struct {
 	LifetimeConfiguration        *LifetimeConfiguration
 	MaxAgeOption                 uint
 	SessionInterval				 int
+	CacheInterval                int
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -278,6 +279,7 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
 	GetServerSystemConfig().setMaxAgeOption(sc.MaxAgeOption)
 	GetServerSystemConfig().setSessionInterval(sc.SessionInterval)
+	GetServerSystemConfig().setCacheInterval(sc.CacheInterval)
 }
 
 type ServerSystemConfigNode struct {
@@ -289,6 +291,7 @@ type ServerSystemConfigNode struct {
 	LifetimeConfiguration        LifetimeConfigurationNode        `yaml:"lifetimeConfiguration"`
 	MaxAgeOption                 string                           `yaml:"maxAgeOption"`
 	SessionInterval              string                           `yaml:"manageSessionInterval"`
+	CacheInterval                string                           `yaml:"cacheInterval"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -329,6 +332,8 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 
 	sessionInterval := parseIntegerValue(scn.SessionInterval)
 
+	cacheInterval := parseIntegerValue(scn.CacheInterval)
+
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		DefaultSignalConfiguration:   defaultSignalConfiguration.(*DefaultSignalConfiguration),
@@ -338,6 +343,7 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		LifetimeConfiguration:        lifetimeConfiguration.(*LifetimeConfiguration),
 		MaxAgeOption:                 maxAgeOption,
 		SessionInterval:              sessionInterval,
+		CacheInterval:                cacheInterval,
 	}, nil
 }
 
@@ -371,6 +377,10 @@ func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint) {
 
 func (sc *ServerSystemConfig) setSessionInterval(parameter int) {
 	sc.SessionInterval = parameter
+}
+
+func (sc *ServerSystemConfig) setCacheInterval(parameter int) {
+	sc.CacheInterval = parameter
 }
 
 var systemConfigInstance *ServerSystemConfig

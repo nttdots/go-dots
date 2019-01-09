@@ -57,6 +57,7 @@ type Lifetime int
 
 const (
 	INDEFINITE_LIFETIME Lifetime = -1
+	EXCHANGE_LIFETIME   Lifetime = 247
 )
 
 type TargetType string

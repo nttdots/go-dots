@@ -138,8 +138,8 @@ func (r *Request) CreateRequest() {
 	r.pdu.Options = make([]libcoap.Option, 0)
 	observeStr := r.options[messages.OBSERVE]
 	if observeStr != "" {
-		observeValue, error := strconv.ParseUint(observeStr, 10, 16)
-		if error != nil {
+		observeValue, err := strconv.ParseUint(observeStr, 10, 16)
+		if err != nil {
 			log.Errorf("Observe is not uint type.")
 			goto SKIP_OBSERVE
 		}
@@ -169,6 +169,20 @@ SKIP_OBSERVE:
 		r.pdu.SetOption(libcoap.OptionIfMatch, val)
 	}
 
+	// Block 2 option
+	if (r.requestName == "mitigation_request") && (r.method == "GET") {
+		blockSize := r.env.InitialRequestBlockSize()
+		if blockSize != nil {
+			block := &libcoap.Block{}
+			block.NUM = 0
+			block.M   = 0
+			block.SZX = *blockSize
+			r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+		} else {
+			log.Debugf("Not set block 2 option")
+		}
+	}
+
 	if r.Message != nil {
 		r.pdu.Data = r.dumpCbor()
 		r.pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppCbor))
@@ -178,6 +192,32 @@ SKIP_OBSERVE:
 	r.pdu.SetPathString(tmpPathWithQuery)
 	log.Debugf("SetPathString=%+v", tmpPathWithQuery)
 	log.Debugf("r.pdu=%+v", r.pdu)
+}
+
+/*
+ * Handle response from server
+ */
+func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu) {
+	isMoreBlock, eTag, block := r.env.CheckBlock(response)
+	// if block is more block, sent request to server with block option
+	// else display data received from server
+	if isMoreBlock {
+		r.pdu.MessageID = r.env.CoapSession().NewMessageID()
+		r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+		r.Send()
+	} else {
+		if eTag != nil {
+			response.Data = r.env.GetBlockData(*eTag)
+			delete(r.env.Blocks(), *eTag)
+		}
+		r.logMessage(response)
+	}
+	// If this is response of session config Get without abnormal, restart ping task with latest parameters
+	if (r.requestName == "session_configuration") && (r.method == "GET") &&
+		(response.Code == libcoap.ResponseContent) {
+		RestartPingTask(response, r.env)
+		RefreshSessionConfig(response, r.env, r.pdu)
+	}
 }
 
 func handleTimeout(task *task.MessageTask, request map[string] *task.MessageTask) {
@@ -205,15 +245,7 @@ func (r *Request) Send() {
 		retry,
 		time.Duration(timeout) * time.Second,
 		false,
-		func (_ *task.MessageTask, response *libcoap.Pdu) {
-			r.logMessage(response)
-			// If this is response of session config Get without abnormal, restart ping task with latest parameters
-			if (r.requestName == "session_configuration") && (r.method == "GET") && 
-				(response.Code == libcoap.ResponseContent) {
-				RestartPingTask(response, r.env)
-				RefreshSessionConfig(response, r.env, r.pdu)
-			}
-		},
+		r.handleResponse,
 		handleTimeout)
 
 	r.env.Run(task)

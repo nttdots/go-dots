@@ -8,8 +8,10 @@ package libcoap
 import "C"
 import "errors"
 import "unsafe"
-import log "github.com/sirupsen/logrus"
 import "strings"
+import log "github.com/sirupsen/logrus"
+import cache "github.com/patrickmn/go-cache"
+
 
 // across invocations, sessions are not 'eq'
 type MethodHandler func(*Context, *Resource, *Session, *Pdu, *[]byte, *string, *Pdu)
@@ -95,19 +97,44 @@ func export_method_handler(ctx   *C.coap_context_t,
         session.SetIsAlive(true)
     }
     
-
     token := tok.toBytes()
     queryString := query.toString()
 
     handler, ok := resource.handlers[request.Code]
     if ok {
         response := Pdu{}
-        handler(context, resource, session, request, token, queryString, &response)
+        res, isFound := caches.Get(string(*token))
+        // If data does not exist in cache, add data to cache. Else response from data in cache
+        if !isFound {
+            SetBlockOptionFirstRequest(request)
+            handler(context, resource, session, request, token, queryString, &response)
+        } else {
+            response = res.(Pdu)
+            response.MessageID = request.MessageID
+        }
+
         // add observe option value to notification header
         if is_observe {
             response.SetOption(OptionObserve, rsrc.observe)
         }
+
         response.fillC(resp)
+        if request.Code == RequestGet && response.Code == ResponseContent && response.Type == TypeNon {
+            // handle max-age option
+            maxAge, err := response.GetOptionIntegerValue(OptionMaxage)
+            if err != nil || maxAge < 0 {
+                maxAge = 0
+            }
+            response.RemoveOption(OptionMaxage)
+
+            coapToken := &C.coap_binary_t{}
+            coapToken.s = req.token
+            coapToken.length = C.size_t(len(string(*token)))
+            C.coap_add_data_blocked_response(resource.ptr, session.ptr, req, resp, coapToken, C.COAP_MEDIATYPE_APPLICATION_CBOR, C.int(maxAge),
+                                            C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])))
+            resPdu,_ := resp.toGo()
+            HandleCache(resPdu, response, string(*token))
+        }
     }
 }
 
@@ -204,4 +231,35 @@ func (session *Session) DtlsGetPeerCommonName() (_ string, err error) {
         return
     }
     return string(buf[:n]), nil
+}
+
+/*
+ * Set block option with Num = 0 for first request
+ */
+func SetBlockOptionFirstRequest(request *Pdu) {
+    blockValue,_ := request.GetOptionIntegerValue(OptionBlock2)
+    block := IntToBlock(blockValue)
+    if block != nil {
+        block.NUM = 0
+        request.SetOption(OptionBlock2, uint32(block.ToInt()))
+    }
+}
+
+/*
+ * Handle delete item if block is last block
+ * Handle add item if item does not exist in cache
+ */
+func HandleCache(resp *Pdu, response Pdu, keyItem string) {
+    blockValue,_ := resp.GetOptionIntegerValue(OptionBlock2)
+    block := IntToBlock(int(blockValue))
+    // Delete block in cache when block is last block
+    if block != nil && block.M == LAST_BLOCK {
+        log.Debugf("Delete item cache with key = %+v", keyItem)
+        caches.Delete(keyItem)
+    }
+    // Add item with key does not exits
+    if block != nil && block.NUM == 0 && block.M == MORE_BLOCK {
+        log.Debug("Create item cache with key = ", keyItem)
+        caches.Set(keyItem, response, cache.DefaultExpiration)
+    }
 }

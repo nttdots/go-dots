@@ -13,6 +13,8 @@ type SignalConfiguration struct {
 	AckTimeout        float64 `yaml:"ackTimeout"`
 	AckRandomFactor   float64 `yaml:"ackRandomFactor"`
 	IntervalBeforeMaxAge  int `yaml:"intervalBeforeMaxAge"`
+	InitialRequestBlockSize *int `yaml:"initialRequestBlockSize"`
+	SecondRequestBlockSize  *int `yaml:"secondRequestBlockSize"`
 }
 
 /**

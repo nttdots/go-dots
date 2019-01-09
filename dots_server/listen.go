@@ -83,9 +83,9 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil {
             log.Warnf("Observer: %+v", err)
         } else {
-            if observe == int32(messages.Register) {
+            if observe == int(messages.Register) {
                 log.Debugf("Register Mitigation or Session Configuration Observe.")
-            } else if observe == int32(messages.Deregister) {
+            } else if observe == int(messages.Deregister) {
                 log.Debugf("Deregister Mitigation or Session Configuration Observe.")
             }
         }
@@ -107,6 +107,16 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil || customer.Id == 0 {
             log.WithError(err).Warn("Customer not found.")
             response.Code = libcoap.ResponseForbidden
+            response.Type = responseType(request.Type)
+            return
+        }
+
+        block2Value, err := request.GetOptionIntegerValue(libcoap.OptionBlock2)
+        if err != nil {
+            log.Warnf("Block2 option: %+v", err)
+        } else if block2Value > libcoap.LARGEST_BLOCK_SIZE {
+            log.Warnf("Block 2 option with size = %+v > %+v (block size largest)", block2Value, libcoap.LARGEST_BLOCK_SIZE)
+            response.Code = libcoap.ResponseBadRequest
             response.Type = responseType(request.Type)
             return
         }
@@ -170,12 +180,12 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                         // Create observer in sub resource to handle observation in case session configuration change
                         resource := context.GetResourceByQuery(&resourcePath)
                         if resource != nil {
-                            if observe == int32(messages.Register) {
+                            if observe == int(messages.Register) {
                                 log.Debugf("Create observer in sub-resource with query: %+v", p)
                                 if resource != nil {
                                     resource.AddObserver(session, &p, *token)
                                 }
-                            } else if observe == int32(messages.Deregister) {
+                            } else if observe == int(messages.Deregister) {
                                 log.Debugf("Delete observer in sub-resource with query: %+v", resource.UriPath())
                                 if resource != nil {
                                     resource.DeleteObserver(session, *token)
@@ -234,17 +244,16 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         response.Code = libcoap.Code(res.Code)
         response.Data = payload
         response.Type = CoAPType(res.Type)
+        response.Options = res.Options
 
-        for _,option := range res.Options {
-            if option.Key == libcoap.OptionMaxage {
-                response.SetOption(libcoap.OptionMaxage, option.String())
-            }
-        }
         log.Debugf("response.Data=\n%s", hex.Dump(payload))
-        // add content type cbor
-        response.SetOption(libcoap.OptionContentType, uint16(libcoap.AppCbor))
+        if response.Type != libcoap.TypeNon || response.Code != libcoap.ResponseContent {
+            // add content type cbor
+            response.SetOption(libcoap.OptionContentType, uint16(libcoap.AppCbor))
+        }
+
         // add initial observe
-        if observe == int32(messages.Register) {
+        if observe == int(messages.Register) {
             response.SetOption(libcoap.OptionObserve, uint16(messages.Register))
         }
 

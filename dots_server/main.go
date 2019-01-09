@@ -12,6 +12,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/controllers"
 	"github.com/nttdots/go-dots/dots_server/task"
 	"github.com/nttdots/go-dots/dots_server/models/data"
+	"github.com/nttdots/go-dots/dots_common/messages"
 )
 
 var (
@@ -75,6 +76,8 @@ func main() {
 
 	// Run Ping task mechanism that monitor client session thread
 	env := task.NewEnv(signalCtx)
+	// Create new cache
+	libcoap.CreateNewCache(int(messages.EXCHANGE_LIFETIME), config.CacheInterval)
 
 	// Register ping handler
     signalCtx.RegisterPingHandler(func(_ *libcoap.Context, session *libcoap.Session, _ *libcoap.Pdu) {
