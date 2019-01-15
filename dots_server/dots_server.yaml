@@ -48,3 +48,9 @@ system:
     activeButTerminatingPeriod: 120
     maxActiveButTerminatingPeriod: 300
     manageLifetimeInterval: 100
+    conflictRetryTimer: 120
+
+  # Time(seconds) max-age of session configuration
+  maxAgeOption: 45
+  # dots server monitoring thread interval that manage session ping task
+  manageSessionInterval: 100

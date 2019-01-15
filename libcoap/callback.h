@@ -1,6 +1,6 @@
 #pragma once
 
-#include <coap/coap.h>
+#include <coap2/coap.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 
@@ -14,8 +14,8 @@ void method_handler(coap_context_t *,
                     coap_resource_t *,
                     coap_session_t *,
                     coap_pdu_t *,
-                    str *,
-                    str *,
+                    coap_string_t *,
+                    coap_string_t *,
                     coap_pdu_t *);
 
 void nack_handler(struct coap_context_t *,
@@ -23,6 +23,15 @@ void nack_handler(struct coap_context_t *,
                     coap_pdu_t *,
                     coap_nack_reason_t,
                     const coap_tid_t);
+
+void ping_handler(struct coap_context_t *,
+                    coap_session_t *,
+                    coap_pdu_t *,
+                    const coap_tid_t);
+
+void event_handler(coap_context_t *context,
+                    coap_event_t event,
+                    void *data);
 /**
  * Get peer common name (from certificate issuer names)
  * @param session   The CoAP session
@@ -47,10 +56,21 @@ typedef struct coap_tls_context_t {
   BIO_METHOD *meth;
 } coap_tls_context_t;
 
+typedef struct sni_entry {
+  char *sni;
+  SSL_CTX *ctx;
+} sni_entry;
+
 typedef struct coap_openssl_context_t {
   coap_dtls_context_t dtls;
   coap_tls_context_t tls;
+  coap_dtls_pki_t setup_data;
   int psk_pki_enabled;
+  size_t sni_count;
+  sni_entry *sni_entry_list;
 } coap_openssl_context_t;
 
 void coap_set_dirty(coap_resource_t *resource, char *query, int length);
+
+int coap_check_subscribers(coap_resource_t *resource);
+int coap_check_dirty(coap_resource_t *resource);

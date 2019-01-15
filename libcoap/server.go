@@ -2,12 +2,11 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
-#include <coap/coap.h>
+#include <coap2/coap.h>
 #include "callback.h"
 */
 import "C"
 import "errors"
-import "fmt"
 import "unsafe"
 import log "github.com/sirupsen/logrus"
 import "strings"
@@ -15,9 +14,21 @@ import "strings"
 // across invocations, sessions are not 'eq'
 type MethodHandler func(*Context, *Resource, *Session, *Pdu, *[]byte, *string, *Pdu)
 
+type PingHandler func(*Context, *Session, *Pdu)
+
+type EventHandler func(*Context, Event, *Session)
+
 type EndPoint struct {
     ptr *C.coap_endpoint_t
 }
+
+type Event int
+const (
+    EventSessionDisconnected Event = C.COAP_EVENT_DTLS_CLOSED
+    EventSessionConnected    Event = C.COAP_EVENT_DTLS_CONNECTED
+    EventSessionRenegotiate  Event = C.COAP_EVENT_DTLS_RENEGOTIATE
+    EventSessionError        Event = C.COAP_EVENT_DTLS_ERROR
+)
 
 func (context *Context) ContextSetPSK(identity string, key []byte) {
     cid := C.CString(identity)
@@ -40,13 +51,11 @@ func export_method_handler(ctx   *C.coap_context_t,
 
     context, ok := contexts[ctx]
     if !ok {
-        fmt.Printf("context\n")
         return
     }
 
     resource, ok := resources[rsrc]
     if !ok {
-        fmt.Printf("resource\n")
         return
     }
     
@@ -60,25 +69,30 @@ func export_method_handler(ctx   *C.coap_context_t,
         req = resp
     }
 
-    session := &Session{ sess }
+    session, ok := sessions[sess]
+    if !ok {
+		return
+    }
 
     request, err := req.toGo()
     if err != nil {
-        fmt.Printf("req.toGo\n")
         return
     }
 
     // Handle observe: 
     // Set request.uri-path from resource.uri-path (so that it can by-pass uri-path check inside PrefixFilter)
-    if (is_observe){
+    if is_observe {
         request.Code = RequestGet
         request.Options = make([]Option, 0)
-        
+
         uri := strings.Split(*(rsrc.uri_path.toString()), "/")
         for _, path := range uri {
             request.Options = append(request.Options, OptionUriPath.String(path))
         }
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
+    } else {
+        // session is alive when receive a request, not when re-create a notification
+        session.SetIsAlive(true)
     }
     
 
@@ -89,15 +103,88 @@ func export_method_handler(ctx   *C.coap_context_t,
     if ok {
         response := Pdu{}
         handler(context, resource, session, request, token, queryString, &response)
+        // add observe option value to notification header
+        if is_observe {
+            response.SetOption(OptionObserve, rsrc.observe)
+        }
         response.fillC(resp)
-      } else {
-        fmt.Printf("handler\n")
-      }
+    }
+}
+
+//export export_ping_handler
+func export_ping_handler(ctx *C.coap_context_t,
+	sess *C.coap_session_t,
+	sent *C.coap_pdu_t,
+	id C.coap_tid_t) {
+
+    context, ok := contexts[ctx]
+	if !ok {
+		return
+	}
+
+    session, ok := sessions[sess]
+    if !ok {
+		return
+	}
+
+	req, err := sent.toGo()
+	if err != nil {
+		return
+	}
+
+    // If previous message is Ping message or Session Config message
+	if context.pingHandler != nil && req.Type == C.COAP_MESSAGE_CON && (req.Code == 0 || req.Code == C.COAP_REQUEST_GET){
+		context.pingHandler(context, session, req)
+	}
+}
+
+// Create Event type from coap_event_t
+func newEvent (ev C.coap_event_t) Event {
+    switch ev {
+    case C.COAP_EVENT_DTLS_CLOSED:      return EventSessionDisconnected
+    case C.COAP_EVENT_DTLS_CONNECTED:   return EventSessionConnected
+    case C.COAP_EVENT_DTLS_RENEGOTIATE: return EventSessionRenegotiate
+    case C.COAP_EVENT_DTLS_ERROR:       return EventSessionError
+    default: return -1
+    }
+}
+
+//export export_event_handler
+func export_event_handler(ctx *C.coap_context_t,
+	event C.coap_event_t,
+	sess *C.coap_session_t) {
+
+    context, ok := contexts[ctx]
+	if !ok {
+		return
+    }
+
+    session, ok := sessions[sess]
+    if !ok {
+        session = &Session{ sess, &SessionConfig{ true, false, 0, 0 } }
+    }
+    
+    // Run event handler when session is connected or disconnected
+	if context.eventHandler != nil {
+		context.eventHandler(context, newEvent(event), session)
+	}
 }
 
 func (resource *Resource) RegisterHandler(method Code, handler MethodHandler) {
     resource.handlers[method] = handler
     C.coap_register_handler(resource.ptr, C.uchar(method), C.coap_method_handler_t(C.method_handler))
+}
+
+// Register ping handler to libcoap
+func (context *Context) RegisterPingHandler(handler PingHandler) {
+	context.pingHandler = handler
+	C.coap_register_ping_handler(context.ptr, C.coap_ping_handler_t(C.ping_handler))
+}
+
+// Register event handler to libcoap
+func (context *Context) RegisterEventHandler(handler EventHandler) {
+	context.eventHandler = handler
+	C.coap_register_event_handler(context.ptr, C.coap_event_handler_t(C.event_handler))
 }
 
 func (context *Context) NewEndpoint(address Address, proto Proto) *EndPoint {

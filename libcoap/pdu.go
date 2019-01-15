@@ -2,7 +2,7 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
-#include <coap/coap.h>
+#include <coap2/coap.h>
 */
 import "C"
 import "errors"
@@ -32,6 +32,8 @@ const (
     ResponseValid   Code = 67
     ResponseChanged Code = 68
     ResponseContent Code = 69
+
+    ResponseLimit2xxCode       Code = 100
 
     ResponseBadRequest         Code = 128
     ResponseUnauthorized       Code = 129
@@ -193,6 +195,8 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
     p._type = C.uint8_t(src.Type)
     p.code  = C.uint8_t(src.Code)
     p.tid   = C.uint16_t(src.MessageID)
+    // Set this field for coap_add_token()
+    p.used_size = 0
 
     if 0 < len(src.Token) {
         if 0 == C.coap_add_token(p,
@@ -284,14 +288,14 @@ func (pdu *Pdu) Queries() []string {
     return ret
 }
 
-func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (value uint32, err error) {
+func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (int32, error) {
     for _, option := range pdu.Options {
         if key == option.Key {
-            value, err = option.Uint()
-            return
+            v, err := option.Uint()
+            return int32(v), err
         }
     }
-    return 2, nil
+    return -1, nil
 }
 
 func (pdu *Pdu) GetOptionStringValue(key OptionKey) (value string) {
@@ -315,16 +319,6 @@ func (pdu *Pdu) OptionValues(o OptionKey) []interface{} {
 	}
 
 	return rv
-}
-
-// Option gets the first value for the given option ID.
-func (pdu *Pdu) OptionValue(o OptionKey) interface{} {
-	for _, v := range pdu.Options {
-		if o == v.Key {
-			return v.Value
-		}
-	}
-	return nil
 }
 
 // RemoveOption removes all references to an option
@@ -368,7 +362,7 @@ func (pdu *Pdu) SetOption(key OptionKey, val interface{}) {
 func (pdu *Pdu) CoapCode(code Code) CoapCode {
     switch code {
         case ResponseCreated:              return CoapCreated
-        case RequestDelete:                return CoapDeleted
+        case ResponseDeleted:              return CoapDeleted
         case ResponseValid:                return CoapValid
         case ResponseChanged:              return CoapChanged
         case ResponseContent:              return CoapContent

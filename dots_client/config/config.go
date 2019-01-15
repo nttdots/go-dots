@@ -12,7 +12,7 @@ type SignalConfiguration struct {
 	MaxRetransmit     int `yaml:"maxRetransmit"`
 	AckTimeout        float64 `yaml:"ackTimeout"`
 	AckRandomFactor   float64 `yaml:"ackRandomFactor"`
-	TriggerMitigation bool
+	IntervalBeforeMaxAge  int `yaml:"intervalBeforeMaxAge"`
 }
 
 /**

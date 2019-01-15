@@ -10,6 +10,7 @@ import (
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_server/controllers"
+	"github.com/nttdots/go-dots/dots_server/task"
 )
 
 var (
@@ -68,7 +69,54 @@ func main() {
 	// Thread for handling status changed notification from DB
 	go listenDB (signalCtx)
 
+	// Run Ping task mechanism that monitor client session thread
+	env := task.NewEnv(signalCtx)
+
+	// Register ping handler
+    signalCtx.RegisterPingHandler(func(_ *libcoap.Context, session *libcoap.Session, _ *libcoap.Pdu) {
+		// This session is alive
+		session.SetIsAlive(true)
+	})
+
+	// Register nack handler
+    signalCtx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
+		if (reason == libcoap.NackRst){
+			// Pong message
+			env.HandleResponse(sent)
+		} else if (reason == libcoap.NackTooManyRetries){
+			// Ping timeout
+			env.HandleTimeout(sent)
+		} else {
+			// Unsupported type
+			log.Infof("nack_handler gets fired with unsupported reason type : %+v.", reason)
+		}
+	})
+
+	// Register event handler
+	signalCtx.RegisterEventHandler(func(_ *libcoap.Context, event libcoap.Event, session *libcoap.Session){
+		if event == libcoap.EventSessionConnected {
+			// Session connected: Add session to map
+			log.Debugf("New session connecting to dots server: %+v", session.String())
+        	libcoap.AddNewConnectingSession(session)
+		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
+			// Session disconnected: Remove session from map
+			log.Debugf("Remove connecting session from dots server: %+v", session.String())
+			libcoap.RemoveConnectingSession(session)
+		} else {
+			// Not support yet
+			log.Warnf("Unsupported event")
+		}
+	})
+
+	go env.ManageSessionTraffic()
+
 	for {
-		signalCtx.RunOnce(time.Duration(100) * time.Millisecond)
+		select {
+		case e := <- env.EventChannel():
+			e.Handle(env)
+		default:
+			signalCtx.RunOnce(time.Duration(100) * time.Millisecond)
+			signalCtx.CheckRemovableResources()
+		}
 	}
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	"github.com/nttdots/go-dots/dots_common/messages"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -180,7 +181,8 @@ func storeProtectionStatus(session *xorm.Session, ps *ProtectionStatus) (err err
  */
 func CreateProtection2(protection Protection) (newProtection db_models.Protection, err error) {
 
-	var protectionParameters []db_models.ProtectionParameter
+	var gobgpParameters []db_models.GoBgpParameter
+	var aristaParameters     []db_models.AristaParameter
 	var forwardedDataInfo, blockedDataInfo *db_models.ProtectionStatus
 	var blockerId int64
 
@@ -210,7 +212,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		err = storeThroughputData(session, data)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationScopeId": newProtection.MitigationScopeId,
+				"MitigationScopeId": newProtection.TargetId,
 				"Pps":          data.Pps,
 				"Bps":          data.Bps,
 				"Err":          err,
@@ -242,7 +244,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		_, err = session.Insert(forwardedDataInfo)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationScopeId":                  newProtection.MitigationScopeId,
+				"MitigationScopeId":                  newProtection.TargetId,
 				"ForwardedDataInfoTotalPackets": forwardedDataInfo.TotalPackets,
 				"ForwardedDataInfoTotalBits":    forwardedDataInfo.TotalBits,
 				"Err": err,
@@ -272,7 +274,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		_, err = session.Insert(blockedDataInfo)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationScopeId":                newProtection.MitigationScopeId,
+				"MitigationScopeId":           newProtection.TargetId,
 				"BlockedDataInfoTotalPackets": blockedDataInfo.TotalPackets,
 				"BlockedDataInfoTotalBits":    blockedDataInfo.TotalBits,
 				"Err": err,
@@ -287,8 +289,11 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 
 	// Registered protection
 	newProtection = db_models.Protection{
-		Type:                string(protection.Type()),
-		MitigationScopeId:   protection.MitigationScopeId(),
+		CustomerId:          protection.CustomerId(),
+		ProtectionType:      string(protection.Type()),
+		TargetId:            protection.TargetId(),
+		TargetType:          protection.TargetType(),
+		AclName:             protection.AclName(),
 		TargetBlockerId:     blockerId,
 		IsEnabled:           protection.IsEnabled(),
 		StartedAt:           protection.StartedAt(),
@@ -313,26 +318,41 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		"protection": newProtection,
 	}).Debug("create new protection")
 
-	// Registering ProtectionParameters
-	protectionParameters = toProtectionParameters(protection, newProtection.Id)
-	if len(protectionParameters) > 0 {
-		/*
-			for idx := range protectionParameters {
-				protectionParameters[idx].ProtectionId = newProtection.Id
+	if string(protection.Type()) == PROTECTION_TYPE_RTBH {
+		// Registering ProtectionParameters
+		gobgpParameters = toGoBGPParameters(protection, newProtection.Id)
+		if len(gobgpParameters) > 0 {
+			_, err = session.InsertMulti(&gobgpParameters)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"MitigationScopeId": newProtection.TargetId,
+					"Err":               err,
+				}).Error("insert GoBgpParameter error")
+				goto Rollback
 			}
-		*/
-
-		_, err = session.InsertMulti(protectionParameters)
-		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationScopeId": newProtection.MitigationScopeId,
-				"Err":          err,
-			}).Error("insert ProtectionParameter error")
-			goto Rollback
+				"goBGP_parameters": gobgpParameters,
+			}).Debug("create new gobgp_parameter")
 		}
+	} else if string(protection.Type()) == PROTECTION_TYPE_ARISTA {
+		aristaParameters = toAristaParameters(protection, newProtection.Id)
+		if len(aristaParameters) > 0 {
+			_, err = session.InsertMulti(&aristaParameters)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"TargetId": newProtection.TargetId,
+					"Err":                err,
+				}).Error("insert AristaParameter error")
+				goto Rollback
+			}
+			log.WithFields(log.Fields{
+				"arista_parameters": aristaParameters,
+			}).Debug("create new arista_parameter")
+		}
+	} else {
 		log.WithFields(log.Fields{
-			"protection_parameters": protectionParameters,
-		}).Debug("create new protection_parameter")
+			"type": protection.Type(),
+		}).Panic("not implement")
 	}
 
 	// add Commit() after all actions
@@ -354,7 +374,7 @@ Rollback:
  *  err error
  */
 func UpdateProtection(protection Protection) (err error) {
-	var protectionParameters []db_models.ProtectionParameter
+	var protectionParameters []db_models.GoBgpParameter
 	var updProtection *db_models.Protection
 	var updForwardedDataInfo, updBlockedDataInfo *db_models.ProtectionStatus
 	var chk bool
@@ -385,7 +405,7 @@ func UpdateProtection(protection Protection) (err error) {
 		err = storeThroughputData(session, data)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationScopeId": protection.MitigationScopeId,
+				"MitigationScopeId": protection.TargetId(),
 				"Pps":          data.Pps,
 				"Bps":          data.Bps,
 				"Err":          err,
@@ -402,7 +422,7 @@ func UpdateProtection(protection Protection) (err error) {
 	if err != nil {
 		log.WithFields(log.Fields{
 			"id":           protection.Id(),
-			"MitigationScopeId": protection.MitigationScopeId(),
+			"MitigationScopeId": protection.TargetId(),
 			"Err":          err,
 		}).Error("select Protection error")
 		goto Rollback
@@ -411,7 +431,7 @@ func UpdateProtection(protection Protection) (err error) {
 		// no data found
 		log.WithFields(log.Fields{
 			"id":           protection.Id(),
-			"MitigationScopeId": protection.MitigationScopeId(),
+			"MitigationScopeId": protection.TargetId(),
 		}).Info("update Protection data not exist.")
 		goto Rollback
 	}
@@ -446,7 +466,7 @@ func UpdateProtection(protection Protection) (err error) {
 		err = storeProtectionStatus(session, protection.ForwardedDataInfo())
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationScopeId":                  updProtection.MitigationScopeId,
+				"MitigationScopeId":             updProtection.TargetId,
 				"ForwardedDataInfoTotalPackets": updForwardedDataInfo.TotalPackets,
 				"ForwardedDataInfoTotalBits":    updForwardedDataInfo.TotalBits,
 				"Err": err,
@@ -470,7 +490,7 @@ func UpdateProtection(protection Protection) (err error) {
 		err = storeProtectionStatus(session, protection.BlockedDataInfo())
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationScopeId":                updProtection.MitigationScopeId,
+				"MitigationScopeId":           updProtection.TargetId,
 				"BlockedDataInfoTotalPackets": updBlockedDataInfo.TotalPackets,
 				"BlockedDataInfoTotalBits":    updBlockedDataInfo.TotalBits,
 				"Err": err,
@@ -481,24 +501,24 @@ func UpdateProtection(protection Protection) (err error) {
 
 	// Update ProtectionParameters
 	// delete the existing entry with the same id.
-	_, err = session.Delete(&db_models.ProtectionParameter{ProtectionId: protection.Id()})
+	_, err = session.Delete(&db_models.GoBgpParameter{ProtectionId: protection.Id()})
 	if err != nil {
 		log.WithFields(log.Fields{
 			"ProtectionId": updProtection.Id,
-			"MitigationScopeId": updProtection.MitigationScopeId,
+			"MitigationScopeId": updProtection.TargetId,
 			"Err":          err,
 		}).Error("delete ParameterValue error")
 		goto Rollback
 	}
 
-	protectionParameters = toProtectionParameters(protection, protection.Id())
+	protectionParameters = toGoBGPParameters(protection, protection.Id())
 
 	if len(protectionParameters) > 0 {
 		_, err = session.InsertMulti(&protectionParameters)
 		if err != nil {
 			log.WithFields(log.Fields{
 				"ProtectionId": updProtection.Id,
-				"MitigationScopeId": updProtection.MitigationScopeId,
+				"MitigationScopeId": updProtection.TargetId,
 				"Err":          err,
 			}).Error("insert ParameterValue error")
 			goto Rollback
@@ -516,7 +536,7 @@ Rollback:
 /*
 
  */
-func GetActiveProtectionByMitigationScopeId(mitigationScopeId int64) (p Protection, err error) {
+func GetActiveProtectionByTargetIDAndTargetType(targetID int64, targetType string) (p Protection, err error) {
 
 	engine, err := ConnectDB()
 	if err != nil {
@@ -525,7 +545,7 @@ func GetActiveProtectionByMitigationScopeId(mitigationScopeId int64) (p Protecti
 	}
 
 	var ps []db_models.Protection
-	err = engine.Where("mitigation_scope_id = ? AND is_enabled = 1", mitigationScopeId).Find(&ps)
+	err = engine.Where("target_id = ? AND target_type = ? AND is_enabled = 1", targetID, targetType).Find(&ps)
 	if err != nil {
 		return nil, err
 	}
@@ -592,7 +612,12 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		if !ok {
 			blocker = nil
 		} else {
-			blocker, err = toBlocker(dbl)
+			// Get blocker configuration by customerId and target_type in table blocker_configuration
+			blockerConfig, err := GetBlockerConfiguration(dbp.CustomerId, dbp.TargetType)
+			if err != nil {
+				return nil, err
+			}
+			blocker, err = toBlocker(dbl, blockerConfig)
 			if err != nil {
 				return nil, err
 			}
@@ -601,7 +626,10 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 
 	pb := ProtectionBase{
 		dbp.Id,
-		dbp.MitigationScopeId,
+		dbp.CustomerId,
+		dbp.TargetId,
+		dbp.TargetType,
+		dbp.AclName,
 		blocker,
 		dbp.IsEnabled,
 		dbp.StartedAt,
@@ -611,21 +639,28 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		blockedDataInfo,
 	}
 
-	var params []db_models.ProtectionParameter
+	var params []db_models.GoBgpParameter
 	err = engine.Where("protection_id = ?", dbp.Id).Find(&params)
 	if err != nil {
 		return nil, err
 	}
 
-	parametersMap := ProtectionParametersToMap(params)
-	switch dbp.Type {
+	//parametersMap := ProtectionParametersToMap(params)
+	switch dbp.ProtectionType {
 	case PROTECTION_TYPE_RTBH:
-		p = NewRTBHProtection(pb, parametersMap)
+		p = NewRTBHProtection(pb, params)
 	case PROTECTION_TYPE_BLACKHOLE:
-		p = NewBlackHoleProtection(pb, parametersMap)
+		p = NewBlackHoleProtection(pb, params)
+	case PROTECTION_TYPE_ARISTA:
+		var aristaParams []db_models.AristaParameter
+	    err = engine.Where("protection_id = ?", dbp.Id).Find(&aristaParams)
+	    if err != nil {
+		    return nil, err
+	    }
+		p = NewAristaProtection(pb, aristaParams)
 	default:
 		p = nil
-		err = errors.New(fmt.Sprintf("invalid protection type: %s", dbp.Type))
+		err = errors.New(fmt.Sprintf("invalid protection type: %s", dbp.ProtectionType))
 	}
 
 	log.Infof("toProtection. found protection. p=%+v\n", p)
@@ -694,7 +729,12 @@ func GetProtectionBase(mitigationScopeId int64) (protection ProtectionBase, err 
 		if err != nil {
 			return ProtectionBase{}, err
 		}
-		blocker, err = toBlocker(b)
+		// Get blocker configuration by customerId and target_type in table blocker_configuration
+		blockerConfig, err := GetBlockerConfiguration(dbProtection.CustomerId, string(messages.MITIGATION_REQUEST_ACL))
+		if err != nil {
+			return ProtectionBase{}, err
+		}
+		blocker, err = toBlocker(b, blockerConfig)
 		if err != nil {
 			return ProtectionBase{}, err
 		}
@@ -703,7 +743,8 @@ func GetProtectionBase(mitigationScopeId int64) (protection ProtectionBase, err 
 	// from db_models to models
 	protection = ProtectionBase{
 		id:                dbProtection.Id,
-		mitigationScopeId: dbProtection.MitigationScopeId,
+		customerId:        dbProtection.CustomerId,
+		targetId:          dbProtection.TargetId,
 		targetBlocker:     blocker,
 		isEnabled:         dbProtection.IsEnabled,
 		startedAt:         dbProtection.StartedAt,
@@ -725,9 +766,9 @@ func GetProtectionBase(mitigationScopeId int64) (protection ProtectionBase, err 
  *  ProtectionParameter []db_models.ProtectionParameter
  *  error error
  */
-func GetProtectionParameters(protectionId int64) (protectionParameters []db_models.ProtectionParameter, err error) {
+func GetProtectionParameters(protectionId int64) (goBGPParameters []db_models.GoBgpParameter, err error) {
 	// default value setting
-	protectionParameters = []db_models.ProtectionParameter{}
+	goBGPParameters = []db_models.GoBgpParameter{}
 
 	// database connection create
 	engine, err := ConnectDB()
@@ -739,7 +780,7 @@ func GetProtectionParameters(protectionId int64) (protectionParameters []db_mode
 	}
 
 	// Get protection_parameters table data
-	err = engine.Where("protection_id = ?", protectionId).Find(&protectionParameters)
+	err = engine.Where("protection_id = ?", protectionId).Find(&goBGPParameters)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"ProtectionId": protectionId,
@@ -775,11 +816,19 @@ func deleteProtection(session *xorm.Session, protection db_models.Protection) (e
 		}
 	}
 
-	_, err = session.Where("protection_id = ?", protection.Id).Delete(db_models.ProtectionParameter{})
+	// Delete go bgp Parameter
+	_, err = session.Where("protection_id = ?", protection.Id).Delete(db_models.GoBgpParameter{})
 	if err != nil {
 		return
 	}
 
+	// Delete arista parameter
+	_, err = session.Where("protection_id = ?", protection.Id).Delete(db_models.AristaParameter{})
+	if err != nil {
+		return
+	}
+
+	// Delete protection
 	_, err = session.Delete(db_models.Protection{Id: protection.Id})
 	return
 }
@@ -905,20 +954,6 @@ func DeleteProtection(mitigationScopeId int64) (err error) {
 Rollback:
 	session.Rollback()
 	return
-}
-
-func ProtectionParametersToMap(params []db_models.ProtectionParameter) map[string][]string {
-	m := make(map[string][]string)
-
-	for _, p := range params {
-		a, ok := m[p.Key]
-		if !ok {
-			a = make([]string, 0)
-		}
-		a = append(a, p.Value)
-		m[p.Key] = a
-	}
-	return m
 }
 
 func ProtectionStatusToDbModel(protectionId int64, status *ProtectionStatus) (newProtectionStatus db_models.ProtectionStatus) {

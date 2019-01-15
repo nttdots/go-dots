@@ -42,6 +42,16 @@ type PortRangeOrOperator struct {
   Port       *PortNumber `json:"port"`
 }
 
+type Fragment struct {
+  Operator *OperatorBit `json:"operator"`
+  Type *FragmentType `json:"type"`
+}
+
+type FlagsBitmask struct {
+  Operator *OperatorBit `json:"operator"`
+  Bitmask uint16 `json:"bitmask"`
+}
+
 type Empty int
 
 const (

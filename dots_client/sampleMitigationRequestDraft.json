@@ -3,8 +3,8 @@
     "scope": [
       {
         "target-prefix": [
-         "2001:db8:6401::1/128",
-         "2001:db8:6401::2/128"
+            "2001:db8:6401::1/128",
+            "2001:db8:6401::2/128"
         ],
         "target-port-range": [
           {
@@ -20,7 +20,8 @@
         "target-protocol": [
          6
         ],
-        "lifetime": 100
+        "lifetime": 100,
+        "trigger-mitigation": true
       }
     ]
   }

@@ -70,10 +70,11 @@ func (e *PingEvent) Handle(env *Env) {
         time.Duration(0),
         0,
         time.Duration(0),
+        false,
         func (_ *MessageTask, pdu *libcoap.Pdu) {
             task.responseHandler(task, pdu)
         },
-        func (*MessageTask) {
+        func (*MessageTask, map[string] *MessageTask) {
             task.timeoutHandler(task, env)
         })
     env.Run(newTask)

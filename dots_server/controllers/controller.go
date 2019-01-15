@@ -88,6 +88,7 @@ type Request struct {
 type Response struct {
 	Code dots_common.Code
 	Type dots_common.Type // not used
+	Options []libcoap.Option
 	Body interface{}
 }
 

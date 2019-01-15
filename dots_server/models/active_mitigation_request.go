@@ -22,7 +22,7 @@ func GetActiveMitigationMap() map[int64]ActiveMitigationRequest{
 func AddActiveMitigationRequest(id int64, lifetime int, modified time.Time) {
 	acm, isPresent := acmMap[id]
 	if isPresent {
-		acm.LastModified = modified
+		acm.LastModified = modified.Truncate(time.Second)
 		acm.Lifetime = lifetime
 		acmMap[id] = acm
 	} else {

@@ -137,7 +137,7 @@ func (v *SignalConfigurationValidator) CheckMissingSessionConfiguration(data *me
 		(data.MitigatingConfig.AckRandomFactor.CurrentValue == nil)) && ((data.IdleConfig.HeartbeatInterval.CurrentValue == nil) && 
 		(data.IdleConfig.MissingHbAllowed.CurrentValue == nil) && (data.IdleConfig.MaxRetransmit.CurrentValue == nil) && 
 		(data.IdleConfig.AckTimeout.CurrentValue == nil) && (data.IdleConfig.AckRandomFactor.CurrentValue == nil)) {
-			log.Error("At least one of the attributes 'heartbeat-interval', 'missing-hb-allowed', 'max-retransmit', 'ack-timeout', 'ack-random-factor', and 'trigger-mitigation' MUST be present in the PUT request")
+			log.Error("At least one of the attributes 'heartbeat-interval', 'missing-hb-allowed', 'max-retransmit', 'ack-timeout' and 'ack-random-factor' MUST be present in the PUT request")
 			ret = false
 		}
 	return

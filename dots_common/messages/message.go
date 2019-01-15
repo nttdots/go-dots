@@ -53,6 +53,25 @@ const (
 	DATA
 )
 
+type Lifetime int
+
+const (
+	INDEFINITE_LIFETIME Lifetime = -1
+)
+
+type TargetType string
+
+const (
+	MITIGATION_REQUEST_ACL TargetType = "mitigation_request"
+	DATACHANNEL_ACL TargetType = "datachannel_acl"
+)
+
+type MitigationAcl string
+
+const (
+	MITIGATION_ACL MitigationAcl = "mitigation-acl-"
+)
+
 /*
  * Dots message structure.
  */
@@ -85,10 +104,10 @@ func register(code Code, role Role, libcoapType libcoap.Type, channelType Channe
  * Register supported message types to the message map.
  */
 func init() {
-	register(MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/v1/mitigate", MitigationRequest{})
-	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/v1/config", SignalConfigRequest{})
+	register(MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/v1.0/mitigate", MitigationRequest{})
+	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/v1.0/config", SignalConfigRequest{})
 
-	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots/v1", SignalChannelRequest{})
+	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots/v1.0", SignalChannelRequest{})
 }
 
 /*
@@ -161,4 +180,14 @@ func GetChannelType(message string) ChannelType {
 		}
 	}
 	panic(fmt.Sprintf("%s is not valide Message Name", message))
+}
+
+// string list contains string return bool
+func Contains(stringList []string, target string) bool {
+	for _, s := range stringList {
+		if s == target {
+			return true
+		}
+	}
+	return false
 }

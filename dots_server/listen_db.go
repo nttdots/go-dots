@@ -12,8 +12,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/models"
 	"github.com/nttdots/go-dots/libcoap"
-	"github.com/nttdots/go-dots/dots_server/controllers"
 	"github.com/nttdots/go-dots/dots_common/messages"
+	"github.com/nttdots/go-dots/dots_server/controllers"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
 
@@ -100,22 +100,31 @@ ILOOP:
 					return
 				}
 				dup := isDuplicateMitigation(mids, mid)
+
+				// Check observer resource and handle expired mitigation
 				if dup && status == models.Terminated {
 					// Skip notify, just delete the expired mitigation
 					log.Debugf("[MySQL-Notification]: Skip Notification for this mitigation (mid=%+v, id=%+v) due to duplicate with another existing active mitigation", mid, id)
+					controllers.DeleteMitigation(cid, cuid, mid, id)
 				} else {
 					// Notify status changed to those clients who are observing this mitigation request
 					log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-					context.NotifyOnce(query)
-				}
+					resource := context.EnableResourceDirty(query)
 
-				// If mitigation status was changed to 6: (attack mitigation is now terminated), delete this mitigation after notifying
-				if status == models.Terminated {
-					log.Debugf("[MySQL-Notification]: Mitigation was terminated. Delete corresponding sub-resource and mitigation request.", models.Terminated)
-					controllers.DeleteMitigation(cid, cuid, mid, id)
-					// Keep resource when there is a duplication
-					if !dup {
-						context.DeleteResourceByQuery(query)
+					// If mitigation status was changed to Terminated and resource is being observed => set resource status to removable
+					var isObserved bool
+					if resource != nil {
+						isObserved = resource.IsObserved()
+					} else {
+						log.Warnf("[MySQL-Notification]: Not found any resource with query: %+v", query)
+					}
+
+					if status == models.Terminated && !isObserved {
+						controllers.DeleteMitigation(cid, cuid, mid, id)
+						// Keep resource when there is a duplication
+						if !dup && resource != nil {
+							resource.ToRemovableResource()
+						}
 					}
 				}
 			} else if mapData["table_trigger"].(string) == string(SESSION_CONFIGURATION) {
@@ -125,7 +134,7 @@ ILOOP:
 				cid := mapData["cid"].(string)
 				uriPath := messages.MessageTypes[messages.SESSION_CONFIGURATION].Path
 				query := uriPath + "/customerId=" + cid
-				context.NotifyOnce(query)
+				context.EnableResourceDirty(query)
 			}
 		default:
 			log.Debugf("[MySQL-Notification]: Failed to receive data:%+v", err)

@@ -3,6 +3,7 @@ package models
 import (
 	"time"
 
+	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,7 +37,7 @@ func (g *GoBgpBlackHoler) ExecuteProtection(p Protection) (err error) {
 	}
 
 	log.WithFields(log.Fields{
-		"mitigation-scope.id": b.mitigationScopeId,
+		"mitigation-scope.id": b.targetId,
 	}).Info("GoBgpBlackHoler.ExecuteProtection")
 
 	// TODO: start protection
@@ -78,7 +79,7 @@ func (g *GoBgpBlackHoler) StopProtection(p Protection) (err error) {
 	}
 
 	log.WithFields(log.Fields{
-		"mitigation-scope.id": b.MitigationScopeId(),
+		"mitigation-scope.id": b.TargetId(),
 	}).Info("GoBgpBlackHoler.StopProtection")
 
 	// TODO: stop protection
@@ -94,15 +95,20 @@ func (g *GoBgpBlackHoler) StopProtection(p Protection) (err error) {
 	return
 }
 
-func (g *GoBgpBlackHoler) RegisterProtection(m *MitigationScope) (p Protection, err error) {
-	base := ProtectionBase{
-		id:            0,
-		mitigationScopeId:  m.MitigationScopeId,
-		targetBlocker: g,
-		isEnabled:     false,
-		startedAt:     time.Unix(0, 0),
-		finishedAt:    time.Unix(0, 0),
-		recordTime:    time.Unix(0, 0),
+func (g *GoBgpBlackHoler) RegisterProtection(r *MitigationOrDataChannelACL, mitigationID int64, customerID int, targetType string) (p Protection, err error) {
+	base := ProtectionBase{}
+	if r.MitigationRequest != nil {
+		base = ProtectionBase{
+			id:            0,
+			customerId:    customerID,
+			targetId:      mitigationID,
+			targetType:    targetType,
+			targetBlocker: g,
+			isEnabled:     false,
+			startedAt:     time.Unix(0, 0),
+			finishedAt:    time.Unix(0, 0),
+			recordTime:    time.Unix(0, 0),
+		}
 	}
 
 	// TODO: persist to external storage
@@ -139,7 +145,7 @@ func (b BlackHole) Type() ProtectionType {
 	return PROTECTION_TYPE_BLACKHOLE
 }
 
-func NewBlackHoleProtection(p ProtectionBase, params map[string][]string) *BlackHole {
+func NewBlackHoleProtection(p ProtectionBase, params []db_models.GoBgpParameter) *BlackHole {
 	return &BlackHole{
 		p,
 	}

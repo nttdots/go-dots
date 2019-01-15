@@ -2,7 +2,7 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl -lssl -lcrypto
-#include <coap/coap.h>
+#include <coap2/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -35,7 +35,7 @@ func (ctx *Context) NewClientSession(dst Address, proto Proto) *Session {
                                      &dst.value,
                                      C.coap_proto_t(proto))
     if ptr != nil {
-        session := &Session{ ptr }
+        session := &Session{ ptr, nil }
         sessions[ptr] = session
         return session
     } else {
@@ -55,7 +55,7 @@ func (ctx *Context) NewClientSessionPSK(dst Address, proto Proto, identity strin
                                          (*C.uint8_t)(&key[0]),
                                          C.uint(len(key)))
     if ptr != nil {
-        session := &Session{ ptr }
+        session := &Session{ ptr, nil }
         sessions[ptr] = session
         return session
     } else {
@@ -70,7 +70,7 @@ func (ctx *Context) NewClientSessionDTLS(dst Address, proto Proto) *Session {
                                           &dst.value,
                                           C.coap_proto_t(proto))
     if ptr != nil {
-        session := &Session{ ptr }
+        session := &Session{ ptr, nil }
         sessions[ptr] = session
         return session
     }
@@ -153,8 +153,8 @@ func export_nack_handler(ctx *C.coap_context_t,
 		return
 	}
 
-    // If previous message is Ping message
-	if context.nackHandler != nil && req.Type == C.COAP_MESSAGE_CON && req.Code == 0 {
+    // If previous message is Ping message or Session Config message
+	if context.nackHandler != nil && req.Type == C.COAP_MESSAGE_CON {
 		context.nackHandler(context, session, req, NackReason(reason))
 	}
 }

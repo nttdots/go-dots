@@ -11,14 +11,6 @@ const (
   AddressFamily_IPv6 AddressFamily = "ipv6"
 )
 
-type Fragment string
-
-const (
-  Fragment_Unsupported Fragment = "unsupported"
-  Fragment_V4Fragment  Fragment = "v4-fragment"
-  Fragment_V6Fragment  Fragment = "v6-fragment"
-)
-
 type ForwardingAction string
 
 const (
@@ -45,6 +37,7 @@ const (
   ActivationType_Immediate              ActivationType = "immediate"
 )
 
+// Operator from ietf-netmod-acl-model
 type Operator string
 
 const (
@@ -54,8 +47,25 @@ const (
   Operator_NEQ Operator = "neq"
 )
 
+// Operator from ietf-dots-data-channel-18
+type OperatorBit string
+
+const (
+  Operator_NOT OperatorBit = "not"
+  Operator_MATCH OperatorBit = "match"
+)
+
+type FragmentType string
+
+const (
+  FragmentType_DF FragmentType = "df"
+  FragmentType_ISF FragmentType = "isf"
+  FragmentType_FF FragmentType = "ff"
+  FragmentType_LF FragmentType = "lf"
+)
+
 type IPv4Flag string
-type IPv4Flags string
+type IPv4Flags []IPv4Flag
 
 const (
   IPv4Flag_Reserved IPv4Flag = "reserved"
@@ -64,7 +74,7 @@ const (
 )
 
 type TCPFlag string
-type TCPFlags string
+type TCPFlags []TCPFlag
 
 const (
   TCPFlag_CWR TCPFlag = "cwr"
@@ -101,36 +111,6 @@ func (p *AddressFamily) UnmarshalJSON(data []byte) error {
     return nil
   default:
     return fmt.Errorf("Unexpected AddressFamily: %v", s)
-  }
-}
-
-func (e Fragment) String() string {
-  return string(e)
-}
-
-func (e Fragment) MarshalJSON() ([]byte, error) {
-  return json.Marshal(e.String())
-}
-
-func (p *Fragment) UnmarshalJSON(data []byte) error {
-  var s string
-  err := json.Unmarshal(data, &s)
-  if err != nil {
-    return fmt.Errorf("Could not unmarshal as string: %v", data)
-  }
-
-  switch s {
-  case string(Fragment_Unsupported):
-    *p = Fragment_Unsupported
-    return nil
-  case string(Fragment_V4Fragment):
-    *p = Fragment_V4Fragment
-    return nil
-  case string(Fragment_V6Fragment):
-    *p = Fragment_V6Fragment
-    return nil
-  default:
-    return fmt.Errorf("Unexpected Fragment: %v", s)
   }
 }
 
@@ -265,12 +245,75 @@ func (p *Operator) UnmarshalJSON(data []byte) error {
   }
 }
 
+func (e OperatorBit) String() string {
+  return string(e)
+}
+
+func (e OperatorBit) MarshalJSON() ([]byte, error) {
+  return json.Marshal(e.String())
+}
+
+func (p *OperatorBit) UnmarshalJSON(data []byte) error {
+  var s string
+  err := json.Unmarshal(data, &s)
+  if err != nil {
+    return fmt.Errorf("Could not unmarshal as string: %v", data)
+  }
+
+  switch s {
+  case string(Operator_NOT):
+    *p = Operator_NOT
+    return nil
+  case string(Operator_MATCH):
+    *p = Operator_MATCH
+    return nil
+  default:
+    return fmt.Errorf("Unexpected Operator: %v", s)
+  }
+}
+
+func (e FragmentType) String() string {
+  return string(e)
+}
+
+func (e FragmentType) MarshalJSON() ([]byte, error) {
+  return json.Marshal(e.String())
+}
+
+func (p *FragmentType) UnmarshalJSON(data []byte) error {
+  var s string
+  err := json.Unmarshal(data, &s)
+  if err != nil {
+    return fmt.Errorf("Could not unmarshal as string: %v", data)
+  }
+  switch s {
+  case string(FragmentType_DF):
+    *p = FragmentType_DF
+    return nil
+  case string(FragmentType_ISF):
+    *p = FragmentType_ISF
+    return nil
+  case string(FragmentType_FF):
+    *p = FragmentType_FF
+    return nil
+  case string(FragmentType_LF):
+    *p = FragmentType_LF
+    return nil
+  default:
+    return fmt.Errorf("Unexpected FragmentType: %v", s)
+  }
+}
+
 func (e IPv4Flag) String() string {
   return string(e)
 }
 
 func (e IPv4Flags) String() string {
-  return string(e)
+  a := make([]string, len(e))
+  for i, v := range e {
+    a[i] = v.String()
+  }
+  return strings.Join(a, " ")
 }
 
 func (e IPv4Flags) MarshalJSON() ([]byte, error) {
@@ -299,7 +342,13 @@ func (p *IPv4Flags) UnmarshalJSON(data []byte) error {
     }
   }
 
-  *p = IPv4Flags(s)
+  r := make(IPv4Flags, len(m))
+  i := 0
+  for k := range m {
+    r[i] = k
+    i++
+  }
+  *p = r
   return nil
 }
 
@@ -308,7 +357,15 @@ func (e TCPFlag) String() string {
 }
 
 func (e TCPFlags) String() string {
-  return string(e)
+  a := make([]string, len(e))
+  for i, v := range e {
+    a[i] = v.String()
+  }
+  return strings.Join(a, " ")
+}
+
+func (e TCPFlags) MarshalJSON() ([]byte, error) {
+  return json.Marshal(e.String())
 }
 
 func (p *TCPFlags) UnmarshalJSON(data []byte) error {
@@ -343,6 +400,12 @@ func (p *TCPFlags) UnmarshalJSON(data []byte) error {
     }
   }
 
-  *p = TCPFlags(s)
+  r := make(TCPFlags, len(m))
+  i := 0
+  for k := range m {
+    r[i] = k
+    i++
+  }
+  *p = r
   return nil
 }

@@ -1,6 +1,8 @@
 package messages
 
 import (
+	"fmt"
+
 	config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/shopspring/decimal"
 )
@@ -16,16 +18,23 @@ type MitigationScopeStatus struct {
 	ClientDomainIdentifier string `json:"cdid" codec:"3,omitempty"`
 }
 
+type PortRangeResponse struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	LowerPort int `json:"lower-port" codec:"8,omitempty"`
+	UpperPort int `json:"upper-port" codec:"9,omitempty"`
+}
+
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mid"    codec:"5"`
-	MitigationStart float64 `json:"mitigation-start" codec:"15"`
+	MitigationStart float64 `json:"mitigation-start" codec:"15,omitempty"`
 	TargetPrefix    []string `json:"target-prefix" codec:"6,omitempty"`
-	TargetPortRange []TargetPortRange `json:"target-port-range" codec:"7,omitempty"`
+	TargetPortRange []PortRangeResponse `json:"target-port-range" codec:"7,omitempty"`
 	TargetProtocol  []int  `json:"target-protocol"   codec:"10,omitempty"`
 	FQDN            []string `json:"target-fqdn" codec:"11,omitempty"`
 	URI             []string `json:"target-uri" codec:"12,omitempty"`
 	AliasName       []string `json:"alias-name" codec:"13,omitempty"`
+	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
 	Status          int   `json:"status"           codec:"16"`
 	BytesDropped    int   `json:"bytes-dropped"    codec:"25"`
@@ -57,7 +66,6 @@ type ConfigurationResponseConfigs struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigatingConfig ConfigurationResponseConfig `json:"mitigating-config" codec:"32"`
 	IdleConfig ConfigurationResponseConfig       `json:"idle-config"       codec:"44"`
-	TriggerMitigation bool                 `json:"trigger-mitigation" codec:"45"`
 }
 
 type ConfigurationResponseConfig struct {
@@ -95,17 +103,216 @@ type ScopePut struct {
 	MitigationId int `json:"mid" codec:"5"`
 	// lifetime
 	Lifetime int `json:"lifetime" codec:"14,omitempty"`
+	// Conflict Information
+	ConflictInformation *ConflictInformation `json:"conflict-information" codec:"17,omitempty"`
 }
 
-func NewMitigationResponsePut(req *MitigationRequest) MitigationResponsePut {
+func NewMitigationResponsePut(req *MitigationRequest, conflictInfo *ConflictInformation) MitigationResponsePut {
 	res := MitigationResponsePut{}
 	res.MitigationScope = MitigationScopePut{}
 	if req.MitigationScope.Scopes != nil {
 		res.MitigationScope.Scopes = make([]ScopePut, len(req.MitigationScope.Scopes))
 		for i := range req.MitigationScope.Scopes {
-			res.MitigationScope.Scopes[i] = ScopePut{ MitigationId: req.MitigationScope.Scopes[i].MitigationId, Lifetime: *req.MitigationScope.Scopes[i].Lifetime }
+			res.MitigationScope.Scopes[i] = ScopePut{ MitigationId: *req.MitigationScope.Scopes[i].MitigationId,
+				Lifetime: *req.MitigationScope.Scopes[i].Lifetime, ConflictInformation: conflictInfo }
 		}
 	}
 
 	return res
+}
+
+// Conflict information for response when mitigation request is rejected by dots server by conflicting with another mitigation
+type ConflictInformation struct {
+	_struct        bool          `codec:",uint"`        //encode struct with "unsigned integer" keys
+	ConflictStatus int           `json:"conflict-status" codec:"18,omitempty"`
+	ConflictCause  int           `json:"conflict-cause"  codec:"19,omitempty"`
+	RetryTimer     int           `json:"retry-timer"     codec:"20,omitempty"`
+	ConflictScope  *ConflictScope `json:"conflict-scope"  codec:"21,omitempty"`
+}
+
+// Conflict scope that contains conflicted scope data
+type ConflictScope struct {
+	_struct         bool                `codec:",uint"`        //encode struct with "unsigned integer" keys
+	TargetPrefix    []string            `json:"target-prefix" codec:"6,omitempty"`
+	TargetPortRange []PortRangeResponse `json:"target-port-range" codec:"7,omitempty"`
+	TargetProtocol  []int               `json:"target-protocol"   codec:"10,omitempty"`
+	FQDN            []string            `json:"target-fqdn" codec:"11,omitempty"`
+	URI             []string            `json:"target-uri" codec:"12,omitempty"`
+	AliasName       []string            `json:"alias-name" codec:"13,omitempty"`
+	AclList         []Acl               `json:"acl-list" codec:"22,omitempty"`
+	MitigationId    int                 `json:"mid" codec:"5,omitempty"`
+}
+
+// Acl filtering rule for white list that conflict with attacking target (not implemented)
+type Acl struct {
+	_struct   bool    `codec:",uint"`        //encode struct with "unsigned integer" keys
+	AclName   string  `json:"alc-name" codec:"23,omitempty"`
+	AclType   string  `json:"acl-type" codec:"24,omitempty"`
+}
+
+/*
+ * Parse Mitigation Response model to string for log
+ * parameter:
+ *  m Mitigation Response model
+ * return: Mitigation Response in string
+ */
+func (m *MitigationResponse) String() (result string) {
+	result = "\n \"ietf-dots-signal-channel:mitigation-scope\":\n"
+	for key, scope := range m.MitigationScope.Scopes {
+		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
+		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
+		result += fmt.Sprintf("     \"%s\": %f\n", "mitigation-start", scope.MitigationStart)
+		for k, v := range scope.TargetPrefix {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-prefix", k+1, v)
+		}
+		for k, v := range scope.TargetPortRange {
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "target-port-range", k+1)
+			result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", v.LowerPort)
+			result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", v.UpperPort)
+		}
+		for k, v := range scope.TargetProtocol {
+			result += fmt.Sprintf("     \"%s[%d]\": %d\n", "target-protocol", k+1, v)
+		}
+		for k, v := range scope.FQDN {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-fqdn", k+1, v)
+		}
+		for k, v := range scope.URI {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-uri", k+1, v)
+		}
+		for k, v := range scope.AliasName {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
+		}
+		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+		result += fmt.Sprintf("     \"%s\": %d\n", "status", scope.Status)
+		result += fmt.Sprintf("     \"%s\": %d\n", "bytes-dropped", scope.BytesDropped)
+		result += fmt.Sprintf("     \"%s\": %d\n", "bps-dropped", scope.BpsDropped)
+		result += fmt.Sprintf("     \"%s\": %d\n", "pkts-dropped", scope.PktsDropped)
+		result += fmt.Sprintf("     \"%s\": %d\n", "pps-dropped", scope.PpsDropped)
+	}
+	return
+}
+
+/*
+ * Parse Mitigation Response Put model to string for log
+ * parameter:
+ *  m Mitigation Response Put model
+ * return: Mitigation Response Put in string
+ */
+func (m *MitigationResponsePut) String() (result string) {
+	result = "\n \"ietf-dots-signal-channel:mitigation-scope\":\n"
+	for key, scope := range m.MitigationScope.Scopes {
+		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
+		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
+		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
+		if scope.ConflictInformation != nil {
+			result += fmt.Sprintf("     \"%s\":\n", "conflict-information")
+			result += fmt.Sprintf("       \"%s\": %d\n", "conflict-status", scope.ConflictInformation.ConflictStatus)
+			result += fmt.Sprintf("       \"%s\": %d\n", "conflict-cause", scope.ConflictInformation.ConflictCause)
+			result += fmt.Sprintf("       \"%s\": %d\n", "retry-timer", scope.ConflictInformation.RetryTimer)
+			if scope.ConflictInformation.ConflictScope != nil {
+				result += fmt.Sprintf("     \"%s\":\n", "conflict-scope")
+				for k, v := range scope.ConflictInformation.ConflictScope.TargetPrefix {
+					result += fmt.Sprintf("       \"%s[%d]\": %s\n", "target-prefix", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.TargetPortRange {
+					result += fmt.Sprintf("       \"%s[%d]\":\n", "target-port-range", k+1)
+					result += fmt.Sprintf("         \"%s\": %d\n", "lower-port", v.LowerPort)
+					result += fmt.Sprintf("         \"%s\": %d\n", "upper-port", v.UpperPort)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.TargetProtocol {
+					result += fmt.Sprintf("       \"%s[%d]\": %d\n", "target-protocol", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.FQDN {
+					result += fmt.Sprintf("       \"%s[%d]\": %s\n", "target-fqdn", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.URI {
+					result += fmt.Sprintf("       \"%s[%d]\": %s\n", "target-uri", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.AliasName {
+					result += fmt.Sprintf("       \"%s[%d]\": %s\n", "alias-name", k+1, v)
+				}
+				for k, v := range scope.ConflictInformation.ConflictScope.AclList {
+					result += fmt.Sprintf("       \"%s[%d]\":\n", "acl-list", k+1)
+					result += fmt.Sprintf("         \"%s\": %s\n", "acl-name", v.AclName)
+					result += fmt.Sprintf("         \"%s\": %s\n", "acl-type", v.AclType)
+				}
+				result += fmt.Sprintf("       \"%s\": %d\n", "mid", scope.ConflictInformation.ConflictScope.MitigationId)
+			}
+		}
+	}
+	return
+}
+
+/*
+ * Parse Session Configuration Response model to string for log
+ * parameter:
+ *  m Configuration Response model
+ * return: Configuration Response in string
+ */
+func (m *ConfigurationResponse) String() (result string) {
+	result = "\n \"ietf-dots-signal-channel:signal-config\":\n"
+	result += fmt.Sprintf("   \"%s\":\n", "mitigating-config")
+	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
+	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.MitigatingConfig.HeartbeatInterval.MinValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.MitigatingConfig.HeartbeatInterval.MaxValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue)
+
+	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
+	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.MitigatingConfig.MissingHbAllowed.MinValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.MitigatingConfig.MissingHbAllowed.MaxValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue)
+
+	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
+	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.MitigatingConfig.MaxRetransmit.MinValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.MitigatingConfig.MaxRetransmit.MaxValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue)
+
+	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	min_float, _ := m.SignalConfigs.MitigatingConfig.AckTimeout.MinValue.Round(2).Float64()
+	max_float, _ := m.SignalConfigs.MitigatingConfig.AckTimeout.MaxValue.Round(2).Float64()
+	current_float, _ := m.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
+	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
+	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+
+	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	min_float, _ = m.SignalConfigs.MitigatingConfig.AckRandomFactor.MinValue.Round(2).Float64()
+	max_float, _ = m.SignalConfigs.MitigatingConfig.AckRandomFactor.MaxValue.Round(2).Float64()
+	current_float, _ = m.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
+	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
+	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+
+	result += fmt.Sprintf("   \"%s\":\n", "idle-config")
+	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
+	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.MinValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.MaxValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue)
+
+	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
+	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.IdleConfig.MissingHbAllowed.MinValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.IdleConfig.MissingHbAllowed.MaxValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue)
+
+	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
+	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.IdleConfig.MaxRetransmit.MinValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.IdleConfig.MaxRetransmit.MaxValue)
+	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue)
+
+	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	min_float, _ = m.SignalConfigs.IdleConfig.AckTimeout.MinValue.Round(2).Float64()
+	max_float, _ = m.SignalConfigs.IdleConfig.AckTimeout.MaxValue.Round(2).Float64()
+	current_float, _ = m.SignalConfigs.IdleConfig.AckTimeout.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
+	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
+	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+
+	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	min_float, _ = m.SignalConfigs.IdleConfig.AckRandomFactor.MinValue.Round(2).Float64()
+	max_float, _ = m.SignalConfigs.IdleConfig.AckRandomFactor.MaxValue.Round(2).Float64()
+	current_float, _ = m.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
+	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
+	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	return
 }

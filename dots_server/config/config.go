@@ -62,6 +62,7 @@ type LifetimeConfigurationNode struct {
 	ActiveButTerminatingPeriod    string `yaml:"activeButTerminatingPeriod"`
 	MaxActiveButTerminatingPeriod string `yaml:"maxActiveButTerminatingPeriod"`
 	ManageLifetimeInterval        string `yaml:"manageLifetimeInterval"`
+	ConflictRetryTimer            string `yaml:"conflictRetryTimer"`
 }
 
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
@@ -99,7 +100,24 @@ func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
 		ActiveButTerminatingPeriod:    parseIntegerValue(lcn.ActiveButTerminatingPeriod),
 		MaxActiveButTerminatingPeriod: parseIntegerValue(lcn.MaxActiveButTerminatingPeriod),
 		ManageLifetimeInterval:        parseIntegerValue(lcn.ManageLifetimeInterval),
+		ConflictRetryTimer:            parseIntegerValue(lcn.ConflictRetryTimer),
 	}, nil
+}
+
+func  ConvertMaxAge(maxAge string) (uint, error) {
+	var m uint64
+	if maxAge != "" {
+		mt,_ := strconv.ParseUint(maxAge, 10, 32)
+		m = mt
+	} else {
+		m = 60
+	}
+
+	// (2^32)-1 = 4294967295
+	if m < 0 || m > 4294967295 {
+		return uint(m), errors.New("maxAgeOption must be between 0 and (2^32)-1")
+	}
+	return uint(m), nil
 }
 
 // Configuration root structure read from the system configuration file
@@ -247,6 +265,8 @@ type ServerSystemConfig struct {
 	Network                      *Network
 	Database                     *Database
 	LifetimeConfiguration        *LifetimeConfiguration
+	MaxAgeOption                 uint
+	SessionInterval				 int
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -256,6 +276,8 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setNetwork(*sc.Network)
 	GetServerSystemConfig().setDatabase(*sc.Database)
 	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
+	GetServerSystemConfig().setMaxAgeOption(sc.MaxAgeOption)
+	GetServerSystemConfig().setSessionInterval(sc.SessionInterval)
 }
 
 type ServerSystemConfigNode struct {
@@ -265,6 +287,8 @@ type ServerSystemConfigNode struct {
 	Network                      NetworkNode                      `yaml:"network"`
 	Database                     DatabaseNode                     `yaml:"database"`
 	LifetimeConfiguration        LifetimeConfigurationNode        `yaml:"lifetimeConfiguration"`
+	MaxAgeOption                 string                           `yaml:"maxAgeOption"`
+	SessionInterval              string                           `yaml:"manageSessionInterval"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -298,6 +322,13 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
+	maxAgeOption, err := ConvertMaxAge(scn.MaxAgeOption)
+	if err != nil {
+		return nil, err
+	}
+
+	sessionInterval := parseIntegerValue(scn.SessionInterval)
+
 	return &ServerSystemConfig{
 		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
 		DefaultSignalConfiguration:   defaultSignalConfiguration.(*DefaultSignalConfiguration),
@@ -305,6 +336,8 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		Network:                      network.(*Network),
 		Database:                     database.(*Database),
 		LifetimeConfiguration:        lifetimeConfiguration.(*LifetimeConfiguration),
+		MaxAgeOption:                 maxAgeOption,
+		SessionInterval:              sessionInterval,
 	}, nil
 }
 
@@ -330,6 +363,14 @@ func (sc *ServerSystemConfig) setDatabase(config Database) {
 
 func (sc *ServerSystemConfig) setLifetimeConfiguration(parameter LifetimeConfiguration) {
 	sc.LifetimeConfiguration = &parameter
+}
+
+func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint) {
+	sc.MaxAgeOption = parameter
+}
+
+func (sc *ServerSystemConfig) setSessionInterval(parameter int) {
+	sc.SessionInterval = parameter
 }
 
 var systemConfigInstance *ServerSystemConfig
@@ -612,6 +653,7 @@ type LifetimeConfiguration struct {
 	ActiveButTerminatingPeriod     int
 	MaxActiveButTerminatingPeriod  int
 	ManageLifetimeInterval	       int
+	ConflictRetryTimer             int
 }
 
 func (scp *SignalConfigurationParameter) Store() {

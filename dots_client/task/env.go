@@ -24,9 +24,14 @@ type Env struct {
     missing_hb_allowed int
     current_missing_hb int
     pingTask *PingTask
+    sessionConfigTask *SessionConfigTask
     tokens   map[string][]byte
 
     sessionConfigMode string
+    intervalBeforeMaxAge int
+
+    // The new connected session that will replace the current
+    replacingSession *libcoap.Session
 }
 
 func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
@@ -38,8 +43,11 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         0,
         0,
         nil,
+        nil,
         make(map[string][]byte),
         string(client_message.IDLE),
+        0,
+        nil,
     }
 }
 
@@ -50,7 +58,9 @@ func (env *Env) RenewEnv(context *libcoap.Context, session *libcoap.Session) *En
     env.requests = make(map[string] *MessageTask)
     env.current_missing_hb = 0
     env.pingTask = nil
+    env.sessionConfigTask = nil
     env.tokens = make(map[string][]byte)
+    env.replacingSession = nil
     return env
 }
 
@@ -72,6 +82,18 @@ func (env *Env) SessionConfigMode() string {
     return env.sessionConfigMode
 }
 
+func (env *Env) SetIntervalBeforeMaxAge(intervalBeforeMaxAge int) {
+    env.intervalBeforeMaxAge = intervalBeforeMaxAge
+}
+
+func (env *Env) IntervalBeforeMaxAge() int {
+    return env.intervalBeforeMaxAge
+}
+
+func (env *Env) SetReplacingSession(session *libcoap.Session) {
+    env.replacingSession = session
+}
+
 func (env *Env) Run(task Task) {
     if (reflect.TypeOf(task) == reflect.TypeOf(&PingTask{})) && (!task.(*PingTask).IsRunnable()) {
         log.Debug("Ping task is disabled. Do not start ping task.")
@@ -85,6 +107,9 @@ func (env *Env) Run(task Task) {
 
     case *PingTask:
         env.pingTask = t
+
+    case *SessionConfigTask:
+        env.sessionConfigTask = t
     }
     go task.run(env.channel)
 }
@@ -100,7 +125,7 @@ func (env *Env) HandleResponse(pdu *libcoap.Pdu) {
         } else {
             log.Debugf("Unexpected incoming PDU: %+v", pdu)
         }
-    } else {
+    } else if !t.isStop {
         log.Debugf("Success incoming PDU(HandleResponse): %+v", pdu)
         delete(env.requests, key)
         t.stop()
@@ -117,13 +142,17 @@ func (env *Env) HandleTimeout(sent *libcoap.Pdu) {
     if !ok {
         log.Info("Unexpected PDU: %v", sent)
     } else {
-        delete(env.requests, key)
         t.stop()
 
         // Couting to missing-hb
-        env.current_missing_hb = env.current_missing_hb + 1
-
-        t.timeoutHandler(t)
+        // 0: Code of Ping task
+        if sent.Code == 0 {
+            env.current_missing_hb = env.current_missing_hb + 1
+            delete(env.requests, key)
+        } else {
+            log.Debugf("Session config request timeout")
+        }
+        t.timeoutHandler(t, env.requests)
     }
 }
 
@@ -141,8 +170,8 @@ func (env *Env) EventChannel() chan Event {
 
 func asMapKey(pdu *libcoap.Pdu) string {
     // return fmt.Sprintf("%d[%x]", pdu.MessageID, pdu.Token)
-    // return fmt.Sprintf("%x", pdu.Token)
-    return fmt.Sprintf("%d", pdu.MessageID)
+    return fmt.Sprintf("%x", pdu.Token)
+    // return fmt.Sprintf("%d", pdu.MessageID)
 }
 
 func (env *Env) IsHeartbeatAllowed () bool {
@@ -152,6 +181,12 @@ func (env *Env) IsHeartbeatAllowed () bool {
 func (env *Env) StopPing() {
     if env.pingTask != nil {
         env.pingTask.stop()
+    }
+}
+
+func (env *Env) StopSessionConfig() {
+    if env.sessionConfigTask != nil {
+        env.sessionConfigTask.stop()
     }
 }
 
@@ -201,7 +236,17 @@ func LogNotification(pdu *libcoap.Pdu) {
 
 	if pdu.Data == nil {
 		return
-	}
+    }
+
+    var err error
+    var logStr string
+
+    observe, err := pdu.GetOptionIntegerValue(libcoap.OptionObserve)
+    if err != nil {
+        log.WithError(err).Warn("Get observe option value failed.")
+        return
+    }
+    log.WithField("Observe Value:", observe).Info("Notification Message")
 
     log.Infof("        Raw payload: %s", pdu.Data)
     hex := hex.Dump(pdu.Data)
@@ -209,18 +254,15 @@ func LogNotification(pdu *libcoap.Pdu) {
 
     dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 
-    var err error
-    var logStr string
-
     // Identify response is mitigation or session configuration by cbor data in heximal
     if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
         var v messages.MitigationResponse
         err = dec.Decode(&v)
-        logStr = fmt.Sprintf("%+v", v)
+        logStr = v.String()
     } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
         var v messages.ConfigurationResponse
         err = dec.Decode(&v)
-        logStr = fmt.Sprintf("%+v", v)
+        logStr = v.String()
     } else {
         log.Warnf("Unknown notification is received.")
     }
@@ -230,4 +272,19 @@ func LogNotification(pdu *libcoap.Pdu) {
         return
     }
     log.Infof("        CBOR decoded: %s", logStr)
+}
+
+/*
+ * Check if there is session that need to be replaced => do replacing
+ */
+func (env *Env) CheckSessionReplacement() (bool) {
+    if env.replacingSession != nil {
+        session := env.session
+        log.Debugf("The new session (str=%+v) is replacing the current one (str=%+v)", env.replacingSession.String(), env.session.String())
+        env.RenewEnv(env.context, env.replacingSession)
+        session.SessionRelease()
+		log.Debugf("Restarted connection successfully with new session: %+v.", env.session.String())
+        return true
+    }
+    return false
 }

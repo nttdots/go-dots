@@ -5,7 +5,7 @@ import "github.com/nttdots/go-dots/libcoap"
 import log "github.com/sirupsen/logrus"
 
 type ResponseHandler func(*MessageTask, *libcoap.Pdu)
-type TimeoutHandler  func(*MessageTask)
+type TimeoutHandler  func(*MessageTask, map[string] *MessageTask)
 
 type MessageTask struct {
     TaskBase
@@ -16,6 +16,7 @@ type MessageTask struct {
     retry    int
     timeout  time.Duration
 
+    isStop bool
     responseHandler ResponseHandler
     timeoutHandler  TimeoutHandler
 }
@@ -27,6 +28,7 @@ func NewMessageTask(message *libcoap.Pdu,
                     interval time.Duration,
                     retry int,
                     timeout time.Duration,
+                    isStop bool,
                     responseHandler ResponseHandler,
                     timeoutHandler TimeoutHandler) *MessageTask {
     return &MessageTask {
@@ -35,9 +37,14 @@ func NewMessageTask(message *libcoap.Pdu,
         interval,
         retry,
         timeout,
+        isStop,
         responseHandler,
         timeoutHandler,
     }
+}
+
+func (task *MessageTask) GetMessage() (*libcoap.Pdu) {
+    return task.message
 }
 
 func (t *MessageTask) run(out chan Event) {
@@ -63,6 +70,7 @@ func (t *MessageTask) run(out chan Event) {
             return
         case <- timeout:
             log.Debug("Mitigation request timeout")
+            t.isStop = true
             out <- &TimeoutEvent{ EventBase{ t } }
             t.stop()
         }
@@ -81,5 +89,5 @@ func (e *MessageEvent) Handle(env *Env) {
 
 func (e *TimeoutEvent) Handle(env *Env) {
     task := e.Task().(*MessageTask)
-    task.timeoutHandler(task)
+    task.timeoutHandler(task, env.requests)
 }

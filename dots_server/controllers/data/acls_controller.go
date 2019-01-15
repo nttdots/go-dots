@@ -10,6 +10,7 @@ import (
 
   messages "github.com/nttdots/go-dots/dots_common/messages/data"
   types    "github.com/nttdots/go-dots/dots_common/types/data"
+  messages_common "github.com/nttdots/go-dots/dots_common/messages"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_server/models/data"
@@ -108,7 +109,7 @@ func (c *ACLsController) Get(customer *models.Customer, r *http.Request, p httpr
       if err != nil {
         return
       }
-log.Infof("%#+v", m)
+      log.Infof("%#+v", m)
       return YangJsonResponse(m)
     })
   })
@@ -136,7 +137,7 @@ func (c *ACLsController) Delete(customer *models.Customer, r *http.Request, p ht
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
       deleted, err := data_models.DeleteACLByName(tx, client, name, now)
       if err != nil {
-        return
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to delete acl")
       }
 
       if deleted == true {
@@ -175,7 +176,7 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
   log.Infof("[ACLsController] Put request=%#+v", req)
 
   // Validation
-  bValid, errorMsg := req.ValidateWithName(name)
+  bValid, errorMsg := req.ValidateWithName(name, customer)
   if !bValid {
     return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errorMsg)
   }
@@ -187,11 +188,32 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       if err != nil {
         return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get acl")
       }
+      if acl.ActivationType == nil {
+        defValue := types.ActivationType_ActivateWhenMitigating
+        acl.ActivationType = &defValue
+      }
+      if acl.ACEs.ACE != nil {
+        for _,ace := range acl.ACEs.ACE {
+          if ace.Matches.IPv4 != nil && ace.Matches.IPv4.Fragment != nil && ace.Matches.IPv4.Fragment.Operator == nil {
+            defValue := types.Operator_MATCH
+            ace.Matches.IPv4.Fragment.Operator = &defValue
+          } else if ace.Matches.IPv6 != nil && ace.Matches.IPv6.Fragment != nil && ace.Matches.IPv6.Fragment.Operator == nil {
+            defValue := types.Operator_MATCH
+            ace.Matches.IPv6.Fragment.Operator = &defValue
+          }
+          if ace.Matches.TCP != nil && ace.Matches.TCP.FlagsBitmask != nil && ace.Matches.TCP.FlagsBitmask.Operator == nil {
+            defValue := types.Operator_MATCH
+            ace.Matches.TCP.FlagsBitmask.Operator = &defValue
+          }
+        }
+      }
       status := http.StatusCreated
+      var oldActivateType types.ActivationType
       if e == nil {
         t := data_models.NewACL(client, acl, now, defaultACLLifetime)
         e = &t
       } else {
+        oldActivateType = *e.ACL.ActivationType
         e.ACL = types.ACL(acl)
         e.ValidThrough = now.Add(defaultACLLifetime)
         status = http.StatusNoContent
@@ -200,6 +222,39 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       if err != nil {
         return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
       }
+
+      // Find ACL by name to call Blocker
+      acls := []data_models.ACL{}
+      if *e.ACL.ActivationType == types.ActivationType_ActivateWhenMitigating {
+        // Get mitigation for activationType = active-when-mitigating
+        isPeaceTime,_ := models.CheckPeaceTimeSignalChannel(customer.Id, cuid)
+        if !isPeaceTime {
+          acls = append(acls, *e)
+        }
+      } else {
+        acls = append(acls, *e)
+      }
+
+      // If ACL is update -> Stop protection
+      if status == http.StatusNoContent {
+        p,_ := models.GetActiveProtectionByTargetIDAndTargetType(e.Id, string(messages_common.DATACHANNEL_ACL))
+        if oldActivateType == types.ActivationType_Immediate || (oldActivateType == types.ActivationType_ActivateWhenMitigating && p != nil) {
+          err := data_models.CancelBlocker(e.Id, oldActivateType)
+          if err != nil {
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to cancle blocker")
+          }
+        }
+      }
+
+      // Call blocker
+      err = data_models.CallBlocker(acls, customer.Id, status)
+      if err != nil {
+        // Rollback
+        log.Errorf("Data channel PUT ACL. CallBlocker is error: %s\n", err)
+        data_models.DeleteACLByName(tx, client, e.ACL.Name, now)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to call blocker")
+      }
+
       return EmptyResponse(status)
     })
   })
