@@ -120,7 +120,7 @@ func (p *IPv4Prefix) UnmarshalJSON(data []byte) error {
     return fmt.Errorf("Could not unmarshal as ip-prefix: %v", data)
   }
 
-  if len(x.IP) != net.IPv4len {
+  if x.IP.To4() == nil {
     return fmt.Errorf("Bad ipv4-prefix: %v", x)
   }
   *p = IPv4Prefix(x)
@@ -142,7 +142,7 @@ func (p *IPv6Prefix) UnmarshalJSON(data []byte) error {
     return fmt.Errorf("Could not unmarshal as ip-prefix: %v", data)
   }
 
-  if len(x.IP) != net.IPv6len {
+  if x.IP.To4() != nil {
     return fmt.Errorf("Bad ipv6-prefix: %v", x)
   }
   *p = IPv6Prefix(x)
