@@ -197,7 +197,7 @@ func DeleteACLByName(tx *db.Tx, clientID int64, name string, now time.Time) (boo
 /*
  * Call blocker (GoBGP or Arista)
  */
-func CallBlocker(acls []ACL, customerID int, status int) (err error){
+func CallBlocker(acls []ACL, customerID int) (err error){
 
   // channel to receive selected blockers.
 	ch := make(chan *models.ACLBlockerList, 10)
@@ -370,4 +370,57 @@ func GetACLWithActivateWhenMitigating(customer *models.Customer, cuid string) ([
 	}
 
 	return
+}
+
+/*
+ * Parse string activation type to ACL activation type
+ *
+ * return:
+ *  acl activation type
+ */
+func ToActivationType(activationType string) (types.ActivationType) {
+  switch (activationType) {
+  case string(types.ActivationType_ActivateWhenMitigating):
+    return types.ActivationType_ActivateWhenMitigating
+  case string(types.ActivationType_Immediate):
+    return types.ActivationType_Immediate
+  case string(types.ActivationType_Deactivate):
+    return types.ActivationType_Deactivate
+  default: return ""
+  }
+}
+
+/*
+ * Return ACL activation status that is active or inactive
+ *
+ * return:
+ *  bool
+ *  true  ACL is active
+ *  false ACL is inactive
+ */
+func (acl *ACL) IsActive() (bool, error) {
+  return IsActive(acl.Client.Customer.Id, acl.Client.Cuid, *acl.ACL.ActivationType)
+}
+
+/*
+ * Return activation status that is active or inactive
+ *
+ * return:
+ *  bool
+ *  true  status is active
+ *  false status is inactive
+ */
+func IsActive(customerId int, cuid string, activationType types.ActivationType) (bool, error) {
+  isPeaceTime, err := models.CheckPeaceTimeSignalChannel(customerId, cuid)
+  if err != nil { return false, err }
+
+  if activationType == types.ActivationType_Immediate ||
+    (activationType == types.ActivationType_ActivateWhenMitigating && !isPeaceTime) {
+    return true, nil
+  } else if activationType == types.ActivationType_Deactivate ||
+    (activationType == types.ActivationType_ActivateWhenMitigating && isPeaceTime) {
+    return false, nil
+  } else {
+    return false, nil
+  }
 }
