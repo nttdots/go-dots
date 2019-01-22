@@ -35,6 +35,7 @@ type ActivationType string
 const (
   ActivationType_ActivateWhenMitigating ActivationType = "activate-when-mitigating"
   ActivationType_Immediate              ActivationType = "immediate"
+  ActivationType_Deactivate             ActivationType = "deactivate"
 )
 
 // Operator from ietf-netmod-acl-model
@@ -206,6 +207,9 @@ func (p *ActivationType) UnmarshalJSON(data []byte) error {
     return nil
   case string(ActivationType_Immediate):
     *p = ActivationType_Immediate
+    return nil
+  case string(ActivationType_Deactivate):
+    *p = ActivationType_Deactivate
     return nil
   default:
     return fmt.Errorf("Unexpected ActivationType: %v", s)

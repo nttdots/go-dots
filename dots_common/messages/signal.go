@@ -9,6 +9,12 @@ type TargetPortRange struct {
 	UpperPort *int `json:"upper-port" codec:"9,omitempty"`
 }
 
+type ACL struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	AclName string `json:"acl-name" codec:"23,omitempty"`
+	ActivationType string `json:"activation-type" codec:"49,omitempty"`
+}
+
 type MitigationScope struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	Scopes            []Scope  `json:"scope"             codec:"2"`
@@ -34,6 +40,8 @@ type Scope struct {
 	URI []string `json:"target-uri" codec:"12,omitempty"`
 	// alias name
 	AliasName []string `json:"alias-name" codec:"13,omitempty"`
+	// list of acl
+	AclList []ACL `json:"acl-list" codec:"22,omitempty"`
 	// lifetime
 	Lifetime *int `json:"lifetime" codec:"14,omitempty"`
 	// attack-status
@@ -133,6 +141,13 @@ func (m *MitigationRequest) String() (result string) {
 		if scope.AliasName != nil {
 			for k, v := range scope.AliasName {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
+			}
+		}
+		if scope.AclList != nil {
+			for k, v := range scope.AclList {
+				result += fmt.Sprintf("     \"%s[%d]\":\n", "acl-list", k+1)
+				result += fmt.Sprintf("       \"%s\": %s\n", "acl-name", v.AclName)
+				result += fmt.Sprintf("       \"%s\": %s\n", "activation-type", v.ActivationType)
 			}
 		}
 		if scope.Lifetime != nil {

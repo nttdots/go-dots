@@ -74,6 +74,11 @@ type ACL struct {
 	ACLType string
 }
 
+type ControlFiltering struct {
+	ACLName        string
+	ActivationType string
+}
+
 type ConflictScope struct {
 	MitigationId     int
 	TargetProtocol   SetInt
