@@ -1,0 +1,34 @@
+{
+  "ietf-dots-signal-channel:mitigation-scope": {
+    "scope": [
+      {
+        "target-prefix": [
+            "2001:db8:6401::1/128",
+            "2001:db8:6401::2/128"
+        ],
+        "target-port-range": [
+          {
+            "lower-port": 80
+          },
+          {
+            "lower-port": 443
+          },
+          {
+           "lower-port": 8080
+          }
+        ],
+        "target-protocol": [
+         6
+        ],
+        "acl-list": [
+          {
+              "acl-name": "sample-ipv6-acl",
+              "activation-type": "deactivate"
+          }
+        ],
+        "lifetime": 100,
+        "trigger-mitigation": true
+      }
+    ]
+  }
+}

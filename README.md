@@ -6,11 +6,12 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-signal-channel-25
-* draft-ietf-dots-data-channel-22
+* draft-ietf-dots-signal-channel-26
+* draft-ietf-dots-data-channel-24
 * draft-ietf-dots-architecture-06
 * draft-ietf-dots-requirements-14
 * draft-ietf-dots-use-cases-14
+* draft-nishizuka-dots-signal-control-filtering-01
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
@@ -117,6 +118,9 @@ For more detailed information about the configuration of 'goeapi', refer to the 
 * [arista-goeapi](https://github.com/aristanetworks/goeapi)
 
 
+##  Signal Channel
+The primary purpose of the signal channel is for a DOTS client to ask a DOTS server for help in mitigating an attack, and for the DOTS server to inform the DOTS client about the status of such mitigation.
+
 ### Client Controller [mitigation_request]
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
@@ -200,6 +204,7 @@ Configure dots_client to use 'mitigating-config' parameters
     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Mitigating.json
 
 ##  Data Channel
+The primary purpose of the data channel is to support DOTS related configuration and policy information exchange between the DOTS client and the DOTS server.
 
 All shell-script and sample json files are located in below directory:
     $ cd $GOPATH/src/github.com/nttdots/go-dots/dots_client/data/
@@ -322,6 +327,16 @@ Retrieve Installed Filtering Rules
 Remove Filtering Rules
 
     $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
+
+## Signal Channel Control Filtering
+Unlike the DOTS signal channel, the DOTS data channel is not expected to deal with attack conditions.
+Therefore, when DOTS client is under attacked by DDoS, the DOTS client can use DOTS signal channel protocol to manage the filtering rule in DOTS Data Channel to enhance the protection capability of DOTS protocols.
+
+### Client Controller [mitigation_control_filtering]
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftControlFiltering.json
 
 ## DB
 
