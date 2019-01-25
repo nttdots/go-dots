@@ -7,3 +7,10 @@ ackRandomFactor: 1.5
 
 # Time (seconds) before max-age to refresh Get session config
 intervalBeforeMaxAge: 15
+
+# Client request with block2 option at the first time
+initialRequestBlockSize : 5
+
+# Client request without the block2 option at the first time.
+# If client does not accept with the recommended block size from server, client can send a request with block2 option (new block size)
+secondRequestBlockSize: 3

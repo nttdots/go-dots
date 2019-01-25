@@ -253,6 +253,19 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			}
 		}
 
+		// Handle Control Filtering: Check what data channel ACL need to be changed activation-type
+		// Ignore this process if put efficacy update
+		scope := body.MitigationScope.Scopes[0]
+		if !isIfMatchOption && (scope.AclList != nil || len(scope.AclList) != 0) {
+			log.Debugf("Handle Signal Channel Control Filtering")
+			res, err := HandleControlFiltering(customer, cuid, scope.AclList)
+			if err != nil {
+				log.Error("Failed to Handle Control Filtering.")
+				return Response{}, err
+			}
+			if res != nil { return *res, nil }
+		}
+
 		var conflictInfo *models.ConflictInformation
 		if currentScope == nil && !isIfMatchOption {
 
@@ -879,7 +892,10 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 			log.WithError(err).Error("MitigationRequest.Put")
 			return nil, err
 		}
-    }
+	}
+	
+	// set requestScope status equal to currentScope to keep current mitigation status
+	if currentScope != nil { requestScope.Status = currentScope.Status }
 
 	// store mitigation request into the mitigationScope table
 	if requestScope.TriggerMitigation == false { requestScope.Status = models.Triggered }
@@ -982,12 +998,16 @@ func UpdateMitigationStatus(customerId int, cuid string, mid int, mitigationScop
 			if currentScope.IsActive() && !models.IsActive(newStatus) {
 				err = cancelMitigationById(currentScope.MitigationId, currentScope.ClientIdentifier, currentScope.Customer.Id, currentScope.MitigationScopeId)
 				if err != nil {
-					log.WithError(err).Error("Cancel mitigation scope error.")
+					log.WithError(err).Error("Cancel blocker error.")
 					return err
 				}
 			} else if !currentScope.IsActive() && models.IsActive(newStatus) {
 				// CallBlocker to third party => activate mitigation
-			    err = callBlockerByScope(currentScope, customer)
+				err = callBlockerByScope(currentScope, customer)
+				if err != nil {
+					log.WithError(err).Error("Call blocker error.")
+					return err
+				}
 			}
 		}
 
@@ -1141,7 +1161,7 @@ func appendAliasParametersToRequest(aliases types.Aliases, scope *messages.Scope
 
 		// append target port range parameter
 		for _, portRange := range alias.TargetPortRange {
-			lower := int(portRange.LowerPort)
+			lower := int(*portRange.LowerPort)
 			upper := lower
 			if portRange.UpperPort != nil {
 				upper = int(*portRange.UpperPort)
@@ -1202,9 +1222,9 @@ func appendAliasDataToMitigationScope(alias types.Alias, scope *models.Mitigatio
 	// append target port range parameter
 	for _, portRange := range alias.TargetPortRange {
 		if portRange.UpperPort == nil {
-			portRange.UpperPort = &portRange.LowerPort
+			portRange.UpperPort = portRange.LowerPort
 		}
-		scope.TargetPortRange = append(scope.TargetPortRange, models.NewPortRange(int(portRange.LowerPort), int(*portRange.UpperPort)))
+		scope.TargetPortRange = append(scope.TargetPortRange, models.NewPortRange(int(*portRange.LowerPort), int(*portRange.UpperPort)))
 	}
 
 	// append target protocol parameter
@@ -1483,7 +1503,7 @@ func ActivateDataChannelACL(customer *models.Customer, clientIdentifier string) 
 	}
 	// Call blocker acl with activationType = 'activate-when-mitigating' and has not actived
 	if len(acls) > 0 {
-		err = data_models.CallBlocker(acls, customer.Id, http.StatusCreated)
+		err = data_models.CallBlocker(acls, customer.Id)
 		if err != nil {
 			return err
 		}
@@ -1521,4 +1541,58 @@ func DeActivateDataChannelACL(customerID int, clientIdentifier string) error {
 		}
 	}
 	return nil
+}
+
+/*
+ * Handle Signal Channel Control Filtering
+ * parameter:
+ *  customer      the client
+ *  cuid          the id of the client
+ *  aclList       list of acl that need to be updated
+ * return:
+ *  res           the response
+ *  err            error
+ */
+func HandleControlFiltering(customer *models.Customer, cuid string, aclList []messages.ACL) (*Response, error) {
+	controlFilteringList := make([]models.ControlFiltering, len(aclList))
+	for i, acl := range aclList {
+		if acl.AclName != "" && acl.ActivationType != "" {
+			controlFiltering := models.ControlFiltering{ ACLName: acl.AclName, ActivationType: acl.ActivationType }
+			controlFilteringList[i] = controlFiltering
+		} else {
+			log.Warn("Both Acl Name and Activation Type must be included in Control Filtering.")
+			res := Response{
+				Type: common.NonConfirmable,
+				Code: common.BadRequest,
+				Body: nil,
+			}
+			return &res, nil
+		}
+	}
+
+	// Process Signal Channel Control Filtering
+	// Call to data channel to update ACL activation type
+	response, err := data_controllers.UpdateACLActivationType(customer, cuid, controlFilteringList)
+	if err != nil {
+		log.Error("Process Signal Channel Control Filtering failed")
+		return nil, err
+	}
+	// Handle response from datachannel
+	switch (response.Code) {
+	case http.StatusNotFound:
+		log.Errorf("Data Channel response: %+v", string(response.Content))
+		res := Response{
+			Type: common.NonConfirmable,
+			Code: common.NotFound,
+			Body: nil,
+		}
+		return &res, nil
+	case http.StatusInternalServerError:
+		err := errors.New(string(response.Content))
+		return nil, err
+	case http.StatusBadRequest:
+	case http.StatusNoContent:
+		// Do nothing in these case
+	}
+	return nil, nil
 }

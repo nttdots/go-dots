@@ -26,14 +26,22 @@ func (r *AliasesOrACLsRequest) ValidateExtract(method string, customer *models.C
 
   if r.Aliases != nil {
     t := AliasesRequest{ *r.Aliases }
-    bValid, errorMsg := t.Validate(method, customer)
+    validator := GetAliasValidator(models.BLOCKER_TYPE_GO_ARISTA)
+    if validator == nil {
+      return nil, errors.New("Unknown blocker type: " + models.BLOCKER_TYPE_GO_ARISTA)
+    }
+    bValid, errorMsg := validator.ValidateAlias(&t, customer)
     if bValid == false {
       return nil, errors.New(errorMsg)
     }
     return &t, nil
   } else {
     t := ACLsRequest{ *r.ACLs }
-    bValid, errorMsg := t.Validate(customer)
+    validator := GetAclValidator(models.BLOCKER_TYPE_GO_ARISTA)
+    if validator == nil {
+      return nil, errors.New("Unknown blocker type: " + models.BLOCKER_TYPE_GO_ARISTA)
+    }
+    bValid, errorMsg := validator.ValidateACL(&t, customer)
     if bValid == false {
       return nil, errors.New(errorMsg)
     }

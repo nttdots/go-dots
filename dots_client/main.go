@@ -200,9 +200,9 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			requestQuerys = tmpPaths[i+1:]
 			break
 		}
+		options := make(map[messages.Option]string)
 		// Create observe option
 		observeStr := r.Header.Get(string(messages.OBSERVE))
-		options := make(map[messages.Option]string)
 		if observeStr != "" {
 			options[messages.OBSERVE] = observeStr
 		}
@@ -210,7 +210,6 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 		if val, ok := r.Header[string(messages.IFMATCH)]; ok {
 			options[messages.IFMATCH] = val[0]
 		}
-
 
 		log.Debugf("Parsed URI, requestName=%+v, requestQuerys=%+v, options=%+v", requestName, requestQuerys, options)
 
@@ -380,6 +379,12 @@ func loadConfig(env *task.Env) error{
 	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
 	env.SetRetransmitParams(config.MaxRetransmit, decimal.NewFromFloat(config.AckTimeout).Round(2), decimal.NewFromFloat(config.AckRandomFactor).Round(2))
 	env.SetIntervalBeforeMaxAge(config.IntervalBeforeMaxAge)
+	if config.InitialRequestBlockSize != nil && *config.InitialRequestBlockSize >= 0 {
+		env.SetInitialRequestBlockSize(config.InitialRequestBlockSize)
+	}
+	if config.SecondRequestBlockSize != nil && *config.SecondRequestBlockSize >= 0 {
+		env.SetSecondRequestBlockSize(config.SecondRequestBlockSize)
+	}
 	return nil
 }
 

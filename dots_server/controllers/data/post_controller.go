@@ -10,6 +10,7 @@ import (
 
   messages "github.com/nttdots/go-dots/dots_common/messages/data"
   types "github.com/nttdots/go-dots/dots_common/types/data"
+  messages_common "github.com/nttdots/go-dots/dots_common/messages"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_server/models/data"
@@ -50,6 +51,7 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
       switch req := ir.(type) {
       case *messages.AliasesRequest:
         n := []data_models.Alias{}
+        aliasMap := []data_models.Alias{}
         for _,alias := range req.Aliases.Alias {
           e, err := data_models.FindAliasByName(tx, client, alias.Name, now)
           if err != nil {
@@ -68,6 +70,12 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
           if err != nil {
             return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save alias")
           }
+          aliasMap = append(aliasMap, alias)
+        }
+
+        for _,alias := range aliasMap {
+          // Add alias to check expired
+          data_models.AddActiveAliasRequest(alias.Id, alias.Client.Id, alias.Alias.Name, alias.ValidThrough)
         }
         return EmptyResponse(http.StatusCreated)
       case *messages.ACLsRequest:
@@ -103,29 +111,50 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
           }
         }
 
-        // Get mitigation for activationType = active-when-mitigating
-        isPeaceTime,_ := models.CheckPeaceTimeSignalChannel(customer.Id, cuid)
-
         acls := []data_models.ACL{}
+        aclMap := []data_models.ACL{}
         for _,acl := range n {
           err = acl.Save(tx)
           if err != nil {
             return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
           }
-          if (*acl.ACL.ActivationType == types.ActivationType_ActivateWhenMitigating && !isPeaceTime) ||
-              *acl.ACL.ActivationType == types.ActivationType_Immediate {
+
+          // Handle ACL activation type
+          isActive, err := acl.IsActive()
+          if err != nil {
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to check acl status")
+          }
+          if isActive {
             acls = append(acls, acl)
           }
+          aclMap = append(aclMap, acl)
         }
+
         // Call blocker
-        err := data_models.CallBlocker(acls, customer.Id, http.StatusCreated)
+        err := data_models.CallBlocker(acls, customer.Id)
         if err != nil{
           log.Errorf("Data channel POST ACL. CallBlocker is error: %s\n", err)
           // handle error when call blocker failed
-          for _,acl := range acls {
-            data_models.DeleteACLByName(tx, client, acl.ACL.Name, now)
+          // Rollback
+          for _, acl := range acls {
+            // Get active protection
+            p, err := models.GetActiveProtectionByTargetIDAndTargetType(acl.Id, string(messages_common.DATACHANNEL_ACL))
+            if err != nil {
+              return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get acl protection")
+            }
+
+            // Deactivate and Delete all active ACL
+            if p != nil {
+              // Cancel blocker for active ACL
+              data_models.CancelBlocker(acl.Id, *acl.ACL.ActivationType)
+            }
+            data_models.DeleteACLByName(tx, client.Id, acl.ACL.Name, now)
           }
           return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to call blocker")
+        }
+        for _,acl := range aclMap {
+          // Add acl to check expired
+          data_models.AddActiveACLRequest(acl.Id,acl.Client.Id, acl.ACL.Name, acl.ValidThrough)
         }
           return EmptyResponse(http.StatusCreated)
       default:

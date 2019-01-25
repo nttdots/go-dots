@@ -124,9 +124,9 @@ func FindACLs(tx *db.Tx, client *Client, now time.Time) (ACLs, error) {
   return acls, nil
 }
 
-func findAndCleanACL(tx *db.Tx, client *Client, name string, now time.Time) (*data_db_models.ACL, error) {
+func findAndCleanACL(tx *db.Tx, clientID int64, name string, now time.Time) (*data_db_models.ACL, error) {
   a := data_db_models.ACL{}
-  has, err := tx.Session.Where("data_client_id = ? AND name = ?", client.Id, name).Get(&a)
+  has, err := tx.Session.Where("data_client_id = ? AND name = ?", clientID, name).Get(&a)
   if err != nil {
     log.WithError(err).Error("Get() failed.")
     return nil, err
@@ -159,11 +159,15 @@ func deleteACL(tx *db.Tx, p *data_db_models.ACL) (bool, error) {
     log.WithError(err).Error("Delete() failed.")
     return false, err
   }
+
+  // Remove acl in map active acl
+  RemoveActiveACLRequest(p.Id)
+
   return 0 < affected, nil
 }
 
 func FindACLByName(tx *db.Tx, client *Client, name string, now time.Time) (*ACL, error) {
-  a, err := findAndCleanACL(tx, client, name, now)
+  a, err := findAndCleanACL(tx, client.Id, name, now)
   if err != nil {
     return nil, err
   }
@@ -179,8 +183,8 @@ func FindACLByName(tx *db.Tx, client *Client, name string, now time.Time) (*ACL,
   }, nil
 }
 
-func DeleteACLByName(tx *db.Tx, client *Client, name string, now time.Time) (bool, error) {
-  a, err := findAndCleanACL(tx, client, name, now)
+func DeleteACLByName(tx *db.Tx, clientID int64, name string, now time.Time) (bool, error) {
+  a, err := findAndCleanACL(tx, clientID, name, now)
   if err != nil {
     return false, err
   }
@@ -193,7 +197,7 @@ func DeleteACLByName(tx *db.Tx, client *Client, name string, now time.Time) (boo
 /*
  * Call blocker (GoBGP or Arista)
  */
-func CallBlocker(acls []ACL, customerID int, status int) (err error){
+func CallBlocker(acls []ACL, customerID int) (err error){
 
   // channel to receive selected blockers.
 	ch := make(chan *models.ACLBlockerList, 10)
@@ -271,7 +275,7 @@ func CallBlocker(acls []ACL, customerID int, status int) (err error){
 }
 
 /*
- * Cancle blocker when update or delete data channel acl
+ * Cancel blocker when update or delete data channel acl
  */
 func CancelBlocker(aclID int64, activationType types.ActivationType) (err error){
   p, err := models.GetActiveProtectionByTargetIDAndTargetType(aclID, string(messages.DATACHANNEL_ACL))
@@ -345,4 +349,78 @@ func GetACLWithActivateWhenMitigating(customer *models.Customer, cuid string) ([
     }
   }
   return ap, nil
+}
+
+/*
+ * Find all Acls in DB
+ */
+ func FindAllACLs() (acls []data_db_models.ACL, err error) {
+  // database connection create
+	engine, err := models.ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+
+	// Get data_acls table data
+	err = engine.Table("data_acls").Find(&acls)
+	if err != nil {
+		log.Printf("Get Acl error: %s\n", err)
+		return
+	}
+
+	return
+}
+
+/*
+ * Parse string activation type to ACL activation type
+ *
+ * return:
+ *  acl activation type
+ */
+func ToActivationType(activationType string) (types.ActivationType) {
+  switch (activationType) {
+  case string(types.ActivationType_ActivateWhenMitigating):
+    return types.ActivationType_ActivateWhenMitigating
+  case string(types.ActivationType_Immediate):
+    return types.ActivationType_Immediate
+  case string(types.ActivationType_Deactivate):
+    return types.ActivationType_Deactivate
+  default: return ""
+  }
+}
+
+/*
+ * Return ACL activation status that is active or inactive
+ *
+ * return:
+ *  bool
+ *  true  ACL is active
+ *  false ACL is inactive
+ */
+func (acl *ACL) IsActive() (bool, error) {
+  return IsActive(acl.Client.Customer.Id, acl.Client.Cuid, *acl.ACL.ActivationType)
+}
+
+/*
+ * Return activation status that is active or inactive
+ *
+ * return:
+ *  bool
+ *  true  status is active
+ *  false status is inactive
+ */
+func IsActive(customerId int, cuid string, activationType types.ActivationType) (bool, error) {
+  isPeaceTime, err := models.CheckPeaceTimeSignalChannel(customerId, cuid)
+  if err != nil { return false, err }
+
+  if activationType == types.ActivationType_Immediate ||
+    (activationType == types.ActivationType_ActivateWhenMitigating && !isPeaceTime) {
+    return true, nil
+  } else if activationType == types.ActivationType_Deactivate ||
+    (activationType == types.ActivationType_ActivateWhenMitigating && isPeaceTime) {
+    return false, nil
+  } else {
+    return false, nil
+  }
 }

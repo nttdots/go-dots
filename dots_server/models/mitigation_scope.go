@@ -1,6 +1,7 @@
 package models
 
 import "github.com/nttdots/go-dots/dots_common/messages"
+import "strconv"
 
 type MessageEntity interface{}
 
@@ -71,6 +72,11 @@ const (
 type ACL struct {
 	ACLName string
 	ACLType string
+}
+
+type ControlFiltering struct {
+	ACLName        string
+	ActivationType string
 }
 
 type ConflictScope struct {
@@ -198,12 +204,12 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 func (s *MitigationScope) GetPrefixAsTarget() (targetList []Target) {
 	// Append target ip address
 	for _, ip := range s.TargetIP {
-		targetList = append(targetList, Target{ TargetType: IP_ADDRESS, TargetPrefix: ip, TargetValue: ip.String() })
+		targetList = append(targetList, Target{ TargetType: IP_ADDRESS, TargetPrefix: ip, TargetValue: ip.Addr + "/" + strconv.Itoa(ip.PrefixLen) })
 	}
 
 	// Append target ip prefix
 	for _, prefix := range s.TargetPrefix {
-		targetList = append(targetList, Target{ TargetType: IP_PREFIX, TargetPrefix: prefix, TargetValue: prefix.String() })
+		targetList = append(targetList, Target{ TargetType: IP_PREFIX, TargetPrefix: prefix, TargetValue: prefix.Addr + "/" + strconv.Itoa(prefix.PrefixLen) })
 	}
 	return
 }

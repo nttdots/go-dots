@@ -57,6 +57,7 @@ type Lifetime int
 
 const (
 	INDEFINITE_LIFETIME Lifetime = -1
+	EXCHANGE_LIFETIME   Lifetime = 247
 )
 
 type TargetType string
@@ -104,10 +105,10 @@ func register(code Code, role Role, libcoapType libcoap.Type, channelType Channe
  * Register supported message types to the message map.
  */
 func init() {
-	register(MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/v1.0/mitigate", MitigationRequest{})
-	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/v1.0/config", SignalConfigRequest{})
+	register(MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/mitigate", MitigationRequest{})
+	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/config", SignalConfigRequest{})
 
-	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots/v1.0", SignalChannelRequest{})
+	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots", SignalChannelRequest{})
 }
 
 /*

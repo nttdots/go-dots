@@ -233,7 +233,7 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
         }
     }
 
-    if 0 < len(src.Data) {
+    if (src.Code != RequestGet || src.Type != TypeNon) && 0 < len(src.Data) {
         if 0 == C.coap_add_data(p,
                                 C.size_t(len(src.Data)),
                                 (*C.uint8_t)(unsafe.Pointer(&src.Data[0]))) {
@@ -288,11 +288,11 @@ func (pdu *Pdu) Queries() []string {
     return ret
 }
 
-func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (int32, error) {
+func (pdu *Pdu) GetOptionIntegerValue(key OptionKey) (int, error) {
     for _, option := range pdu.Options {
         if key == option.Key {
             v, err := option.Uint()
-            return int32(v), err
+            return int(v), err
         }
     }
     return -1, nil

@@ -33,6 +33,8 @@ const (
     OptionProxyUri      OptionKey = C.COAP_OPTION_PROXY_URI
     OptionProxyScheme   OptionKey = C.COAP_OPTION_PROXY_SCHEME
     OptionSize1         OptionKey = C.COAP_OPTION_SIZE1
+    OptionBlock2        OptionKey = C.COAP_OPTION_BLOCK2
+    OptionSize2         OptionKey = C.COAP_OPTION_SIZE2
 )
 
 func (key OptionKey) String(value string) Option {
