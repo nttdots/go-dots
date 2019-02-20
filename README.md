@@ -11,7 +11,7 @@
 * draft-ietf-dots-architecture-06
 * draft-ietf-dots-requirements-14
 * draft-ietf-dots-use-cases-14
-* draft-nishizuka-dots-signal-control-filtering-01
+* draft-nishizuka-dots-signal-control-filtering-03
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
@@ -25,7 +25,7 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.9 or later is required. (for latest GoBGP)
+  * go 1.11 or later is required. (for the latest GoBGP - v2.1.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.1 or higher (for libcoap)
