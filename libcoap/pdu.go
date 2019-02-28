@@ -233,7 +233,7 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
         }
     }
 
-    if (src.Code != RequestGet || src.Type != TypeNon) && 0 < len(src.Data) {
+    if (src.Code != ResponseContent || src.Type != TypeNon) && 0 < len(src.Data) {
         if 0 == C.coap_add_data(p,
                                 C.size_t(len(src.Data)),
                                 (*C.uint8_t)(unsafe.Pointer(&src.Data[0]))) {
