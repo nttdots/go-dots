@@ -18,7 +18,7 @@ INSERT INTO `blocker` (`id`, `blocker_type`, `capacity`, `load`, `created`, `upd
 VALUES
   (1,'Arista-ACL', 100, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
   (2,'GoBGP-RTBH', 100, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-  (3,'GoBGP-RTBH',  10, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (3,'GoBGP-FlowSpec',  100, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
   (100,'GoBGP-RTBH',  5, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 
@@ -45,12 +45,13 @@ VALUES
   (4, 2, 'nextHop', '0.0.0.1', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
   (5, 2, 'host', '127.0.0.1', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
   (6, 2, 'port', '50051', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-  (7, 3, 'nextHop', '0.0.0.2', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-  (8, 3, 'host', '127.0.2.1', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (7, 3, 'nextHop', '0.0.0.1', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (8, 3, 'host', '127.0.0.1', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
   (9, 3, 'port', '50051', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-  (10, 100, 'nextHop', '1.0.0.2', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-  (11, 100, 'host', '127.1.1.1', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-  (12, 100, 'port', '50056', '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+  (10, 3, 'vrf', '1.1.1.69:100', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (11, 100, 'nextHop', '1.0.0.2', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (12, 100, 'host', '127.1.1.1', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (13, 100, 'port', '50056', '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 
 # customer
@@ -551,14 +552,51 @@ CREATE TABLE `blocker_configuration` (
   `customer_id`       int(11) NOT NULL,
   `target_type`       VARCHAR(255) NOT NULL,
   `blocker_type`      VARCHAR(255) NOT NULL,
-  `arista_connection` VARCHAR(255),
-  `arista_interface`  VARCHAR(255),
   `created`           datetime DEFAULT NULL,
   `updated`           datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `blocker_configuration` (`id`, `customer_id`, `target_type`, `blocker_type`, `arista_connection`, `arista_interface`)
+INSERT INTO `blocker_configuration` (`id`, `customer_id`, `target_type`, `blocker_type`, `created`, `updated`)
 VALUES
-(1, 128, "mitigation_request", "Arista-ACL", "arista", "Ethernet 1"),
-(2, 128, "datachannel_acl", "Arista-ACL", "arista", "Ethernet 1");
+(1, 128, "mitigation_request", "GoBGP-FlowSpec", '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+(2, 128, "datachannel_acl", "Arista-ACL", '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+
+# blocker_configuration_parameter
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `blocker_configuration_parameter`;
+
+CREATE TABLE `blocker_configuration_parameter` (
+  `id`                       bigint(20) NOT NULL AUTO_INCREMENT,
+  `blocker_configuration_id` int(11) NOT NULL,
+  `key`                      VARCHAR(255) NOT NULL,
+  `value`                    VARCHAR(255) NOT NULL,
+  `created`                  datetime DEFAULT NULL,
+  `updated`                  datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT INTO `blocker_configuration_parameter` (`id`, `blocker_configuration_id`, `key`, `value`, `created`, `updated`)
+VALUES
+  (1, 1, 'vrf', '1.1.1.1:100', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (2, 1, 'aristaConnection', 'arista', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (3, 1, 'aristaInterface', 'Ethernet 1', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (4, 2, 'aristaConnection', 'arista', '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
+  (5, 2, 'aristaInterface', 'Ethernet 1', '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+
+
+# flow_spec_parameter
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `flow_spec_parameter`;
+
+CREATE TABLE `flow_spec_parameter` (
+  `id`                  bigint(20)   NOT NULL AUTO_INCREMENT,
+  `protection_id`       bigint(20)   NOT NULL,
+  `flow_type`           varchar(255) NOT NULL,
+  `flow_specification`  text         NOT NULL,
+  `created`             datetime DEFAULT NULL,
+  `updated`             datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;

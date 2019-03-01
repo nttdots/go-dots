@@ -253,7 +253,7 @@ func HandleCache(resp *Pdu, response Pdu, keyItem string) {
     blockValue,_ := resp.GetOptionIntegerValue(OptionBlock2)
     block := IntToBlock(int(blockValue))
     // Delete block in cache when block is last block
-    if block != nil && block.M == LAST_BLOCK {
+    if block != nil && block.NUM > 0 && block.M == LAST_BLOCK {
         log.Debugf("Delete item cache with key = %+v", keyItem)
         caches.Delete(keyItem)
     }

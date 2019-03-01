@@ -175,8 +175,17 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
   }
   log.Infof("[ACLsController] Put request=%#+v", req)
 
+  // Get blocker configuration by customerId and target_type in table blocker_configuration
+	blockerConfig, err := models.GetBlockerConfiguration(customer.Id, string(messages_common.DATACHANNEL_ACL))
+	if err != nil {
+		return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Get blocker configuration failed")
+	}
+	log.WithFields(log.Fields{
+		"blocker_type": blockerConfig.BlockerType,
+  }).Debug("Get blocker configuration")
+
   // Validation
-  validator := messages.GetAclValidator(models.BLOCKER_TYPE_GO_ARISTA)
+  validator := messages.GetAclValidator(blockerConfig.BlockerType)
   if validator == nil {
     errString := fmt.Sprintf("Unknown blocker type: %+v", models.BLOCKER_TYPE_GO_ARISTA)
     return ErrorResponse(http.StatusInternalServerError, ErrorTag_Invalid_Value, errString)

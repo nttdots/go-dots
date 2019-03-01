@@ -43,6 +43,9 @@ type aclValidator interface {
 // Return mitigation scope validator by input blocker type (goBgpScopeValidator or goAristaScopeValidator)
 func GetAclValidator(blockerType string) (aclValidator) {
 	switch (blockerType) {
+  case models.BLOCKER_TYPE_GoBGP_FLOWSPEC:
+		flowspecAclValidator.blockerType = blockerType
+		return flowspecAclValidator
 	case models.BLOCKER_TYPE_GO_ARISTA:
 		aristaAclValidator.blockerType = blockerType
 		return aristaAclValidator

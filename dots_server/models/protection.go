@@ -12,7 +12,7 @@ import (
  */
 func toGoBGPParameters(obj Protection, protectionID int64) []db_models.GoBgpParameter {
 	result := make([]db_models.GoBgpParameter, 0)
-    t,_ := obj.(*RTBH)
+    t, _ := obj.(*RTBH)
 	for _, target := range t.RtbhTargets() {
 		result = append(result, db_models.GoBgpParameter{
 			ProtectionId: protectionID,
@@ -22,12 +22,32 @@ func toGoBGPParameters(obj Protection, protectionID int64) []db_models.GoBgpPara
 	return result
 }
 
-func toAristaParameters (obj Protection, protectionID int64) []db_models.AristaParameter {
+/*
+ * Convert this protection to a DB protection model.
+ */
+func toFlowSpecParameters(obj Protection, protectionID int64) []db_models.FlowSpecParameter {
+	result := make([]db_models.FlowSpecParameter, 0)
+    t, _ := obj.(*FlowSpec)
+	for _, target := range t.FlowSpecTargets() {
+		result = append(result, db_models.FlowSpecParameter{
+			ProtectionId: protectionID,
+			FlowType: target.flowType,
+			FlowSpec: target.flowSpec,
+		})
+	}
+
+	return result
+}
+
+/*
+ * Convert this protection to a DB protection model.
+ */
+func toAristaParameters(obj Protection, protectionID int64) []db_models.AristaParameter {
 	result := make([]db_models.AristaParameter, 0)
 	t, _ := obj.(*AristaACL)
 	aclTargets := t.aclTargets
 
-	for _,target := range aclTargets {
+	for _, target := range aclTargets {
 		result = append(result, db_models.AristaParameter{
 			ProtectionId:       protectionID,
 			AclType:            target.ACLType(),

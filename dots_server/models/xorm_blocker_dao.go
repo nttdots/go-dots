@@ -200,6 +200,35 @@ func GetBlockerParameters(blockerId int64) (blockerParameters []db_models.Blocke
 }
 
 /*
+ * Obtain the designated BlockerConfigurationParameters by the Blocker COnfiguration ID.
+ *
+ * parameter:
+ *  blockerConfigurationId  the Blocker Configuration ID
+ * return:
+ *  blockerConfigurationParameters the Blocker Configuration Parameter
+ *  error error
+ */
+func GetBlockerConfigurationParameters(blockerConfigurationId int64) (blockerConfigurationParameters []db_models.BlockerConfigurationParameter, err error) {
+	// default value setting
+	blockerConfigurationParameters = []db_models.BlockerConfigurationParameter{}
+
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("database connect error: %s", err)
+		return
+	}
+
+	// Get blocker table data
+	err = engine.Where("blocker_configuration_id = ?", blockerConfigurationId).Find(&blockerConfigurationParameters)
+	if err != nil {
+		return
+	}
+
+	return
+}
+
+/*
  * Obtain the designated LoginProfile by the Blocker ID.
  *
  * parameter:
@@ -357,6 +386,20 @@ func BlockerParametersToMap(params []db_models.BlockerParameter) map[string][]st
 	return m
 }
 
+func BlockerConfigurationParametersToMap(configParams []db_models.BlockerConfigurationParameter) map[string][]string {
+	m := make(map[string][]string)
+
+	for _, p := range configParams {
+		a, ok := m[p.Key]
+		if !ok {
+			a = make([]string, 0)
+		}
+		a = append(a, p.Value)
+		m[p.Key] = a
+	}
+	return m
+}
+
 func toBlocker(blocker db_models.Blocker, blockerConfig *db_models.BlockerConfiguration) (b Blocker, err error) {
 
 	profile, err := GetLoginProfile(blocker.Id)
@@ -372,16 +415,27 @@ func toBlocker(blocker db_models.Blocker, blockerConfig *db_models.BlockerConfig
 	}
 	base.loginInfo.Load(profile)
 
+	// Get blocker parameter and parse it to map
+	params, err := GetBlockerParameters(blocker.Id)
+	if err != nil {
+		return nil, err
+	}
+	paramMap := BlockerParametersToMap(params)
+
+	// Get blocker configuration parameter and parse it to map
+	configParams, err := GetBlockerConfigurationParameters(blockerConfig.Id)
+	if err != nil {
+		return nil, err
+	}
+	configParamMap := BlockerConfigurationParametersToMap(configParams)
+
 	switch blocker.BlockerType {
 	case BLOCKER_TYPE_GoBGP_RTBH:
-		params, err := GetBlockerParameters(blocker.Id)
-		if err != nil {
-			return nil, err
-		}
-		paramMap := BlockerParametersToMap(params)
 		b = NewGoBgpRtbhReceiver(base, paramMap)
+	case BLOCKER_TYPE_GoBGP_FLOWSPEC:
+		b = NewGoBgpFlowSpecReceiver(base, paramMap, configParamMap)
 	case BLOCKER_TYPE_GO_ARISTA:
-		b = NewGoAristaReceiver(base, blockerConfig)
+		b = NewGoAristaReceiver(base, configParamMap)
 	default:
 		err = errors.New(fmt.Sprintf("invalid blocker type: %s", blocker.BlockerType))
 		return

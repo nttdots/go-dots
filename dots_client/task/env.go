@@ -406,15 +406,15 @@ func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *int, *libcoap.Block) {
             return isMoreBlock, &eTag, block
         } else if block.M == libcoap.LAST_BLOCK {
             log.Debugf("Response block is comming (eTag=%+v, block=%+v, size2=%+v), this is the last block.", eTag, block.ToString(), size2Value)
+            isMoreBlock = false
             if data, ok := env.blocks[eTag]; ok {
                 env.blocks[eTag] = append(data, pdu.Data...)
-                isMoreBlock = false
-            } else {
+            } else if block.NUM > 0 {
                 log.Warnf("The block version is not unknown. Re-request from the first block")
                 delete(env.blocks, eTag)
                 block.NUM = 0
+                isMoreBlock = true
             }
-            block.M = 0
             return isMoreBlock, &eTag, block
         }
     }

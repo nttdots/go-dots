@@ -928,7 +928,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 		// Set Status to InProgress
 		if currentScope == nil || (currentScope != nil && currentScope.TriggerMitigation == false){
 			err = UpdateMitigationStatus(customer.Id, requestScope.ClientIdentifier, requestScope.MitigationId,
-				requestScope.MitigationScopeId, models.SuccessfullyMitigated, true)
+				requestScope.MitigationScopeId, models.SuccessfullyMitigated, false)
 			if err != nil {
 				return nil, err
 			}
@@ -1554,6 +1554,23 @@ func DeActivateDataChannelACL(customerID int, clientIdentifier string) error {
  *  err            error
  */
 func HandleControlFiltering(customer *models.Customer, cuid string, aclList []messages.ACL) (*Response, error) {
+
+	// Check if control filtering is requested in peace time
+	isPeaceTime, err := models.CheckPeaceTimeSignalChannel(customer.Id, cuid)
+	if err != nil { 
+		log.Error("Check peace time Signal Channel failed")
+		return nil, err
+	}
+	if isPeaceTime {
+		log.Warnf("Control Filtering message is requesting in peace time -> discard and return Bad Request")
+		res := Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: nil,
+		}
+		return &res, nil
+	}
+
 	controlFilteringList := make([]models.ControlFiltering, len(aclList))
 	for i, acl := range aclList {
 		if acl.AclName != "" && acl.ActivationType != "" {

@@ -4,14 +4,17 @@ import (
 	"net"
 	"strconv"
 	"time"
+	"context"
 
 	"fmt"
 	"github.com/nttdots/go-dots/dots_server/db_models"
-	"github.com/osrg/gobgp/client"
-	"github.com/osrg/gobgp/packet/bgp"
-	"github.com/osrg/gobgp/table"
-	log "github.com/sirupsen/logrus"
+	"github.com/osrg/gobgp/pkg/packet/bgp"
 	"google.golang.org/grpc"
+	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/any"
+	"github.com/golang/protobuf/proto"
+	api "github.com/osrg/gobgp/api"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -123,23 +126,26 @@ func (g *GoBgpRtbhReceiver) ExecuteProtection(p Protection) (err error) {
 		"mitigation-scope.id": b.targetId,
 	}).Info("GoBgpRtbhReceiver.ExecuteProtection")
 
-	blockerClient, err := g.connect()
+	// conect to gobgp
+	blockerClient, conn, err := g.connect()
 	if err != nil {
 		return err
 	}
 	log.Infof("gobgp client connect[%p]", blockerClient)
 
 	// defer the connection close to gobgp routers.
-	defer func(c *client.Client) {
-		log.WithFields(log.Fields{
-			"client": c,
-		}).Info("gobgp client close")
-		c.Close()
-	}(blockerClient)
+	defer func(){
+		log.Info("gobgp client close")
+		conn.Close()
+	}()
 
 	paths := g.toPath(b)
-	if len(paths) > 0 {
-		_, err = blockerClient.AddPath(paths)
+	for _,path := range paths {
+		_, err = blockerClient.AddPath(context.Background(),&api.AddPathRequest{
+			TableType: api.TableType_GLOBAL,
+			VrfId:    "",
+			Path:     path,
+		})
 		if err != nil {
 			return err
 		}
@@ -180,16 +186,28 @@ func (g *GoBgpRtbhReceiver) StopProtection(p Protection) (err error) {
 		"load":          g.Load(),
 	}).Infof("GoBgpRtbhReceiver.StopProtection")
 
-	blockerClient, err := g.connect()
+	// connect to gobgp
+	blockerClient, conn, err := g.connect()
 	if err != nil {
 		return err
 	}
-	defer blockerClient.Close()
+
+	// defer the connection close to gobgp routers.
+	defer func(){
+		log.Info("gobgp client close")
+		conn.Close()
+	}()
 
 	paths := g.toPath(b)
-	err = blockerClient.DeletePath(paths)
-	if err != nil {
-		return err
+	for _,path := range paths {
+		_, err = blockerClient.DeletePath(context.Background(),&api.DeletePathRequest{
+			TableType: api.TableType_GLOBAL,
+			VrfId:    "",
+			Path:     path,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	err = StopProtection(p, g)
@@ -205,11 +223,20 @@ BGP_ROLLBACK:
 
 /*
  * Establish the connection to this GoBGP router.
+ * Base on func newClient(), packet "github.com/osrg/gobgp/cmd/gobgp" from GoBGP open source
  */
-func (g *GoBgpRtbhReceiver) connect() (bgpClient *client.Client, err error) {
+func (g *GoBgpRtbhReceiver) connect() (bgpClient api.GobgpApiClient, conn *grpc.ClientConn ,err error) {
+	return connect(g.timeout, g.Host(), g.Port())
+}
+
+/*
+ * Establish the connection to this GoBGP router.
+ * Base on func newClient(), packet "github.com/osrg/gobgp/cmd/gobgp" from GoBGP open source
+ */
+func connect(timeout int, host string, port string) (bgpClient api.GobgpApiClient, conn *grpc.ClientConn ,err error) {
 	options := make([]grpc.DialOption, 0)
-	if g.timeout > 0 {
-		options = append(options, grpc.WithTimeout(time.Duration(g.timeout)*time.Millisecond))
+	if timeout > 0 {
+		options = append(options, grpc.WithTimeout(time.Duration(timeout)*time.Millisecond))
 	} else {
 		options = append(options, grpc.WithTimeout(1*time.Second))
 	}
@@ -217,15 +244,32 @@ func (g *GoBgpRtbhReceiver) connect() (bgpClient *client.Client, err error) {
 	options = append(options, grpc.WithInsecure())
 
 	log.WithFields(log.Fields{
-		"host": g.Host(),
-		"port": g.Port(),
+		"host": host,
+		"port": port,
 	}).Debug("connect gobgp server")
 
-	bgpClient, err = client.New(net.JoinHostPort(g.Host(), g.Port()), options...)
-	if err != nil {
-		return nil, err
+	target := net.JoinHostPort(host, port)
+	if target == "" {
+		// 50051 is default port for GoBGP
+		target = ":50051"
 	}
-	return bgpClient, nil
+
+	// WithDeadline returns a copy of the parent context with the deadline adjusted
+	// to be no later than d. If the parent's deadline is already earlier than d,
+	// WithDeadline(parent, d) is semantically equivalent to parent. The returned
+	// context's Done channel is closed when the deadline expires, when the returned
+	// cancel function is called, or when the parent context's Done channel is
+	// closed, whichever happens first.
+	cc,_ := context.WithTimeout(context.Background(), time.Second)
+
+	// create a client connection
+	conn, err = grpc.DialContext(cc, target, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	bgpClient = api.NewGobgpApiClient(conn)
+	return bgpClient, conn, nil
 }
 
 func toBgpPrefix(cidr string) bgp.AddrPrefixInterface {
@@ -240,17 +284,34 @@ func toBgpPrefix(cidr string) bgp.AddrPrefixInterface {
 	}
 }
 
-func (g *GoBgpRtbhReceiver) toPath(b *RTBH) []*table.Path {
+// Create api path
+func (g *GoBgpRtbhReceiver) toPath(b *RTBH) []*api.Path {
 	attrs := []bgp.PathAttributeInterface{
 		bgp.NewPathAttributeOrigin(bgp.BGP_ORIGIN_ATTR_TYPE_IGP),
 		bgp.NewPathAttributeNextHop(g.nextHop),
 	}
 
-	paths := make([]*table.Path, 0)
+	paths := make([]*api.Path, 0)
+	t, _ := ptypes.TimestampProto(time.Now())
 
 	for _, prefix := range b.rtbhTargets {
 		bgpPrefix := toBgpPrefix(prefix)
-		paths = append(paths, table.NewPath(nil, bgpPrefix, false, attrs, time.Now(), false))
+		family := &api.Family{
+			Afi:  api.Family_Afi(bgpPrefix.AFI()),
+			Safi: api.Family_Safi(bgpPrefix.SAFI()),
+		}
+		anyNlri := MarshalNLRI(bgpPrefix)
+        anyPattrs := MarshalPathAttributes(attrs)
+		p := &api.Path{
+			Nlri:               anyNlri,
+			Pattrs:             anyPattrs,
+			Age:                t,
+			IsWithdraw:         false,
+			Family:             family,
+			Identifier:         bgpPrefix.PathIdentifier(),
+			LocalIdentifier:    bgpPrefix.PathLocalIdentifier(),
+		}
+		paths = append(paths, p)
 	}
 	return paths
 }
@@ -346,4 +407,60 @@ func NewRTBHProtection(base ProtectionBase, params []db_models.GoBgpParameter) *
 		base,
 		targets,
 	}
+}
+
+/*
+ * Marshal nlri
+ * Base on func MarshalNLRI(), packet "github.com/osrg/gobgp/internal/pkg/apiutil" from GoBGP open source
+ */
+func MarshalNLRI(value bgp.AddrPrefixInterface) *any.Any {
+	var nlri proto.Message
+
+	switch v := value.(type) {
+	case *bgp.IPAddrPrefix:
+		nlri = &api.IPAddressPrefix{
+			PrefixLen: uint32(v.Length),
+			Prefix:    v.Prefix.String(),
+		}
+	case *bgp.IPv6AddrPrefix:
+		nlri = &api.IPAddressPrefix{
+			PrefixLen: uint32(v.Length),
+			Prefix:    v.Prefix.String(),
+		}
+	case *bgp.FlowSpecIPv4Unicast:
+		nlri = &api.FlowSpecNLRI{
+			Rules: MarshalFlowSpecRules(v.Value),
+		}
+	case *bgp.FlowSpecIPv6Unicast:
+		nlri = &api.FlowSpecNLRI{
+			Rules: MarshalFlowSpecRules(v.Value),
+		}
+	}
+	an, _ := ptypes.MarshalAny(nlri)
+	return an
+}
+
+/*
+ * Marshal path attributes
+ * Base on func MarshalPathAttributes(), packet "github.com/osrg/gobgp/internal/pkg/apiutil" from GoBGP open source
+ */
+func MarshalPathAttributes(attrList []bgp.PathAttributeInterface) []*any.Any {
+	anyList := make([]*any.Any, 0, len(attrList))
+	for _, attr := range attrList {
+		switch a := attr.(type) {
+		case *bgp.PathAttributeOrigin:
+			n, _ := ptypes.MarshalAny(&api.OriginAttribute{Origin: uint32(a.Value),})
+			anyList = append(anyList, n)
+		case *bgp.PathAttributeNextHop:
+			n, _ := ptypes.MarshalAny(&api.NextHopAttribute{NextHop: a.Value.String(),})
+			anyList = append(anyList, n)
+		case *bgp.PathAttributeExtendedCommunities:
+			n, _ := ptypes.MarshalAny(NewExtendedCommunitiesAttributeFromNative(a))
+			anyList = append(anyList, n)
+		case *bgp.PathAttributeIP6ExtendedCommunities:
+			n, _ := ptypes.MarshalAny(NewIP6ExtendedCommunitiesAttributeFromNative(a))
+			anyList = append(anyList, n)
+		}
+	}
+	return anyList
 }

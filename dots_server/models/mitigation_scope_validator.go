@@ -26,6 +26,9 @@ func GetMitigationScopeValidator(blockerType string) (mitigationScopeValidator) 
 	case BLOCKER_TYPE_GoBGP_RTBH:
 		goBgpValidator.blockerType = blockerType
 		return goBgpValidator
+	case BLOCKER_TYPE_GoBGP_FLOWSPEC:
+		goBgpFlowspecValidator.blockerType = blockerType
+		return goBgpFlowspecValidator
 	case BLOCKER_TYPE_GO_ARISTA:
 		goAristaValidator.blockerType = blockerType
 		return goAristaValidator
