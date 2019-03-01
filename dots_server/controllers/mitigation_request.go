@@ -928,7 +928,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 		// Set Status to InProgress
 		if currentScope == nil || (currentScope != nil && currentScope.TriggerMitigation == false){
 			err = UpdateMitigationStatus(customer.Id, requestScope.ClientIdentifier, requestScope.MitigationId,
-				requestScope.MitigationScopeId, models.SuccessfullyMitigated, true)
+				requestScope.MitigationScopeId, models.SuccessfullyMitigated, false)
 			if err != nil {
 				return nil, err
 			}

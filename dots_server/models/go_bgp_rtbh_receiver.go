@@ -226,9 +226,17 @@ BGP_ROLLBACK:
  * Base on func newClient(), packet "github.com/osrg/gobgp/cmd/gobgp" from GoBGP open source
  */
 func (g *GoBgpRtbhReceiver) connect() (bgpClient api.GobgpApiClient, conn *grpc.ClientConn ,err error) {
+	return connect(g.timeout, g.Host(), g.Port())
+}
+
+/*
+ * Establish the connection to this GoBGP router.
+ * Base on func newClient(), packet "github.com/osrg/gobgp/cmd/gobgp" from GoBGP open source
+ */
+func connect(timeout int, host string, port string) (bgpClient api.GobgpApiClient, conn *grpc.ClientConn ,err error) {
 	options := make([]grpc.DialOption, 0)
-	if g.timeout > 0 {
-		options = append(options, grpc.WithTimeout(time.Duration(g.timeout)*time.Millisecond))
+	if timeout > 0 {
+		options = append(options, grpc.WithTimeout(time.Duration(timeout)*time.Millisecond))
 	} else {
 		options = append(options, grpc.WithTimeout(1*time.Second))
 	}
@@ -236,11 +244,11 @@ func (g *GoBgpRtbhReceiver) connect() (bgpClient api.GobgpApiClient, conn *grpc.
 	options = append(options, grpc.WithInsecure())
 
 	log.WithFields(log.Fields{
-		"host": g.Host(),
-		"port": g.Port(),
+		"host": host,
+		"port": port,
 	}).Debug("connect gobgp server")
 
-	target := net.JoinHostPort(g.Host(), g.Port())
+	target := net.JoinHostPort(host, port)
 	if target == "" {
 		// 50051 is default port for GoBGP
 		target = ":50051"
@@ -419,6 +427,14 @@ func MarshalNLRI(value bgp.AddrPrefixInterface) *any.Any {
 			PrefixLen: uint32(v.Length),
 			Prefix:    v.Prefix.String(),
 		}
+	case *bgp.FlowSpecIPv4Unicast:
+		nlri = &api.FlowSpecNLRI{
+			Rules: MarshalFlowSpecRules(v.Value),
+		}
+	case *bgp.FlowSpecIPv6Unicast:
+		nlri = &api.FlowSpecNLRI{
+			Rules: MarshalFlowSpecRules(v.Value),
+		}
 	}
 	an, _ := ptypes.MarshalAny(nlri)
 	return an
@@ -437,6 +453,12 @@ func MarshalPathAttributes(attrList []bgp.PathAttributeInterface) []*any.Any {
 			anyList = append(anyList, n)
 		case *bgp.PathAttributeNextHop:
 			n, _ := ptypes.MarshalAny(&api.NextHopAttribute{NextHop: a.Value.String(),})
+			anyList = append(anyList, n)
+		case *bgp.PathAttributeExtendedCommunities:
+			n, _ := ptypes.MarshalAny(NewExtendedCommunitiesAttributeFromNative(a))
+			anyList = append(anyList, n)
+		case *bgp.PathAttributeIP6ExtendedCommunities:
+			n, _ := ptypes.MarshalAny(NewIP6ExtendedCommunitiesAttributeFromNative(a))
 			anyList = append(anyList, n)
 		}
 	}

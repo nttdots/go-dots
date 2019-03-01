@@ -394,3 +394,14 @@ IP Access List mitigation-acl-1
         20 deny 4 any host 1.1.1.69
 ```
 
+# GOBGP Flowspec
+
+Check the flowspec route is installed successfully in gobgp server
+
+    $ gobgp global rib -a ipv4-flowspec
+    $ gobgp global rib -a ipv6-flowspec
+
+```
+   Network                                                                   Next Hop      AS_PATH    Age        Attrs
+*> [destination: 1.1.2.0/24][protocol: ==tcp][destination-port: >=443&<=800] fictitious               00:00:06   [{Origin: i} {Extcomms: [redirect: 1.1.1.0:100]}]
+```

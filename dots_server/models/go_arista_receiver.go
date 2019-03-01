@@ -15,6 +15,11 @@ import (
 )
 
 const (
+	ARISTA_BLOCKER_CONNECTION    = "aristaConnection"
+	ARISTA_BLOCKER_INTERFACE     = "aristaInterface"
+)
+
+const (
 	BLOCKER_TYPE_GO_ARISTA = "Arista-ACL"
 	PROTECTION_TYPE_ARISTA = "AristaACL"
 
@@ -118,9 +123,23 @@ func (g *GoAristaReceiver) GenerateProtectionCommand(m *MitigationScope) (c stri
 	return
 }
 
-func NewGoAristaReceiver(base BlockerBase, blockerConfig *db_models.BlockerConfiguration) *GoAristaReceiver {
-	aristaConection := blockerConfig.AristaConnection
-	aristaInterface := blockerConfig.AristaInterface
+func NewGoAristaReceiver(base BlockerBase, configParams map[string][]string) *GoAristaReceiver {
+	var aristaConection string
+	var aristaInterface string
+
+	a, ok := configParams[ARISTA_BLOCKER_CONNECTION]
+	if ok {
+		aristaConection = a[0]
+	} else {
+		aristaConection = ""
+	}
+
+	a, ok = configParams[ARISTA_BLOCKER_INTERFACE]
+	if ok {
+		aristaInterface = a[0]
+	} else {
+		aristaInterface = ""
+	}
 
 	return &GoAristaReceiver{
 		base,
@@ -667,6 +686,11 @@ func PortRangeOrOperatorToString(port *types.PortRangeOrOperator) (p string){
 	if port.LowerPort != nil && port.UpperPort != nil {
 		p = PORT_RANGE+" "+strconv.Itoa(int(*port.LowerPort))+" "+strconv.Itoa(int(*port.UpperPort))
 	} else if (port.LowerPort == nil || port.UpperPort == nil) && port.Port == nil {
+		if port.LowerPort != nil {
+			p = string(types.Operator_EQ)+" "+strconv.Itoa(int(*port.LowerPort))
+		} else if port.UpperPort != nil {
+			p = string(types.Operator_EQ)+" "+strconv.Itoa(int(*port.UpperPort))
+		}
 		p = string(types.Operator_EQ)+" "+strconv.Itoa(int(*port.LowerPort))
 	} else if port.Operator != nil {
 		p = string(*port.Operator)+" "+ strconv.Itoa(int(*port.Port))

@@ -17,38 +17,43 @@ The blockers are the entities to mitigate the DDoS attacks based on the requests
 * 'blocker': Basic blocker information of each blocker_type
 * 'blocker_parameter': Additional configuration for the blockers
 * 'blocker_configuration': The configuration of the blockers for each customer.
+* 'blocker_configuration_parameter': Additional configuration for the blockers corresponding to different customers
 * 'login_profile': The login profile for the blockers. The current implementation does not utilize these profile.
 
-The tables you have to edit here are 'blocker', 'blocker_parameter' and 'blocker_configuration'.
+The tables you have to edit here are 'blocker', 'blocker_parameter', 'blocker_configuration' and 'blocker_configuration_parameter'.
 
 ### 'blocker' table
 
-The current implementation support two blocker types: 'GoBGP-RTBH' and 'Arista-ACL'. So set the type field of every blockers to 'GoBGP-RTBH' or 'Arista-ACL'. In the capacity field, you can specify the strength of the blocker. The capacity is the number of the entries the blocker can deal with. The load field is the number of the entries the blocker is now dealing with and will be updated by the system. You should set to 0 for the initial configuration.
+The current implementation support three blocker types: 'GoBGP-RTBH', 'Arista-ACL' and 'GoBGP-FlowSpec'. So set the type field of every blockers to 'GoBGP-RTBH', 'Arista-ACL' or 'GoBGP-FlowSpec'. In the capacity field, you can specify the strength of the blocker. The capacity is the number of the entries the blocker can deal with. The load field is the number of the entries the blocker is now dealing with and will be updated by the system. You should set to 0 for the initial configuration.
 
 ### 'blocker_parameter' table
 
-The 'blocker_parameter' tables is for the further configurations of each blocker. 'blocker_parameter' has the key/value structure. The parameter has 3 keys below:
+The 'blocker_parameter' tables is for the further configurations of each blocker. The 'blocker_parameter' has the key/value structure. The parameter has 3 keys below:
 
 * nextHop: the nextHop IP address for the RTBH configuration. If you configure the nextHop as '0.0.0.0', the blocker simply blackhole the attack traffics.
 * host: IP address or FQDN of the blocker.
-* port: port number of the controll access.
+* port: port number of the control access.
 
 ### 'blocker_configuration' table
 
-The 'blocker_configuration' tables is for the blocker configurations for each blocker_type. There are four fields that can be modified:
+The 'blocker_configuration' tables is for the blocker configurations for each blocker_type. There are three fields that can be modified:
 
 * customer_id: the certificate id of the DOTS client that are being serviced by DOTS server
 * target_type: the type of targets which are applied to the blocker, there are two types: 'mitigation_request' and 'datachannel_acl'
-* blocker_type: the type of blockers, there are two types: 'GoBGP-RTBH' and 'Arista-ACL'
-* arista_connection: the name of Arista configuration in ~/.eapi.conf file (Ex: arista). This field is only used when blocker_type is 'Arista-ACL'
-* arista_interface: the name of Arista interface that to apply 'Arista-ACL' (Ex: Ethernet 1). This field is only used when blocker_type is 'Arista-ACL'
+* blocker_type: the type of blockers, there are three types: 'GoBGP-RTBH', 'Arista-ACL' and 'GoBGP-FlowSpec'
 
 The blocker_configuration data should be provided to both 'mitigation_request' and 'datachannel_acl' for each customer. For each 'target_type', we can set 'blocker_type' value follow as:
 
-* 'mitigation_request': 'GoBGP-RTBH' or 'Arista-ACL'
-* 'datachannel_acl': 'Arista-ACL' only
+* 'mitigation_request': 'GoBGP-RTBH', 'Arista-ACL' or 'GoBGP-FlowSpec'
+* 'datachannel_acl': 'Arista-ACL' and 'GoBGP-FlowSpec'
 
-Besides, if the 'blocker_type' is 'Arista-ACL', we must insert data into 'arista_connection' and 'arista_interface' columns, too.
+### 'blocker_configuration_parameter' table
+
+The 'blocker_configuration_parameter' tables is for the further configurations of each blocker corresponding to different customers. The 'blocker_configuration_parameter' has the key/value structure. The parameter has 3 keys below:
+
+* vrf: the virtual routing forwarding of GoBGP Flowspec that used for redirecting (Ex: 1.1.1.1:100). This field is only used when blocker_type is 'GoBGP-FlowSpec' and target-type is 'mitigation_request'
+* arista_connection: the name of Arista configuration in ~/.eapi.conf file (Ex: arista). This field is only used when blocker_type is 'Arista-ACL'
+* arista_interface: the name of Arista interface that to apply 'Arista-ACL' (Ex: Ethernet 1). This field is only used when blocker_type is 'Arista-ACL'
 
 ## Customer configuration
 

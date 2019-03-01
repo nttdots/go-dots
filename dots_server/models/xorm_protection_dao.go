@@ -183,6 +183,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 
 	var gobgpParameters []db_models.GoBgpParameter
 	var aristaParameters     []db_models.AristaParameter
+	var flowSpecParameters   []db_models.FlowSpecParameter
 	var forwardedDataInfo, blockedDataInfo *db_models.ProtectionStatus
 	var blockerId int64
 
@@ -348,6 +349,22 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 			log.WithFields(log.Fields{
 				"arista_parameters": aristaParameters,
 			}).Debug("create new arista_parameter")
+		}
+	} else if string(protection.Type()) == PROTECTION_TYPE_FLOWSPEC {
+		// Registering ProtectionParameters
+		flowSpecParameters = toFlowSpecParameters(protection, newProtection.Id)
+		if len(flowSpecParameters) > 0 {
+			_, err = session.InsertMulti(&flowSpecParameters)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"MitigationScopeId": newProtection.TargetId,
+					"Err":               err,
+				}).Error("insert flowSpecParameters error")
+				goto Rollback
+			}
+			log.WithFields(log.Fields{
+				"flow_spec_parameters": flowSpecParameters,
+			}).Debug("create new flow_spec_parameter")
 		}
 	} else {
 		log.WithFields(log.Fields{
@@ -651,6 +668,13 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		p = NewRTBHProtection(pb, params)
 	case PROTECTION_TYPE_BLACKHOLE:
 		p = NewBlackHoleProtection(pb, params)
+	case PROTECTION_TYPE_FLOWSPEC:
+		var flowSpecParams []db_models.FlowSpecParameter
+	    err = engine.Where("protection_id = ?", dbp.Id).Find(&flowSpecParams)
+	    if err != nil {
+		    return nil, err
+	    }
+		p = NewFlowSpecProtection(pb, flowSpecParams)
 	case PROTECTION_TYPE_ARISTA:
 		var aristaParams []db_models.AristaParameter
 	    err = engine.Where("protection_id = ?", dbp.Id).Find(&aristaParams)

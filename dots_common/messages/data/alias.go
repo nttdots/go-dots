@@ -32,6 +32,12 @@ type aliasValidator interface {
 // Return mitigation scope validator by input blocker type (goBgpScopeValidator or goAristaScopeValidator)
 func GetAliasValidator(blockerType string) (aliasValidator) {
 	switch (blockerType) {
+  case models.BLOCKER_TYPE_GoBGP_RTBH:
+		goBgpValidator.blockerType = blockerType
+		return goBgpValidator
+	case models.BLOCKER_TYPE_GoBGP_FLOWSPEC:
+		flowspecAliasValidator.blockerType = blockerType
+		return flowspecAliasValidator
 	case models.BLOCKER_TYPE_GO_ARISTA:
 	  aristaAliasValidator.blockerType = blockerType
 		return aristaAliasValidator
