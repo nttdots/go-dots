@@ -206,7 +206,7 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu) 
 		r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
 		r.Send()
 	} else {
-		if eTag != nil {
+		if eTag != nil && block.NUM > 0 {
 			response.Data = r.env.GetBlockData(*eTag)
 			delete(r.env.Blocks(), *eTag)
 		}
