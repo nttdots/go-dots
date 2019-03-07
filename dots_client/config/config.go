@@ -6,7 +6,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-type SignalConfiguration struct {
+var config *ClientConfiguration
+type ClientConfiguration struct {
 	HeartbeatInterval int `yaml:"heartbeatInterval"`
 	MissingHbAllowed  int `yaml:"missingHbAllowed"`
 	MaxRetransmit     int `yaml:"maxRetransmit"`
@@ -15,22 +16,31 @@ type SignalConfiguration struct {
 	IntervalBeforeMaxAge  int `yaml:"intervalBeforeMaxAge"`
 	InitialRequestBlockSize *int `yaml:"initialRequestBlockSize"`
 	SecondRequestBlockSize  *int `yaml:"secondRequestBlockSize"`
+	RestfulApiPort        string `yaml:"restfulApiPort"`
+	RestfulApiPath        string `yaml:"restfulApiPath"`
+	RestfulApiAddress     string `yaml:"restfulApiAddress"`
 }
 
 /**
 * Load client config
 */
-func LoadClientConfig(path string) (*SignalConfiguration, error) {
-    var configText SignalConfiguration
+func LoadClientConfig(path string) (error) {
 	yamlFile, err := ioutil.ReadFile(path)
     if err != nil {
         log.Errorf("yamlFile.Get err: %v ", err)
-        return nil, err
+        return err
 	}
-    err = yaml.Unmarshal(yamlFile, &configText)
+    err = yaml.Unmarshal(yamlFile, &config)
     if err != nil {
         log.Errorf("Unmarshal: %v", err)
-        return nil, err
+        return err
 	}
-	return &configText, nil
+	return nil
+}
+
+/**
+* Get system config
+*/
+func GetSystemConfig() *ClientConfiguration {
+	return config
 }

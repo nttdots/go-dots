@@ -31,7 +31,7 @@ func listenDB (context *libcoap.Context) {
 	port := config.Network.DBNotificationPort
 	listen, err := net.Listen("tcp4", ":" + strconv.Itoa(port))
 	if err != nil {
-		log.Debugf("[MySQL-Notification]:Socket listening on port %+v failed,%+v", port, err)
+		log.Errorf("[MySQL-Notification]:Socket listening on port %+v failed,%+v", port, err)
 		os.Exit(1)
 	}
 	log.Debugf("[MySQL-Notification]:Begin listening on port: %+v", port)
@@ -39,7 +39,7 @@ func listenDB (context *libcoap.Context) {
 	for {
 		conn, err := listen.Accept()
 		if err != nil {
-			log.Debugf("[MySQL-Notification]:Error : %+v", err)
+			log.Errorf("[MySQL-Notification]:Error : %+v", err)
 			continue
 		}
 		go handler(conn, context)
@@ -87,7 +87,7 @@ ILOOP:
 				mid, mErr := strconv.Atoi(mapData["mid"].(string))
 				status, sErr := strconv.Atoi(mapData["status"].(string))
 				if iErr != nil || mErr != nil || sErr != nil || cErr != nil {
-					log.Debugf("[MySQL-Notification]:Failed to parse string to integer")
+					log.Errorf("[MySQL-Notification]:Failed to parse string to integer")
 					return
 				}
 				uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
@@ -137,7 +137,7 @@ ILOOP:
 				context.EnableResourceDirty(query)
 			}
 		default:
-			log.Debugf("[MySQL-Notification]: Failed to receive data:%+v", err)
+			log.Errorf("[MySQL-Notification]: Failed to receive data:%+v", err)
 			return
 		}
 	}

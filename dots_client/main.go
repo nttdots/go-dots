@@ -24,6 +24,7 @@ import (
 	"github.com/nttdots/go-dots/libcoap"
 	dots_config "github.com/nttdots/go-dots/dots_client/config"
 	client_message "github.com/nttdots/go-dots/dots_client/messages"
+	restful_router "github.com/nttdots/go-dots/dots_client/router"
 )
 
 const (
@@ -248,14 +249,15 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			return
 		}
 
-		err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env, options)
+		res, err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env, options)
 		if err != nil {
 			fmt.Printf("dots_client.serverHandler -- %s", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 		}
 
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(res.StatusCode.HttpCode())
+		w.Write(res.data)
 	}
 }
 
@@ -272,7 +274,7 @@ func isClientConfigRequest(requestName string) bool {
 /*
  * sendRequest is a function that sends requests to the server.
  */
-func sendRequest(jsonData []byte, requestName, method string, queryParams []string, env *task.Env, options map[messages.Option]string) (err error) {
+func sendRequest(jsonData []byte, requestName, method string, queryParams []string, env *task.Env, options map[messages.Option]string) (res Response, err error) {
 	if jsonData != nil {
 		err = common.ValidateJson(requestName, string(jsonData))
 		if err != nil {
@@ -289,11 +291,11 @@ func sendRequest(jsonData []byte, requestName, method string, queryParams []stri
 	case messages.DATA:
 		errorMsg := fmt.Sprintf("unsupported channel type error: %s", requestName)
 		log.Errorf("dots_client.sendRequest -- %s", errorMsg)
-		return errors.New(errorMsg)
+		return res, errors.New(errorMsg)
 	default:
 		errorMsg := fmt.Sprintf("unknown channel type error: %s", requestName)
 		log.Errorf("dots_client.sendRequest -- %s", errorMsg)
-		return errors.New(errorMsg)
+		return res, errors.New(errorMsg)
 	}
 
 	if jsonData != nil {
@@ -307,8 +309,8 @@ func sendRequest(jsonData []byte, requestName, method string, queryParams []stri
 	requestMessage.CreateRequest()
 	log.Infof("dots_client.main -- request message: %+v", requestMessage)
 
-	requestMessage.Send()
-	return
+	res = requestMessage.Send()
+	return res, nil
 }
 
 var activeConWg sync.WaitGroup
@@ -362,19 +364,11 @@ func restartConnection (env *task.Env) {
 	}
 }
 
-var config *dots_config.SignalConfiguration
-
+var config *dots_config.ClientConfiguration
 /**
 * Load config file
 */
-func loadConfig(env *task.Env) error{
-	var err error
-	config,err = dots_config.LoadClientConfig(configFile)
-	if err != nil {
-		return err
-	}
-	log.Debugf("dots client starting with config: %# v", config)
-
+func loadConfig(env *task.Env) {
 	env.SetMissingHbAllowed(config.MissingHbAllowed)
 	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
 	env.SetRetransmitParams(config.MaxRetransmit, decimal.NewFromFloat(config.AckTimeout).Round(2), decimal.NewFromFloat(config.AckRandomFactor).Round(2))
@@ -385,7 +379,6 @@ func loadConfig(env *task.Env) error{
 	if config.SecondRequestBlockSize != nil && *config.SecondRequestBlockSize >= 0 {
 		env.SetSecondRequestBlockSize(config.SecondRequestBlockSize)
 	}
-	return nil
 }
 
 func main() {
@@ -394,6 +387,14 @@ func main() {
 	flag.Parse()
 
 	common.SetUpLogger()
+
+	err := dots_config.LoadClientConfig(configFile)
+	if err != nil {
+		log.WithError(err).Errorf("LoadClientConfig() failed")
+		os.Exit(1)
+	}
+	config = dots_config.GetSystemConfig()
+	log.Debugf("dots client starting with config: %# v", config)
 
 	serverIPs, err := net.LookupIP(server)
 	if err != nil {
@@ -458,12 +459,11 @@ func main() {
 	srv := &http.Server{Handler: nil, ConnState: connectionStateChange}
 	go srv.Serve(l)
 
+	// Run restful api server to service external systems
+	go restful_router.ListenRestfulApi(config.RestfulApiAddress + config.RestfulApiPort, makeServerHandler(env))
+
 	// Load session configuration
-	errConf := loadConfig(env)
-	if errConf != nil {
-		log.Error("Load client config data error.")
-		return
-	}
+	loadConfig(env)
 	env.Run(task.NewPingTask(
 		time.Duration(config.HeartbeatInterval) * time.Second,
 		pingResponseHandler,

@@ -178,8 +178,11 @@ func main() {
 	buff := new(bytes.Buffer)
 	buff.ReadFrom(resp.Body)
 
-	if resp.StatusCode != http.StatusOK {
-		fmt.Println("dots_client return error")
+	log.Debug("================***Response***================")
+	log.Infof("dots_client_controller.main -- dots_client response code :%s\n", resp.Status)
+	// The response code is not 2xx successfully
+	if resp.StatusCode >= 300 {
+		log.Error("dots_client return failed")
 	}
 
 	//dump received data.
