@@ -45,6 +45,8 @@ const (
 	INTERFACE_VALUE    = "interface"
 	ACCESS_LIST_VALUE  = "access-list"
 	ACCESS_GROUP_VALUE = "access-group"
+	CONFIGURE_SESSION  = "configure session"
+	COMMIT_VALUE       = "commit"
 	EXIT_VALUE         = "exit"
 	NO_VALUE           = "no"
 	INBOUND_PACKET     = "in"
@@ -181,6 +183,10 @@ func (g *GoAristaReceiver) ExecuteProtection(p Protection) (err error) {
 	log.Infof("arista connect[%p]", node)
 	acl := module.Acl(node)
 
+	// Create configure session
+	configSession := CreateConfigureSession(p.SessionName())
+	cmds := []string {configSession}
+
 	// Create acl rule
 	ipv4AccessList := CreateAccessList(IPV4_VALUE, p.AclName())
 	ipv6AccessList := CreateAccessList(IPV6_VALUE, p.AclName())
@@ -198,37 +204,39 @@ func (g *GoAristaReceiver) ExecuteProtection(p Protection) (err error) {
 	ipv6Cmds = append(ipv6Cmds, IPV6_PERMIT_RULE)
 	ipv6Cmds = append(ipv6Cmds, EXIT_VALUE)
 
-	if len(ipv4Cmds) > LEN_CMDS_ACL_WITHOUT_RULE {
-		if ok := acl.Configure(ipv4Cmds ...); !ok {
-			log.Warnf("Failed to create ipv4 ACL. cmds=%+v", ipv4Cmds)
-			err = errors.New("Failed to create ipv4 ACL")
-			return
-		}
-	}
-	if len(ipv6Cmds) > LEN_CMDS_ACL_WITHOUT_RULE {
-		if ok := acl.Configure(ipv6Cmds ...); !ok {
-			log.Warnf("Failed to create ipv6 ACL. cmds=%+v", ipv6Cmds)
-			err = errors.New("Failed to create ipv6 ACL")
-			return
-		}
-	}
-
 	// Apply acl to interface
-	cmds := []string{INTERFACE_VALUE+" "+g.AristaInterface()}
+	interfaceCmds := []string{INTERFACE_VALUE+" "+g.AristaInterface()}
 	if len(ipv4Cmds) > LEN_CMDS_ACL_WITHOUT_RULE {
+		cmds = append(cmds, ipv4Cmds ...)
 		ipv4AccessGroup := CreateAccessGroup(IPV4_VALUE, p.AclName())
-		cmds = append(cmds, ipv4AccessGroup)
+		interfaceCmds = append(interfaceCmds, ipv4AccessGroup)
 	}
 	if len(ipv6Cmds) > LEN_CMDS_ACL_WITHOUT_RULE {
+		cmds = append(cmds, ipv6Cmds ...)
 		ipv6AccessGroup := CreateAccessGroup(IPV6_VALUE, p.AclName())
-		cmds = append(cmds, ipv6AccessGroup)
+		interfaceCmds = append(interfaceCmds, ipv6AccessGroup)
 	}
-	cmds = append(cmds, EXIT_VALUE)
+	interfaceCmds = append(interfaceCmds, EXIT_VALUE)
+
+	cmds = append(cmds, interfaceCmds ...)
+	cmds = append(cmds, p.Action())
 
 	if ok := acl.Configure(cmds ...); !ok {
-		log.Warnf("Failed to apply ACL to Interface. cmds=%+v", cmds)
-		err = errors.New("Failed to apply ACL to Interface")
+		log.Warnf("Failed to apply configure session. cmds=%+v", cmds)
+		configSession = RemoveConfigureSession(p.SessionName())
+		if ok := acl.Configure([]string{configSession} ...); !ok {
+			log.Warnf("Failed to remove configure session. cmds = %+v", cmds)
+		}
+		err = errors.New("Failed to apply configure session")
 		return
+	}
+
+	// Remove configure session after configure session commited
+	if p.Action() == COMMIT_VALUE {
+		configSession = RemoveConfigureSession(p.SessionName())
+		if ok := acl.Configure([]string{configSession} ...); !ok {
+			log.Warnf("Failed to remove configure session. cmds = %+v", cmds)
+		}
 	}
 
 	// update db
@@ -274,11 +282,12 @@ func (g *GoAristaReceiver) StopProtection(p Protection) (err error) {
 	log.Infof("arista connect[%p]", node)
 	acl := module.Acl(node)
 
-	cmds := []string{}
 	countIPv4 := 0
 	countIPv6 := 0
-	// Remove acl applyed to interface
-	cmds = append(cmds, INTERFACE_VALUE+" "+g.AristaInterface())
+
+	// Create configure session
+	configSession := CreateConfigureSession(p.SessionName())
+	cmds := []string {configSession}
 	for _,target := range t.aclTargets {
 		if countIPv4 > 0 && countIPv6 > 0 {
 			break
@@ -290,37 +299,38 @@ func (g *GoAristaReceiver) StopProtection(p Protection) (err error) {
 			countIPv6 ++
 		}
 	}
+	cmds = append(cmds, INTERFACE_VALUE+" "+g.AristaInterface())
 	if countIPv4 > 0 {
+		// Remove acl applyed to interface
 		ipv4AccessGroup := RemoveAccessGroup(IPV4_VALUE, p.AclName())
+		// Remove acl
+		ipv4AccessList  := RemoveAccessList(IPV4_VALUE, p.AclName())
 		cmds = append(cmds, ipv4AccessGroup)
+		cmds = append(cmds, ipv4AccessList)
 	}
 	if countIPv6 > 0 {
+		// Remove acl applyed to interface
 		ipv6AccessGroup := RemoveAccessGroup(IPV6_VALUE, p.AclName())
+		// Remove acl
+		ipv6AccessList  := RemoveAccessList(IPV6_VALUE, p.AclName())
 		cmds = append(cmds, ipv6AccessGroup)
+		cmds = append(cmds, ipv6AccessList)
 	}
-	cmds = append(cmds, EXIT_VALUE)
+	cmds = append(cmds, COMMIT_VALUE)
 
 	if ok := acl.Configure(cmds ...); !ok {
-		log.Warnf("Failed to remove ACL rule from Intreface. cmds = %+v", cmds)
-		err = errors.New("Failed to remove ACL rule from Intreface")
+		log.Warnf("Failed to apply configure session. cmds = %+v", cmds)
+		configSession = RemoveConfigureSession(p.SessionName())
+		if ok := acl.Configure([]string{configSession} ...); !ok {
+			log.Warnf("Failed to remove configure session. cmds = %+v", cmds)
+		}
+		err = errors.New("Failed to apply configure session")
 		return
 	}
-
-	// Remove acl
-	aclCmds := []string {}
-	if countIPv4 > 0 {
-		ipv4AccessList := RemoveAccessList(IPV4_VALUE, p.AclName())
-		aclCmds = append(aclCmds, ipv4AccessList)
-	}
-	if countIPv6 > 0 {
-		ipv6AccessList := RemoveAccessList(IPV6_VALUE, p.AclName())
-		aclCmds = append(aclCmds, ipv6AccessList)
-	}
-	aclCmds = append(aclCmds, EXIT_VALUE)
-	if ok := acl.Configure(aclCmds ...); !ok {
-		log.Warnf("Failed to remove ACL rule. cmds=%+v", aclCmds)
-		err = errors.New("Failed to remove ACL rule")
-		return
+	// Remove configure session after configure session commited
+	configSession = RemoveConfigureSession(p.SessionName())
+	if ok := acl.Configure([]string{configSession} ...); !ok {
+		log.Warnf("Failed to remove configure session. cmds = %+v", cmds)
 	}
 
 	err = StopProtection(p, g)
@@ -383,6 +393,8 @@ func (g *GoAristaReceiver) RegisterProtection(r *MitigationOrDataChannelACL, tar
 		targetID,
 		targetType,
 		aclName,
+		"",
+		"",
 		g,
 		false,
 		time.Unix(0, 0),
@@ -830,4 +842,32 @@ func RemoveAccessGroup(aclType string, aclName string) string {
 	accessGroup.WriteString(" ")
 
 	return accessGroup.String()
+}
+
+/*
+ * Create configure session
+ */
+func CreateConfigureSession(sessName string) string {
+	var configSession bytes.Buffer
+	configSession.WriteString(CONFIGURE_SESSION)
+	configSession.WriteString(" ")
+	configSession.WriteString(sessName)
+	configSession.WriteString(" ")
+
+	return configSession.String()
+}
+
+/*
+ * Remove configure session
+ */
+ func RemoveConfigureSession(sessName string) string {
+	var configSession bytes.Buffer
+	configSession.WriteString(NO_VALUE)
+	configSession.WriteString(" ")
+	configSession.WriteString(CONFIGURE_SESSION)
+	configSession.WriteString(" ")
+	configSession.WriteString(sessName)
+	configSession.WriteString(" ")
+
+	return configSession.String()
 }

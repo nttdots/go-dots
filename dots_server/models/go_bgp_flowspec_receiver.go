@@ -421,6 +421,8 @@ func (g *GoBgpFlowSpecReceiver) RegisterProtection(r *MitigationOrDataChannelACL
 		targetID,
 		targetType,
 		aclName,
+		"",
+		"",
 		g,
 		false,
 		time.Unix(0, 0),

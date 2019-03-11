@@ -68,6 +68,10 @@ type Protection interface {
 	TargetId() int64
 	TargetType() string
 	AclName() string
+	SessionName() string
+	SetSessionName(name string)
+	Action() string
+	SetAction(action string)
 	IsEnabled() bool
 	SetIsEnabled(b bool)
 	Type() ProtectionType
@@ -88,6 +92,8 @@ type ProtectionBase struct {
 	targetId          int64
 	targetType        string
 	aclName           string
+	sessionName       string
+	action            string
 	targetBlocker     Blocker
 	isEnabled         bool
 	startedAt         time.Time
@@ -115,6 +121,22 @@ func (p ProtectionBase) TargetType() string {
 
 func (p ProtectionBase) AclName() string {
 	return p.aclName
+}
+
+func (p ProtectionBase) SessionName() string {
+	return p.sessionName
+}
+
+func (p *ProtectionBase) SetSessionName(name string) {
+	p.sessionName = name
+}
+
+func (p ProtectionBase) Action() string {
+	return p.action
+}
+
+func (p *ProtectionBase) SetAction(action string) {
+	p.action = action
 }
 
 func (p ProtectionBase) TargetBlocker() Blocker {

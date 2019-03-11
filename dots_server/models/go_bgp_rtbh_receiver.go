@@ -335,6 +335,8 @@ func (g *GoBgpRtbhReceiver) RegisterProtection(r *MitigationOrDataChannelACL, ta
 			targetID,
 			targetType,
 			"",
+			"",
+			"",
 			g,
 			false,
 			time.Unix(0, 0),

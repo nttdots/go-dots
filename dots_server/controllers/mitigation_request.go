@@ -648,6 +648,8 @@ func cancelMitigationById(mitigationId int, clientIdentifier string, customerId 
 
 	// cancel
 	blocker := p.TargetBlocker()
+	sessName := string(common.RandStringBytes(10))
+	p.SetSessionName(sessName)
 	err = blocker.StopProtection(p)
 	if err != nil {
 		return Error{
@@ -752,6 +754,9 @@ func callBlockerByScope(scope *models.MitigationScope, c *models.Customer) (err 
 			scopeList.Blocker.UnregisterProtection(p)
 		})
 
+		sessName := string(common.RandStringBytes(10))
+		p.SetSessionName(sessName)
+		p.SetAction(models.COMMIT_VALUE)
 		// invoke the protection on the blocker
 		e = scopeList.Blocker.ExecuteProtection(p)
 		if e != nil {
@@ -846,6 +851,23 @@ func ManageExpiredMitigation(lifetimeInterval int) {
 	}
 }
 
+/*
+ * Create or update a mitigation from client PUT request
+ * Create mitigation: 
+ *     Have no any mitigation in DB that match with request customerId, cuid and mid.
+ *     If request trigger-mitigation is true (active) -> activate mitigation else not activate
+ * Update mitigation:
+ *     Have a mitigation in DB that match with request customerId, cuid and mid.
+ *     Compare value between request trigger-mitigation and current mitigation status to activate or deactivate the mitigation
+ * parameter:
+ *  body             the request body data
+ *  customer         the customer
+ *  currentScope     the current mitigation
+ *  isIfMatchOption  the boolead of presenting if-match option 
+ * return:
+ *  conflictInformation  the conflict information in case collision
+ *  error                the error
+ */
 func CreateMitigation(body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope, isIfMatchOption bool) (*models.ConflictInformation, error) {
 
 	// Create new mitigation scope from body request
@@ -886,11 +908,12 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 
 	// cancel mitigation scope when update mitigation
 	if currentScope != nil && currentScope.IsActive() {
-		// Cannot rollback :P
-		err = cancelMitigationByModel(currentScope, body.EffectiveClientIdentifier(), customer)
-		if err != nil {
-			log.WithError(err).Error("MitigationRequest.Put")
-			return nil, err
+		// Cancel blocker asynchronously only in case blocker type is Arista ACL
+		if blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_RTBH || blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_FLOWSPEC {
+			err = handleCancelBlocker(currentScope.MitigationId, body.EffectiveClientIdentifier(), customer.Id, currentScope.MitigationScopeId)
+			if err != nil { return nil, err }
+		} else if blockerConfig.BlockerType == models.BLOCKER_TYPE_GO_ARISTA {
+			go handleCancelBlocker(currentScope.MitigationId, body.EffectiveClientIdentifier(), customer.Id, currentScope.MitigationScopeId)
 		}
 	}
 	
@@ -913,32 +936,14 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 		// Append aliases data to mitigation scopes before sending to GoBGP server
 		appendAliasParametersToRequest(aliases, &body.MitigationScope.Scopes[0])
 
-		err = callBlocker(body, customer, requestScope.MitigationScopeId, blockerConfig.BlockerType)
-		if err != nil {
-			if err.Error() == models.ValidationError {
-				log.Warn("MitigationRequest.Put callBlocker validation failed",)
-				return nil, err
-			}
-			log.Errorf("MitigationRequest.Put callBlocker error: %s\n", err)
-			UpdateMitigationStatus(customer.Id, mitigationScope.ClientIdentifier, mitigationScope.MitigationId,
-				mitigationScope.Id, models.Terminated, false)
-			return nil, err
+		// Call blocker asynchronously only in case blocker type is Arista ACL
+		if blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_RTBH || blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_FLOWSPEC {
+			err = handleCallBlocker(customer, currentScope, requestScope, body, blockerConfig.BlockerType)
+			if err != nil { return nil, err }
+		} else if blockerConfig.BlockerType == models.BLOCKER_TYPE_GO_ARISTA {
+			go handleCallBlocker(customer, currentScope, requestScope, body, blockerConfig.BlockerType)
 		}
-
-		// Set Status to InProgress
-		if currentScope == nil || (currentScope != nil && currentScope.TriggerMitigation == false){
-			err = UpdateMitigationStatus(customer.Id, requestScope.ClientIdentifier, requestScope.MitigationId,
-				requestScope.MitigationScopeId, models.SuccessfullyMitigated, false)
-			if err != nil {
-				return nil, err
-			}
-			// Activate data channel acl with activationType = 'activate-when-mitigating'
-			err = ActivateDataChannelACL(customer, requestScope.ClientIdentifier)
-			if err != nil {
-				log.Errorf("Activate the data channel ACL failed. Error: %+v", err)
-				return nil, err
-			}
-		}
+		
 	} else {
 		err = DeActivateDataChannelACL(customer.Id, requestScope.ClientIdentifier)
 		if err != nil {
@@ -970,43 +975,48 @@ func UpdateMitigationStatus(customerId int, cuid string, mid int, mitigationScop
 		return err
 	}
 
-	customer, err := models.GetCustomerById(customerId)
-	if err != nil {
-		log.WithError(err).Error("Failed to get Customer.")
-		return err
-	}
-
-	// Get alias data from data channel
-	aliases, err := data_controllers.GetDataAliasesByName(customer, cuid, currentScope.AliasName.List())
-	if err != nil {
-		return err
-	}
-
-	// Append alias data to new mitigation scope
-	err = appendAliasesDataToMitigationScope(aliases, currentScope)
-	if err != nil {
-		return err
-	}
-
 	if currentScope == nil {
 		log.Errorf("Mitigation with id %+v is not found.", mitigationScopeId)
 		return err
 	} else {
-		// Check active protection or ignore check
+		// Get alias data from data channel
+		aliases, err := data_controllers.GetDataAliasesByName(currentScope.Customer, cuid, currentScope.AliasName.List())
+		if err != nil {
+			return err
+		}
+
+		// Append alias data to new mitigation scope
+		err = appendAliasesDataToMitigationScope(aliases, currentScope)
+		if err != nil {
+			return err
+		}
+			// Check active protection or ignore check
 		if isCheckActiveProtection {
+			// Get blocker configuration by customerId and target_type in table blocker_configuration
+			blockerConfig, err := models.GetBlockerConfiguration(currentScope.Customer.Id, string(messages.MITIGATION_REQUEST_ACL))
+			if err != nil {
+				log.Errorf("Failed to get blocker configuration.")
+				return err
+			}
+
 			// Cancel protection if the current mitigation is active => deactivate mitigation
 			if currentScope.IsActive() && !models.IsActive(newStatus) {
-				err = cancelMitigationById(currentScope.MitigationId, currentScope.ClientIdentifier, currentScope.Customer.Id, currentScope.MitigationScopeId)
-				if err != nil {
-					log.WithError(err).Error("Cancel blocker error.")
-					return err
+				// Cancel blocker asynchronously only in case blocker type is Arista ACL
+				if blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_RTBH || blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_FLOWSPEC {
+					err = handleCancelBlocker(currentScope.MitigationId, currentScope.ClientIdentifier, currentScope.Customer.Id, currentScope.MitigationScopeId)
+					if err != nil { return err }
+				} else if blockerConfig.BlockerType == models.BLOCKER_TYPE_GO_ARISTA {
+					go handleCancelBlocker(currentScope.MitigationId, currentScope.ClientIdentifier, currentScope.Customer.Id, currentScope.MitigationScopeId)
 				}
+				
 			} else if !currentScope.IsActive() && models.IsActive(newStatus) {
 				// CallBlocker to third party => activate mitigation
-				err = callBlockerByScope(currentScope, customer)
-				if err != nil {
-					log.WithError(err).Error("Call blocker error.")
-					return err
+				// Call blocker asynchronously only in case blocker type is Arista ACL
+				if blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_RTBH || blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_FLOWSPEC {
+					err = handleCallBlocker(currentScope.Customer, currentScope, nil, nil, blockerConfig.BlockerType)
+					if err != nil { return err }
+				} else if blockerConfig.BlockerType == models.BLOCKER_TYPE_GO_ARISTA {
+					go handleCallBlocker(currentScope.Customer, currentScope, nil, nil, blockerConfig.BlockerType)
 				}
 			}
 		}
@@ -1022,11 +1032,10 @@ func UpdateMitigationStatus(customerId int, cuid string, mid int, mitigationScop
 			log.WithError(err).Error("MitigationScope update error.")
 			return err
 		}
-	}
-
-	// Remove Active Mitigation from ManageList
-	if newStatus == models.Terminated {
-		models.RemoveActiveMitigationRequest(currentScope.MitigationScopeId)
+	    // Remove Active Mitigation from ManageList
+		if newStatus == models.Terminated {
+			models.RemoveActiveMitigationRequest(currentScope.MitigationScopeId)
+		}
 	}
 	return nil
 }
@@ -1057,6 +1066,82 @@ func DeleteMitigation(customerId int, cuid string, mid int, mitigationScopeId in
 		log.Warnf("DeActivate data channel acl error: %+v", err)
 		return
 	}
+	return nil
+}
+
+/*
+ * Call Blocker for mitigation and update status
+ * parameter:
+ *  customer      the customer
+ *  currentScope  the current mitigation
+ *  requestScope  the request mitigation
+ *  body          the request body data
+ *  blockerType   the blocker type
+ * return:
+ *  err           the error
+ */
+func handleCallBlocker(customer *models.Customer, currentScope *models.MitigationScope,
+	requestScope *models.MitigationScope, body *messages.MitigationRequest, blockerType string) (err error) {
+
+	// Call Blocker in case client send PUT request
+	if body != nil {
+		err = callBlocker(body, customer, requestScope.MitigationScopeId, blockerType)
+	} else {
+	// Call Blocker in case changing mitigation status from inactive to active
+		err = callBlockerByScope(currentScope, customer)
+	}
+
+	// If error occur when Call Blocker -> rollback by updating mitigation status to 7 (withdrawn)
+	if err != nil {
+		if err.Error() == models.ValidationError {
+			log.Warn("MitigationRequest.Put callBlocker validation failed",)
+			return err
+		}
+		log.WithError(err).Error("Mitigation Call Blocker error")
+		UpdateMitigationStatus(customer.Id, requestScope.ClientIdentifier, requestScope.MitigationId,
+			requestScope.MitigationScopeId, models.Withdrawn, false)
+		return err
+	}
+
+
+	// Set Status to InProgress
+	if currentScope == nil || (currentScope != nil && currentScope.TriggerMitigation == false){
+		err = UpdateMitigationStatus(customer.Id, requestScope.ClientIdentifier, requestScope.MitigationId,
+			requestScope.MitigationScopeId, models.SuccessfullyMitigated, false)
+		if err != nil {
+			return err
+		}
+		// Activate data channel acl with activationType = 'activate-when-mitigating'
+		err = ActivateDataChannelACL(customer, requestScope.ClientIdentifier)
+		if err != nil {
+			log.Errorf("Activate the data channel ACL failed. Error: %+v", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+/*
+ * Cancel Blocker for mitigation when mitigation status is changed
+ * parameter:
+ *  customerId    the customer id
+ *  cuid          the client identification
+ *  mid           the mitigation id
+ *  scopeId       the mitigation scope id
+ * return:
+ *  err           the error
+ */
+func handleCancelBlocker(customerId int, cuid string, mid int, scopeId int64) (err error) {
+	// Cancel Blocker
+	err = cancelMitigationById(mid, cuid, customerId, scopeId)
+	// If error occur when Cancel Blocker -> rollback by updating mitigation status to 7 (withdrawn)
+	if err != nil {
+		log.WithError(err).Error("Mitigation Cancel Blocker error")
+		UpdateMitigationStatus(customerId, cuid, mid, scopeId, models.Withdrawn, false)
+		return err
+	}
+
 	return nil
 }
 

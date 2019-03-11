@@ -11,6 +11,7 @@ import (
   "github.com/nttdots/go-dots/dots_server/db_models/data"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_common/messages"
+  "github.com/nttdots/go-dots/dots_common"
 )
 
 type ACL struct {
@@ -225,6 +226,8 @@ func CallBlocker(acls []ACL, customerID int) (err error){
     counter++
   }
 
+  sessName := string(dots_common.RandStringBytes(10))
+
   // loop until we can obtain just enough blockers for the data channel acl
 	for counter > 0 {
 		select {
@@ -248,6 +251,13 @@ func CallBlocker(acls []ACL, customerID int) (err error){
       aclList.Blocker.UnregisterProtection(p)
       })
 
+      action := models.EXIT_VALUE
+      if counter == 1 {
+        action = models.COMMIT_VALUE
+      }
+
+      p.SetSessionName(sessName)
+      p.SetAction(action)
 			// invoke the protection on the blocker
 			e = aclList.Blocker.ExecuteProtection(p)
 			if e != nil {
@@ -304,7 +314,9 @@ func CancelBlocker(aclID int64, activationType types.ActivationType) (err error)
 	}
 
 	// cancel
-	blocker := p.TargetBlocker()
+  blocker := p.TargetBlocker()
+  sessName := string(dots_common.RandStringBytes(10))
+  p.SetSessionName(sessName)
 	err = blocker.StopProtection(p)
 	if err != nil {
 		return err

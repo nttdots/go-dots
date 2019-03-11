@@ -10,7 +10,6 @@ import (
 
   messages "github.com/nttdots/go-dots/dots_common/messages/data"
   types "github.com/nttdots/go-dots/dots_common/types/data"
-  messages_common "github.com/nttdots/go-dots/dots_common/messages"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_server/models/data"
@@ -137,17 +136,6 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
           // handle error when call blocker failed
           // Rollback
           for _, acl := range acls {
-            // Get active protection
-            p, err := models.GetActiveProtectionByTargetIDAndTargetType(acl.Id, string(messages_common.DATACHANNEL_ACL))
-            if err != nil {
-              return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get acl protection")
-            }
-
-            // Deactivate and Delete all active ACL
-            if p != nil {
-              // Cancel blocker for active ACL
-              data_models.CancelBlocker(acl.Id, *acl.ACL.ActivationType)
-            }
             data_models.DeleteACLByName(tx, client.Id, acl.ACL.Name, now)
           }
           return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to call blocker")
