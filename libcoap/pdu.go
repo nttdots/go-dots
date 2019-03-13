@@ -10,6 +10,7 @@ import "sort"
 import "strings"
 import "unsafe"
 import "reflect"
+import "net/http"
 import log "github.com/sirupsen/logrus"
 
 type Type uint8
@@ -359,8 +360,8 @@ func (pdu *Pdu) SetOption(key OptionKey, val interface{}) {
  * return CoapCode:
  *  CoapCode: full coap code that user can easy to read and understand (Ex: 2.01 Created)
  */
-func (pdu *Pdu) CoapCode(code Code) CoapCode {
-    switch code {
+func (pdu *Pdu) CoapCode() CoapCode {
+    switch pdu.Code {
         case ResponseCreated:              return CoapCreated
         case ResponseDeleted:              return CoapDeleted
         case ResponseValid:                return CoapValid
@@ -385,4 +386,36 @@ func (pdu *Pdu) CoapCode(code Code) CoapCode {
         case ResponseProxyingNotSupported: return CoapProxyingNotSupported
     }
     return CoapCode("")
+}
+
+/**
+ * Parse pdu libcoap code to http status code for response api
+ * Reference: https://tools.ietf.org/id/draft-ietf-core-http-mapping-01.html
+ */
+func (code Code) HttpCode() int {
+	switch code {
+        case ResponseCreated:              return http.StatusCreated
+        case ResponseDeleted:              return http.StatusNoContent
+        case ResponseValid:                return http.StatusNotModified
+        case ResponseChanged:              return http.StatusOK
+        case ResponseContent:              return http.StatusOK
+        case ResponseBadRequest:           return http.StatusBadRequest
+        case ResponseUnauthorized:         return http.StatusUnauthorized
+        case ResponseBadOption:            return http.StatusBadRequest
+        case ResponseForbidden:            return http.StatusForbidden
+        case ResponseNotFound:             return http.StatusNotFound
+        case ResponseMethodNotAllowed:     return http.StatusBadRequest
+        case ResponseNotAcceptable:        return http.StatusNotAcceptable
+        case ResponseConflict:             return http.StatusConflict
+        case ResponsePreconditionFailed:   return http.StatusPreconditionFailed
+        case RequestEntityTooLarge:        return http.StatusRequestEntityTooLarge
+        case ResponseUnsupportedMediaType: return http.StatusUnsupportedMediaType
+        case ResponseInternalServerError:  return http.StatusInternalServerError
+        case ResponseNotImplemented:       return http.StatusNotImplemented
+        case ResponseBadGateway:           return http.StatusBadGateway
+        case ResponseServiceUnavailable:   return http.StatusServiceUnavailable
+        case ResponseGatewayTimeout:       return http.StatusGatewayTimeout
+        case ResponseProxyingNotSupported: return http.StatusBadGateway
+    }
+    return 0
 }

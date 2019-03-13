@@ -23,7 +23,7 @@ import (
 type RequestInterface interface {
 	LoadJson([]byte) error
 	CreateRequest()
-	Send()
+	Send() Response
 }
 
 /*
@@ -40,6 +40,14 @@ type Request struct {
 
 	env         *task.Env
 	options     map[messages.Option]string
+}
+
+/*
+ * Dots response
+ */
+type Response struct {
+	StatusCode libcoap.Code
+	data       []byte
 }
 
 /*
@@ -204,13 +212,21 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu) 
 	if isMoreBlock {
 		r.pdu.MessageID = r.env.CoapSession().NewMessageID()
 		r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
-		r.Send()
+
+		// Add block2 option for waiting for response
+		r.options[messages.BLOCK2] = block.ToString()
+		task.SetMessage(r.pdu)
+		r.env.Run(task)
 	} else {
 		if eTag != nil && block.NUM > 0 {
 			response.Data = r.env.GetBlockData(*eTag)
 			delete(r.env.Blocks(), *eTag)
 		}
-		r.logMessage(response)
+
+		// Skip set analyze response data if it is the ping response
+		if response.Code != 0 {
+			task.AddResponse(response)
+		}
 	}
 	// If this is response of session config Get without abnormal, restart ping task with latest parameters
 	if (r.requestName == "session_configuration") && (r.method == "GET") &&
@@ -229,14 +245,16 @@ func handleTimeout(task *task.MessageTask, request map[string] *task.MessageTask
 
 /*
  * Send the request to the server.
-*/
-func (r *Request) Send() {
+ */
+func (r *Request) Send() (res Response) {
 	var interval = 0
 	var retry = 0
 	var timeout = 0
 	if r.pdu.Type == libcoap.TypeNon {
 		interval = 2
 		retry = 2
+		timeout = 10
+	} else if r.pdu.Type == libcoap.TypeCon {
 		timeout = 10
 	}
 	task := task.NewMessageTask(
@@ -249,14 +267,30 @@ func (r *Request) Send() {
 		handleTimeout)
 
 	r.env.Run(task)
+
+	// Waiting for response after send a request
+	pdu := r.env.WaitingForResponse(task)
+	data := r.analyzeResponseData(pdu)
+
+	if pdu == nil {
+		str := "Request timeout"
+		res = Response{ libcoap.ResponseInternalServerError, []byte(str) }
+	} else {
+		res = Response{ pdu.Code, data }
+	}
+	return
 }
 
-func (r *Request) logMessage(pdu *libcoap.Pdu) {
+func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 	var err error
 	var logStr string
 
-	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
-	maxAgeRes:= pdu.GetOptionStringValue(libcoap.OptionMaxage)
+	if pdu == nil {
+		return
+	}
+
+	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
+	maxAgeRes := pdu.GetOptionStringValue(libcoap.OptionMaxage)
 	if maxAgeRes != "" {
 		log.Infof("Max-Age Option: %v", maxAgeRes)
 	}
@@ -285,32 +319,47 @@ func (r *Request) logMessage(pdu *libcoap.Pdu) {
 		case "GET":
 			var v messages.MitigationResponse
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
 		case "PUT":
 			var v messages.MitigationResponsePut
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
 		default:
 			var v messages.MitigationRequest
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
 		}
 	case "session_configuration":
 		if r.method == "GET" {
 			var v messages.ConfigurationResponse
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
 		} else {
 			var v messages.SignalConfigRequest
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
 		}
 	}
 	if err != nil {
-		log.WithError(err).Warn("CBOR Decode failed.")
+		log.WithError(err).Warn("Parse object to JSON failed.")
 		return
 	}
 	log.Infof("        CBOR decoded: %s", logStr)
+	return
+
+CBOR_DECODE_FAILED:
+	log.WithError(err).Warn("CBOR Decode failed.")
+	return
 }
 
 func RestartPingTask(pdu *libcoap.Pdu, env *task.Env) {
@@ -391,7 +440,7 @@ func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu)
  *    env: env session config
  */
 func sessionConfigResponseHandler (t *task.SessionConfigTask, pdu *libcoap.Pdu, env *task.Env) {
-	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
+	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
 	maxAgeRes,_ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
 	log.Infof("Max-Age Option: %v", maxAgeRes)
 	log.Infof("        Raw payload: %s", pdu.Data)

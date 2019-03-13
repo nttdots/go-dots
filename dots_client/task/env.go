@@ -9,7 +9,8 @@ import (
     client_message "github.com/nttdots/go-dots/dots_client/messages"
     "bytes"
     "strings"
-	"encoding/hex"
+    "encoding/hex"
+    "time"
 	"github.com/ugorji/go/codec"
     "github.com/nttdots/go-dots/dots_common"
     "github.com/nttdots/go-dots/dots_common/messages"
@@ -275,12 +276,30 @@ func (env *Env) isTokenExist(key []byte) (bool) {
 }
 
 /*
+ * Waiting for response that received from server after sending request successfully
+ * parameter:
+ *   task: the request task
+ * return:
+ *   pdu:  the response data
+ */
+func (env *Env) WaitingForResponse(task *MessageTask) (pdu *libcoap.Pdu) {
+    timeout := time.After(task.timeout)
+    select {
+    case pdu := <-task.response:
+        return pdu
+    case <- timeout:
+        log.Warnf("<<Waiting for response timeout>>")
+        return nil
+    }
+}
+
+/*
  * Print log of notification when observe the mitigation
  * parameter:
  *  pdu response pdu notification
  */
 func LogNotification(pdu *libcoap.Pdu) {
-    log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
+    log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
 
 	if pdu.Data == nil {
 		return
