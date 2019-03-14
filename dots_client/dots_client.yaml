@@ -14,3 +14,9 @@ initialRequestBlockSize : 5
 # Client request without the block2 option at the first time.
 # If client does not accept with the recommended block size from server, client can send a request with block2 option (new block size)
 secondRequestBlockSize: 3
+
+# The restful api configuration for dots_client
+# If an external system want to connect to go-dots server, it must access to the dots_client by client restful api with configured port and prefixPath
+restfulApiAddress: ":"
+restfulApiPort: 4545
+restfulApiPath: /go-dots/v1

@@ -50,6 +50,10 @@ Currenly supported libcoap version : 1eadd91
     $ ./configure --disable-documentation --with-openssl
     $ make
     $ sudo make install
+
+### Install gorilla-mux for go-dots client router to handle RESTful API
+
+    $ go get -u github.com/gorilla/mux
     
 ### Install go-dots
 To install go-dots source codes and command line programs, use the following command:
