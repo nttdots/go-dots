@@ -249,7 +249,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         log.Debugf("response.Data=\n%s", hex.Dump(payload))
         if response.Type != libcoap.TypeNon || response.Code != libcoap.ResponseContent {
             // add content type cbor
-            response.SetOption(libcoap.OptionContentType, uint16(libcoap.AppCbor))
+            response.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppCbor))
         }
 
         // add initial observe
