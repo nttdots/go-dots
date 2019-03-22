@@ -229,15 +229,3 @@ func (context *Context) EnableResourceDirty(query string) (resource *Resource) {
     }
     return
 }
-
-/*
- * Check if there is resource that removable => remove it
- */
-func (context *Context) CheckRemovableResources() {
-    for _, resource := range resources {
-        if resource.isRemovable == true {
-            log.Debugf("Delete the sub-resource (uri-path=%+v)", resource.UriPath())
-            context.DeleteResource(resource)
-        }
-    }
-}

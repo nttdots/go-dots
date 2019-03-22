@@ -152,3 +152,28 @@ int coap_check_subscribers(coap_resource_t *resource) {
 int coap_check_dirty(coap_resource_t *resource) {
     return resource->dirty;
 }
+
+// Get token from subcribers
+char* coap_get_token_subscribers(coap_resource_t *resource) {
+    coap_subscription_t *subscriber = resource->subscribers;
+    if (subscriber != NULL) {
+        return subscriber->token;
+    }
+    return (char*)0;
+}
+
+// Get size of block 2 from subcribers
+int coap_get_size_block2_subscribers(coap_resource_t *resource) {
+    coap_subscription_t *subscriber = resource->subscribers;
+    if (subscriber != NULL) {
+        coap_block_t block2 = subscriber->block2;
+        return block2.szx;
+    }
+    return 0;
+}
+
+// create coap_block_t
+coap_block_t coap_create_block(unsigned int num, unsigned int m, unsigned int size) {
+   coap_block_t block = { num, m, size };
+   return block;
+}

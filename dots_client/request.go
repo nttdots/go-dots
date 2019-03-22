@@ -156,18 +156,22 @@ func (r *Request) CreateRequest() {
 		if observe == uint16(messages.Register) || observe == uint16(messages.Deregister) {
 			r.pdu.SetOption(libcoap.OptionObserve, observe)
 			queryString := task.QueryParamsToString(r.queryParams)
-			token := r.env.GetToken(queryString)
+			token, _ := r.env.GetTokenAndRequestQuery(queryString)
+
+			// if observe is register, add request query with token as key and value (query = query of request, countMitigation = nil, isNotification = false)
+			// if observe is deregister, remove query request
 			if observe == uint16(messages.Register) {
 				if token != nil {
 					r.pdu.Token = token
 				} else {
-					r.env.AddToken(r.pdu.Token, queryString)
+					reqQuery := task.RequestQuery{ queryString, nil }
+					r.env.AddRequestQuery(string(r.pdu.Token), &reqQuery)
 				}
 			} else {
 				if token != nil {
 					r.pdu.Token = token
+					r.env.RemoveRequestQuery(string(token))
 				}
-				r.env.RemoveToken(queryString)
 			}
 		}
 	}
@@ -212,6 +216,7 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu) 
 	if isMoreBlock {
 		r.pdu.MessageID = r.env.CoapSession().NewMessageID()
 		r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+		r.pdu.SetOption(libcoap.OptionEtag, uint32(*eTag))
 
 		// Add block2 option for waiting for response
 		r.options[messages.BLOCK2] = block.ToString()
@@ -219,8 +224,12 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu) 
 		r.env.Run(task)
 	} else {
 		if eTag != nil && block.NUM > 0 {
-			response.Data = r.env.GetBlockData(*eTag)
-			delete(r.env.Blocks(), *eTag)
+			blockKey := strconv.Itoa(*eTag) + string(response.Token)
+			response = r.env.GetBlockData(blockKey)
+			delete(r.env.Blocks(), blockKey)
+		}
+		if response.Type == libcoap.TypeNon {
+			log.Debugf("Success incoming PDU(HandleResponse): %+v", response)
 		}
 
 		// Skip set analyze response data if it is the ping response
@@ -322,6 +331,8 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			if err != nil { goto CBOR_DECODE_FAILED }
 			data, err = json.Marshal(v)
 			logStr = v.String()
+			r.env.SetCountMitigation(v, string(pdu.Token))
+			log.Debugf("Request query with token as key in map: %+v", r.env.GetAllRequestQuery())
 		case "PUT":
 			var v messages.MitigationResponsePut
 			err = dec.Decode(&v)

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"time"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
@@ -123,7 +124,29 @@ func main() {
 			e.Handle(env)
 		default:
 			signalCtx.RunOnce(time.Duration(100) * time.Millisecond)
-			signalCtx.CheckRemovableResources()
+			CheckDeleteMitigationAndRemovableResource(signalCtx)
 		}
 	}
+}
+
+/*
+ * Check delete mitigation and removable resource
+ */
+func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
+	for _, resource := range libcoap.GetAllResource() {
+        if resource.GetRemovableResource() == true && resource.GetIsBlockwiseInProgress() == false {
+			_, cuid, mid, err := controllers.ParseURIPath(strings.Split(resource.UriPath(), "/"))
+			if err != nil {
+				log.Warnf("Failed to parse Uri-Path, error: %s", err)
+			}
+
+			customerId := resource.GetCustomerId()
+			if mid != nil && customerId != nil {
+				controllers.DeleteMitigation(*customerId, cuid, *mid, 0)
+			}
+
+			log.Debugf("Delete the sub-resource (uri-path=%+v)", resource.UriPath())
+            context.DeleteResource(resource)
+        }
+    }
 }

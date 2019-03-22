@@ -74,3 +74,6 @@ void coap_set_dirty(coap_resource_t *resource, char *query, int length);
 
 int coap_check_subscribers(coap_resource_t *resource);
 int coap_check_dirty(coap_resource_t *resource);
+char* coap_get_token_subscribers(coap_resource_t *resource);
+int coap_get_size_block2_subscribers(coap_resource_t *resource);
+coap_block_t coap_create_block(unsigned int num, unsigned int m, unsigned int size);
