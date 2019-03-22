@@ -215,6 +215,8 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu) 
 			blockKey := strconv.Itoa(*eTag) + string(response.Token)
 			response = r.env.GetBlockData(blockKey)
 			delete(r.env.Blocks(), blockKey)
+		}
+		if response.Type == libcoap.TypeNon {
 			log.Debugf("Success incoming PDU(HandleResponse): %+v", response)
 		}
 		r.logMessage(response)

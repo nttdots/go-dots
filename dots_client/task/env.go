@@ -290,6 +290,12 @@ func (env *Env) logNotification(task *MessageTask, pdu *libcoap.Pdu) {
 
     var err error
     var logStr string
+    var req *libcoap.Pdu
+    if task != nil {
+        req = task.message
+    } else {
+        req = nil
+    }
 
     observe, err := pdu.GetOptionIntegerValue(libcoap.OptionObserve)
     if err != nil {
@@ -309,7 +315,6 @@ func (env *Env) logNotification(task *MessageTask, pdu *libcoap.Pdu) {
         var v messages.MitigationResponse
         err = dec.Decode(&v)
         logStr = v.String()
-        req := task.message
         env.UpdateCountMitigation(req, v, string(pdu.Token))
         log.Debugf("Request query with token as key in map: %+v", env.requestQueries)
     } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
@@ -565,8 +570,6 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
         // The notification indicate that a mitigation is created
         lenScopeReq := *queryReq.CountMitigation + 1
         queryReq.CountMitigation = &lenScopeReq
-    } else {
-        log.Warnf("Cannot find any RequestQuery and Token with query: %+v", query)
     }
 
     log.Debugf("The current number of observed mitigations is changed to: %+v", *queryReq.CountMitigation)
