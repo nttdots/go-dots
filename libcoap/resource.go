@@ -12,6 +12,8 @@ type Resource struct {
     ptr      *C.coap_resource_t
     handlers map[Code]MethodHandler
     isRemovable bool
+    isBlockwiseInProgress bool
+    customerId   *int
 }
 
 type ResourceFlags int
@@ -25,6 +27,10 @@ type Attr struct {
 }
 
 var resources = make(map[*C.coap_resource_t] *Resource)
+
+func GetAllResource() map[*C.coap_resource_t] *Resource {
+    return resources
+}
 
 func cstringOrNil(s *string) (*C.char, int) {
     if s == nil {
@@ -41,7 +47,7 @@ func ResourceInit(uri *string, flags ResourceFlags) *Resource {
     uripath := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(curi)), C.size_t(urilen))
     ptr := C.coap_resource_init(uripath, C.int(flags) | C.COAP_RESOURCE_FLAGS_RELEASE_URI)
 
-    resource := &Resource{ ptr, make(map[Code]MethodHandler), false }
+    resource := &Resource{ ptr, make(map[Code]MethodHandler), false, false, nil}
     resources[ptr] = resource
     return resource
 }
@@ -50,7 +56,7 @@ func ResourceUnknownInit() *Resource {
 
 	ptr := C.coap_resource_unknown_init(nil)
 
-	resource := &Resource{ ptr, make(map[Code]MethodHandler), false }
+	resource := &Resource{ ptr, make(map[Code]MethodHandler), false, false, nil}
 	resources[ptr] = resource
 	return resource
 
@@ -116,7 +122,7 @@ func (context *Context) GetResourceByQuery(query *string) (res *Resource) {
     return nil
 }
 
-func (resource *Resource) AddObserver(session *Session, query *string, token []byte) {
+func (resource *Resource) AddObserver(session *Session, query *string, token []byte, sizeBlock *int) {
     temp := string(token)
     tokenStr := &C.coap_binary_t{}
     tokenStr.s = (*C.uint8_t)(unsafe.Pointer(C.CString(temp)))
@@ -125,7 +131,12 @@ func (resource *Resource) AddObserver(session *Session, query *string, token []b
     if cquery == nil { return }
     queryStr := C.coap_new_string(C.size_t(clen))
     queryStr.s = (*C.uint8_t)(unsafe.Pointer(cquery))
-    C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, 0, C.coap_block_t{})
+    if sizeBlock == nil {
+        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, 0, C.coap_block_t{})
+    } else {
+        block2 := C.coap_create_block(0, 0, C.uint(*sizeBlock))
+        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, 1, block2)
+    }
 }
 
 func (resource *Resource) DeleteObserver(session *Session, token []byte) {
@@ -138,6 +149,18 @@ func (resource *Resource) DeleteObserver(session *Session, token []byte) {
 
 func (resource *Resource) ToRemovableResource() {
     resource.isRemovable = true
+}
+
+func (resource *Resource) GetRemovableResource() bool {
+    return resource.isRemovable
+}
+
+func (resource *Resource) SetIsBlockwiseInProgress(isInProgress bool) {
+    resource.isBlockwiseInProgress = isInProgress
+}
+
+func (resource *Resource) GetIsBlockwiseInProgress() bool {
+    return resource.isBlockwiseInProgress
 }
 
 func (resource *Resource) UriPath() string {
@@ -164,4 +187,34 @@ func (resource *Resource) IsNotifying() bool {
     } else {
         return false
     }
+}
+
+/*
+ * Get token from subscribers
+ */
+func (resource *Resource) GetTokenFromSubscribers() []byte {
+    token := C.GoString(C.coap_get_token_subscribers(resource.ptr))
+    return []byte(token)
+}
+
+/*
+ * Get size block2 from subscribers
+ */
+func (resource *Resource) GetSizeBlock2FromSubscribers() int {
+    size := C.coap_get_size_block2_subscribers(resource.ptr)
+    return int(size);
+}
+
+/*
+ * Set customerId
+ */
+func (resource *Resource) SetCustomerId(id *int) {
+    resource.customerId = id
+}
+
+/*
+ * Get customerId
+ */
+func (resource *Resource) GetCustomerId() *int {
+   return resource.customerId
 }

@@ -255,6 +255,16 @@ func (pdu *Pdu) Path() []string {
     return ret
 }
 
+func (pdu *Pdu) QueryParams() []string {
+    ret := make([]string, 0)
+    for _, o := range pdu.Options {
+        if o.Key == OptionUriPath && strings.Contains(o.String(), "=") {
+            ret = append(ret, o.String())
+        }
+    }
+    return ret
+}
+
 func (pdu *Pdu) PathString() string {
     return strings.Join(pdu.Path(), "/")
 }
