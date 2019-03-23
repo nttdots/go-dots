@@ -4,7 +4,7 @@ import "time"
 
 type BlockerConfiguration struct {
 	Id               int64     `xorm:"'id' pk autoincr"`
-	CustomerId       int64     `xorm:"'customer_id' not null"`
+	CustomerId       int       `xorm:"'customer_id' not null"`
 	TargetType       string    `xorm:"'target_type' not null"`
 	BlockerType      string    `xorm:"'blocker_type' not null"`
 	Created          time.Time `xorm:"created"`
