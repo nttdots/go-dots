@@ -5,7 +5,7 @@ DROP TABLE IF EXISTS `blocker`;
 
 CREATE TABLE `blocker` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `type` VARCHAR(20) NOT NULL,
+  `blocker_type` VARCHAR(255) NOT NULL,
   `capacity` int(11) NOT NULL,
   `load` int(11) NOT NULL,
   `created` datetime DEFAULT NULL,
