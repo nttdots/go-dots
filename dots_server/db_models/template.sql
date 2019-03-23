@@ -573,9 +573,38 @@ CREATE TABLE `blocker_configuration` (
   `customer_id`       int(11) NOT NULL,
   `target_type`       VARCHAR(255) NOT NULL,
   `blocker_type`      VARCHAR(255) NOT NULL,
-  `arista_connection` VARCHAR(255),
-  `arista_interface`  VARCHAR(255),
   `created`           datetime DEFAULT NULL,
   `updated`           datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# blocker_configuration_parameter
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `blocker_configuration_parameter`;
+
+CREATE TABLE `blocker_configuration_parameter` (
+  `id`                       bigint(20) NOT NULL AUTO_INCREMENT,
+  `blocker_configuration_id` int(11) NOT NULL,
+  `key`                      VARCHAR(255) NOT NULL,
+  `value`                    VARCHAR(255) NOT NULL,
+  `created`                  datetime DEFAULT NULL,
+  `updated`                  datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+# flow_spec_parameter
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `flow_spec_parameter`;
+
+CREATE TABLE `flow_spec_parameter` (
+  `id`                  bigint(20)   NOT NULL AUTO_INCREMENT,
+  `protection_id`       bigint(20)   NOT NULL,
+  `flow_type`           varchar(255) NOT NULL,
+  `flow_specification`  text         NOT NULL,
+  `created`             datetime DEFAULT NULL,
+  `updated`             datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
