@@ -150,7 +150,7 @@ func pingTimeoutHandler(_ *PingMessageTask, env *Env) {
 
 	if !env.IsHeartbeatAllowed() {
 		log.Debug("Exceeded missing_hb_allowed. Stop ping task...")
-        
+
         // Get dot peer common name from current session
         cn, err := env.session.DtlsGetPeerCommonName()
         if err != nil {
@@ -174,8 +174,8 @@ func pingTimeoutHandler(_ *PingMessageTask, env *Env) {
         }
         env.session.SetIsPingTask(false)
 
-        log.Debugf("DTLS session: %+v has already disconnected. Terminate session...", env.session.String())
-        env.session.TerminateConnectingSession(env.context)
+        // log.Debugf("DTLS session: %+v has already disconnected. Terminate session...", env.session.String())
+        // env.session.TerminateConnectingSession(env.context)
         return
     }
     log.Debugf("[Session Mngt Thread]: Re-send ping message (id = %+v) to check client connection", env.pingMessageTask.message.MessageID)
