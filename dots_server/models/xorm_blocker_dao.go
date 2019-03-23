@@ -463,6 +463,11 @@ func GetBlockerConfiguration(customerId int, targetType string) (blockerConfigur
 		return
 	}
 
+    if (blockerConfig.CustomerId != customerId) {
+        err = errors.New(fmt.Sprintf("No blocker found. customerId: %d targetType: %s", customerId, targetType))
+        return
+    }
+
 	blockerConfiguration = &blockerConfig
 
 	return blockerConfiguration, nil
