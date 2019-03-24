@@ -438,7 +438,7 @@ func toBlocker(blocker db_models.Blocker, blockerConfig *db_models.BlockerConfig
 		b = NewGoAristaReceiver(base, configParamMap)
 	default:
 		err = errors.New(fmt.Sprintf("invalid blocker type: %s", blocker.BlockerType))
-		return
+		return nil, err
 	}
 
 	log.Debugf("toBlocker result: [%T] %+v", b, b)
@@ -453,19 +453,19 @@ func GetBlockerConfiguration(customerId int, targetType string) (blockerConfigur
 	engine, err := ConnectDB()
 	if err != nil {
 		log.Printf("database connect error: %s", err)
-		return
+		return nil, err
 	}
 	blockerConfig := db_models.BlockerConfiguration{}
 
-	_,err = engine.Where("customer_id = ? AND target_type = ?", customerId, targetType).Get(&blockerConfig)
+	_, err = engine.Where("customer_id = ? AND target_type = ?", customerId, targetType).Get(&blockerConfig)
 	if err != nil {
 		log.Printf("Get blocker_configuration error: %s\n", err)
-		return
+		return nil, err
 	}
 
     if (blockerConfig.CustomerId != customerId) {
         err = errors.New(fmt.Sprintf("No blocker found. customerId: %d targetType: %s", customerId, targetType))
-        return
+        return nil, err
     }
 
 	blockerConfiguration = &blockerConfig
