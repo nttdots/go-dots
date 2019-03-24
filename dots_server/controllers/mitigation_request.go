@@ -726,7 +726,7 @@ func callBlockerByScope(scope *models.MitigationScope, c *models.Customer) (err 
 	select {
 	case scopeList := <-ch: // if a blocker is available
 	    if scopeList.Blocker == nil {
-			err = errors.New("Blocker is not existed")
+			err = errors.New("Blocker does not exist")
 			break
 		}
 
