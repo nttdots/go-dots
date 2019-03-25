@@ -116,7 +116,7 @@ func (v *mitigationScopeValidatorBase) CheckOverlap(requestScope *MitigationScop
 				if isStopWhenOverlap == true {
 					return
 				}
-				
+
 				// Handle conflict scope data in case overlap at the same client
 				if requestScope.Customer.Id == currentScope.Customer.Id {
 					// Handle overlap in case the same trigger mitigation

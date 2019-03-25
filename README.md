@@ -97,7 +97,7 @@ The blocker configuration of DOTS server is defined in database. For more detail
 
 
 ## Client
-    $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=5684 --config [config.yml file (ex: go-dots/dots_client/dots_client.yaml)] -vv
+    $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=4646 --config [config.yml file (ex: go-dots/dots_client/dots_client.yaml)] -vv
 
 
 ## GoBGP Server
@@ -138,14 +138,17 @@ In order to handle out-of-order delivery of mitigation requests, 'mid' values MU
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraft.json
 
 ### Client Controller [mitigation_retrieve_all]
+
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw
 
 ### Client Controller [mitigation_retrieve_one]
+
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
 ### Client Controller [mitigation_withdraw]
+
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
@@ -170,11 +173,13 @@ Subscriptions are valid as long as current session exists. When session is renew
 
 ### Client Controller [mitigation_efficacy_update]
 A DOTS client can convey the 'If-Match' option with empty value in the PUT request to transmit DOTS mitigation efficacy update to the DOTS server:
+
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftEfficacyUpdate.json
 
 ### Client Controller [session_configuration_request]
+
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Put \
      -sid 234 \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleSessionConfigurationDraft.json
@@ -182,13 +187,16 @@ A DOTS client can convey the 'If-Match' option with empty value in the PUT reque
 In order to handle out-of-order delivery of session configuration, 'sid' values MUST increase monotonically.
 
 ### Client Controller [session_configuration_retrieve_default]
+
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Get
 
 ### Client Controller [session_configuration_retrieve_one]
+
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Get \
       -sid 234
 
 ### Client Controller [session_configuration_delete]
+
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Delete \
       -sid 234
 

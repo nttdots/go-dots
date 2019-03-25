@@ -234,7 +234,7 @@ func CallBlocker(acls []ACL, customerID int) (err error){
     case aclList := <-ch: // if a blocker is available
       if aclList.Blocker == nil {
         counter --
-        err = errors.New("Blocker is not existed")
+        err = errors.New("Blocker does not exist")
         break
       }
 
