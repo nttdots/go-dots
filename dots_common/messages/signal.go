@@ -12,7 +12,7 @@ type TargetPortRange struct {
 type ACL struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	AclName string `json:"acl-name" codec:"23,omitempty"`
-	ActivationType string `json:"activation-type" codec:"49,omitempty"`
+	ActivationType *int `json:"activation-type" codec:"49,omitempty"`
 }
 
 type MitigationScope struct {
@@ -147,7 +147,7 @@ func (m *MitigationRequest) String() (result string) {
 			for k, v := range scope.AclList {
 				result += fmt.Sprintf("     \"%s[%d]\":\n", "acl-list", k+1)
 				result += fmt.Sprintf("       \"%s\": %s\n", "acl-name", v.AclName)
-				result += fmt.Sprintf("       \"%s\": %s\n", "activation-type", v.ActivationType)
+				result += fmt.Sprintf("       \"%s\": %d\n", "activation-type", *v.ActivationType)
 			}
 		}
 		if scope.Lifetime != nil {

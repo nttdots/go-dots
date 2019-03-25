@@ -1658,8 +1658,8 @@ func HandleControlFiltering(customer *models.Customer, cuid string, aclList []me
 
 	controlFilteringList := make([]models.ControlFiltering, len(aclList))
 	for i, acl := range aclList {
-		if acl.AclName != "" && acl.ActivationType != "" {
-			controlFiltering := models.ControlFiltering{ ACLName: acl.AclName, ActivationType: acl.ActivationType }
+		if acl.AclName != "" && acl.ActivationType != nil {
+			controlFiltering := models.ControlFiltering{ ACLName: acl.AclName, ActivationType: *acl.ActivationType }
 			controlFilteringList[i] = controlFiltering
 		} else {
 			log.Warn("Both Acl Name and Activation Type must be included in Control Filtering.")

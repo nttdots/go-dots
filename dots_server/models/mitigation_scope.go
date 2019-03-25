@@ -76,8 +76,15 @@ type ACL struct {
 
 type ControlFiltering struct {
 	ACLName        string
-	ActivationType string
+	ActivationType int
 }
+
+type ActivationType int
+const (
+	ActiveWhenMitigating ActivationType = iota + 1
+	Immediate
+	Deactivate
+)
 
 type ConflictScope struct {
 	MitigationId     int

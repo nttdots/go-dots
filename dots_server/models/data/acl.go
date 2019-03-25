@@ -385,18 +385,18 @@ func GetACLWithActivateWhenMitigating(customer *models.Customer, cuid string) ([
 }
 
 /*
- * Parse string activation type to ACL activation type
+ * Parse int activation type to ACL activation type
  *
  * return:
  *  acl activation type
  */
-func ToActivationType(activationType string) (types.ActivationType) {
+ func ToActivationType(activationType int) (types.ActivationType) {
   switch (activationType) {
-  case string(types.ActivationType_ActivateWhenMitigating):
+  case int(models.ActiveWhenMitigating):
     return types.ActivationType_ActivateWhenMitigating
-  case string(types.ActivationType_Immediate):
+  case int(models.Immediate):
     return types.ActivationType_Immediate
-  case string(types.ActivationType_Deactivate):
+  case int(models.Deactivate):
     return types.ActivationType_Deactivate
   default: return ""
   }

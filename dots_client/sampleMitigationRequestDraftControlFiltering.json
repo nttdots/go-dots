@@ -23,7 +23,7 @@
         "acl-list": [
           {
               "acl-name": "sample-ipv6-acl",
-              "activation-type": "deactivate"
+              "activation-type": 3
           }
         ],
         "lifetime": 100,
