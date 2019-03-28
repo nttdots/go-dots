@@ -10,6 +10,7 @@ import (
 	"time"
 	"strconv"
 
+	dots_config "github.com/nttdots/go-dots/dots_client/config"
 	log "github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
 	"github.com/nttdots/go-dots/dots_common"
@@ -256,21 +257,17 @@ func handleTimeout(task *task.MessageTask, request map[string] *task.MessageTask
  * Send the request to the server.
  */
 func (r *Request) Send() (res Response) {
-	var interval = 0
-	var retry = 0
-	var timeout = 0
+	var config *dots_config.MessageTaskConfiguration
 	if r.pdu.Type == libcoap.TypeNon {
-		interval = 2
-		retry = 2
-		timeout = 10
+		config = dots_config.GetSystemConfig().NonConfirmableMessageTask
 	} else if r.pdu.Type == libcoap.TypeCon {
-		timeout = 10
+		config = dots_config.GetSystemConfig().ConfirmableMessageTask
 	}
 	task := task.NewMessageTask(
 		r.pdu,
-		time.Duration(interval) * time.Second,
-		retry,
-		time.Duration(timeout) * time.Second,
+		time.Duration(config.TaskInterval) * time.Second,
+		config.TaskRetryNumber,
+		time.Duration(config.TaskTimeout) * time.Second,
 		false,
 		r.handleResponse,
 		handleTimeout)

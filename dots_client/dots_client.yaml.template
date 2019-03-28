@@ -1,22 +1,38 @@
-# Default current values of session configuration
-heartbeatInterval: 30
-missingHbAllowed: 5
-maxRetransmit: 3
-ackTimeout: 2
-ackRandomFactor: 1.5
+system:
+  # Default current values of session configuration
+  defaultSessionConfiguration:
+    heartbeatInterval: 30
+    missingHbAllowed: 5
+    maxRetransmit: 3
+    ackTimeout: 2.0
+    ackRandomFactor: 1.5
 
-# Time (seconds) before max-age to refresh Get session config
-intervalBeforeMaxAge: 15
+  # Client restful api server configuration for connection from outside of go-dots
+  # If an external system want to connect to go-dots server, it must access to the dots_client by client restful api with configured port and prefixPath
+  clientRestfulApiConfiguration:
+    restfulApiAddress: ":"
+    restfulApiPort: 4545
+    restfulApiPath: /go-dots/v1
 
-# Client request with block2 option at the first time
-initialRequestBlockSize : 5
+  # The message task configuration for non-confirmable message (task interval and timeout in second)
+  nonConfirmableMessageTask:
+    taskInterval: 3
+    taskRetryNumber: 2
+    taskTimeout: 10
 
-# Client request without the block2 option at the first time.
-# If client does not accept with the recommended block size from server, client can send a request with block2 option (new block size)
-secondRequestBlockSize: 3
+  # The message task configuration for confirmable message (task interval and timeout in second)
+  confirmableMessageTask:
+    taskInterval: 0
+    taskRetryNumber: 0
+    taskTimeout: 10
 
-# The restful api configuration for dots_client
-# If an external system want to connect to go-dots server, it must access to the dots_client by client restful api with configured port and prefixPath
-restfulApiAddress: ":"
-restfulApiPort: 4545
-restfulApiPath: /go-dots/v1
+
+  # Time (seconds) before max-age to refresh Get session config
+  intervalBeforeMaxAge: 15
+
+  # Client request with block2 option at the first time
+  initialRequestBlockSize: 3
+
+  # Client request without the block2 option at the first time.
+  # If client does not accept with the recommended block size from server, client can send a request with block2 option (new block size)
+  secondRequestBlockSize: 5

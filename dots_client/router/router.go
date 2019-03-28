@@ -15,8 +15,6 @@ const (
   CONTENT_TYPE_VALUE = "application/json"
 )
 
-var config *dots_config.ClientConfiguration
-
 /*
  * Listen for restful api service
  */
@@ -36,8 +34,8 @@ func ListenRestfulApi(address string, handleFunc func(http.ResponseWriter, *http
 func CreateRouter(handlerFunc http.HandlerFunc) *mux.Router {
   router := mux.NewRouter()
 
-  config = dots_config.GetSystemConfig()
-  prefixPath := config.RestfulApiPath
+  config := dots_config.GetSystemConfig()
+  prefixPath := config.ClientRestfulApiConfiguration.RestfulApiPath
 
   restfulHandlerFunc := createRestfulHandlerFunc(handlerFunc)
 

@@ -148,7 +148,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 			sess.SessionRelease()
 			log.Debugf("Restarted connection successfully with current session: %+v.", oSess.String())
 			env.Run(task.NewPingTask(
-					time.Duration(config.HeartbeatInterval) * time.Second,
+					time.Duration(config.DefaultSessionConfiguration.HeartbeatInterval) * time.Second,
 					pingResponseHandler,
 					pingTimeoutHandler))
 		}
@@ -364,14 +364,15 @@ func restartConnection (env *task.Env) {
 	}
 }
 
-var config *dots_config.ClientConfiguration
+var config *dots_config.ClientSystemConfig
 /**
 * Load config file
 */
 func loadConfig(env *task.Env) {
-	env.SetMissingHbAllowed(config.MissingHbAllowed)
+	env.SetMissingHbAllowed(config.DefaultSessionConfiguration.MissingHbAllowed)
 	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
-	env.SetRetransmitParams(config.MaxRetransmit, decimal.NewFromFloat(config.AckTimeout).Round(2), decimal.NewFromFloat(config.AckRandomFactor).Round(2))
+	env.SetRetransmitParams(config.DefaultSessionConfiguration.MaxRetransmit, decimal.NewFromFloat(config.DefaultSessionConfiguration.AckTimeout).Round(2),
+		decimal.NewFromFloat(config.DefaultSessionConfiguration.AckRandomFactor).Round(2))
 	env.SetIntervalBeforeMaxAge(config.IntervalBeforeMaxAge)
 	if config.InitialRequestBlockSize != nil && *config.InitialRequestBlockSize >= 0 {
 		env.SetInitialRequestBlockSize(config.InitialRequestBlockSize)
@@ -460,12 +461,13 @@ func main() {
 	go srv.Serve(l)
 
 	// Run restful api server to service external systems
-	go restful_router.ListenRestfulApi(config.RestfulApiAddress + config.RestfulApiPort, makeServerHandler(env))
+	address := config.ClientRestfulApiConfiguration.RestfulApiAddress + config.ClientRestfulApiConfiguration.RestfulApiPort
+	go restful_router.ListenRestfulApi(address, makeServerHandler(env))
 
 	// Load session configuration
 	loadConfig(env)
 	env.Run(task.NewPingTask(
-		time.Duration(config.HeartbeatInterval) * time.Second,
+		time.Duration(config.DefaultSessionConfiguration.HeartbeatInterval) * time.Second,
 		pingResponseHandler,
 		pingTimeoutHandler))
 loop:
@@ -488,7 +490,7 @@ func CheckReplacingSession(env *task.Env) {
 	if isReplace {
         loadConfig(env)
 		env.Run(task.NewPingTask(
-				time.Duration(config.HeartbeatInterval) * time.Second,
+				time.Duration(config.DefaultSessionConfiguration.HeartbeatInterval) * time.Second,
 				pingResponseHandler,
 				pingTimeoutHandler))
 	}
