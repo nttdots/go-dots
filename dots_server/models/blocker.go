@@ -23,8 +23,6 @@ type Blocker interface {
 	Capacity() int
 	Load() int
 	SetLoad(l int)
-	Connector() DeviceConnector
-	LoginProfile() *LoginProfile
 	Type() BlockerType
 }
 
@@ -36,8 +34,6 @@ func toBlockerParameters(b Blocker, id int64) []db_models.BlockerParameter {
 		bp = append(bp, db_models.BlockerParameter{BlockerId: id, Key: RTBH_BLOCKER_PORT, Value: t.port})
 		bp = append(bp, db_models.BlockerParameter{BlockerId: id, Key: RTBH_BLOCKER_TIMEOUT, Value: strconv.Itoa(t.timeout)})
 		bp = append(bp, db_models.BlockerParameter{BlockerId: id, Key: RTBH_BLOCKER_NEXTHOP, Value: t.nextHop})
-	case *GoBgpBlackHoler:
-		// no extension parameter
 	default:
 		panic(fmt.Sprintf("invalid blocker type: %T", b))
 	}
@@ -50,8 +46,6 @@ type BlockerBase struct {
 	id        int64
 	capacity  int
 	load      int
-	connector DeviceConnector
-	loginInfo *LoginProfile
 }
 
 func (b *BlockerBase) Id() int64 {
@@ -73,13 +67,6 @@ func (b *BlockerBase) SetLoad(l int) {
 	b.load = l
 }
 
-func (b BlockerBase) Connector() DeviceConnector {
-	return b.connector
-}
-
-func (b BlockerBase) LoginProfile() *LoginProfile {
-	return b.loginInfo
-}
 
 func (b *BlockerBase) Sync() {
 	stored, err := GetBlockerById(b.id)

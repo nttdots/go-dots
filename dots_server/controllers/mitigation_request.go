@@ -78,9 +78,14 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		}
 
 		var startedAt int64
+		var bytesDropped, pktsDropped, bpsDropped, ppsDropped int
 		log.WithField("protection", mp.protection).Debug("Protection: ")
 		if mp.protection != nil {
 			startedAt = mp.protection.StartedAt().Unix()
+			bytesDropped = mp.protection.DroppedDataInfo().BytesDropped()
+			bpsDropped = mp.protection.DroppedDataInfo().BpsDropped()
+			pktsDropped = mp.protection.DroppedDataInfo().PacketDropped()
+			ppsDropped = mp.protection.DroppedDataInfo().PpsDropped()
 		}
 		scopeStates := messages.ScopeStatus {
 			MitigationId: mp.mitigation.MitigationId,
@@ -91,10 +96,10 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			AliasName: mp.mitigation.AliasName.List(),
 			FQDN: mp.mitigation.FQDN.List(),
 			URI: mp.mitigation.URI.List(),
-			BytesDropped: 0,  // Just dummy for interop
-			BpsDropped: 0,    // Just dummy for interop
-			PktsDropped: 0,   // Just dummy for interop
-			PpsDropped: 0 }   // Just dummy for interop
+			BytesDropped: bytesDropped,
+			BpsDropped: bpsDropped,
+			PktsDropped: pktsDropped,
+			PpsDropped: ppsDropped }
 		scopeStates.TargetProtocol = make([]int, 0, len(mp.mitigation.TargetProtocol))
 		for k := range mp.mitigation.TargetProtocol {
 			scopeStates.TargetProtocol = append(scopeStates.TargetProtocol, k)

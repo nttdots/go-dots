@@ -81,8 +81,7 @@ type Protection interface {
 	FinishedAt() time.Time
 	SetFinishedAt(t time.Time)
 	RecordTime() time.Time
-	ForwardedDataInfo() *ProtectionStatus
-	BlockedDataInfo() *ProtectionStatus
+	DroppedDataInfo() *ProtectionStatus
 }
 
 // Protection Base
@@ -99,8 +98,7 @@ type ProtectionBase struct {
 	startedAt         time.Time
 	finishedAt        time.Time
 	recordTime        time.Time
-	forwardedDataInfo *ProtectionStatus
-	blockedDataInfo   *ProtectionStatus
+	droppedDataInfo   *ProtectionStatus
 }
 
 func (p ProtectionBase) Id() int64 {
@@ -171,25 +169,22 @@ func (p ProtectionBase) RecordTime() time.Time {
 	return p.recordTime
 }
 
-func (p ProtectionBase) ForwardedDataInfo() *ProtectionStatus {
-	return p.forwardedDataInfo
-}
 
-func (p ProtectionBase) BlockedDataInfo() *ProtectionStatus {
-	return p.blockedDataInfo
+func (p ProtectionBase) DroppedDataInfo() *ProtectionStatus {
+	return p.droppedDataInfo
 }
 
 type ProtectionStatus struct {
 	id                int64
-	totalPackets      int
-	totalBits         int
-	peakThroughput    *ThroughputData
-	averageThroughput *ThroughputData
+	bytesDropped      int
+	packetsDropped    int
+	bpsDropped        int
+	ppsDropped        int
 }
 
-func NewProtectionStatus(id int64, totalPackets, totalBits int, peakThroughput, averageThroughput *ThroughputData) *ProtectionStatus {
+func NewProtectionStatus(id int64, bytesDropped, packetsDropped, bpsDropped, ppsDropped int) *ProtectionStatus {
 	return &ProtectionStatus{
-		id, totalPackets, totalBits, peakThroughput, averageThroughput,
+		id, bytesDropped, packetsDropped, bpsDropped, ppsDropped,
 	}
 }
 
@@ -207,91 +202,35 @@ func (p *ProtectionStatus) SetId(id int64) {
 	}
 }
 
-func (p *ProtectionStatus) TotalPackets() int {
+func (p *ProtectionStatus) BytesDropped() int {
 	if p == nil {
 		return 0
 	} else {
-		return p.totalPackets
+		return p.bytesDropped
 	}
 }
 
-func (p *ProtectionStatus) TotalBits() int {
+func (p *ProtectionStatus) PacketDropped() int {
 	if p == nil {
 		return 0
 	} else {
-		return p.totalBits
+		return p.packetsDropped
 	}
 }
 
-func (p *ProtectionStatus) PeakThroughput() (tp *ThroughputData) {
+func (p *ProtectionStatus) BpsDropped() int {
 	if p == nil {
-		tp = nil
+		return 0
 	} else {
-		tp = p.peakThroughput
+		return p.bpsDropped
 	}
-	return
 }
 
-func (p *ProtectionStatus) AverageThroughput() (tp *ThroughputData) {
+func (p *ProtectionStatus) PpsDropped() int {
 	if p == nil {
-		tp = nil
+		return 0
 	} else {
-		tp = p.averageThroughput
-	}
-	return
-}
-
-type ThroughputData struct {
-	id  int64
-	pps int
-	bps int
-}
-
-func NewThroughputData(id int64, pps, bps int) *ThroughputData {
-	return &ThroughputData{id, pps, bps}
-}
-
-func (t *ThroughputData) Id() (id int64) {
-	if t == nil {
-		id = 0
-	} else {
-		id = t.id
-	}
-	return
-}
-
-func (t *ThroughputData) SetId(id int64) {
-	if t != nil {
-		t.id = id
+		return p.ppsDropped
 	}
 }
 
-func (t *ThroughputData) Pps() (pps int) {
-	if t == nil {
-		pps = 0
-	} else {
-		pps = t.pps
-	}
-	return
-}
-
-func (t *ThroughputData) SetPps(pps int) {
-	if t != nil {
-		t.pps = pps
-	}
-}
-
-func (t *ThroughputData) Bps() (bps int) {
-	if t == nil {
-		bps = 0
-	} else {
-		bps = t.bps
-	}
-	return
-}
-
-func (t *ThroughputData) SetBps(bps int) {
-	if t != nil {
-		t.bps = bps
-	}
-}

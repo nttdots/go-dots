@@ -396,15 +396,8 @@ func (g *GoBgpFlowSpecReceiver) toPath(b *FlowSpec) ([]*api.Path, error) {
  *  err error
  */
 func (g *GoBgpFlowSpecReceiver) RegisterProtection(r *MitigationOrDataChannelACL, targetID int64, customerID int, targetType string) (p Protection, err error) {
-	forwardedStatus := NewProtectionStatus(
-		0, 0, 0,
-		NewThroughputData(0, 0, 0),
-		NewThroughputData(0, 0, 0),
-	)
-	blockedStatus := NewProtectionStatus(
-		0, 0, 0,
-		NewThroughputData(0, 0, 0),
-		NewThroughputData(0, 0, 0),
+	droppedStatus := NewProtectionStatus(
+		0, 0, 0, 0, 0,
 	)
 
 	var aclName string
@@ -428,8 +421,7 @@ func (g *GoBgpFlowSpecReceiver) RegisterProtection(r *MitigationOrDataChannelACL
 		time.Unix(0, 0),
 		time.Unix(0, 0),
 		time.Unix(0, 0),
-		forwardedStatus,
-		blockedStatus,
+		droppedStatus,
 	}
 
 	// persist to external storage

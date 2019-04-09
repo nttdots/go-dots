@@ -14,8 +14,7 @@ type Protection struct {
 	StartedAt           time.Time `xorm:"'started_at'"`
 	FinishedAt          time.Time `xorm:"'finished_at'"`
 	RecordTime          time.Time `xorm:"'record_time'"`
-	ForwardedDataInfoId int64     `xorm:"'forwarded_data_info_id'"`
-	BlockedDataInfoId   int64     `xorm:"'blocked_data_info_id'"`
+	DroppedDataInfoId   int64     `xorm:"'dropped_data_info_id'"`
 	Created             time.Time `xorm:"created"`
 	Updated             time.Time `xorm:"updated"`
 }

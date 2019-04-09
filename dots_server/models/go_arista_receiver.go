@@ -368,15 +368,8 @@ func (g *GoAristaReceiver) connectArista() (node *goeapi.Node, err error) {
  *  err error
  */
 func (g *GoAristaReceiver) RegisterProtection(r *MitigationOrDataChannelACL, targetID int64, customerID int, targetType string) (p Protection, err error) {
-	forwardedStatus := NewProtectionStatus(
-		0, 0, 0,
-		NewThroughputData(0, 0, 0),
-		NewThroughputData(0, 0, 0),
-	)
-	blockedStatus := NewProtectionStatus(
-		0, 0, 0,
-		NewThroughputData(0, 0, 0),
-		NewThroughputData(0, 0, 0),
+	droppedStatus := NewProtectionStatus(
+		0, 0, 0, 0, 0,
 	)
 
 	var aclName string
@@ -400,8 +393,7 @@ func (g *GoAristaReceiver) RegisterProtection(r *MitigationOrDataChannelACL, tar
 		time.Unix(0, 0),
 		time.Unix(0, 0),
 		time.Unix(0, 0),
-		forwardedStatus,
-		blockedStatus,
+		droppedStatus,
 	}
 
 	// persist to external storage

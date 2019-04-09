@@ -12,47 +12,6 @@ import (
 )
 
 /*
- * Stores ThroughputData to the throughput_data table in the DB.
- * if the ID of newly created object equals to 0, this function creates a new entry,
- * otherwise updates the relevant entry.
- * If it does not find any relevant entry, it just returns.
- */
-func storeThroughputData(session *xorm.Session, td *ThroughputData) (err error) {
-	if td == nil {
-		return
-	}
-
-	dtp := db_models.ThroughputData{
-		Id:  td.Id(),
-		Pps: td.Pps(),
-		Bps: td.Bps(),
-	}
-
-	if dtp.Id == 0 {
-		_, err = session.Insert(&dtp)
-		log.WithFields(log.Fields{
-			"data":  dtp,
-			"error": err,
-		}).Debug("insert ThroughputData")
-		if err != nil {
-			return err
-		}
-		td.SetId(dtp.Id)
-	} else {
-		_, err = session.Id(dtp.Id).Cols("pps", "bps").Update(&dtp)
-		log.WithFields(log.Fields{
-			"data":  dtp,
-			"error": err,
-		}).Debug("update ThroughputData")
-		if err != nil {
-			return err
-		}
-	}
-
-	return
-}
-
-/*
  * Obtains the protection status from the protection_status table by ID.
  * It also obtains relevant entries in the throughput_data table.
  *
@@ -84,33 +43,8 @@ func loadProtectionStatus(engine *xorm.Engine, id int64) (pps *ProtectionStatus,
 	// skipping ThroughputData for now. will fix
 	pps = NewProtectionStatus(
 		//dps.Id, dps.TotalPackets, dps.TotalBits, peak, average,
-		dps.Id, dps.TotalPackets, dps.TotalBits, &ThroughputData{0, 0, 0}, &ThroughputData{0, 0, 0},
+		dps.Id, dps.BytesDropped, dps.PacketsDropped, dps.BpsDropped, dps.PpsDropped,
 	)
-	return
-}
-
-/*
- * Obtains the throughput data by ID.
- * If there is no entry specified by the ID, it returns nil.
- */
-func loadThroughput(engine *xorm.Engine, id int64) (ptd *ThroughputData, err error) {
-	dtd := db_models.ThroughputData{}
-
-	ok, err := engine.Id(id).Get(&dtd)
-	if err != nil {
-		return
-	}
-	if !ok {
-		ptd = nil
-		return
-	}
-
-	ptd = &ThroughputData{
-		id:  dtd.Id,
-		bps: dtd.Bps,
-		pps: dtd.Pps,
-	}
-
 	return
 }
 
@@ -125,24 +59,12 @@ func storeProtectionStatus(session *xorm.Session, ps *ProtectionStatus) (err err
 		return
 	}
 
-	peakId := ps.PeakThroughput().Id()
-	// check if there is already an entry with this ID.
-	if count, err := session.Id(peakId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
-		peakId = 0
-	}
-
-	averageId := ps.AverageThroughput().Id()
-	// check if there is already an entry with this ID.
-	if count, err := session.Id(averageId).Count(&db_models.ThroughputData{}); count == 0 || err != nil {
-		averageId = 0
-	}
-
 	dps := db_models.ProtectionStatus{
-		Id:                  ps.Id(),
-		TotalBits:           ps.TotalBits(),
-		TotalPackets:        ps.TotalPackets(),
-		PeakThroughputId:    peakId,
-		AverageThroughputId: averageId,
+		Id:              ps.Id(),
+		BytesDropped:    ps.BytesDropped(),
+		PacketsDropped:  ps.PacketDropped(),
+		BpsDropped:      ps.BpsDropped(),
+		PpsDropped:      ps.PpsDropped(),
 	}
 
 	if dps.Id == 0 {
@@ -184,7 +106,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 	var gobgpParameters []db_models.GoBgpParameter
 	var aristaParameters     []db_models.AristaParameter
 	var flowSpecParameters   []db_models.FlowSpecParameter
-	var forwardedDataInfo, blockedDataInfo *db_models.ProtectionStatus
+	var droppedDataInfo *db_models.ProtectionStatus
 	var blockerId int64
 
 	// database connection create
@@ -208,76 +130,24 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		return
 	}
 
-	// inner function to store throughput data.
-	storeThroughput := func(session *xorm.Session, data *ThroughputData, throughputId *int64, name string) (err error) {
-		err = storeThroughputData(session, data)
+	// Registered DroppedDataInfo Group
+	if protection.DroppedDataInfo() != nil {
+		droppedDataInfo = &db_models.ProtectionStatus{
+			BytesDropped:      protection.DroppedDataInfo().BytesDropped(),
+			PacketsDropped:    protection.DroppedDataInfo().PacketDropped(),
+			BpsDropped:        protection.DroppedDataInfo().BpsDropped(),
+			PpsDropped:        protection.DroppedDataInfo().PpsDropped(),
+		}
+
+		// Registered DroppedDataInfo
+		_, err = session.Insert(droppedDataInfo)
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationScopeId": newProtection.TargetId,
-				"Pps":          data.Pps,
-				"Bps":          data.Bps,
-				"Err":          err,
-			}).Errorf("insert %sThroughputData error", name)
-			return
-		}
-		*throughputId = data.Id()
-		return nil
-	}
-
-	// Registering ForwardedDataInfo Group
-	if protection.ForwardedDataInfo() != nil {
-		forwardedDataInfo = &db_models.ProtectionStatus{
-			TotalPackets: protection.ForwardedDataInfo().TotalPackets(),
-			TotalBits:    protection.ForwardedDataInfo().TotalBits(),
-		}
-
-		// Registered ThroughputData
-		err = storeThroughput(session, protection.ForwardedDataInfo().PeakThroughput(), &forwardedDataInfo.PeakThroughputId, "ForwardedPeakThroughput")
-		if err != nil {
-			goto Rollback
-		}
-		err = storeThroughput(session, protection.ForwardedDataInfo().AverageThroughput(), &forwardedDataInfo.AverageThroughputId, "ForwardedAverageThroughput")
-		if err != nil {
-			goto Rollback
-		}
-
-		// Registered ForwardedDataInfo
-		_, err = session.Insert(forwardedDataInfo)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"MitigationScopeId":                  newProtection.TargetId,
-				"ForwardedDataInfoTotalPackets": forwardedDataInfo.TotalPackets,
-				"ForwardedDataInfoTotalBits":    forwardedDataInfo.TotalBits,
-				"Err": err,
-			}).Error("insert ProtectionStatus error")
-			goto Rollback
-		}
-	}
-
-	// Registered BlockedDataInfo Group
-	if protection.BlockedDataInfo() != nil {
-		blockedDataInfo = &db_models.ProtectionStatus{
-			TotalPackets: protection.BlockedDataInfo().TotalPackets(),
-			TotalBits:    protection.BlockedDataInfo().TotalBits(),
-		}
-
-		// Registered ThroughputData
-		err = storeThroughput(session, protection.BlockedDataInfo().PeakThroughput(), &blockedDataInfo.PeakThroughputId, "BlockedPeakThroughput")
-		if err != nil {
-			goto Rollback
-		}
-		err = storeThroughput(session, protection.BlockedDataInfo().AverageThroughput(), &blockedDataInfo.AverageThroughputId, "BlockedAverageThroughput")
-		if err != nil {
-			goto Rollback
-		}
-
-		// Registered BlockedDataInfo
-		_, err = session.Insert(blockedDataInfo)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"MitigationScopeId":           newProtection.TargetId,
-				"BlockedDataInfoTotalPackets": blockedDataInfo.TotalPackets,
-				"BlockedDataInfoTotalBits":    blockedDataInfo.TotalBits,
+				"MitigationScopeId":              newProtection.TargetId,
+				"DroppedDataInfoTotalBytes":      droppedDataInfo.BytesDropped,
+				"DroppedDataInfoTotalPackets":    droppedDataInfo.PacketsDropped,
+				"DroppedDataInfoBitPerSecond":    droppedDataInfo.BpsDropped,
+				"DroppedDataInfoPacketPerSecond": droppedDataInfo.PpsDropped,
 				"Err": err,
 			}).Error("insert ProtectionStatus error")
 			goto Rollback
@@ -300,8 +170,7 @@ func CreateProtection2(protection Protection) (newProtection db_models.Protectio
 		StartedAt:           protection.StartedAt(),
 		FinishedAt:          protection.FinishedAt(),
 		RecordTime:          protection.RecordTime(),
-		ForwardedDataInfoId: forwardedDataInfo.Id,
-		BlockedDataInfoId:   blockedDataInfo.Id,
+		DroppedDataInfoId:   droppedDataInfo.Id,
 	}
 	_, err = session.Insert(&newProtection)
 	if err != nil {
@@ -393,7 +262,7 @@ Rollback:
 func UpdateProtection(protection Protection) (err error) {
 	var protectionParameters []db_models.GoBgpParameter
 	var updProtection *db_models.Protection
-	var updForwardedDataInfo, updBlockedDataInfo *db_models.ProtectionStatus
+	var updDroppedDataInfo *db_models.ProtectionStatus
 	var chk bool
 
 	// database connection create
@@ -415,21 +284,6 @@ func UpdateProtection(protection Protection) (err error) {
 			"Err": err,
 		}).Error("session create error")
 		return
-	}
-
-	// inner function to update throughput data.
-	updateThroughput := func(session *xorm.Session, data *ThroughputData, name string) (err error) {
-		err = storeThroughputData(session, data)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"MitigationScopeId": protection.TargetId(),
-				"Pps":          data.Pps,
-				"Bps":          data.Bps,
-				"Err":          err,
-			}).Errorf("update %sThroughputData error", name)
-			return
-		}
-		return nil
 	}
 
 	// Updated protection
@@ -467,49 +321,16 @@ func UpdateProtection(protection Protection) (err error) {
 		goto Rollback
 	}
 
-	// Updated ForwardedDataInfo Group
-	if protection.ForwardedDataInfo() != nil {
-		// Updated ThroughputData
-		err = updateThroughput(session, protection.ForwardedDataInfo().PeakThroughput(), "ForwardedPeak")
-		if err != nil {
-			goto Rollback
-		}
-		err = updateThroughput(session, protection.ForwardedDataInfo().AverageThroughput(), "ForwardedAverage")
-		if err != nil {
-			goto Rollback
-		}
-
-		// Updated ForwardedDataInfo
-		err = storeProtectionStatus(session, protection.ForwardedDataInfo())
-		if err != nil {
-			log.WithFields(log.Fields{
-				"MitigationScopeId":             updProtection.TargetId,
-				"ForwardedDataInfoTotalPackets": updForwardedDataInfo.TotalPackets,
-				"ForwardedDataInfoTotalBits":    updForwardedDataInfo.TotalBits,
-				"Err": err,
-			}).Error("update ProtectionStatus error")
-			goto Rollback
-		}
-	}
-
-	if protection.BlockedDataInfo() != nil {
-		// Updated ThroughputData
-		err = updateThroughput(session, protection.BlockedDataInfo().PeakThroughput(), "BlockedPeak")
-		if err != nil {
-			goto Rollback
-		}
-		err = updateThroughput(session, protection.BlockedDataInfo().AverageThroughput(), "BlockedAverage")
-		if err != nil {
-			goto Rollback
-		}
-
+	if protection.DroppedDataInfo() != nil {
 		// Updated BlockedDataInfo
-		err = storeProtectionStatus(session, protection.BlockedDataInfo())
+		err = storeProtectionStatus(session, protection.DroppedDataInfo())
 		if err != nil {
 			log.WithFields(log.Fields{
-				"MitigationScopeId":           updProtection.TargetId,
-				"BlockedDataInfoTotalPackets": updBlockedDataInfo.TotalPackets,
-				"BlockedDataInfoTotalBits":    updBlockedDataInfo.TotalBits,
+				"MitigationScopeId":              updProtection.TargetId,
+				"DroppedDataInfoTotalBytes":      updDroppedDataInfo.BytesDropped,
+				"DroppedDataInfoTotalPackets":    updDroppedDataInfo.PacketsDropped,
+				"DroppedDataInfoBitPerSecond":    updDroppedDataInfo.BpsDropped,
+				"DroppedDataInfoPacketPerSecond": updDroppedDataInfo.PpsDropped,
 				"Err": err,
 			}).Error("update ProtectionStatus error")
 			goto Rollback
@@ -608,11 +429,7 @@ func GetProtectionById(id int64) (p Protection, err error) {
  */
 func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, err error) {
 
-	forwardDataInfo, err := loadProtectionStatus(engine, dbp.ForwardedDataInfoId)
-	if err != nil {
-		return
-	}
-	blockedDataInfo, err := loadProtectionStatus(engine, dbp.BlockedDataInfoId)
+	droppedDataInfo, err := loadProtectionStatus(engine, dbp.DroppedDataInfoId)
 	if err != nil {
 		return
 	}
@@ -654,8 +471,7 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 		dbp.StartedAt,
 		dbp.FinishedAt,
 		dbp.RecordTime,
-		forwardDataInfo,
-		blockedDataInfo,
+		droppedDataInfo,
 	}
 
 	var params []db_models.GoBgpParameter
@@ -668,8 +484,6 @@ func toProtection(engine *xorm.Engine, dbp db_models.Protection) (p Protection, 
 	switch dbp.ProtectionType {
 	case PROTECTION_TYPE_RTBH:
 		p = NewRTBHProtection(pb, params)
-	case PROTECTION_TYPE_BLACKHOLE:
-		p = NewBlackHoleProtection(pb, params)
 	case PROTECTION_TYPE_FLOWSPEC:
 		var flowSpecParams []db_models.FlowSpecParameter
 	    err = engine.Where("protection_id = ?", dbp.Id).Find(&flowSpecParams)
@@ -730,15 +544,7 @@ func GetProtectionBase(mitigationScopeId int64) (protection ProtectionBase, err 
 		return ProtectionBase{}, nil
 	}
 
-	forwardInfo, err := loadProtectionStatus(engine, dbProtection.ForwardedDataInfoId)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"MitigationScopeId": mitigationScopeId,
-			"Err":          err,
-		}).Error("load forwarded_data_info error")
-		return
-	}
-	blockedInfo, err := loadProtectionStatus(engine, dbProtection.BlockedDataInfoId)
+	droppedInfo, err := loadProtectionStatus(engine, dbProtection.DroppedDataInfoId)
 	if err != nil {
 		log.WithFields(log.Fields{
 			"MitigationScopeId": mitigationScopeId,
@@ -776,8 +582,7 @@ func GetProtectionBase(mitigationScopeId int64) (protection ProtectionBase, err 
 		startedAt:         dbProtection.StartedAt,
 		finishedAt:        dbProtection.FinishedAt,
 		recordTime:        dbProtection.RecordTime,
-		forwardedDataInfo: forwardInfo,
-		blockedDataInfo:   blockedInfo,
+		droppedDataInfo:   droppedInfo,
 	}
 
 	return
@@ -824,19 +629,10 @@ func GetProtectionParameters(protectionId int64) (goBGPParameters []db_models.Go
  */
 func deleteProtection(session *xorm.Session, protection db_models.Protection) (err error) {
 
-	forwardInfo := db_models.ProtectionStatus{}
-	ok, err := session.Id(protection.ForwardedDataInfoId).Get(&forwardInfo)
+	droppedInfo := db_models.ProtectionStatus{}
+	ok, err := session.Id(protection.DroppedDataInfoId).Get(&droppedInfo)
 	if ok {
-		err = deleteProtectionStatus(session, forwardInfo)
-		if err != nil {
-			return
-		}
-	}
-
-	blockedInfo := db_models.ProtectionStatus{}
-	ok, err = session.Id(protection.BlockedDataInfoId).Get(&blockedInfo)
-	if ok {
-		err = deleteProtectionStatus(session, blockedInfo)
+		err = deleteProtectionStatus(session, droppedInfo)
 		if err != nil {
 			return
 		}
@@ -863,11 +659,6 @@ func deleteProtection(session *xorm.Session, protection db_models.Protection) (e
  * Deletes a protection_status and the related ThroughputData.
  */
 func deleteProtectionStatus(session *xorm.Session, status db_models.ProtectionStatus) (err error) {
-
-	_, err = session.In("id", status.PeakThroughputId, status.AverageThroughputId).Delete(db_models.ThroughputData{})
-	if err != nil {
-		return
-	}
 
 	_, err = session.Delete(db_models.ProtectionStatus{Id: status.Id})
 	return
@@ -984,9 +775,11 @@ Rollback:
 
 func ProtectionStatusToDbModel(protectionId int64, status *ProtectionStatus) (newProtectionStatus db_models.ProtectionStatus) {
 	newProtectionStatus = db_models.ProtectionStatus{
-		Id:           protectionId,
-		TotalPackets: status.TotalPackets(),
-		TotalBits:    status.TotalBits(),
+		Id:             protectionId,
+		BytesDropped:   status.BytesDropped(),
+		PacketsDropped: status.PacketDropped(),
+		BpsDropped:     status.BpsDropped(),
+		PpsDropped:     status.PpsDropped(),
 	}
 
 	return

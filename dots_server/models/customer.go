@@ -37,15 +37,13 @@ func (c Customers) getCustomerById(id int) (cs *Customer, err error) {
 
 func NewCustomer() *Customer {
 	c := new(Customer)
-	c.CommonName = NewSetString()
 	c.CustomerNetworkInformation = NewCustomerNetworkInformation()
 	return c
 }
 
 type Customer struct {
 	Id                         int
-	Name                       string
-	CommonName                 SetString
+	CommonName                       string
 	CustomerNetworkInformation *CustomerNetworkInformation
 }
 
