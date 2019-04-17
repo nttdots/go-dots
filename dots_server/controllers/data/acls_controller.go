@@ -320,6 +320,7 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
           return EmptyResponse(http.StatusBadRequest)
         }
         acl.ACL.ActivationType = &activationType
+        acl.ValidThrough = now.Add(defaultACLLifetime)
 
         // Update activation type into DB
         err = acl.Save(tx)

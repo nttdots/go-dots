@@ -11,7 +11,7 @@
 * draft-ietf-dots-architecture-06
 * draft-ietf-dots-requirements-14
 * draft-ietf-dots-use-cases-14
-* draft-nishizuka-dots-signal-control-filtering-03
+* draft-nishizuka-dots-signal-control-filtering-06
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 

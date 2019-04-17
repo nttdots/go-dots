@@ -147,7 +147,9 @@ func (m *MitigationRequest) String() (result string) {
 			for k, v := range scope.AclList {
 				result += fmt.Sprintf("     \"%s[%d]\":\n", "acl-list", k+1)
 				result += fmt.Sprintf("       \"%s\": %s\n", "acl-name", v.AclName)
-				result += fmt.Sprintf("       \"%s\": %d\n", "activation-type", *v.ActivationType)
+				if v.ActivationType != nil {
+					result += fmt.Sprintf("       \"%s\": %d\n", "activation-type", *v.ActivationType)
+				}
 			}
 		}
 		if scope.Lifetime != nil {

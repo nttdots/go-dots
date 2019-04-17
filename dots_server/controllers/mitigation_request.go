@@ -261,8 +261,17 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		// Handle Control Filtering: Check what data channel ACL need to be changed activation-type
 		// Ignore this process if put efficacy update
 		scope := body.MitigationScope.Scopes[0]
-		if !isIfMatchOption && (scope.AclList != nil || len(scope.AclList) != 0) {
+		if !isIfMatchOption && scope.AclList != nil && len(scope.AclList) != 0 {
 			log.Debugf("Handle Signal Channel Control Filtering")
+
+			// Mitigation Request must repeat all parameters except lifetime and acl-*
+			if currentScope != nil {
+				isInvalid := checkAttributesEfficacyUpdate(customer, body, currentScope)
+				if isInvalid {
+					goto ResponseNG
+				}
+			}
+
 			res, err := HandleControlFiltering(customer, cuid, scope.AclList)
 			if err != nil {
 				log.Error("Failed to Handle Control Filtering.")
@@ -1645,29 +1654,22 @@ func DeActivateDataChannelACL(customerID int, clientIdentifier string) error {
  */
 func HandleControlFiltering(customer *models.Customer, cuid string, aclList []messages.ACL) (*Response, error) {
 
-	// Check if control filtering is requested in peace time
-	isPeaceTime, err := models.CheckPeaceTimeSignalChannel(customer.Id, cuid)
-	if err != nil { 
-		log.Error("Check peace time Signal Channel failed")
-		return nil, err
-	}
-	if isPeaceTime {
-		log.Warnf("Control Filtering message is requesting in peace time -> discard and return Bad Request")
-		res := Response{
-			Type: common.NonConfirmable,
-			Code: common.BadRequest,
-			Body: nil,
-		}
-		return &res, nil
-	}
+	// No need to check peace time for control filtering mitigation request.
+	// If the client using control filtering, that's mean it has already "attacked"
 
+	// Validate control filtering input data (name and activation-type)
+	// If activate-type is not provided -> use activate-when-mitigating as default value
 	controlFilteringList := make([]models.ControlFiltering, len(aclList))
 	for i, acl := range aclList {
-		if acl.AclName != "" && acl.ActivationType != nil {
+		if acl.AclName != "" {
+			if acl.ActivationType == nil {
+				actType := int(models.ActiveWhenMitigating)
+				acl.ActivationType = &actType
+			}
 			controlFiltering := models.ControlFiltering{ ACLName: acl.AclName, ActivationType: *acl.ActivationType }
 			controlFilteringList[i] = controlFiltering
 		} else {
-			log.Warn("Both Acl Name and Activation Type must be included in Control Filtering.")
+			log.Warn("Acl Name must be included in Control Filtering.")
 			res := Response{
 				Type: common.NonConfirmable,
 				Code: common.BadRequest,
