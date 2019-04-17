@@ -137,7 +137,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 	if !checkMissingResult {
 		res = Response{
 			Type: common.Acknowledgement,
-			Code: common.BadRequest,
+			Code: common.UnprocessableEntity,
 			Body: nil,
 		}
 		return
@@ -163,9 +163,13 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 		ackTimeoutIdle,
 		ackRandomFactorIdle,
 	)
-	validateResult, isPresent := v.Validate(signalSessionConfiguration, *customer)
+	validateResult, isPresent, isUnprocessableEntity := v.Validate(signalSessionConfiguration, *customer)
 	if !validateResult {
-		goto ResponseNG
+		if isUnprocessableEntity {
+			goto ResponseUnprocessableEntity
+		} else {
+			goto ResponseNG
+		}
 	} else {
 		// Register or Update SignalConfigurationParameter
 		_, err = models.CreateSignalSessionConfiguration(*signalSessionConfiguration, *customer)
@@ -185,6 +189,14 @@ ResponseNG:
 	res = Response{
 		Type: common.Acknowledgement,
 		Code: common.BadRequest,
+		Body: nil,
+	}
+	return
+ResponseUnprocessableEntity:
+// on validation heartbeat-interval', 'missing-hb-allowed', 'max-retransmit', 'ack-timeout', and 'ack-random-factor' error
+	res = Response{
+		Type: common.Acknowledgement,
+		Code: common.UnprocessableEntity,
 		Body: nil,
 	}
 	return

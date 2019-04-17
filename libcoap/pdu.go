@@ -49,6 +49,8 @@ const (
     RequestEntityTooLarge        Code = 141
     ResponseUnsupportedMediaType Code = 143
 
+    ResponseUnprocessableEntity  Code = 150
+
     ResponseInternalServerError Code = 160
     ResponseNotImplemented      Code = 161
     ResponseServiceUnavailable  Code = 163
@@ -78,6 +80,7 @@ const (
 
     CoapRequestEntityTooLarge CoapCode = "4.13 Request Entity Too Large"
     CoapUnsupportedMediaType  CoapCode = "4.15 Unsupported Media Type"
+    CoapUnprocessableEntity   CoapCode = "4.22 Unprocessable Entity"
 
     CoapInternalServerError   CoapCode = "5.00 Internal Server Error"
     CoapNotImplemented        CoapCode = "5.01 Not Implemented"
@@ -388,6 +391,7 @@ func (pdu *Pdu) CoapCode() CoapCode {
         case ResponsePreconditionFailed:   return CoapPreconditionFailed
         case RequestEntityTooLarge:        return CoapRequestEntityTooLarge
         case ResponseUnsupportedMediaType: return CoapUnsupportedMediaType
+        case ResponseUnprocessableEntity:  return CoapUnprocessableEntity
         case ResponseInternalServerError:  return CoapInternalServerError
         case ResponseNotImplemented:       return CoapNotImplemented
         case ResponseBadGateway:           return CoapBadGateway
@@ -420,6 +424,7 @@ func (code Code) HttpCode() int {
         case ResponsePreconditionFailed:   return http.StatusPreconditionFailed
         case RequestEntityTooLarge:        return http.StatusRequestEntityTooLarge
         case ResponseUnsupportedMediaType: return http.StatusUnsupportedMediaType
+        case ResponseUnprocessableEntity:  return http.StatusUnprocessableEntity
         case ResponseInternalServerError:  return http.StatusInternalServerError
         case ResponseNotImplemented:       return http.StatusNotImplemented
         case ResponseBadGateway:           return http.StatusBadGateway
