@@ -75,11 +75,12 @@ func getCompareDataSource() *SignalConfigurationParameter {
 }
 
 // define validate
-func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (ret bool, isPresent bool) {
+func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (ret bool, isPresent bool, isUnprocessableEntity bool) {
 
 	// default return value
 	ret = true
 	isPresent = false
+	isUnprocessableEntity = false
 
 	if compareSource == nil {
 		compareSource = getCompareDataSource()
@@ -119,6 +120,7 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 				compareSource.ack_random_factor_idle.Includes(sc.AckRandomFactorIdle)) {
 					log.Error("Config values are out of range.")
 				ret = false
+				isUnprocessableEntity = true
 			}
 		}
 	}

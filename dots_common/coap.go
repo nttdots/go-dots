@@ -70,6 +70,7 @@ const (
 	PreconditionFailed    Code = 140
 	RequestEntityTooLarge Code = 141
 	UnsupportedMediaType  Code = 143
+	UnprocessableEntity   Code = 150
 	InternalServerError   Code = 160
 	NotImplemented        Code = 161
 	BadGateway            Code = 162
@@ -115,6 +116,8 @@ func (c Code) String() string {
 		return "RequestEntityTooLarge"
 	case UnsupportedMediaType:
 		return "UnsupportedMediaType"
+	case UnprocessableEntity:
+		return "UnprocessableEntity"
 	case InternalServerError:
 		return "InternalServerError"
 	case NotImplemented:
