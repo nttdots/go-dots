@@ -12,7 +12,7 @@ services:
         ports:
           - 4646:4646/udp
           - 4647:4647/udp
-        working_dir: /go/src/github.com/nttdots/go-dots/dots_server
+        working_dir: /root/go/src/github.com/nttdots/go-dots/dots_server
         entrypoint: ./entry_point.sh
         volumes:
           - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
