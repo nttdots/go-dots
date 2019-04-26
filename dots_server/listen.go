@@ -96,7 +96,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         cn, err := session.DtlsGetPeerCommonName()
         if err != nil {
             log.WithError(err).Warn("DtlsGetPeercCommonName() failed")
-            response.Code = libcoap.ResponseForbidden
+            response.Code = libcoap.ResponseUnauthorized
             response.Type = responseType(request.Type)
             return
         }
@@ -106,7 +106,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         customer, err := models.GetCustomerByCommonName(cn)
         if err != nil || customer.Id == 0 {
             log.WithError(err).Warn("Customer not found.")
-            response.Code = libcoap.ResponseForbidden
+            response.Code = libcoap.ResponseUnauthorized
             response.Type = responseType(request.Type)
             return
         }
