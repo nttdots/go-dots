@@ -6,8 +6,8 @@ WORKDIR /root
 RUN apt-get update && \
     apt-get upgrade -y && \
     apt-get install -y git gcc wget && \
-    wget https://storage.googleapis.com/golang/go1.8.linux-amd64.tar.gz && \
-    tar xf go1.8.linux-amd64.tar.gz  -C /usr/local/ && rm go1.8.linux-amd64.tar.gz && \
+    wget https://dl.google.com/go/go1.11.9.linux-amd64.tar.gz && \
+    tar xf go1.11.9.linux-amd64.tar.gz  -C /usr/local/ && rm go1.11.9.linux-amd64.tar.gz && \
     ln -s /usr/local/go/bin/go /usr/local/bin/go&&  \
     go get github.com/osrg/gobgp/...
 
