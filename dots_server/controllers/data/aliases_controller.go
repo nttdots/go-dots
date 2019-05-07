@@ -89,7 +89,8 @@ func (c *AliasesController) Get(customer *models.Customer, r *http.Request, p ht
         return
       }
       if alias == nil {
-        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found alias by specified name")
+        errMsg := fmt.Sprintf("Not Found alias by specified name = %+v", name)
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
       }
 
       ta, err := alias.ToTypesAlias(now)
@@ -141,7 +142,8 @@ func (c *AliasesController) Delete(customer *models.Customer, r *http.Request, p
       if deleted == true {
         return EmptyResponse(http.StatusNoContent)
       } else {
-        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found alias by specified name")
+        errMsg := fmt.Sprintf("Not Found alias by specified name = %+v", name)
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
       }
     })
   })
@@ -151,6 +153,7 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
   now := time.Now()
   cuid := p.ByName("cuid")
   name := p.ByName("alias")
+  errMsg := ""
   log.WithField("cuid", cuid).WithField("alias", name).Info("[AliasesController] PUT")
 
   // Check missing 'cuid'
@@ -168,8 +171,8 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
   req := messages.AliasesRequest{}
   err := Unmarshal(r, &req)
   if err != nil {
-    errString := fmt.Sprintf("Invalid body data format: %+v", err)
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errString)
+    errMsg = fmt.Sprintf("Invalid body data format: %+v", err)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errMsg)
   }
   log.Infof("[AliasesController] Put request=%#+v", req)
 
@@ -198,7 +201,8 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
       alias := req.Aliases.Alias[0]
       e, err := data_models.FindAliasByName(tx, client, alias.Name, now)
       if err != nil {
-        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alias")
+        errMsg = fmt.Sprintf("Failed to get alias with name = %+v", alias.Name)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
       }
       alias.TargetPrefix = data_models.RemoveOverlapIPPrefix(alias.TargetPrefix)
       status := http.StatusCreated
@@ -212,7 +216,8 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
       }
       err = e.Save(tx)
       if err != nil {
-        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save alias")
+        errMsg = fmt.Sprintf("Failed to save alias with name = %+v", alias.Name)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
       }
 
       // Add alias to check expired

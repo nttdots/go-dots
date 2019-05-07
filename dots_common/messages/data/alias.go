@@ -77,7 +77,7 @@ func (v *aliasValidatorBase) ValidateAlias(r *AliasesRequest, customer *models.C
     aliasNameList = append(aliasNameList, alias.Name)
 
     if len(alias.TargetPrefix) == 0 && len(alias.TargetFQDN) == 0 && len(alias.TargetURI) == 0 {
-      log. Errorf("At least one of the 'target-prefix', 'target-fqdn', or 'target-uri' attributes MUST be present at alias 'name'=%+v.", alias.Name)
+      log. Errorf("At least one of the 'target-prefix', 'target-fqdn', or 'target-uri' attributes MUST be present at alias 'name'(%v).", alias.Name)
       errorMsg = fmt.Sprintf("Body Data Error : At least one of the 'target-prefix', 'target-fqdn', or 'target-uri' attributes MUST be present at alias 'name'=(%v)", alias.Name)
       return false, errorMsg
     }
@@ -129,7 +129,7 @@ func (v *aliasValidatorBase) ValidateWithName(r *AliasesRequest, customer *model
 func (v *aliasValidatorBase) ValidatePendingLifetime(alias *data_models.Alias) (bool, string) {
   pendingLifetime := alias.Alias.PendingLifetime
 	if pendingLifetime != nil {
-    log.WithField("pending-lifetime", pendingLifetime).Errorf("'pending-lifetime' found at alias 'name'=%+v.", alias.Alias.Name)
+    log.WithField("pending-lifetime", pendingLifetime).Errorf("'pending-lifetime' found at alias 'name'(%v).", alias.Alias.Name)
     errorMsg := fmt.Sprintf("Body Data Error : Found NoConfig Attribute 'pending-lifetime' (%v) at alias 'name'(%v)", pendingLifetime, alias.Alias.Name)
     return false, errorMsg
 	}
@@ -148,7 +148,7 @@ func (v *aliasValidatorBase) ValidatePendingLifetime(alias *data_models.Alias) (
 func (v *aliasValidatorBase) ValidatePrefix(customer *models.Customer, alias *data_models.Alias) (bool, string) {
   targets, err := alias.GetPrefixAsTarget()
   if err != nil {
-		errorMsg := fmt.Sprintf("failed to get prefix: %+v", err)
+		errorMsg := fmt.Sprintf("Failed to get prefix: %+v at alias 'name'(%v)", err, alias.Alias.Name)
 		return false, errorMsg
   }
 	ret, errorMsg := isValid(customer, alias, targets)
@@ -167,7 +167,7 @@ func (v *aliasValidatorBase) ValidatePrefix(customer *models.Customer, alias *da
 func (v *aliasValidatorBase) ValidateFqdn(customer *models.Customer, alias *data_models.Alias) (bool, string) {
 	targets, err := alias.GetFqdnAsTarget()
 	if err != nil {
-		errorMsg := fmt.Sprintf("failed to parse fqnd to prefix: %+v", err)
+		errorMsg := fmt.Sprintf("Failed to parse fqnd to prefix: %+v at alias 'name'(%v)", err, alias.Alias.Name)
 		return false, errorMsg
 	}
 	ret, errorMsg := isValid(customer, alias, targets)
@@ -186,7 +186,7 @@ func (v *aliasValidatorBase) ValidateFqdn(customer *models.Customer, alias *data
 func (v *aliasValidatorBase) ValidateUri(customer *models.Customer, alias *data_models.Alias) (bool, string) {
 	targets, err := alias.GetUriAsTarget()
 	if err != nil {
-		errorMsg := fmt.Sprintf("failed to parse uri to prefix: %+v", err)
+		errorMsg := fmt.Sprintf("Failed to parse uri to prefix: %+v at alias 'name'(%v)", err, alias.Alias.Name)
 		return false, errorMsg
 	}
 	ret, errorMsg := isValid(customer, alias, targets)
@@ -205,18 +205,18 @@ func (v *aliasValidatorBase) ValidatePortRange(alias *data_models.Alias) (bool, 
 	for _, portRange := range alias.Alias.TargetPortRange {
     if portRange.LowerPort == nil {
       log.Error("Missing required alias port-range 'lower-port' attribute")
-      errorMsg := fmt.Sprintf("Body Data Error : Missing required alias port-range 'lower-port' attribute")
+      errorMsg := fmt.Sprintf("Body Data Error : Missing required alias port-range 'lower-port' attribute at alias 'name'(%v)", alias.Alias.Name)
       return false, errorMsg
     } else if *portRange.LowerPort < 0 || 0xffff < *portRange.LowerPort {
       log.WithField("lower-port", *portRange.LowerPort).Warnf("invalid lower-port: %+v", *portRange.LowerPort)
-      errorMsg := fmt.Sprintf("Body Data Error : invalid lower-port (%+v)", *portRange.LowerPort)
+      errorMsg := fmt.Sprintf("Body Data Error : invalid lower-port (%+v) at alias 'name'(%v)", *portRange.LowerPort, alias.Alias.Name)
       return false, errorMsg
     }
 
     if portRange.UpperPort != nil {
       if *portRange.UpperPort < 0 || 0xffff < *portRange.UpperPort {
         log.WithField("upper-port", portRange.UpperPort).Warnf("invalid upper-port: %+v", portRange.UpperPort)
-        errorMsg := fmt.Sprintf("Body Data Error : invalid upper-port (%+v)", portRange.UpperPort)
+        errorMsg := fmt.Sprintf("Body Data Error : invalid upper-port (%+v) at alias 'name'(%v)", portRange.UpperPort, alias.Alias.Name)
         return false, errorMsg
       } else if *portRange.UpperPort < *portRange.LowerPort  {
         log.WithField("lower-port", *portRange.LowerPort).WithField("upper-port", *portRange.UpperPort).Warnf("'upper-port' must be greater than or equal to 'lower-port' at alias 'name'=%+v.", alias.Alias.Name)
@@ -242,7 +242,7 @@ func (v *aliasValidatorBase) ValidateProtocol(alias *data_models.Alias) (bool, s
 	for _, protocol := range alias.Alias.TargetProtocol {
 		if protocol < 0 || protocol > 255 {
       log.Warnf("invalid protocol: %+v", protocol)
-      errorMsg := fmt.Sprintf("Body Data Error : target protocol must not be less than 0 and greater than 255 (%+v)", protocol)
+      errorMsg := fmt.Sprintf("Body Data Error : target protocol must not be less than 0 and greater than 255 (%+v) at alias 'name'(%v)", protocol, alias.Alias.Name)
 			return false, errorMsg
 		}
 	}
