@@ -1,8 +1,8 @@
 package models
 
 import (
-	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/dots_common/messages"
+	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -75,7 +75,7 @@ func getCompareDataSource() *SignalConfigurationParameter {
 }
 
 // define validate
-func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (ret bool, isPresent bool, isUnprocessableEntity bool) {
+func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (ret bool, isPresent bool, isUnprocessableEntity bool, errMessage string) {
 
 	// default return value
 	ret = true
@@ -94,13 +94,15 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 	if sc, ok := m.(*SignalSessionConfiguration); ok {
 		// Mandatory attribute check
 		if sc.SessionId == 0 {
-			log.Error("Missing sid value.")
+			errMessage = "Missing sid value."
+			log.Error(errMessage)
 			ret = false
 		}
 
 		if signalSessionConfiguration != nil {
 			if sc.SessionId < signalSessionConfiguration.SessionId {
-				log.Error("Sid value is out of order.")
+				errMessage = "Sid value is out of order."
+				log.Error(errMessage)
 				ret = false
 			}
 			isPresent = true
@@ -118,9 +120,10 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 				compareSource.max_retransmit_idle.Includes(float64(sc.MaxRetransmitIdle)) &&
 				compareSource.ack_timeout_idle.Includes(sc.AckTimeoutIdle) &&
 				compareSource.ack_random_factor_idle.Includes(sc.AckRandomFactorIdle)) {
-					log.Error("Config values are out of range.")
-				ret = false
-				isUnprocessableEntity = true
+					errMessage = "Config values are out of range."
+					log.Error(errMessage)
+				    ret = false
+				    isUnprocessableEntity = true
 			}
 		}
 	}
@@ -131,7 +134,7 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 /*
 *Check missing session config
 */
-func (v *SignalConfigurationValidator) CheckMissingSessionConfiguration(data *messages.SignalConfigs, c Customer) (ret bool) {
+func (v *SignalConfigurationValidator) CheckMissingSessionConfiguration(data *messages.SignalConfigs, c Customer) (ret bool, errMessage string) {
 	// Default return value
 	ret = true
 	if ((data.MitigatingConfig.HeartbeatInterval.CurrentValue == nil) && (data.MitigatingConfig.MissingHbAllowed.CurrentValue == nil) &&
@@ -139,7 +142,8 @@ func (v *SignalConfigurationValidator) CheckMissingSessionConfiguration(data *me
 		(data.MitigatingConfig.AckRandomFactor.CurrentValue == nil)) && ((data.IdleConfig.HeartbeatInterval.CurrentValue == nil) && 
 		(data.IdleConfig.MissingHbAllowed.CurrentValue == nil) && (data.IdleConfig.MaxRetransmit.CurrentValue == nil) && 
 		(data.IdleConfig.AckTimeout.CurrentValue == nil) && (data.IdleConfig.AckRandomFactor.CurrentValue == nil)) {
-			log.Error("At least one of the attributes 'heartbeat-interval', 'missing-hb-allowed', 'max-retransmit', 'ack-timeout' and 'ack-random-factor' MUST be present in the PUT request")
+			errMessage = "At least one of the attributes 'heartbeat-interval', 'missing-hb-allowed', 'max-retransmit', 'ack-timeout' and 'ack-random-factor' MUST be present in the PUT request"
+			log.Error(errMessage)
 			ret = false
 		}
 	return

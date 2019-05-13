@@ -317,6 +317,12 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 	log.Infof("        Raw payload: %s", pdu.Data)
 	log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
 
+	// handle error message
+	if pdu.Code != libcoap.ResponseCreated && pdu.Code != libcoap.ResponseChanged && pdu.Code != libcoap.ResponseContent && pdu.Code != libcoap.ResponseConflict {
+		data = pdu.Data
+		return
+	}
+
 	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 
 	switch r.requestName {

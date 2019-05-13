@@ -331,8 +331,9 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
         oldActivateType := *acl.ACL.ActivationType
         activationType := data_models.ToActivationType(controlFiltering.ActivationType)
         if activationType == "" {
-          log.Warnf("[Control Filtering]: Activation types is invalid: %+v\n", controlFiltering.ActivationType)
-          return EmptyResponse(http.StatusBadRequest)
+          errMsg = fmt.Sprintf("[Control Filtering]: Activation types is invalid: %+v", controlFiltering.ActivationType)
+          log.Warn(errMsg)
+          return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errMsg)
         }
         acl.ACL.ActivationType = &activationType
         acl.ValidThrough = now.Add(defaultACLLifetime)

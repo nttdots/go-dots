@@ -10,7 +10,7 @@ type PortRange struct {
 	UpperPort int
 }
 
-const ValidationError string = "validation error."
+const ValidationError string = "validation error"
 
 /*
  * Check if the PortRange includes the port.

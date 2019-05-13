@@ -7,6 +7,7 @@ import (
 	"time"
 	"reflect"
 	"net/http"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
@@ -33,26 +34,29 @@ type MitigationRequest struct {
 func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer) (res Response, err error) {
 
 	log.WithField("request", request).Debug("[GET] receive message")
+	var errMessage string
 
 	// Get cuid, mid from Uri-Path
 	_, cuid, mid, err := ParseURIPath(request.PathInfo)
 	if err != nil {
-		log.Warnf("Failed to parse Uri-Path, error: %s", err)
+		errMessage = fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
+		log.Warnf(errMessage)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
-			Body: nil,
+			Body: errMessage,
 		}
-		return
+		return res, nil
 	}
 
 	// cuid is required Uri-Path
 	if cuid == "" {
-		log.Warn("Missing required Uri-Path Parameter: cuid")
+		errMessage = "Missing required Uri-Path Parameter: cuid"
+		log.Warn(errMessage)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
-			Body: nil,
+			Body: errMessage,
 		}
 		return
 	}
@@ -121,14 +125,16 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	// Return error when there is no Mitigation matched
 	if len(scopes) == 0 {
 		if mid != nil {
-			log.Infof("Not found any mitigations with cuid: %s, mid: %v", cuid, *mid)
+			errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s, mid: %v", cuid, *mid)
+			log.Infof(errMessage)
 		} else {
-			log.Infof("Not found any mitigations with cuid: %s", cuid)
+			errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s", cuid)
+			log.Infof(errMessage)
 		}
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.NotFound,
-			Body: nil,
+			Body: errMessage,
 		}
 		return
 	}
@@ -158,12 +164,15 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer) (res Response, err error) {
 
 	log.WithField("request", request).Debug("HandlePut")
+	var errorMessage string
 
 	if request.Body == nil {
+		errorMessage = "Request body must be provided for PUT method"
+		log.Warn(errorMessage)
 		res = Response {
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
-			Body: nil,
+			Body: errorMessage,
 		}
 		return
 	}
@@ -174,13 +183,15 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	// Get cuid, mid from Uri-Path
 	cdid, cuid, mid, err := ParseURIPath(request.PathInfo)
 	if err != nil {
-		log.Warnf("Failed to parse Uri-Path, error: %s", err)
+		errorMessage = fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
+		log.Warn(errorMessage)
 		goto ResponseNG
 	}
 
 	// cuid, mid are required Uri-Paths
 	if  mid == nil || cuid == "" {
-		log.Warn("Missing required Uri-Path Parameter(cuid, mid).")
+		errorMessage = "Missing required Uri-Path Parameter(cuid, mid)."
+		log.Warn(errorMessage)
 		goto ResponseNG
 	}
 	
@@ -188,6 +199,8 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	if len(body.MitigationScope.Scopes) != 1  {
 
 		// Zero or multiple scope
+		errorMessage = "Request body must contain only one scope"
+		log.Warn(errorMessage)
 		goto ResponseNG
 
 	} else {
@@ -202,8 +215,9 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			// If there are any active mitigation requests (status = 1,2,3,4,5), log "mid is not allowed" and return 4.00 Bad Request
 			for _, mitigation := range mitigations {
 				if mitigation.mitigation.IsActive() {
-					log.Warn("The mitigation request (mid=%+v) is not accepted in non-peace time because the mitigation (mid=%+v) is active",
-						*mid, mitigation.mitigation.MitigationId)
+					errorMessage = fmt.Sprintf ("The mitigation request (mid=%+v) is not accepted in non-peace time because the mitigation (mid=%+v) is active",
+												*mid, mitigation.mitigation.MitigationId)
+					log.Warn(errorMessage)
 					goto ResponseNG
 				}
 			}
@@ -219,7 +233,8 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		}
 
 		if body.EffectiveClientIdentifier() != "" || body.EffectiveClientDomainIdentifier() != "" || body.EffectiveMitigationId() != nil {
-			log.Warn("Client Identifier, Client Domain Identifier and Mitigation Id are forbidden in body request")
+			errorMessage = "Client Identifier, Client Domain Identifier and Mitigation Id are forbidden in body request"
+			log.Warn(errorMessage)
 			goto ResponseNG
 		}
 
@@ -252,7 +267,8 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		}
 		if isIfMatchOption {
 			log.Debug("Handle efficacy update.")
-			valid := validateForEfficacyUpdate(request.Options[indexIfMatch].Value, customer, body, currentScope)
+			valid, errMessage := validateForEfficacyUpdate(request.Options[indexIfMatch].Value, customer, body, currentScope)
+			errorMessage = errMessage
 			if !valid {
 				goto ResponseNG
 			}
@@ -266,7 +282,8 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 			// Mitigation Request must repeat all parameters except lifetime and acl-*
 			if currentScope != nil {
-				isInvalid := checkAttributesEfficacyUpdate(customer, body, currentScope)
+				isInvalid, errMessage := checkAttributesEfficacyUpdate(customer, body, currentScope)
+				errorMessage = errMessage
 				if isInvalid {
 					goto ResponseNG
 				}
@@ -285,7 +302,8 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 			conflictInfo, err = CreateMitigation(body, customer, nil, isIfMatchOption)
 			if err != nil {
-				if err.Error() == models.ValidationError {
+				if strings.Contains(err.Error(), models.ValidationError) {
+					errorMessage = fmt.Sprint(err)
 					goto ResponseNG
 				}
 				log.Error("Failed to Create Mitigation.")
@@ -314,7 +332,8 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 			conflictInfo, err = CreateMitigation(body, customer, currentScope, isIfMatchOption)
 			if err != nil {
-				if err.Error() == models.ValidationError {
+				errorMessage = fmt.Sprintf("%s", err)
+				if strings.Contains(err.Error(), models.ValidationError) {
 					goto ResponseNG
 				}
 				log.Error("Failed to Create Mitigation.")
@@ -325,7 +344,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				goto ResponseConflict
 			}
 
-			res = Response{
+			res = Response {
 				Type: common.NonConfirmable,
 				Code: common.Changed,
 				Body: messages.NewMitigationResponsePut(body, nil),
@@ -349,10 +368,10 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	}
 
 ResponseNG:
-	res = Response{
+	res = Response {
 		Type: common.NonConfirmable,
 		Code: common.BadRequest,
-		Body: nil,
+		Body: errorMessage,
 	}
 	return res, nil
 }
@@ -368,24 +387,26 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 	// Get cuid, mid from Uri-Path
 	_, cuid, mid, err := ParseURIPath(request.PathInfo)
 	if err != nil {
-		log.Warnf("Failed to parse Uri-Path, error: %s", err)
+		errMessage := fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
+		log.Warnf(errMessage)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
-			Body: nil,
+			Body: errMessage,
 		}
-		return
+		return res, nil
 	}
 
 	// cuid, mid are required Uri-Paths
 	if mid == nil || cuid == "" {
-		log.Warn("Missing required Uri-Path Parameter(cuid, mid).")
+		errMessage := "Missing required Uri-Path Parameter(cuid, mid)."
+		log.Warn(errMessage)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.BadRequest,
-			Body: nil,
+			Body: errMessage,
 		}
-		return
+		return res, nil
 	}
 
 	var mitigationScope *models.MitigationScope
@@ -418,7 +439,7 @@ Response:
 	res = Response{
 		Type: common.NonConfirmable,
 		Code: common.Deleted,
-		Body: nil,
+		Body: "Deleted",
 	}
 	return
 }
@@ -436,7 +457,8 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	m.AliasName.AddList(req.AliasName)
 	if req.Lifetime == nil {
 		log.Warn("lifetime is mandatory field")
-		return nil, errors.New(models.ValidationError)
+		errMsg := fmt.Sprintf("%+v: lifetime is mandatory field", models.ValidationError)
+		return nil, errors.New(errMsg)
 	}
 	m.Lifetime = *req.Lifetime
 	if req.AttackStatus != nil {
@@ -469,7 +491,8 @@ func newTargetPrefix(targetPrefix []string) (prefixes []models.Prefix, err error
 		prefix, err := models.NewPrefix(cidr)
 		if err != nil {
 			log.Warnf("%+v", err)
-			return nil, errors.New(models.ValidationError)
+			errMsg := fmt.Sprintf("%+v: %+v", models.ValidationError, err)
+			return nil, errors.New(errMsg)
 		}
 		prefixes[i] = prefix
 	}
@@ -484,7 +507,8 @@ func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges 
 	for i, r := range targetPortRange {
 		if r.LowerPort == nil {
 			log.Warn("lower port is mandatory for target-port-range data.")
-			return nil, errors.New(models.ValidationError)
+			errMsg := fmt.Sprintf("%+v: lower port is mandatory for target-port-range data.", models.ValidationError)
+			return nil, errors.New(errMsg)
 		}
 		if r.UpperPort == nil {
 			r.UpperPort = r.LowerPort
@@ -628,10 +652,8 @@ func cancelMitigationById(mitigationId int, clientIdentifier string, customerId 
 	}
 	if s == nil {
 		log.WithField("mitigation_id", mitigationId).Error("mitigation_scope not found.")
-		return Error{
-			Code: common.NotFound,
-			Type: common.NonConfirmable,
-		}
+		errMsg := fmt.Sprintf("mitigation_scope not found with mitigation_id = %+v", mitigationId)
+		return  errors.New(errMsg)
 	}
 	p, err := models.GetActiveProtectionByTargetIDAndTargetType(s.MitigationScopeId, string(messages.MITIGATION_REQUEST_ACL))
 	if err != nil {
@@ -640,10 +662,8 @@ func cancelMitigationById(mitigationId int, clientIdentifier string, customerId 
 	}
 	if p == nil {
 		log.WithField("mitigation_id", mitigationId).Error("protection not found.")
-		return Error{
-			Code: common.NotFound,
-			Type: common.NonConfirmable,
-		}
+		errMsg := fmt.Sprintf("protection not found with mitigation_id = %+v", mitigationId)
+		return  errors.New(errMsg)
 	}
 	if !p.IsEnabled() {
 		log.WithFields(log.Fields{
@@ -653,11 +673,8 @@ func cancelMitigationById(mitigationId int, clientIdentifier string, customerId 
 			"started_at":  p.StartedAt(),
 			"finished_at": p.FinishedAt(),
 		}).Error("protection status error.")
-
-		return Error{
-			Code: common.PreconditionFailed,
-			Type: common.NonConfirmable,
-		}
+		errMsg := fmt.Sprintf("protection status error with mitigation_id = %+v", mitigationId)
+		return  errors.New(errMsg)
 	}
 
 	// cancel
@@ -666,10 +683,7 @@ func cancelMitigationById(mitigationId int, clientIdentifier string, customerId 
 	p.SetSessionName(sessName)
 	err = blocker.StopProtection(p)
 	if err != nil {
-		return Error{
-			Code: common.BadRequest,
-			Type: common.NonConfirmable,
-		}
+		return err
 	}
 
 	return
@@ -689,8 +703,11 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer, mitigatio
 		scope.MitigationScopeId = mitigationScopeId
 		validator := models.GetMitigationScopeValidator(blockerType)
 		if validator == nil { return errors.New("Unknown blocker type: " + blockerType)}
-		if !validator.ValidateScope(models.MessageEntity(scope), c, nil) {
-			return errors.New(models.ValidationError)
+		errMsg := validator.ValidateScope(models.MessageEntity(scope), c, nil)
+		if errMsg != "" {
+			errMsg = fmt.Sprintf("%+v : %+v", models.ValidationError, errMsg)
+			err = errors.New(errMsg)
+			return err
 		}
 
 		err = callBlockerByScope(scope, c)
@@ -907,17 +924,13 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 		}
 
 		// Validate and check overlap mitigation request
-		isSuccess, conflictInfo, err := ValidateAndCheckOverlap(customer, requestScope, currentScope, aliases, blockerConfig.BlockerType)
+	    conflictInfo, err := ValidateAndCheckOverlap(customer, requestScope, currentScope, aliases, blockerConfig.BlockerType)
 		if err != nil {
 			return nil, err
 		}
 		if conflictInfo != nil {
 			return conflictInfo, nil
-		} else if !isSuccess {
-			err = errors.New(models.ValidationError)
-			return nil, err
 		}
-
 	}
 
 	// cancel mitigation scope when update mitigation
@@ -1107,7 +1120,7 @@ func handleCallBlocker(customer *models.Customer, currentScope *models.Mitigatio
 
 	// If error occur when Call Blocker -> rollback by updating mitigation status to 7 (withdrawn)
 	if err != nil {
-		if err.Error() == models.ValidationError {
+		if strings.Contains(err.Error(), models.ValidationError) {
 			log.Warn("MitigationRequest.Put callBlocker validation failed",)
 			return err
 		}
@@ -1146,7 +1159,7 @@ func handleCallBlocker(customer *models.Customer, currentScope *models.Mitigatio
  * return:
  *  err           the error
  */
-func handleCancelBlocker(customerId int, cuid string, mid int, scopeId int64) (err error) {
+func handleCancelBlocker(mid int, cuid string, customerId int, scopeId int64) (err error) {
 	// Cancel Blocker
 	err = cancelMitigationById(mid, cuid, customerId, scopeId)
 	// If error occur when Cancel Blocker -> rollback by updating mitigation status to 7 (withdrawn)
@@ -1170,30 +1183,34 @@ func handleCancelBlocker(customerId int, cuid string, mid int, scopeId int64) (e
  *  true: if efficacy update is valid
  *  false: if efficacy update is invalid
  */
-func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, body *messages.MitigationRequest, currentScope *models.MitigationScope) bool {
+func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, body *messages.MitigationRequest, currentScope *models.MitigationScope) (bool, string) {
+	errMessage := ""
 	if len(optionValue) != 0 {
-		log.Error("If-Match option with value other than empty is not supported.")
-		return false
+		errMessage = "If-Match option with non-empty value is not supported."
+		log.Error(errMessage)
+		return false, errMessage
 	}
 
 	attackStatus := body.MitigationScope.Scopes[0].AttackStatus
 	if attackStatus == nil {
-		log.Errorf("attack-status is mandatory field.")
-		return false
+		errMessage = "attack-status is mandatory field."
+		log.Error(errMessage)
+		return false, errMessage
 	}
 	if  (*attackStatus != int(models.UnderAttack) && *attackStatus != int(models.AttackSuccessfullyMitigated)) {
-		log.Errorf("Invalid attack-status value: %+v. Expected values includes 1: under-attack, 2: attack-successfully-mitigated.", *attackStatus)
-		return false
+		errMessage = fmt.Sprintf("Invalid attack-status value: %+v. Expected values include 1: under-attack, 2: attack-successfully-mitigated.", *attackStatus)
+		log.Error(errMessage)
+		return false, errMessage
 	}
 
 	if currentScope != nil {
-		different := checkAttributesEfficacyUpdate(customer, body, currentScope)
+		different, errMessage := checkAttributesEfficacyUpdate(customer, body, currentScope)
 		if different {
-			return false
+			return false, errMessage
 		}
 	}
 
-	return true
+	return true, errMessage
 }
 
 /*
@@ -1206,7 +1223,7 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
  *  true: Except for attack-status and lifetime, if any attribute of incomming request is different from existing value in DB
  *  false: Except for attack-status and lifetime, if all other attributes of mitigation request is the same as  existing values in DB
  */
-func checkAttributesEfficacyUpdate(customer *models.Customer, messageScope *messages.MitigationRequest, currentScope *models.MitigationScope) bool {
+func checkAttributesEfficacyUpdate(customer *models.Customer, messageScope *messages.MitigationRequest, currentScope *models.MitigationScope) (bool, string) {
 	// Convert type of scope in request to type of scope in DB
 	m := models.NewMitigationScope(customer, messageScope.EffectiveClientIdentifier())
 	m.TargetPrefix,_ = newTargetPrefix(messageScope.MitigationScope.Scopes[0].TargetPrefix)
@@ -1216,32 +1233,39 @@ func checkAttributesEfficacyUpdate(customer *models.Customer, messageScope *mess
 	m.URI.AddList(messageScope.MitigationScope.Scopes[0].URI)
 	m.AliasName.AddList(messageScope.MitigationScope.Scopes[0].AliasName)
 
+	errMessage := ""
 	if !reflect.DeepEqual(m.TargetPrefix, currentScope.TargetPrefix) {
-		log.Errorf("TargetPrefix in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPrefix, currentScope.TargetPrefix)
-		return true;
+		errMessage = fmt.Sprintf("TargetPrefix in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPrefix, currentScope.TargetPrefix)
+		log.Error(errMessage)
+		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.TargetPortRange, currentScope.TargetPortRange) {
-		log.Errorf("TargetPortRange in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPortRange, currentScope.TargetPortRange)
-		return true;
+		errMessage = fmt.Sprintf("TargetPortRange in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPortRange, currentScope.TargetPortRange)
+		log.Error(errMessage)
+		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.TargetProtocol, currentScope.TargetProtocol) {
-		log.Errorf("TargetProtocol in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetProtocol, currentScope.TargetProtocol)
-		return true;
+		errMessage = fmt.Sprintf("TargetProtocol in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetProtocol, currentScope.TargetProtocol)
+		log.Error(errMessage)
+		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.FQDN, currentScope.FQDN) {
-		log.Errorf("FQDN in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.FQDN, currentScope.FQDN)
-		return true;
+		errMessage = fmt.Sprintf("FQDN in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.FQDN, currentScope.FQDN)
+		log.Error(errMessage)
+		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.URI, currentScope.URI) {
-		log.Errorf("URI in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.URI, currentScope.URI)
-		return true;
+		errMessage = fmt.Sprintf("URI in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.URI, currentScope.URI)
+		log.Error(errMessage)
+		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.AliasName, currentScope.AliasName) {
-		log.Errorf("AliasName in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.AliasName, currentScope.AliasName)
-		return true;
+		errMessage = fmt.Sprintf("AliasName in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.AliasName, currentScope.AliasName)
+		log.Error(errMessage)
+		return true, errMessage
 	}
 
-	return false
+	return false, errMessage
 }
 
 /*
@@ -1391,7 +1415,7 @@ func GetOtherActiveMitigations(currentMitigationScopeId *int64) (scopes []models
  *  err                  error
  */
 func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.MitigationScope, currentScope *models.MitigationScope,
-	aliases types.Aliases, blockerType string) (bool, *models.ConflictInformation, error) {
+	aliases types.Aliases, blockerType string) (*models.ConflictInformation, error) {
 
 	var err error
 	var mitigations []models.MitigationScope
@@ -1400,10 +1424,13 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 
 	// Validate data(prefix, fqdn, uri, port-range, protocol, alias-name) inside mitigation scope
 	validator := models.GetMitigationScopeValidator(blockerType)
-	if validator == nil { return false, nil, errors.New("Unknown blocker type: " + blockerType)}
-	if !validator.ValidateScope(models.MessageEntity(requestScope), customer, &aliases) {
+	if validator == nil { return nil, errors.New("Unknown blocker type: " + blockerType)}
+    errMsg := validator.ValidateScope(models.MessageEntity(requestScope), customer, &aliases)
+	if errMsg != "" {
 		log.Error("[Validation]: Mitigation scope data is invalid.")
-		return false, nil, nil
+		errMsg = fmt.Sprintf("%+v : %+v", models.ValidationError, errMsg)
+		err = errors.New(errMsg)
+		return nil, err
 	}
 
 	// Get all active mitigation from DB
@@ -1414,7 +1441,7 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 	}
 	if err != nil {
 		log.Error("Failed to get active mitigations.")
-		return false, nil, err
+		return nil, err
 	}
 
 	// Loop on list of active mitigations that are protected by third party
@@ -1429,14 +1456,14 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 				ConflictCause:  models.CUID_COLLISION,
 				ConflictScope:  nil,
 			}
-			return false, &conflictInfo, nil
+			return &conflictInfo, nil
 		}
 
 		// Check overlap mitigation data with active mitigations
 		log.Debugf("Check overlap for mitigation scope data with id: %+v", requestScope.MitigationId)
 		isOverlap, conflictInfo, err := validator.CheckOverlap(requestScope, &mitigation, false)
 		if err != nil {
-			return false, nil, err
+			return nil, err
 		}
 		if isOverlap {
 			if conflictInfo != nil {
@@ -1454,13 +1481,13 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 			aliasScope := models.NewMitigationScope(customer, requestScope.ClientIdentifier)
 			err = appendAliasDataToMitigationScope(alias, aliasScope)
 			if err != nil {
-				return false, nil, err
+				return nil, err
 			}
 
 			// Get target list from alias scope
 			aliasScope.TargetList, err = aliasScope.GetTargetList()
 			if err != nil {
-				return false, nil, err
+				return nil, err
 			}
 
 			// Check overlap mitigation data with active mitigations
@@ -1468,7 +1495,7 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 			var info *models.ConflictInformation
 			isOverlap, info, err = validator.CheckOverlap(aliasScope, &mitigation, true)
 			if err != nil {
-				return false, nil, err
+				return nil, err
 			}
 
 			if isOverlap {
@@ -1490,7 +1517,7 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 
 		// return conflict info when check overlap for all data in mitigation request scope
 		if conflictInfo != nil {
-			return isOverlap, conflictInfo, nil
+			return conflictInfo, nil
 		}
 
 	}
@@ -1511,7 +1538,7 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 				overridedMitigation.MitigationId, overridedMitigation.MitigationScopeId, models.Withdrawn, true)
 		}
 	}
-	return true, nil, nil
+	return nil, nil
 }
 
 /*
@@ -1669,11 +1696,12 @@ func HandleControlFiltering(customer *models.Customer, cuid string, aclList []me
 			controlFiltering := models.ControlFiltering{ ACLName: acl.AclName, ActivationType: *acl.ActivationType }
 			controlFilteringList[i] = controlFiltering
 		} else {
-			log.Warn("Acl Name must be included in Control Filtering.")
+			errMsg := "Acl Name must be included in Control Filtering."
+			log.Warn(errMsg)
 			res := Response{
 				Type: common.NonConfirmable,
 				Code: common.BadRequest,
-				Body: nil,
+				Body: errMsg,
 			}
 			return &res, nil
 		}
@@ -1689,17 +1717,26 @@ func HandleControlFiltering(customer *models.Customer, cuid string, aclList []me
 	// Handle response from datachannel
 	switch (response.Code) {
 	case http.StatusNotFound:
-		log.Errorf("Data Channel response: %+v", string(response.Content))
+		errMsg := fmt.Sprintf("Data Channel response: %+v", string(response.Content))
+		log.Error(errMsg)
 		res := Response{
 			Type: common.NonConfirmable,
 			Code: common.NotFound,
-			Body: nil,
+			Body: errMsg,
 		}
 		return &res, nil
 	case http.StatusInternalServerError:
 		err := errors.New(string(response.Content))
 		return nil, err
 	case http.StatusBadRequest:
+		errMsg := fmt.Sprintf("Data Channel response: %+v", string(response.Content))
+		log.Error(errMsg)
+		res := Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: errMsg,
+		}
+		return &res, nil
 	case http.StatusNoContent:
 		// Do nothing in these case
 	}
