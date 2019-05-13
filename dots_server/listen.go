@@ -8,6 +8,7 @@ import (
     "encoding/hex"
     "strings"
     "strconv"
+    "fmt"
 
     log "github.com/sirupsen/logrus"
     "github.com/ugorji/go/codec"
@@ -98,6 +99,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             log.WithError(err).Warn("DtlsGetPeercCommonName() failed")
             response.Code = libcoap.ResponseUnauthorized
             response.Type = responseType(request.Type)
+            response.Data = []byte(fmt.Sprint(err))
             return
         }
 
@@ -108,6 +110,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             log.WithError(err).Warn("Customer not found.")
             response.Code = libcoap.ResponseUnauthorized
             response.Type = responseType(request.Type)
+            response.Data = []byte(fmt.Sprint(err))
             return
         }
 
@@ -115,9 +118,11 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if err != nil {
             log.Warnf("Block2 option: %+v", err)
         } else if block2Value > libcoap.LARGEST_BLOCK_SIZE {
-            log.Warnf("Block 2 option with size = %+v > %+v (block size largest)", block2Value, libcoap.LARGEST_BLOCK_SIZE)
+            errMessage := fmt.Sprintf("Block 2 option with size = %+v > %+v (block size largest)", block2Value, libcoap.LARGEST_BLOCK_SIZE)
+            log.Warn(errMessage)
             response.Code = libcoap.ResponseBadRequest
             response.Type = responseType(request.Type)
+            response.Data = []byte(errMessage)
             return
         }
 
@@ -151,6 +156,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             log.WithError(err).Error("unmarshalCbor failed.")
             response.Code = libcoap.ResponseInternalServerError
             response.Type = responseType(request.Type)
+            response.Data = []byte(fmt.Sprint(err))
             return
         }
 
@@ -169,15 +175,22 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             log.WithError(err).Error("controller returned error")
             response.Code = libcoap.ResponseInternalServerError
             response.Type = responseType(request.Type)
+            response.Data = []byte(fmt.Sprint(err))
             return
         }
 
         log.Debugf("res=%+v", res)
-        payload, err := marshalCbor(res.Body)
+        var payload []byte
+        if reflect.ValueOf(res.Body).Kind() == reflect.String {
+            payload = []byte(res.Body.(string))
+        } else {
+            payload, err = marshalCbor(res.Body)
+        }
         if err != nil {
             log.WithError(err).Error("marshalCbor failed.")
             response.Code = libcoap.ResponseInternalServerError
             response.Type = responseType(request.Type)
+            response.Data = []byte(fmt.Sprint(err))
             return
         }
 
@@ -193,7 +206,11 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         response.Options = res.Options
 
         log.Debugf("response.Data=\n%s", hex.Dump(payload))
-        if response.Type != libcoap.TypeNon || response.Code != libcoap.ResponseContent {
+        if response.Code != libcoap.ResponseCreated && response.Code != libcoap.ResponseChanged && response.Code != libcoap.ResponseContent &&
+           response.Code != libcoap.ResponseConflict {
+            // add content text/plain for error case
+            response.SetOption(libcoap.OptionContentFormat, uint16(libcoap.TextPlain))
+        } else if response.Type != libcoap.TypeNon || response.Code != libcoap.ResponseContent {
             // add content type cbor
             response.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppCbor))
         }
@@ -204,7 +221,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         }
 
         // Register observer for resources of all mitigation
-        if request.Code == libcoap.RequestGet && response.Type == libcoap.TypeNon && res.Body != nil {
+        if request.Code == libcoap.RequestGet && response.Type == libcoap.TypeNon && response.Code == libcoap.ResponseContent {
             responses := res.Body.(messages.MitigationResponse).MitigationScope.Scopes
             registerResourceAllMitigation(responses, request, context, observe, session, token, block2Value, resource.UriPath())
         }

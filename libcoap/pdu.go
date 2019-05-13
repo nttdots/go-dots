@@ -409,7 +409,7 @@ func (pdu *Pdu) CoapCode() CoapCode {
 func (code Code) HttpCode() int {
 	switch code {
         case ResponseCreated:              return http.StatusCreated
-        case ResponseDeleted:              return http.StatusNoContent
+        case ResponseDeleted:              return http.StatusOK
         case ResponseValid:                return http.StatusNotModified
         case ResponseChanged:              return http.StatusOK
         case ResponseContent:              return http.StatusOK

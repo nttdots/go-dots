@@ -65,7 +65,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue           = defaultValue.MaxRetransmitIdle
 		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue              = decimal.NewFromFloat(defaultValue.AckTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue         = decimal.NewFromFloat(defaultValue.AckRandomFactorIdle).Round(2)
-	}else {
+	} else {
 		resp.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
 		resp.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
 		resp.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
@@ -114,33 +114,35 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 		res = Response{
 			Type: common.Acknowledgement,
 			Code: common.BadRequest,
-			Body: nil,
+			Body: fmt.Sprint(err),
 		}
-		return
+		return res, nil
 	}
 
 	request := newRequest.Body
 
 	if request == nil {
+		errMessage := "Request body must be provided for PUT method"
+		log.Errorf(errMessage)
 		res = Response{
 			Type: common.Acknowledgement,
 			Code: common.BadRequest,
-			Body: nil,
+			Body: errMessage,
 		}
-		return
+		return res, nil
 	}
 
 	payload := &request.(*messages.SignalConfigRequest).SignalConfigs
 	// Check missing session config
 	v := models.SignalConfigurationValidator{}
-	checkMissingResult := v.CheckMissingSessionConfiguration(payload, *customer)
+	checkMissingResult, errMessage := v.CheckMissingSessionConfiguration(payload, *customer)
 	if !checkMissingResult {
 		res = Response{
 			Type: common.Acknowledgement,
 			Code: common.UnprocessableEntity,
-			Body: nil,
+			Body: errMessage,
 		}
-		return
+		return res, nil
 	}
 
 	setDefaultValues(payload)
@@ -163,7 +165,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 		ackTimeoutIdle,
 		ackRandomFactorIdle,
 	)
-	validateResult, isPresent, isUnprocessableEntity := v.Validate(signalSessionConfiguration, *customer)
+	validateResult, isPresent, isUnprocessableEntity, errMessage := v.Validate(signalSessionConfiguration, *customer)
 	if !validateResult {
 		if isUnprocessableEntity {
 			goto ResponseUnprocessableEntity
@@ -174,6 +176,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 		// Register or Update SignalConfigurationParameter
 		_, err = models.CreateSignalSessionConfiguration(*signalSessionConfiguration, *customer)
 		if err != nil {
+			errMessage = fmt.Sprint(err)
 			goto ResponseNG
 		}
 
@@ -189,7 +192,7 @@ ResponseNG:
 	res = Response{
 		Type: common.Acknowledgement,
 		Code: common.BadRequest,
-		Body: nil,
+		Body: errMessage,
 	}
 	return
 ResponseUnprocessableEntity:
@@ -197,7 +200,7 @@ ResponseUnprocessableEntity:
 	res = Response{
 		Type: common.Acknowledgement,
 		Code: common.UnprocessableEntity,
-		Body: nil,
+		Body: errMessage,
 	}
 	return
 ResponseCreated:
@@ -246,7 +249,7 @@ func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models
 	res = Response{
 		Type: common.Acknowledgement,
 		Code: common.Deleted,
-		Body: nil,
+		Body: "Deleted",
 	}
 	return
 }

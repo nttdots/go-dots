@@ -2,6 +2,7 @@ package models
 
 import (
 	"net"
+	"errors"
 
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
@@ -348,7 +349,8 @@ func GetCustomerCommonName(commonName string) (customer Customer, err error) {
 	}
 	if !chk {
 		// no data
-		log.Error("customer no data")
+		err = errors.New("customer no data")
+		log.Error(err)
 		return
 	}
 	customer.Id = dbCustomer.Id
