@@ -143,7 +143,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
 
                 } else if strings.HasPrefix(uri[i], "config") {
                     log.Debug("Request path includes 'config'. Cbor decode with type SignalConfigRequest")
-                    body, resourcePath, err = registerResourceSignalConfig(request, typ, controller, session, context, is_unknown, customer.Id, observe, token)
+                    body, resourcePath, err, is_unknown = registerResourceSignalConfig(request, typ, controller, session, context, is_unknown, customer.Id, observe, token)
                     break;
                 }
             }
@@ -404,11 +404,11 @@ func registerResourceMitigation(request *libcoap.Pdu, typ reflect.Type, controll
   * Register resource for siganal configuration
   */
 func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
-                                   context  *libcoap.Context, is_unknown bool, customerID int, observe int, token *[]byte) (interface{}, string, error) {
+                                   context  *libcoap.Context, is_unknown bool, customerID int, observe int, token *[]byte) (interface{}, string, error, bool) {
 
     body, err := unmarshalCbor(request, reflect.TypeOf(messages.SignalConfigRequest{}))
     if err != nil {
-        return nil, "", err
+        return nil, "", err, is_unknown
     }
 
     // Create sub resource to handle observation on behalf of Unknown resource in case of session configuration PUT
@@ -433,6 +433,7 @@ func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, contro
             log.Debugf("Create resource to handle session observation later : uri-path=%+v", resourcePath)
         } else {
             log.Debugf("Resource with uri-path=%+v has already existed", resourcePath)
+            is_unknown = false
         }
     } else if is_unknown && request.Code == libcoap.RequestGet {
         // Create observer in sub resource to handle observation in case session configuration change
@@ -441,7 +442,7 @@ func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, contro
             AddOrDeleteObserve(resource ,session, &p, *token, observe, nil )
         }
     }
-    return body, resourcePath, nil
+    return body, resourcePath, nil, is_unknown
 }
 
 /*

@@ -50,6 +50,9 @@ func main() {
 	// Thread for monitoring remaining lifetime of mitigation requests
 	go controllers.ManageExpiredMitigation(config.LifetimeConfiguration.ManageLifetimeInterval)
 
+	// Thread for monitoring remaining max-age of signal session configuration
+	go controllers.ManageExpiredSessionMaxAge(config.LifetimeConfiguration.ManageLifetimeInterval)
+
 	// Thread for monitoring remaining lifetime of datachannel alias and acl requests
 	go data_models.ManageExpiredAliasAndAcl(config.LifetimeConfiguration.ManageLifetimeInterval)
 

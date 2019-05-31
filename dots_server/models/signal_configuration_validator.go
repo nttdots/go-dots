@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	log "github.com/sirupsen/logrus"
@@ -75,10 +76,9 @@ func getCompareDataSource() *SignalConfigurationParameter {
 }
 
 // define validate
-func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (ret bool, isPresent bool, isUnprocessableEntity bool, errMessage string) {
+func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (isPresent bool, isUnprocessableEntity bool, errMessage string) {
 
 	// default return value
-	ret = true
 	isPresent = false
 	isUnprocessableEntity = false
 
@@ -86,26 +86,22 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 		compareSource = getCompareDataSource()
 	}
 	// Get sessionId in DB
-	signalSessionConfiguration, er := GetCurrentSignalSessionConfiguration(c.Id)
-	if er != nil {
-		ret = false
+	signalSessionConfiguration, err := GetCurrentSignalSessionConfiguration(c.Id)
+	if err != nil {
+		errMessage = fmt.Sprintf("Failed to get current signal session configuration with customer id=:%+v", c.Id)
+		log.Error(errMessage)
+		return
 	}
 
 	if sc, ok := m.(*SignalSessionConfiguration); ok {
-		// Mandatory attribute check
-		if sc.SessionId == 0 {
-			errMessage = "Missing sid value."
-			log.Error(errMessage)
-			ret = false
-		}
-
 		if signalSessionConfiguration != nil {
 			if sc.SessionId < signalSessionConfiguration.SessionId {
 				errMessage = "Sid value is out of order."
 				log.Error(errMessage)
-				ret = false
+				return
+			} else if sc.SessionId == signalSessionConfiguration.SessionId {
+				isPresent = true
 			}
-			isPresent = true
 		}
 
 		// valid attribute value check
@@ -122,8 +118,8 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (re
 				compareSource.ack_random_factor_idle.Includes(sc.AckRandomFactorIdle)) {
 					errMessage = "Config values are out of range."
 					log.Error(errMessage)
-				    ret = false
-				    isUnprocessableEntity = true
+					isUnprocessableEntity = true
+					return
 			}
 		}
 	}

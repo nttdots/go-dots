@@ -863,9 +863,9 @@ func ManageExpiredMitigation(lifetimeInterval int) {
             if acm.Lifetime == int(messages.INDEFINITE_LIFETIME) {
 				// A lifetime of negative one indicates the mitigation request with indefinite lifetime
             } else {
-                currentTime := time.Now()
-                remainingLifetime := acm.Lifetime - int(currentTime.Sub(acm.LastModified).Seconds())
-                if remainingLifetime <= 0{
+				validThrough := acm.LastModified.Add(time.Second * time.Duration(int64(acm.Lifetime)))
+				now := time.Now()
+                if now.After(validThrough) {
                     log.Debugf("[Lifetime Mngt Thread]: Mitigation request (id=%+v) is expired ==> terminate", acm.MitigationScopeId)
                     log.Debugf("[Lifetime Mngt Thread]: Remaining lifetime < 0, change mitigation status to %+v", models.Terminated)
                     // CustomerId, ClientIdentifier and MitigationId is unnecessary in case MitigationScopeId has value.

@@ -5,6 +5,7 @@ package libcoap
 #include <coap2/coap.h>
 */
 import "C"
+import "fmt"
 import "errors"
 import "sort"
 import "strings"
@@ -364,6 +365,36 @@ func (pdu *Pdu) AddOption(key OptionKey, val interface{}) {
 func (pdu *Pdu) SetOption(key OptionKey, val interface{}) {
 	pdu.RemoveOption(key)
 	pdu.AddOption(key, val)
+}
+
+/*
+ * Get key of Pdu: 3 options
+ *   1. Pdu Message ID
+ *   2. Pdu Token
+ *   3. Pdu Message ID + Token
+ */
+func (pdu *Pdu) AsMapKey() string {
+    // return fmt.Sprintf("%d[%x]", pdu.MessageID, pdu.Token)
+    return fmt.Sprintf("%x", pdu.Token)
+    // return fmt.Sprintf("%d", pdu.MessageID)
+}
+
+/*
+ * The response data is an message (not an object data) in case the response code is different:
+ *   1. Created
+ *   2. Changed
+ *   3. Content
+ *   4. Conflict
+ */
+ func (pdu *Pdu) IsMessageResponse() bool {
+    if pdu.Code != ResponseCreated &&
+       pdu.Code != ResponseChanged &&
+       pdu.Code != ResponseContent &&
+       pdu.Code != ResponseConflict {
+		return true
+    } else {
+        return false
+    }
 }
 
 /*

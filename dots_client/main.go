@@ -143,7 +143,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	})
 
 	ctx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
-		env.HandleResponse(received)
+		handleResponse(env, received)
 		if received != nil && oSess != nil && oSess == env.CoapSession(){
 			sess.SessionRelease()
 			log.Debugf("Restarted connection successfully with current session: %+v.", oSess.String())
@@ -157,10 +157,10 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	ctx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
 			// Pong message
-			env.HandleResponse(sent)
+			handleResponse(env, sent)
 		} else if (reason == libcoap.NackTooManyRetries){
 			// Ping timeout
-			env.HandleTimeout(sent)
+			handleRequestTimeout(env, sent)
 		} else {
 			// Unsupported type
 			log.Infof("nack_handler gets fired with unsupported reason type : %+v.", reason)
@@ -340,20 +340,6 @@ func getDefaultCertPath(path string) string {
 	return packageRootPath + "certs/"
 }
 
-func pingResponseHandler(_ *task.PingTask, pdu *libcoap.Pdu) {
-	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("Ping Ack")
-}
-
-func pingTimeoutHandler(_ *task.PingTask, env *task.Env) {
-	log.Info("Ping Timeout #", env.CurrentMissingHb())
-
-	if !env.IsHeartbeatAllowed() {
-		log.Debug("Exceeded missing_hb_allowed. Stop ping task...")
-		env.StopPing()
-
-		restartConnection(env)
-	}
-}
 
 func restartConnection (env *task.Env) {
 	log.Debug("Restart connection to server...")
@@ -362,6 +348,60 @@ func restartConnection (env *task.Env) {
 		log.WithError(err).Errorf("connectSignalChannel() failed")
 		os.Exit(1)
 	}
+}
+
+/*
+ * Handle response from server with client environment
+ * parameter:
+ *  pdu   response pdu notification
+ *  env   the client environment data
+ */
+func handleResponse(env *task.Env, pdu *libcoap.Pdu) {
+    key := pdu.AsMapKey()
+    t, ok := env.Requests()[key]
+    if !ok {
+        if env.IsTokenExist(string(pdu.Token)) {
+            handleNotification(env, nil, pdu)
+        } else {
+            log.Debugf("Unexpected incoming PDU: %+v", pdu)
+        }
+    } else if !t.IsStop() {
+        if pdu.Type != libcoap.TypeNon {
+            log.Debugf("Success incoming PDU (HandleResponse): %+v", pdu)
+        }
+        delete(env.Requests(), key)
+        t.Stop()
+        t.GetResponseHandler()(t, pdu, env)
+        // Reset current_missing_hb
+	    env.SetCurrentMissingHb(0)
+    }
+}
+
+/*
+ * Handle request timeout with client environment
+ * parameter:
+ *  pdu   response pdu notification
+ *  env   the client environment data
+ */
+func handleRequestTimeout(env *task.Env, sent *libcoap.Pdu) {
+    key := sent.AsMapKey()
+    t, ok := env.Requests()[key]
+
+    if !ok {
+        log.Info("Unexpected PDU: %v", sent)
+    } else {
+        t.Stop()
+
+        // Request timeout -> Counting up missing-hb
+        // Code = 0: Code of Ping task
+        if sent.Code == 0 {
+            env.SetCurrentMissingHb(env.GetCurrentMissingHb() + 1)
+            delete(env.Requests(), key)
+        } else {
+            log.Debugf("Session config request timeout")
+        }
+        t.GetTimeoutHandler()(t, env)
+    }
 }
 
 var config *dots_config.ClientSystemConfig
