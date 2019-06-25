@@ -295,7 +295,7 @@ func CancelBlocker(aclID int64, activationType types.ActivationType) (err error)
   }
 
 	if p == nil {
-    if activationType == types.ActivationType_ActivateWhenMitigating {
+    if activationType == types.ActivationType_ActivateWhenMitigating || activationType == types.ActivationType_Deactivate {
       return
     } else {
       log.WithField("data channel acl id", aclID).Error("protection not found.")

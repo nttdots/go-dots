@@ -153,6 +153,25 @@ VALUES
   (14,128,0,'ADDRESS_RANGE','1.1.1.69',32,'2017-11-11 20:09:00','2017-11-11 20:09:00'),
   (15,128,0,'ADDRESS_RANGE','1.1.2.0',24,'2017-11-11 20:09:00','2017-11-11 20:09:00');
 
+# prefix trigger when ip address range change
+# ------------------------------------------------------------
+
+
+DROP FUNCTION IF EXISTS MySQLNotification;
+CREATE FUNCTION MySQLNotification RETURNS INTEGER SONAME 'mysql-notification.so';
+
+DELIMITER @@
+
+CREATE TRIGGER address_range_trigger AFTER UPDATE ON prefix
+FOR EACH ROW
+BEGIN
+  IF (NEW.type = 'ADDRESS_RANGE') AND (NEW.addr <> OLD.addr OR NEW.prefix_len <> OLD.prefix_len) THEN
+    SELECT MySQLNotification('prefix', NEW.customer_id) INTO @x;
+  END IF;
+END@@
+
+DELIMITER ;
+
 
 # mitigation_scope
 # ------------------------------------------------------------
@@ -182,9 +201,6 @@ VALUES
 
 # mitigation_scope trigger when status change
 # ------------------------------------------------------------
-
-DROP FUNCTION IF EXISTS MySQLNotification;
-CREATE FUNCTION MySQLNotification RETURNS INTEGER SONAME 'mysql-notification.so';
 
 DELIMITER @@
 

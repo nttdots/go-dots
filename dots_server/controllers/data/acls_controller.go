@@ -4,6 +4,7 @@ import (
   "net/http"
   "time"
   "fmt"
+  "errors"
 
   "github.com/julienschmidt/httprouter"
   log "github.com/sirupsen/logrus"
@@ -405,4 +406,71 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
     if err != nil { return }
   }
   return
+}
+
+/*
+ * Re-check ip-address range for data channel acls by customer id
+ * parameter:
+ *  customerId    the id of updated customer
+ * return:
+ *  err            error
+ */
+func RecheckIpRangeForAcls(customer *models.Customer) (err error) {
+  now := time.Now()
+  _, err = WithTransaction(func (tx *db.Tx) (res Response, _ error) {
+    // Find all cuid with input customer id
+    cuids, err := data_models.FindCuidsByCustomerId(tx, customer)
+    if err != nil { return res, err }
+
+    for _, cuid := range cuids {
+      return WithClient(tx, customer, cuid, func (client *data_models.Client) (Response, error) {
+        acls, err := data_models.FindACLs(tx, client, now)
+        if err != nil {
+          return res, err
+        }
+        if acls == nil || len(acls) == 0 {
+          log.Debugf("Not found any acl with cuid: %+v", cuid)
+          return res, err
+        }
+
+        // Loop on list acls of the customer but re-check only for inactive acls
+        isPeaceTime, err := models.CheckPeaceTimeSignalChannel(customer.Id, cuid)
+        if err != nil { return res, err }
+        for _, acl := range acls {
+          if *acl.ACL.ActivationType == types.ActivationType_Deactivate ||
+            (*acl.ACL.ActivationType == types.ActivationType_ActivateWhenMitigating && isPeaceTime) {
+            // Get blocker configuration by customerId and target_type in table blocker_configuration
+            blockerConfig, err := models.GetBlockerConfiguration(customer.Id, string(messages_common.DATACHANNEL_ACL))
+            if err != nil {
+              return res, err
+            }
+
+            // Re-check ip-address range by validating destination address of ACL
+            validator := messages.GetAclValidator(blockerConfig.BlockerType)
+            if validator == nil {
+              err := errors.New("Unknown blocker type: " + blockerConfig.BlockerType)
+              return res, err
+            }
+
+            for _, ace := range acl.ACL.ACEs.ACE {
+              isIpv4Valid, ipv4ErrMsg := validator.ValidateDestinationIPv4(acl.ACL.Name, customer.CustomerNetworkInformation.AddressRange, ace.Matches)
+              isIpv6Valid, ipv6ErrMsg := validator.ValidateDestinationIPv6(acl.ACL.Name, customer.CustomerNetworkInformation.AddressRange, ace.Matches)
+              if !isIpv4Valid || !isIpv6Valid {
+                log.Warnf("[Recheck ip-range] Validation ACL error message: %+v, %+v", ipv4ErrMsg, ipv6ErrMsg)
+                log.Debugf("[Recheck ip-range] Validate data channel acl (status=%+v) with new configured data failed --> delete acl (name=%+v)", acl.ACL.ActivationType, acl.ACL.Name)
+                data_models.DeleteACLByName(tx, client.Id, acl.ACL.Name, now)
+                break
+              }
+            }
+          }
+        }
+
+        return res, nil
+      })
+    }
+    if err != nil {
+      return res, err
+    } else { return res, nil }
+  })
+  return err
 }

@@ -121,3 +121,23 @@ func DeleteClientByCuid(tx *db.Tx, customer *models.Customer, cuid string) (bool
 
   return 0 < affected, nil
 }
+
+/*
+ * Find all cuids by customerId.
+ *
+ * parameter:
+ *  customerId   the id of the Customer
+ * return:
+ *  cuids        the list of cuid
+ *  error        the error
+ */
+func FindCuidsByCustomerId(tx *db.Tx, customer *models.Customer) (cuids []string, err error) {
+
+  err = tx.Session.Table("data_clients").Where("customer_id=?", customer.Id).Cols("cuid").Find(&cuids)
+  if err != nil {
+    log.WithError(err).Error("FindCuidsByCustomerId() failed.")
+    return nil, err
+  }
+
+  return
+}

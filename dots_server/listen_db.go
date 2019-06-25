@@ -15,12 +15,14 @@ import (
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/controllers"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
+	data_controllers "github.com/nttdots/go-dots/dots_server/controllers/data"
 )
 
 type TableName string
 const (
 	MITIGATION_SCOPE      TableName = "mitigation_scope"
 	SESSION_CONFIGURATION TableName = "signal_session_configuration"
+	PREFIX_ADDRESS_RANGE  TableName = "prefix"
 )
 
 /*
@@ -135,6 +137,35 @@ ILOOP:
 				uriPath := messages.MessageTypes[messages.SESSION_CONFIGURATION].Path
 				query := uriPath + "/customerId=" + cid
 				context.EnableResourceDirty(query)
+			} else if mapData["table_trigger"].(string) == string(PREFIX_ADDRESS_RANGE) {
+
+				// re-check ip address range for each mitigation request, acl that are inactive
+				log.Debug("[MySQL-Notification]: Re-check ip-address range for mitigations and acls")
+				cid, err := strconv.Atoi(mapData["cid"].(string))
+				if err != nil {
+					log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+					return
+				}
+				// Get customer from customer id
+				customer, err := models.GetCustomer(cid)
+				if err != nil {
+					return
+				}
+				log.Printf("[MySQL-Notification]: new addressrange: %+v", customer.CustomerNetworkInformation.AddressRange)
+
+				// Re-check ip address range for mitigations
+				err = controllers.RecheckIpRangeForMitigations(&customer)
+				if err != nil {
+					log.Errorf("[MySQL-Notification]: Re-check ip range for mitigations failed. Error: %+v", err)
+					return
+				}
+
+				// Re-check ip address range for acls
+				err = data_controllers.RecheckIpRangeForAcls(&customer)
+				if err != nil {
+					log.Errorf("[MySQL-Notification]: Re-check ip range for acls failed. Error: %+v", err)
+					return
+				}
 			}
 		default:
 			log.Errorf("[MySQL-Notification]: Failed to receive data:%+v", err)

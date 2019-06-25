@@ -1742,3 +1742,73 @@ func HandleControlFiltering(customer *models.Customer, cuid string, aclList []me
 	}
 	return nil, nil
 }
+
+/*
+ * Re-check ip-address range for mitigation requests by customer id
+ * parameter:
+ *  customerId    the id of updated customer
+ * return:
+ *  err            error
+ */
+func RecheckIpRangeForMitigations(customer *models.Customer) error {
+	// Get inactive mitigation ids (triggered) from DB of this customer
+	mitigationscopeIds, err := models.GetPreConfiguredMitigationIds(customer.Id)
+	if err != nil {
+		return err
+	}
+
+	// Get blocker configuration by customerId and target_type in table blocker_configuration
+	blockerConfig, err := models.GetBlockerConfiguration(customer.Id, string(messages.MITIGATION_REQUEST_ACL))
+	if err != nil {
+		return err
+	}
+
+	// Get all pre-configured mitigation ids from DB of this customer by id
+	for _, scopeId := range mitigationscopeIds {
+		mitigation, err := models.GetMitigationScope(customer.Id, "", 0, scopeId)
+		if err != nil {
+			return err
+		}
+		if mitigation == nil {
+			log.WithField("mitigation_id", scopeId).Warn("[Recheck ip-range] mitigation_scope not found.")
+			continue
+		}
+		if mitigation.Lifetime == 0 {
+			log.Warnf("[Recheck ip-range] Mitigation (id = %+v) has already expired.", mitigation.MitigationId)
+			continue
+		}
+
+		// Get alias data from data channel
+		aliases, err := data_controllers.GetDataAliasesByName(customer, mitigation.ClientIdentifier, mitigation.AliasName.List())
+		if err != nil {
+			return err
+		}
+
+		// Append alias data to new mitigation scope
+		err = appendAliasesDataToMitigationScope(aliases, mitigation)
+		if err != nil {
+			return err
+		}
+
+		// Re-check ip-address range by validating target prefix, fadn, uri of mitigation scope
+		validator := models.GetMitigationScopeValidator(blockerConfig.BlockerType)
+		if validator == nil { return errors.New("Unknown blocker type: " + blockerConfig.BlockerType)}
+		prefixErrMsg := validator.ValidatePrefix(customer, mitigation)
+		fqdnErrMsg   := validator.ValidateFqdn(customer, mitigation)
+		uriErrMsg    := validator.ValidateUri(customer, mitigation)
+		if prefixErrMsg != "" || fqdnErrMsg != "" || uriErrMsg != "" {
+			log.Warnf("[Recheck ip-range] Validation mitigation scope error message: %+v, %+v, %+v", prefixErrMsg, fqdnErrMsg, uriErrMsg)
+			log.Debugf("[Recheck ip-range] Validate mitigation scope with new configured data failed --> withdraw mitigation (mid=%+v)", mitigation.MitigationId)
+
+			// Withdraw mitigation request because its target is out of updated ip address range
+			err = UpdateMitigationStatus(mitigation.Customer.Id, mitigation.ClientIdentifier,
+				mitigation.MitigationId, mitigation.MitigationScopeId, models.Withdrawn, true)
+			if err != nil {
+				log.Errorf("[Recheck ip-range] Activate the pre-configured mitigation (id = %+v) failed. Error: %+v", mitigation.MitigationId, err)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
