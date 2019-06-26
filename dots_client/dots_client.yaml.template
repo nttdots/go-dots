@@ -36,3 +36,10 @@ system:
   # Client request without the block2 option at the first time.
   # If client does not accept with the recommended block size from server, client can send a request with block2 option (new block size)
   secondRequestBlockSize: 5
+
+  # The pinned certificates into the cache
+  # If the 'referenceIdentifier' is one of the reference identifiers, the client pin each element in the 'presentIdentifierList' in to cache as key
+  # In case the server's certificate is not matching, the client compare between the server's certificate and the cache's key
+  pinnedCertificate:
+    referenceIdentifier: client.sample.example.com
+    presentIdentifierList: _Xampp.sample.example.com, sample.example1.com

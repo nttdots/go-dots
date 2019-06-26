@@ -34,6 +34,9 @@ Licensed under Apache License 2.0.
   * Install mysql development package in Ubuntu:
     $ sudo apt-get install libmysqld-dev
 
+* gnuTLS (install to configure the certificate)
+    $ sudo apt-get install gnutls-bin
+
 ## Recommandation Environment
 * Ubuntu 16.04+
 * macOS High Sierra 10.13+
@@ -417,3 +420,51 @@ Check the flowspec route is installed successfully in gobgp server
    Network                                                                   Next Hop      AS_PATH    Age        Attrs
 *> [destination: 1.1.2.0/24][protocol: ==tcp][destination-port: >=443&<=800] fictitious               00:00:06   [{Origin: i} {Extcomms: [redirect: 1.1.1.0:100]}]
 ```
+
+# Certificate Configuration
+
+### Precondition
+* The GnuTLS has been installed.
+
+### Configure The Certificate
+
+Typically, the client's/server's certificate is a single identifier type which means that the certificate has only one common name (CN-ID) as identifier. However, the Common Name is not strongly typed because the Common Name can contain a human-friendly string, not a DNS domain name. Moreover, the client's/server's certificate can be multi identifiers type which including the Common Name (CN-ID) and some Subject Alternative Name (DNS-ID, SRV-ID), in order to ensure that at least one DNS qualified domain name. In go-dots, two certificate types are configured as below:
+
+* The single identifier type
+
+   The template file only has the Common Name (CN-ID)
+
+   Example: In file [template_client](./certs/template_client.txt), configure as follow:
+    ```
+    # X.509 server certificate options
+
+    organization = "sample client"
+    state = "Tokyo"
+    country = JP
+    cn = "client.sample.example.com"
+    expiration_days = 365
+
+    # X.509 v3 extensions
+    signing_key
+    encryption_key
+    ```
+
+* The multi identifiers type
+
+    The template file has the Common Name (CN-ID) and some Subject Alternative Name (DNS-ID, SRV-ID)
+
+    Example: In file [template_client](./certs/template_client.txt), add more Subject Alternative Name as follow:
+
+    ```
+    # DNS name(s) of the server
+    dns_name = "xample1.example.com"
+    dns_name = "_xampp.example.com
+    ```
+
+To add/change the server's certificate or the client's certificate, execute with following command:
+```
+./update_keys.sh
+```
+
+For more detailed information about configuration of the certificate and the GnuTLS, refer to the following link:
+* [action_gnutls_scripted.md](https://gist.github.com/epcim/832cec2482a255e3f392)

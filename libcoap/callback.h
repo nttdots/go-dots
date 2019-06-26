@@ -3,6 +3,7 @@
 #include <coap2/coap.h>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/x509v3.h>
 
 void response_handler(struct coap_context_t *,
                       coap_session_t *,
@@ -32,6 +33,28 @@ void ping_handler(struct coap_context_t *,
 void event_handler(coap_context_t *context,
                     coap_event_t event,
                     void *data);
+
+/**
+ * Validate common name call back
+ *
+ * @param cn                The determined CN from the certificate
+ * @param asn1_public_cert  The ASN.1 DER encoded X.509 certificate
+ * @param asn1_length       The ASN.1 length
+ * @param coap_session      The CoAP session associated with the certificate update
+ * @param depth             Depth in cert chain.  If 0, then client cert, else a CA
+ * @param validated         TLS layer can find no issues if 1
+ * @param arg               The same as was passed into coap_context_set_pki()
+ *                          in setup_data->cn_call_back_arg
+ *
+ * @return @c 1 if accepted, else @c 0 if to be rejected.
+ */
+int validate_cn_call_back(const char *cn,
+                          const uint8_t *asn1_public_cert,
+                          size_t asn1_length,
+                          coap_session_t *coap_session,
+                          unsigned depth,
+                          int validated,
+                          void *arg);
 /**
  * Get peer common name (from certificate issuer names)
  * @param session   The CoAP session
@@ -70,6 +93,11 @@ typedef struct coap_openssl_context_t {
   sni_entry *sni_entry_list;
 } coap_openssl_context_t;
 
+typedef struct coap_strlist_t {
+    struct coap_strlist_t *next;
+    coap_string_t* str;
+} coap_strlist_t;
+
 void coap_set_dirty(coap_resource_t *resource, char *query, int length);
 
 int coap_check_subscribers(coap_resource_t *resource);
@@ -77,3 +105,5 @@ int coap_check_dirty(coap_resource_t *resource);
 char* coap_get_token_subscribers(coap_resource_t *resource);
 int coap_get_size_block2_subscribers(coap_resource_t *resource);
 coap_block_t coap_create_block(unsigned int num, unsigned int m, unsigned int size);
+
+coap_strlist_t* coap_common_name(coap_strlist_t* head, coap_strlist_t* tail, char* str);

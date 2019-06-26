@@ -22,6 +22,7 @@ type ClientSystemConfig struct {
 	IntervalBeforeMaxAge           int                           `yaml:"intervalBeforeMaxAge"`
 	InitialRequestBlockSize       *int                           `yaml:"initialRequestBlockSize"`
 	SecondRequestBlockSize        *int                           `yaml:"secondRequestBlockSize"`
+	PinnedCertificate             *PinnedCertificate             `yaml:"pinnedCertificate"`
 }
 type DefaultSessionConfiguration struct {
 	HeartbeatInterval int `yaml:"heartbeatInterval"`
@@ -41,6 +42,11 @@ type ClientRestfulApiConfiguration struct {
 	RestfulApiPort        string `yaml:"restfulApiPort"`
 	RestfulApiPath        string `yaml:"restfulApiPath"`
 	RestfulApiAddress     string `yaml:"restfulApiAddress"`
+}
+
+type PinnedCertificate struct {
+	ReferenceIdentifier   string `yaml:"referenceIdentifier"`
+	PresentIdentifierList string `yaml:"presentIdentifierList"`
 }
 
 /**
