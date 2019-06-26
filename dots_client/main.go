@@ -105,9 +105,9 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 		}
 
 	} else {
-		dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile }
+		dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile, config.PinnedCertificate }
 		if orgEnv == nil {
-			ctx = libcoap.NewContextDtls(nil, &dtlsParam)
+			ctx = libcoap.NewContextDtls(nil, &dtlsParam, int(libcoap.CLIENT_PEER))
 			if ctx == nil {
 				log.Error("NewContextDtls() -> nil")
 				err = errors.New("NewContextDtls() -> nil")
@@ -136,7 +136,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 			if orgEnv != nil {
 				orgEnv.SetReplacingSession(session)
 			}
-		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
+		} else if event == libcoap.EventSessionDisconnected {
 			session.SessionRelease()
 			restartConnection(env)
 		}

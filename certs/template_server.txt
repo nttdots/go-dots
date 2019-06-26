@@ -9,3 +9,7 @@ expiration_days = 365
 # X.509 v3 extensions
 signing_key
 encryption_key
+
+# DNS name(s) of the server
+dns_name = "xample1.example.com"
+dns_name = "_xampp.example.com

@@ -45,6 +45,7 @@ func main() {
 		nil,
 		&config.SecureFile.ServerCertFile,
 		&config.SecureFile.ServerKeyFile,
+		nil,
 	}
 
 	// Thread for monitoring remaining lifetime of mitigation requests

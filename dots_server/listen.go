@@ -280,7 +280,7 @@ func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libco
     }
     log.Debugf("addr=%+v", addr)
 
-    ctx := libcoap.NewContextDtls(nil, dtlsParam)
+    ctx := libcoap.NewContextDtls(nil, dtlsParam, int(libcoap.SERVER_PEER))
     if ctx == nil {
         err = errors.New("libcoap.NewContextDtls() -> nil")
         return
