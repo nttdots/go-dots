@@ -34,6 +34,7 @@ type ScopeStatus struct {
 	FQDN            []string `json:"target-fqdn" codec:"11,omitempty"`
 	URI             []string `json:"target-uri" codec:"12,omitempty"`
 	AliasName       []string `json:"alias-name" codec:"13,omitempty"`
+	AclList         []ACL    `json:"acl-list" codec:"22,omitempty"`
 	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
 	Status          int   `json:"status"           codec:"16"`
@@ -181,6 +182,13 @@ func (m *MitigationResponse) String() (result string) {
 		}
 		for k, v := range scope.AliasName {
 			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
+		}
+		for k, v := range scope.AclList {
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "acl-list", k+1)
+			result += fmt.Sprintf("       \"%s\": %s\n", "acl-name", v.AclName)
+			if v.ActivationType != nil {
+				result += fmt.Sprintf("       \"%s\": %d\n", "activation-type", *v.ActivationType)
+			}
 		}
 		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
 		result += fmt.Sprintf("     \"%s\": %d\n", "status", scope.Status)

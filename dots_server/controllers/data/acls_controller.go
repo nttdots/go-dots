@@ -312,30 +312,36 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
  */
 func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilteringList []models.ControlFiltering) (res Response, err error) {
   now := time.Now()
+  var oldACLList []data_models.ACL
+  newActivateTypeMap := make(map[int64] types.ActivationType)
   errMsg := ""
 
-  for _, controlFiltering := range controlFilteringList {
-    res, err = WithTransaction(func (tx *db.Tx) (Response, error) {
-      return WithClient(tx, customer, cuid, func (client *data_models.Client) (Response, error) {
+  res, err = WithTransaction(func (tx *db.Tx) (Response, error) {
+    return WithClient(tx, customer, cuid, func (client *data_models.Client) (Response, error) {
+      for _, controlFiltering := range controlFilteringList {
         aclName := controlFiltering.ACLName
         acl, err := data_models.FindACLByName(tx, client, aclName, now)
         if err != nil {
           errMsg = fmt.Sprintf("Failed to get acl with name = %+v", aclName)
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          res, err = ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          break
         }
         if acl == nil {
-          errMsg = fmt.Sprintf("Acl" + controlFiltering.ACLName + "has not found")
-          return ErrorResponse(http.StatusNotFound, ErrorTag_Data_Missing, errMsg)
+          errMsg = fmt.Sprintf("Acl " + controlFiltering.ACLName + " has not found")
+          res, err = ErrorResponse(http.StatusNotFound, ErrorTag_Data_Missing, errMsg)
+          break
         }
+        oldACLList = append(oldACLList, *acl)
 
         // Parse activation type from string to acl_activation_type
         oldActivateType := *acl.ACL.ActivationType
-        activationType := data_models.ToActivationType(controlFiltering.ActivationType)
+        activationType := data_models.ToActivationType(*controlFiltering.ActivationType)
         if activationType == "" {
           errMsg = fmt.Sprintf("[Control Filtering]: Activation types is invalid: %+v", controlFiltering.ActivationType)
-          log.Warn(errMsg)
-          return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errMsg)
+          res, err = ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errMsg)
+          break
         }
+        newActivateTypeMap[acl.Id] = activationType
         acl.ACL.ActivationType = &activationType
         acl.ValidThrough = now.Add(defaultACLLifetime)
 
@@ -343,68 +349,43 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
         err = acl.Save(tx)
         if err != nil {
           errMsg = fmt.Sprintf("Failed to save acl with name = %+v", aclName)
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          res, err = ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          break
         }
 
-        // Handle control filtering to activate or deactivate ACL
-        isCurrentActive, err := data_models.IsActive(customer.Id, cuid, oldActivateType)
-        if err != nil {
-          errMsg = fmt.Sprintf("Failed to acl status with name = %+v", aclName)
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+        // Call bocker or cancel blocker
+        errMsg = HandleCallBlockerOrCancelBlocker(acl, customer, cuid, oldActivateType)
+        if errMsg != "" {
+          res, err = ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          break
         }
-        isNewActive, err := acl.IsActive()
-        if err != nil {
-          errMsg = fmt.Sprintf("Failed to acl status with name = %+v", aclName)
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
-        }
+        log.Debugf("[Control Filtering]: Update ACL (name=%+v) activation-type from: %+v to: %+v", acl.ACL.Name, oldActivateType, acl.ACL.ActivationType)
+      }
+      // Rollback activation type if error
+      if errMsg != "" {
+        log.Error(errMsg)
+        for _, oldACL := range oldACLList {
+          err = oldACL.Save(tx)
+          if err != nil {
+            errMsg = fmt.Sprintf("Failed to save acl with name = %+v", oldACL.ACL.Name)
+            log.Error(errMsg)
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          }
 
-        // If ACL status is changed from active to inactive => stop protection
-        if isCurrentActive && !isNewActive {
-          // Get active protection
-          p, err := models.GetActiveProtectionByTargetIDAndTargetType(acl.Id, string(messages_common.DATACHANNEL_ACL))
-          if err != nil {
-            errMsg = fmt.Sprintf("Failed to get acl protection at acl name = %+v", aclName)
+          // Call bocker or cancel blocker
+          errMsgRollBack := HandleCallBlockerOrCancelBlocker(&oldACL, customer, cuid, newActivateTypeMap[oldACL.Id])
+          if errMsgRollBack != "" {
+            errMsg = errMsgRollBack
+            log.Error(errMsg)
             return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
           }
-          if p != nil {
-            // Cancel blocker
-            err := data_models.CancelBlocker(acl.Id, oldActivateType)
-            if err != nil {
-              log.Errorf("[Control Filtering]: Signal channel Control Filtering. CancelBlocker is error: %s\n", err)
-              // Rollback activation type if error
-              acl.ACL.ActivationType = &oldActivateType
-              err = acl.Save(tx)
-              if err != nil {
-                return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
-              }
-              return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to cancel blocker")
-            }
-          }
-        } else if !isCurrentActive && isNewActive {
-          // If ACL status is changed from inactive to active => execute protection
-          // Call blocker
-          acls := []data_models.ACL{}
-          acls = append(acls, *acl)
-          err = data_models.CallBlocker(acls, customer.Id)
-          if err != nil {
-            log.Errorf("[Control Filtering]: Signal channel Control Filtering. CallBlocker is error: %s\n", err)
-            // Rollback activation type if error
-            acl.ACL.ActivationType = &oldActivateType
-            err = acl.Save(tx)
-            if err != nil {
-              errMsg = fmt.Sprintf("Failed to save acl with name = %+v", aclName)
-              return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
-            }
-            errMsg = fmt.Sprintf("Failed to call blocker at acl name = %+v", aclName)
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
-          }
+          log.Debugf("[Rollback Control Filtering]: Update ACL (name=%+v) activation-type from: %+v to: %+v", oldACL.ACL.Name, newActivateTypeMap[oldACL.Id], oldACL.ACL.ActivationType)
         }
-        log.Debugf("[Control Filtering]: Update ACL (name=%+v) activation-type from: %+v to: %+v", controlFiltering.ACLName, oldActivateType, controlFiltering.ActivationType)
-        return EmptyResponse(http.StatusNoContent)
-      })
+        return res, err
+      }
+      return EmptyResponse(http.StatusNoContent)
     })
-    if err != nil { return }
-  }
+  })
   return
 }
 
@@ -473,4 +454,54 @@ func RecheckIpRangeForAcls(customer *models.Customer) (err error) {
     } else { return res, nil }
   })
   return err
+}
+
+/*
+ * If ACL status is changed from active to inactive => cancel blocker
+ * If ACL status is changed from inactive to active => call blocker
+ */
+func HandleCallBlockerOrCancelBlocker(acl *data_models.ACL, customer *models.Customer, cuid string, oldActivateType types.ActivationType) (errMsg string) {
+  // Handle control filtering to activate or deactivate ACL
+  isCurrentActive, err := data_models.IsActive(customer.Id, cuid, oldActivateType)
+  if err != nil {
+    errMsg = fmt.Sprintf("Failed to acl status with name = %+v", acl.ACL.Name)
+    return
+  }
+  isNewActive, err := acl.IsActive()
+  if err != nil {
+    errMsg = fmt.Sprintf("Failed to acl status with name = %+v", acl.ACL.Name)
+    return
+  }
+
+
+  // If ACL status is changed from active to inactive => stop protection
+  if isCurrentActive && !isNewActive {
+    // Get active protection
+    p, err := models.GetActiveProtectionByTargetIDAndTargetType(acl.Id, string(messages_common.DATACHANNEL_ACL))
+    if err != nil {
+      errMsg = fmt.Sprintf("Failed to get acl protection at acl name = %+v", acl.ACL.Name)
+      return
+    }
+    if p != nil {
+      // Cancel blocker
+      err := data_models.CancelBlocker(acl.Id, oldActivateType)
+      if err != nil {
+        log.Errorf("[Control Filtering]: Signal channel Control Filtering. CancelBlocker is error: %s\n", err)
+        errMsg = fmt.Sprintf("Fail to cancel blocker at acl name = %+v", acl.ACL.Name)
+        return
+      }
+    }
+  } else if !isCurrentActive && isNewActive {
+    // If ACL status is changed from inactive to active => execute protection
+    // Call blocker
+    acls := []data_models.ACL{}
+    acls = append(acls, *acl)
+    err = data_models.CallBlocker(acls, customer.Id)
+    if err != nil {
+      log.Errorf("[Control Filtering]: Signal channel Control Filtering. CallBlocker is error: %s\n", err)
+      errMsg = fmt.Sprintf("Failed to call blocker at acl name = %+v", acl.ACL.Name)
+      return
+    }
+  }
+  return
 }

@@ -383,6 +383,27 @@ CREATE TABLE `data_acls` (
 
 ALTER TABLE `data_acls` ADD CONSTRAINT UC_dots_acls UNIQUE (`data_client_id`, `name`);
 
+# data_acls trigger when activaton_type change
+# ------------------------------------------------------------
+
+DELIMITER @@
+
+CREATE TRIGGER activaton_type_changed_trigger AFTER UPDATE ON data_acls
+FOR EACH ROW
+BEGIN
+
+  DECLARE newContent          VARCHAR(255) DEFAULT NULL;
+  DECLARE currentContent      VARCHAR(255) DEFAULT NULL;
+  SELECT SUBSTRING_INDEX(NEW.content,",", 3) INTO newContent FROM data_acls limit 1;
+  SELECT SUBSTRING_INDEX(OLD.content,",", 3) INTO currentContent FROM data_acls limit 1;
+
+  IF SUBSTRING_INDEX(newContent,"activation-type", -1) <> SUBSTRING_INDEX(currentContent,"activation-type", -1) THEN
+    SELECT MySQLNotification('data_acls', NEW.id) INTO @x;
+  END IF;
+END@@
+
+DELIMITER ;
+
 # arista_parameter
 # ------------------------------------------------------------
 
@@ -454,5 +475,20 @@ CREATE TABLE `flow_spec_parameter` (
   `flow_specification`  text         NOT NULL,
   `created`             datetime DEFAULT NULL,
   `updated`             datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+# control_filtering
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `control_filtering`;
+
+CREATE TABLE `control_filtering` (
+  `id`                  bigint(20)   NOT NULL AUTO_INCREMENT,
+  `mitigation_scope_id` bigint(20)   DEFAULT NULL,
+  `acl_name`            varchar(255) DEFAULT NULL,
+  `created`             datetime     DEFAULT NULL,
+  `updated`             datetime     DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

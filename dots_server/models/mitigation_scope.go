@@ -76,7 +76,7 @@ type ACL struct {
 
 type ControlFiltering struct {
 	ACLName        string
-	ActivationType int
+	ActivationType *int
 }
 
 type ActivationType int
@@ -138,6 +138,7 @@ type MitigationScope struct {
 	ClientDomainIdentifier string
 	AclName          string
 	TargetList       []Target     // List of target prefix/fqdn/uri
+	ControlFilteringList []ControlFiltering
 }
 
 // Conflict Scope constructor
@@ -177,6 +178,7 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 		"",
 		"",
 		make([]Target, 0),
+		make([]ControlFiltering, 0),
 	}
 	return
 }

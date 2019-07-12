@@ -1,12 +1,15 @@
 package models
 
 import (
-	"github.com/go-xorm/xorm"
-	"github.com/nttdots/go-dots/dots_server/db_models"
-	log "github.com/sirupsen/logrus"
 	"time"
 	"strconv"
+	"github.com/go-xorm/xorm"
+
+	log "github.com/sirupsen/logrus"
+	"github.com/nttdots/go-dots/dots_server/db_models"
 	"github.com/nttdots/go-dots/dots_common/messages"
+	"github.com/nttdots/go-dots/dots_common/types/data"
+	"github.com/nttdots/go-dots/dots_server/db_models/data"
 )
 
 /*
@@ -105,6 +108,11 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	}
 	// Registering TragetPortRange
 	err = createMitigationScopePortRange(session, mitigationScope, newMitigationScope.Id)
+	if err != nil {
+		return
+	}
+	// Registering Control Filtering
+	err = createControlFiltering(session, mitigationScope, newMitigationScope.Id)
 	if err != nil {
 		return
 	}
@@ -250,6 +258,13 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 			log.Errorf("PortRange record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
 			return
 		}
+		// Delete control filtering, then register new data
+		err = db_models.DeleteControlFiltering(session, dbMitigationScope.Id)
+		if err != nil {
+			session.Rollback()
+			log.Errorf("ControlFilteringParameter record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
+			return
+		}
 
 		// Registered FQDN, URI, alias-name and target_protocol
 		err = createMitigationScopeParameterValue(session, mitigationScope, dbMitigationScope.Id)
@@ -263,6 +278,11 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		}
 		// Registered TragetPortRange
 		err = createMitigationScopePortRange(session, mitigationScope, dbMitigationScope.Id)
+		if err != nil {
+			return
+		}
+		// Registered ControlFiltering
+		err = createControlFiltering(session, mitigationScope, dbMitigationScope.Id)
 		if err != nil {
 			return
 		}
@@ -653,9 +673,89 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 		}
 	}
 
+	// Get Control Filtering data
+	controlFilteringList, err := GetControlFilteringByMitigationScopeID(engine, customerId, clientIdentifier, dbMitigationScope.Id)
+	if err != nil {
+		return
+	}
+	mitigationScope.ControlFilteringList = controlFilteringList
+
 	return
 
 }
+
+/*
+ * Get control filtering from mitigation scope id
+ */
+func GetControlFilteringByMitigationScopeID(engine *xorm.Engine, customerID int, clientIdentifier string, mitigationScopeID int64) (controlFilteringList []ControlFiltering, err error) {
+	// Get acl_name from table control_filtering
+	ctrList := []db_models.ControlFiltering{}
+	err = engine.Table("control_filtering").Where("mitigation_scope_id = ?", mitigationScopeID).Find(&ctrList)
+	if err != nil {
+		log.Errorf("find acl name list error: %s\n", err)
+		return
+	}
+
+	// Get data client
+	dataClient := data_db_models.Client{}
+	has, err := engine.Table("data_clients").Where("customer_id = ? AND cuid = ?", customerID, clientIdentifier).Get(&dataClient)
+	if err != nil {
+		log.Errorf("find data client id error: %s\n", err)
+		return
+	}
+	if !has {
+		return
+	}
+
+	// Get data acl
+	for _, ctr := range ctrList {
+		acl := data_db_models.ACL{}
+		has, err := engine.Table("data_acls").Where("data_client_id = ? AND name = ?", dataClient.Id, ctr.AclName).Get(&acl)
+		if err != nil {
+			log.Errorf("find data acls error: %s\n", err)
+			return nil, err
+		}
+
+		if has {
+			activateType := ActivationTypeToInt(*acl.ACL.ActivationType)
+			controlFilteringList = append(controlFilteringList, ControlFiltering{ACLName: ctr.AclName, ActivationType: &activateType})
+		}
+	}
+	return
+}
+
+/*
+ * Get control filtering from mitigation scope id
+ */
+ func GetControlFilteringByACLName(aclName string) (controlFilteringList []db_models.ControlFiltering, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+	err = engine.Table("control_filtering").Where("acl_name = ?", aclName).Find(&controlFilteringList)
+	return
+ }
+
+
+/*
+ * Parse ACL activation type to int activation type
+ *
+ * return:
+ *  int activation type
+ */
+ func ActivationTypeToInt(activationType data_types.ActivationType) (int) {
+	switch (activationType) {
+	case data_types.ActivationType_ActivateWhenMitigating:
+	  return int(ActiveWhenMitigating)
+	case data_types.ActivationType_Immediate:
+	  return int(Immediate)
+	case data_types.ActivationType_Deactivate:
+	  return int(Deactivate)
+	default: return 0
+	}
+  }
 
 /*
  * Deletes a mitigation scope object by a customerId and a mitigationId.
@@ -719,6 +819,14 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 	if err != nil {
 		session.Rollback()
 		log.Errorf("delete portRange error: %s", err)
+		return
+	}
+
+	// Delete control filtering table data
+	err = db_models.DeleteControlFiltering(session, dbMitigationScope.Id)
+	if err != nil {
+		session.Rollback()
+		log.Errorf("delete control filtering error: %s", err)
 		return
 	}
 
@@ -830,4 +938,69 @@ func UpdateACLNameToMitigation(mitigationID int64) (string, error){
 	}
 
 	return isPeaceTime, nil
+}
+
+/*
+ * Create control filtering
+ */
+func createControlFiltering(session *xorm.Session, mitigationScope MitigationScope, mitigationScopeID int64) (err error) {
+	newControlFilteringList := []*db_models.ControlFiltering{}
+	for _, controlFiltering := range mitigationScope.ControlFilteringList {
+		newControlFiltering                  := db_models.CreateControlFiltering(controlFiltering.ACLName)
+		newControlFiltering.MitigationScopeId = mitigationScopeID
+		newControlFilteringList               = append(newControlFilteringList, newControlFiltering)
+	}
+
+	if len(newControlFilteringList) > 0 {
+		_, err = session.Insert(&newControlFilteringList)
+		if err != nil {
+			session.Rollback()
+			log.Printf("Control Filtering insert err: %s", err)
+			return
+		}
+	}
+
+	return
+}
+
+/*
+ * Remove Acl by ID
+ */
+ func RemoveACLByID(aclID int64, acl data_db_models.ACL) error {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("database connect error: %s", err)
+		return err
+	}
+
+	// remove data_acls
+	_, err = engine.Table("data_acls").Where("id = ?", aclID).Delete(acl)
+	if err != nil {
+		log.Errorf("Remove Acl error: %s\n", err)
+		return err
+	}
+
+	return nil
+}
+
+/*
+ * Remove control filtering by ID
+ */
+func RemoveControlFilteringByID(controlFilteringID int64, controlFiltering db_models.ControlFiltering) error {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("database connect error: %s", err)
+		return err
+	}
+
+	// remove control filtering
+	_, err = engine.Table("control_filtering").Where("id = ?", controlFilteringID).Delete(controlFiltering)
+	if err != nil {
+		log.Errorf("Remove control filtering error: %s\n", err)
+		return err
+	}
+
+	return nil
 }

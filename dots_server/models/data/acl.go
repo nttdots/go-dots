@@ -155,9 +155,13 @@ func deleteACL(tx *db.Tx, p *data_db_models.ACL) (bool, error) {
     return false, err
   }
 
-  affected, err := tx.Session.Id(p.Id).Delete(p)
+  // update the acl's activation-type to not-type
+  activationType := types.ActivationType_NotType
+  p.ACL.ActivationType = &activationType
+  affected, err := tx.Session.ID(p.Id).Update(p)
+
   if err != nil {
-    log.WithError(err).Error("Delete() failed.")
+    log.WithError(err).Error("Update activate-type to not-type failed.")
     return false, err
   }
 
@@ -380,7 +384,6 @@ func GetACLWithActivateWhenMitigating(customer *models.Customer, cuid string) ([
 		log.Printf("Get Acl error: %s\n", err)
 		return
 	}
-
 	return
 }
 
@@ -435,4 +438,34 @@ func IsActive(customerId int, cuid string, activationType types.ActivationType) 
   } else {
     return false, nil
   }
+}
+
+/*
+ * Find acl by id
+ *
+ * parameter:
+ *  id the id of data_client
+ * return:
+ *  acl the data_acl
+ */
+ func FindACLByID(id int64) (data_db_models.ACL, error) {
+  acl := data_db_models.ACL{}
+  // database connection create
+  engine, err := models.ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return acl, err
+	}
+
+	// Get data client
+	has, err := engine.Table("data_acls").Where("id = ?", id).Get(&acl)
+	if err != nil {
+		log.Errorf("Get data acl error: %s\n", err)
+		return acl, err
+  }
+  if !has {
+    log.Error("Not found data acl")
+  }
+
+	return acl, nil
 }

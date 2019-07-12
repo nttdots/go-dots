@@ -119,6 +119,12 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
 			scopeStates.TargetPortRange = append(scopeStates.TargetPortRange, portRange)
 		}
+		// Set Acl list into response
+		scopeStates.AclList = make([]messages.ACL, 0, len(mp.mitigation.ControlFilteringList))
+		for _, item := range mp.mitigation.ControlFilteringList {
+			aclList := messages.ACL{AclName: item.ACLName, ActivationType: item.ActivationType}
+			scopeStates.AclList = append(scopeStates.AclList, aclList)
+		}
 		scopes = append(scopes, scopeStates)
 	}
 
@@ -478,6 +484,7 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	if err != nil {
 		return
 	}
+	m.ControlFilteringList = newControlFiltering(req.AclList)
 
 	return
 }
@@ -514,6 +521,18 @@ func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges 
 			r.UpperPort = r.LowerPort
 		}
 		portRanges[i] = models.NewPortRange(*r.LowerPort, *r.UpperPort)
+	}
+	return
+}
+
+/*
+ * Parse the 'aclList' in a mitigationScope to a list of ControlFiltering objects.
+ */
+func newControlFiltering(aclList []messages.ACL) (controlFilterings []models.ControlFiltering) {
+	controlFilterings = make([]models.ControlFiltering, len(aclList))
+	for i, acl := range aclList {
+		controlFiltering := models.ControlFiltering{ ACLName: acl.AclName}
+		controlFilterings[i] = controlFiltering
 	}
 	return
 }
@@ -1693,7 +1712,7 @@ func HandleControlFiltering(customer *models.Customer, cuid string, aclList []me
 				actType := int(models.ActiveWhenMitigating)
 				acl.ActivationType = &actType
 			}
-			controlFiltering := models.ControlFiltering{ ACLName: acl.AclName, ActivationType: *acl.ActivationType }
+			controlFiltering := models.ControlFiltering{ ACLName: acl.AclName, ActivationType: acl.ActivationType }
 			controlFilteringList[i] = controlFiltering
 		} else {
 			errMsg := "Acl Name must be included in Control Filtering."

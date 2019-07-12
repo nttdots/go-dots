@@ -141,3 +141,33 @@ func FindCuidsByCustomerId(tx *db.Tx, customer *models.Customer) (cuids []string
 
   return
 }
+
+/*
+ * Find client by id
+ *
+ * parameter:
+ *  id the id of data_client
+ * return:
+ *  client the data_client
+ */
+func FindClientByID(id int64) (data_db_models.Client, error) {
+  client := data_db_models.Client{}
+  // database connection create
+  engine, err := models.ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return client, err
+	}
+
+	// Get data client
+	has, err := engine.Table("data_clients").Where("id = ?", id).Get(&client)
+	if err != nil {
+		log.Errorf("Get data client error: %s\n", err)
+		return client, err
+  }
+  if !has {
+    log.Error("Not found data client")
+  }
+
+	return client, nil
+}

@@ -9,11 +9,13 @@ import (
 	"strings"
 	"encoding/json"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/nttdots/go-dots/dots_server/models"
+	"github.com/nttdots/go-dots/dots_server/models/data"
 	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/controllers"
+	"github.com/nttdots/go-dots/dots_common/types/data"
+	log "github.com/sirupsen/logrus"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	data_controllers "github.com/nttdots/go-dots/dots_server/controllers/data"
 )
@@ -23,6 +25,7 @@ const (
 	MITIGATION_SCOPE      TableName = "mitigation_scope"
 	SESSION_CONFIGURATION TableName = "signal_session_configuration"
 	PREFIX_ADDRESS_RANGE  TableName = "prefix"
+	DATA_ACLS             TableName = "data_acls"
 )
 
 /*
@@ -113,7 +116,7 @@ ILOOP:
 					log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
 					resource := context.EnableResourceDirty(query)
 
-					// If mitigation status was changed to Terminated and resource is being observed => set resource status to removable
+					// If mitigation status was changed to Terminated and resource is not being observed => set resource status to removable
 					var isObserved bool
 					if resource != nil {
 						isObserved = resource.IsObserved()
@@ -166,6 +169,8 @@ ILOOP:
 					log.Errorf("[MySQL-Notification]: Re-check ip range for acls failed. Error: %+v", err)
 					return
 				}
+			} else if mapData["table_trigger"].(string) == string(DATA_ACLS) {
+				handleNotifyACL(mapData["aclId"].(string), context)
 			}
 		default:
 			log.Errorf("[MySQL-Notification]: Failed to receive data:%+v", err)
@@ -196,5 +201,67 @@ func isDuplicateMitigation(mids []int, mid int) bool {
 		return true
 	} else {
 		return false
+	}
+}
+
+/*
+ * Handle notify Acl when the acl's activation-type is updated
+ */
+func handleNotifyACL(aclIDString string, context *libcoap.Context) {
+	aclID, err := strconv.ParseInt(aclIDString, 10, 64)
+	if err != nil {
+		log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+		return
+	}
+
+	// Get acl by id
+	acl, err := data_models.FindACLByID(aclID)
+	if err != nil {
+		log.Errorf("[MySQL-Notification]: Failed to get Acl from DB")
+	}
+
+	// Get data client by id
+	client, err := data_models.FindClientByID(acl.ClientId)
+	if err != nil {
+		log.Errorf("[MySQL-Notification]: Failed to Get data_client")
+		return
+	}
+
+	// Get control filtering by acl name
+	controlFilteringList, err := models.GetControlFilteringByACLName(acl.Name)
+	// If the acl's activation-type is not-type(the acl is deleted or expired) and the control filtering doesn't exist, remove acl from DB
+	if len(controlFilteringList) == 0 && *acl.ACL.ActivationType == data_types.ActivationType_NotType {
+		log.Debug("[MySQL-Notification]: Remove ACL from DB")
+		err = models.RemoveACLByID(aclID, acl)
+		if err != nil {
+			log.Errorf("Failed to remove Acl from DB")
+		}
+	} else {
+		uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
+		for _, ctrlFiltering := range controlFilteringList {
+			// get mitigation scope by mitigation scope id
+			mitigation, err := models.GetMitigationScope(0, "", 0, ctrlFiltering.MitigationScopeId)
+			if err != nil || mitigation == nil {
+				log.Error("Failed to get mitigation scope")
+				return
+			}
+			if mitigation.Customer.Id == client.CustomerId && mitigation.ClientIdentifier == client.Cuid {
+				query := uriPath + "/cuid=" + mitigation.ClientIdentifier + "/mid=" + strconv.Itoa(mitigation.MitigationId)
+				log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
+				context.EnableResourceDirty(query)
+			}
+			// If the acl's activation-type is not-type(the acl is deleted or expired), remove acl and control filtering
+			if *acl.ACL.ActivationType == data_types.ActivationType_NotType {
+				err = models.RemoveACLByID(aclID, acl)
+				if err != nil {
+					log.Errorf("Failed to remove Acl from DB")
+				}
+
+				err = models.RemoveControlFilteringByID(ctrlFiltering.Id, ctrlFiltering)
+				if err != nil {
+					log.Errorf("Failed to remove control filtering from DB")
+				}
+			}
+		}
 	}
 }

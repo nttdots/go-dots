@@ -33,6 +33,7 @@ const (
 type ActivationType string
 
 const (
+  ActivationType_NotType                ActivationType = "not-type"   // When the acl is deleted or expired
   ActivationType_ActivateWhenMitigating ActivationType = "activate-when-mitigating"
   ActivationType_Immediate              ActivationType = "immediate"
   ActivationType_Deactivate             ActivationType = "deactivate"
@@ -202,6 +203,9 @@ func (p *ActivationType) UnmarshalJSON(data []byte) error {
   }
 
   switch s {
+  case string(ActivationType_NotType):
+    *p = ActivationType_NotType
+    return nil
   case string(ActivationType_ActivateWhenMitigating):
     *p = ActivationType_ActivateWhenMitigating
     return nil
