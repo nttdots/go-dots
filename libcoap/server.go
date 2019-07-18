@@ -48,8 +48,8 @@ func export_method_handler(ctx   *C.coap_context_t,
                            rsrc  *C.coap_resource_t,
                            sess  *C.coap_session_t,
                            req   *C.coap_pdu_t,
-                           tok   *C.str,
-                           query *C.str,
+                           tok   *C.coap_string_t,
+                           query *C.coap_string_t,
                            resp  *C.coap_pdu_t) {
 
     context, ok := contexts[ctx]

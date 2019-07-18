@@ -25,10 +25,10 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.11 or later is required. (for the latest GoBGP - v2.1.0)
+  * go 1.12 or later is required. (for the latest GoBGP - v2.6.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
-  * OpenSSL 1.1.1 or higher (for libcoap)
+  * OpenSSL 1.1.1c or higher (for libcoap)
 
 * MySQL 5.7.x and its development package (MySQL 8.0.x or higher not yet supported)
   * Install mysql development package in Ubuntu:
@@ -48,7 +48,7 @@ Currenly supported libcoap version : 1eadd91
 
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
-    $ git checkout 1eadd91366cab46767f26e4d10e005198246eac1
+    $ git checkout cfec0d072c5b99ed3e54828ca50ea2f6b91e1f50
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
     $ make
