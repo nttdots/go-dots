@@ -53,8 +53,9 @@ const (
 type OperatorBit string
 
 const (
-  Operator_NOT OperatorBit = "not"
+  Operator_NOT   OperatorBit = "not"
   Operator_MATCH OperatorBit = "match"
+  Operator_ANY   OperatorBit = "any"
 )
 
 type FragmentType string
@@ -274,6 +275,9 @@ func (p *OperatorBit) UnmarshalJSON(data []byte) error {
     return nil
   case string(Operator_MATCH):
     *p = Operator_MATCH
+    return nil
+  case string(Operator_ANY):
+    *p = Operator_ANY
     return nil
   default:
     return fmt.Errorf("Unexpected Operator: %v", s)

@@ -288,7 +288,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 
 			// Mitigation Request must repeat all parameters except lifetime and acl-*
 			if currentScope != nil {
-				isInvalid, errMessage := checkAttributesEfficacyUpdate(customer, body, currentScope)
+				isInvalid, errMessage := checkRepeatParameters(customer, body, currentScope)
 				errorMessage = errMessage
 				if isInvalid {
 					goto ResponseNG
@@ -301,10 +301,29 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				return Response{}, err
 			}
 			if res != nil { return *res, nil }
+		} else if !isIfMatchOption && currentScope != nil {
+			// If the mitigation request is not efficacy update and control filtering, the mitigation request is handle refresh
+			// Handle refresh mitigation: mitigation request to continute beyound the initinal negotiated lifetime
+			log.Debugf("Handle refresh the current mitigation")
+			// Mitigation Request must repeat all parameters except lifetime and trigger-mitigation
+			isInvalid, errMessage := checkRepeatParameters(customer, body, currentScope)
+			errorMessage = errMessage
+			if isInvalid {
+				goto ResponseNG
+			}
 		}
 
 		var conflictInfo *models.ConflictInformation
 		if currentScope == nil && !isIfMatchOption {
+			// If a DOTS client has to change its 'cuid' for some reason, it MUST NOT do so when mitigations are still active for the old 'cuid'
+			isActive, msg, err := checkActiveForCurrentCuid(customer, cuid)
+			if err != nil {
+				return Response{}, err
+			}
+			if isActive {
+				errorMessage = msg
+				goto ResponseNG
+			}
 
 			conflictInfo, err = CreateMitigation(body, customer, nil, isIfMatchOption)
 			if err != nil {
@@ -952,8 +971,8 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 		}
 	}
 
-	// cancel mitigation scope when update mitigation
-	if currentScope != nil && currentScope.IsActive() {
+	// cancel mitigation scope when refresh mitigation with trigger-mitigation is false
+	if currentScope != nil && currentScope.IsActive() && requestScope.TriggerMitigation == false {
 		// Cancel blocker asynchronously only in case blocker type is Arista ACL
 		if blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_RTBH || blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_FLOWSPEC {
 			err = handleCancelBlocker(currentScope.MitigationId, body.EffectiveClientIdentifier(), customer.Id, currentScope.MitigationScopeId)
@@ -973,7 +992,8 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 		return nil, err
 	}
 
-	if requestScope.TriggerMitigation == true {
+	// call blocker mitigation scope when create mitigation or refresh mitigation with trigger-mitigation is true
+	if (currentScope == nil || (currentScope != nil && !currentScope.IsActive())) && requestScope.TriggerMitigation == true {
 		requestScope.MitigationScopeId = mitigationScope.Id
 		if currentScope != nil && requestScope.MitigationScopeId == 0 {
 			requestScope.MitigationScopeId = currentScope.MitigationScopeId
@@ -1223,7 +1243,7 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 	}
 
 	if currentScope != nil {
-		different, errMessage := checkAttributesEfficacyUpdate(customer, body, currentScope)
+		different, errMessage := checkRepeatParameters(customer, body, currentScope)
 		if different {
 			return false, errMessage
 		}
@@ -1233,16 +1253,16 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 }
 
 /*
- * Check attribute difference between efficacy update request and existing mitigation request in DB
+ * Check attribute difference between new request and existing mitigation request in DB
  * parameter:
  *  customer request source Customer
  *  messageScope request mitigation
  *  currentScope current mitigation in DB
  * return bool:
- *  true: Except for attack-status and lifetime, if any attribute of incomming request is different from existing value in DB
- *  false: Except for attack-status and lifetime, if all other attributes of mitigation request is the same as  existing values in DB
+ *  true: Except for attack-status, acl-list, trigger-mitigation and lifetime, if any attribute of incomming request is different from existing value in DB
+ *  false: Except for attack-status, acl-list, trigger-mitigation and lifetime, if all other attributes of mitigation request is the same as  existing values in DB
  */
-func checkAttributesEfficacyUpdate(customer *models.Customer, messageScope *messages.MitigationRequest, currentScope *models.MitigationScope) (bool, string) {
+func checkRepeatParameters(customer *models.Customer, messageScope *messages.MitigationRequest, currentScope *models.MitigationScope) (bool, string) {
 	// Convert type of scope in request to type of scope in DB
 	m := models.NewMitigationScope(customer, messageScope.EffectiveClientIdentifier())
 	m.TargetPrefix,_ = newTargetPrefix(messageScope.MitigationScope.Scopes[0].TargetPrefix)
@@ -1254,32 +1274,32 @@ func checkAttributesEfficacyUpdate(customer *models.Customer, messageScope *mess
 
 	errMessage := ""
 	if !reflect.DeepEqual(m.TargetPrefix, currentScope.TargetPrefix) {
-		errMessage = fmt.Sprintf("TargetPrefix in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPrefix, currentScope.TargetPrefix)
+		errMessage = fmt.Sprintf("TargetPrefix in request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPrefix, currentScope.TargetPrefix)
 		log.Error(errMessage)
 		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.TargetPortRange, currentScope.TargetPortRange) {
-		errMessage = fmt.Sprintf("TargetPortRange in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPortRange, currentScope.TargetPortRange)
+		errMessage = fmt.Sprintf("TargetPortRange in request is different from value in DB. New value : %+v, Current value : %+v", m.TargetPortRange, currentScope.TargetPortRange)
 		log.Error(errMessage)
 		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.TargetProtocol, currentScope.TargetProtocol) {
-		errMessage = fmt.Sprintf("TargetProtocol in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.TargetProtocol, currentScope.TargetProtocol)
+		errMessage = fmt.Sprintf("TargetProtocol in request is different from value in DB. New value : %+v, Current value : %+v", m.TargetProtocol, currentScope.TargetProtocol)
 		log.Error(errMessage)
 		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.FQDN, currentScope.FQDN) {
-		errMessage = fmt.Sprintf("FQDN in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.FQDN, currentScope.FQDN)
+		errMessage = fmt.Sprintf("FQDN in request is different from value in DB. New value : %+v, Current value : %+v", m.FQDN, currentScope.FQDN)
 		log.Error(errMessage)
 		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.URI, currentScope.URI) {
-		errMessage = fmt.Sprintf("URI in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.URI, currentScope.URI)
+		errMessage = fmt.Sprintf("URI in request is different from value in DB. New value : %+v, Current value : %+v", m.URI, currentScope.URI)
 		log.Error(errMessage)
 		return true, errMessage
 	}
 	if !reflect.DeepEqual(m.AliasName, currentScope.AliasName) {
-		errMessage = fmt.Sprintf("AliasName in Efficacy Update request is different from value in DB. New value : %+v, Current value : %+v", m.AliasName, currentScope.AliasName)
+		errMessage = fmt.Sprintf("AliasName in request is different from value in DB. New value : %+v, Current value : %+v", m.AliasName, currentScope.AliasName)
 		log.Error(errMessage)
 		return true, errMessage
 	}
@@ -1830,4 +1850,53 @@ func RecheckIpRangeForMitigations(customer *models.Customer) error {
 	}
 
 	return nil
+}
+
+/*
+ * Check active for current cuid
+ * If the DataChannel or the SignalChannel are active, the server will return true
+ * If the DataChannel and the SignalChannel are not active, the server will return false
+ */
+func checkActiveForCurrentCuid(customer *models.Customer, cuid string) (bool, string, error) {
+	isActive := false
+	msg      := ""
+	// Get array current cuid by customer id
+	currentCuids, err := models.GetCuidByCustomerID(customer.Id, cuid)
+	if err != nil {
+		log.Errorf("Failed to get mitigation list by customer id from DB. Error = %+v", err)
+		return isActive, msg, err
+	}
+
+	// If the request 'cuid different from the current 'cuid', the server will check active for the SignalChannel and the DataChannel
+	for _, currentCuid := range currentCuids {
+		if cuid != currentCuid  {
+			// Check active the SignalChanel
+			isPeaceTime, err := models.CheckPeaceTimeSignalChannel(customer.Id, currentCuid)
+			if err != nil {
+				log.Errorf("Failed to check active signal channel. Error = %+v", err)
+				return isActive, msg, err
+			}
+			if !isPeaceTime {
+				isActive = true
+				msg = fmt.Sprintf("Existed the mitigation with current 'cuid' (%+v) is active", currentCuid)
+				log.Error(msg)
+				return isActive, msg, nil
+			}
+
+			// Check active the DataChannel
+			isActiveDataChannel, err := data_models.CheckActiveDataChannelACL(customer, currentCuid)
+			if err != nil {
+				isActive = false
+				log.Errorf("Failed to check active data channel. Error = %+v", err)
+				return isActive, msg, err
+			}
+			if isActiveDataChannel {
+				isActive = isActiveDataChannel
+				msg = fmt.Sprintf("Existed the acl with current 'cuid' (%+v) is active", currentCuid)
+				log.Error(msg)
+				return isActive, msg, nil
+			}
+		}
+	}
+	return isActive, msg, nil
 }

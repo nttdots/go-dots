@@ -201,6 +201,16 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			requestQuerys = tmpPaths[i+1:]
 			break
 		}
+
+		// The 'cuid' should be less than or equal to 22 characters
+		for _,query := range requestQuerys {
+			querySplit := strings.Split(query, "cuid=")
+			if len(querySplit) > 1 && len(querySplit[1]) > int(messages.CUID_LEN) {
+				log.Warnf("The 'cuid' (%+v) should not be greater than 22 characters", len(querySplit[1]))
+				return
+			}
+		}
+
 		options := make(map[messages.Option]string)
 		// Create observe option
 		observeStr := r.Header.Get(string(messages.OBSERVE))

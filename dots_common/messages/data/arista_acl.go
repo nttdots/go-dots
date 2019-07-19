@@ -85,9 +85,9 @@ func (v *goAristaAclValidator) ValidateUnsupportedAttributes(name string, matche
 	}
 
 	if matches.TCP != nil && (matches.TCP.SequenceNumber != nil || matches.TCP. AcknowledgementNumber != nil || matches.TCP. DataOffset != nil ||
-		matches.TCP.Reserved != nil || matches.TCP.WindowSize != nil || matches.TCP.UrgentPointer != nil || matches.TCP.Options != nil || matches.TCP.FlagsBitmask != nil) {
+		matches.TCP.Reserved != nil || matches.TCP.WindowSize != nil || matches.TCP.UrgentPointer != nil || matches.TCP.Options != nil) {
 		log.Errorf("Acl TCP is not support 'sequence-number', 'acknowledgement-number', 'data-offset', 'reserved', 'window-size', 'urgent-pointer', 'options' and 'flags-bitmask'at acl 'name' = %+v", name)
-		errorMsg := fmt.Sprintf("Body Data Error : Acl TCP is not support 'sequence-number', 'acknowledgement-number', 'data-offset', 'reserved', 'window-size', 'urgent-pointer', 'options' and 'flags-bitmask' at acl 'name' (%v)", name)
+		errorMsg := fmt.Sprintf("Body Data Error : Acl TCP is not support 'sequence-number', 'acknowledgement-number', 'data-offset', 'reserved', 'window-size', 'urgent-pointer' and 'options' at acl 'name' (%v)", name)
 		return false, errorMsg
 	} else if matches.UDP != nil && matches.UDP.Length != nil {
 		log.Errorf("Acl UDP is not support 'lenght' at acl 'name' = %+v", name)

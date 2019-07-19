@@ -486,6 +486,43 @@ func GetMitigationIds(customerId int, clientIdentifier string) (mitigationIds []
 }
 
 /*
+ * Find cuid by a customerId.
+ *
+ * parameter:
+ *  customerId id of the Customer
+ * return:
+ *  cuid of mitigation
+ *  error error
+ */
+ func GetCuidByCustomerID(customerID int, clientIdentifier string) (cuid []string, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+	// Get mitigation with the request 'cuid'
+	// If existed mitigation, the server will return the request 'cuid'
+	// If mitigation doesn't exist, the server will return the old 'cuid'
+	dbMitigationScope := db_models.MitigationScope{}
+	has, err := engine.Where("customer_id = ? AND client_identifier = ?", customerID, clientIdentifier).Limit(1).Get(&dbMitigationScope)
+	if err != nil {
+		log.Printf("find mitigation error: %s\n", err)
+		return
+	}
+	if has {
+		return append(cuid, clientIdentifier), nil
+	}
+	err = engine.Table("mitigation_scope").Where("customer_id = ?", customerID).Distinct("client_identifier").Find(&cuid)
+	if err != nil {
+		log.Printf("find cuid error: %s\n", err)
+		return
+	}
+
+	return
+}
+
+/*
  * Find all mitigationId by a customerId.
  *
  * parameter:

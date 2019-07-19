@@ -467,5 +467,48 @@ func IsActive(customerId int, cuid string, activationType types.ActivationType) 
     log.Error("Not found data acl")
   }
 
-	return acl, nil
+  return acl, nil
+ }
+/*
+ * Check active data channel acl
+ * If data channel acl is active, the server will return true
+ * Else the server will return false
+ */
+ func CheckActiveDataChannelACL(customer *models.Customer, cuid string) (bool, error) {
+  // Connect DB
+  engine, err := models.ConnectDB()
+	if err != nil {
+	  log.WithError(err).Error("Failed connect to database.")
+	  return false, nil
+	}
+	session := engine.NewSession()
+  tx := &db.Tx{ engine, session }
+
+  // Find client by cuid
+  client, err := FindClientByCuid(tx, customer, cuid)
+  if err != nil {
+    log.Errorf("Failed to find client by cuid. Error: %+v", err)
+    return false, err
+  }
+  if client == nil {
+    return false, nil
+  }
+
+  // Find acls
+  acls, err := FindACLs(tx, client, time.Now())
+  if err != nil {
+    log.Errorf("Failed to find acls by data client. Error: %+v", err)
+    return false, err
+  }
+  for _, acl := range acls {
+    isActive, err := acl.IsActive()
+    if err != nil {
+      log.Errorf("Failed to check active acl. Error: %+v", err)
+      return false, err
+    }
+    if isActive {
+      return true, nil
+    }
+  }
+  return false, nil
 }

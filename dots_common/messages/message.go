@@ -75,6 +75,12 @@ const (
 	MITIGATION_ACL MitigationAcl = "mitigation-acl-"
 )
 
+type Length int
+
+const (
+	CUID_LEN Length = 22
+)
+
 /*
  * Dots message structure.
  */

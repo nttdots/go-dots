@@ -6,8 +6,8 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-signal-channel-30
-* draft-ietf-dots-data-channel-27
+* draft-ietf-dots-signal-channel-35
+* draft-ietf-dots-data-channel-30
 * draft-ietf-dots-architecture-06
 * draft-ietf-dots-requirements-14
 * draft-ietf-dots-use-cases-14
