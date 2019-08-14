@@ -130,6 +130,14 @@ ILOOP:
 						if !dup && resource != nil {
 							resource.ToRemovableResource()
 						}
+						// If the last mitigation is expired, the server will remove the resource all
+						if len(mids) == 1 && mids[0] == mid && resource != nil {
+							uriPathSplit := strings.Split(resource.UriPath(), "/mid")
+							resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
+							if resourceAll != nil {
+								resourceAll.ToRemovableResource()
+							}
+						}
 					}
 				}
 			} else if mapData["table_trigger"].(string) == string(SESSION_CONFIGURATION) {

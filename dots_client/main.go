@@ -370,10 +370,22 @@ func handleResponse(env *task.Env, pdu *libcoap.Pdu) {
     key := pdu.AsMapKey()
     t, ok := env.Requests()[key]
     if !ok {
+		// If existed token, handle notification
+		// Else handle forget notification
         if env.IsTokenExist(string(pdu.Token)) {
             handleNotification(env, nil, pdu)
         } else {
-            log.Debugf("Unexpected incoming PDU: %+v", pdu)
+			observe, err := pdu.GetOptionIntegerValue(libcoap.OptionObserve)
+			if err != nil {
+				log.WithError(err).Warn("Failed to get observe option.")
+				return
+			}
+			if observe >= 0 && pdu.Type == libcoap.TypeNon {
+				log.Debug("Handle forget notification")
+				env.CoapSession().HandleForgetNotification(pdu)
+			} else {
+				log.Debugf("Unexpected incoming PDU: %+v", pdu)
+			}
         }
     } else if !t.IsStop() {
         if pdu.Type != libcoap.TypeNon {
