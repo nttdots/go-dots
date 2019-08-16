@@ -4,7 +4,7 @@ organization = "sample server"
 state = "Tokyo"
 country = JP
 cn = "server.sample.example.com"
-expiration_days = 365
+expiration_days = 730
 
 # X.509 v3 extensions
 signing_key

@@ -4,7 +4,7 @@ organization = "Example CA"
 state = "Tokyo"
 country = JP
 cn = "ca.example.com"
-expiration_days = 365
+expiration_days = 730
 
 # X.509 v3 extensions
 ca
