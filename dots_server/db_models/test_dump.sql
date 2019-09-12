@@ -208,7 +208,7 @@ CREATE TRIGGER status_changed_trigger AFTER UPDATE ON mitigation_scope
 FOR EACH ROW
 BEGIN
   IF NEW.status <> OLD.status THEN
-    SELECT MySQLNotification('mitigation_scope', NEW.id, NEW.customer_id, NEW.client_identifier, NEW.mitigation_id, NEW.status) INTO @x;
+    SELECT MySQLNotification('mitigation_scope', NEW.id, NEW.customer_id, NEW.client_identifier, NEW.mitigation_id, NEW.client_domain_identifier, NEW.status) INTO @x;
   END IF;
 END@@
 

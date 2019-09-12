@@ -89,6 +89,7 @@ ILOOP:
 				id, iErr := strconv.ParseInt(mapData["id"].(string), 10, 64)
 				cid, cErr := strconv.Atoi(mapData["cid"].(string))
 				cuid := mapData["cuid"].(string)
+				cdid := mapData["cdid"].(string)
 				mid, mErr := strconv.Atoi(mapData["mid"].(string))
 				status, sErr := strconv.Atoi(mapData["status"].(string))
 				if iErr != nil || mErr != nil || sErr != nil || cErr != nil {
@@ -96,7 +97,12 @@ ILOOP:
 					return
 				}
 				uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
-				query := uriPath + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
+				var query string
+				if cdid == "" {
+					query = uriPath + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
+				} else {
+					query = uriPath + "/cdid="+ cdid + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
+				}
 
 				// Check duplicate mitigation when PUT a new mitigation before delete an expired mitigation
 				mids, err := models.GetMitigationIds(cid, cuid)
