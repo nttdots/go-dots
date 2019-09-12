@@ -93,7 +93,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		}
 		scopeStates := messages.ScopeStatus {
 			MitigationId: mp.mitigation.MitigationId,
-			MitigationStart: float64(startedAt),
+			MitigationStart: uint64(startedAt),
 			Lifetime: mp.mitigation.Lifetime,
 			Status: mp.mitigation.Status,
 			TriggerMitigation: mp.mitigation.TriggerMitigation,

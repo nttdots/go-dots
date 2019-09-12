@@ -27,7 +27,7 @@ type PortRangeResponse struct {
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mid"    codec:"5"`
-	MitigationStart float64 `json:"mitigation-start" codec:"15,omitempty"`
+	MitigationStart uint64 `json:"mitigation-start" codec:"15,omitempty"`
 	TargetPrefix    []string `json:"target-prefix" codec:"6,omitempty"`
 	TargetPortRange []PortRangeResponse `json:"target-port-range" codec:"7,omitempty"`
 	TargetProtocol  []int  `json:"target-protocol"   codec:"10,omitempty"`
@@ -162,7 +162,7 @@ func (m *MitigationResponse) String() (result string) {
 	for key, scope := range m.MitigationScope.Scopes {
 		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
 		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
-		result += fmt.Sprintf("     \"%s\": %f\n", "mitigation-start", scope.MitigationStart)
+		result += fmt.Sprintf("     \"%s\": %d\n", "mitigation-start", scope.MitigationStart)
 		for k, v := range scope.TargetPrefix {
 			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-prefix", k+1, v)
 		}
