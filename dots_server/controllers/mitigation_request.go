@@ -70,10 +70,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 
 	scopes := make([]messages.ScopeStatus, 0)
 
-	var cdidInDB string
-
 	for _, mp := range mpp {
-		cdidInDB = mp.mitigation.ClientDomainIdentifier
 
 		// Check expired mitigation
 		if mp.mitigation.Lifetime == 0 {
@@ -148,7 +145,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	res = Response{
 		Type: common.NonConfirmable,
 		Code: common.Content,
-		Body: messages.MitigationResponse { MitigationScope: messages.MitigationScopeStatus { Scopes: scopes, ClientDomainIdentifier: cdidInDB }},
+		Body: messages.MitigationResponse { MitigationScope: messages.MitigationScopeStatus { Scopes: scopes }},
 	}
 
 	return
