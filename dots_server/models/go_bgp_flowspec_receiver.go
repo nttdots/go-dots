@@ -239,6 +239,9 @@ func (g *GoBgpFlowSpecReceiver) ExecuteProtection(p Protection) (err error) {
 
 	// Create and add flowspec into gobgp
 	paths, err := g.toPath(t)
+	if err != nil {
+		return err
+	}
 	for _, path := range paths {
 		_, err = blockerClient.AddPath(context.Background(),&api.AddPathRequest{
 			TableType: api.TableType_GLOBAL,
@@ -991,7 +994,9 @@ func (mapping *FlowSpecMapping) CreateFlowSpec() (bgp.AddrPrefixInterface, error
 			return nil, err
 		}
 	} else {
-		log.Errorf("Prefix interface is nil")
+		err = errors.New("Prefix interface is nil")
+		log.Error(err)
+		return nil, err
 	}
 
 	return prefixInterface, nil
