@@ -34,7 +34,7 @@ type ScopeStatus struct {
 	URI             []string `json:"target-uri" codec:"12,omitempty"`
 	AliasName       []string `json:"alias-name" codec:"13,omitempty"`
 	AclList         []ACL    `json:"acl-list" codec:"22,omitempty"`
-	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
+	TriggerMitigation bool `json:"trigger-mitigation" codec:"45,omitempty"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
 	Status          int   `json:"status"           codec:"16"`
 	BytesDropped    int   `json:"bytes-dropped"    codec:"25"`

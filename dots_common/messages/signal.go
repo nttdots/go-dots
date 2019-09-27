@@ -47,7 +47,7 @@ type Scope struct {
 	// attack-status
 	AttackStatus *int `json:"attack-status" codec:"29,omitempty"`
 	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
-	TriggerMitigation *bool `json:"trigger-mitigation" codec:"45"`
+	TriggerMitigation *bool `json:"trigger-mitigation" codec:"45,omitempty"`
 }
 
 type MitigationRequest struct {
