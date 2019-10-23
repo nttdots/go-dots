@@ -135,6 +135,7 @@ DROP TABLE IF EXISTS `port_range`;
 CREATE TABLE `port_range` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `mitigation_scope_id` bigint(20) DEFAULT NULL,
+  `type` enum('TARGET_PORT','SOURCE_PORT') NOT NULL,
   `lower_port` int(11) DEFAULT NULL,
   `upper_port` int(11) DEFAULT NULL,
   `created` datetime DEFAULT NULL,
@@ -142,7 +143,32 @@ CREATE TABLE `port_range` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+INSERT INTO `port_range` (`id`, `mitigation_scope_id`, `type`, `lower_port`, `upper_port`, `created`, `updated`)
+VALUES
+  (1,1,'TARGET_PORT',10000,40000,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
+  (2,2,'SOURCE_PORT',10000,65535,'2017-04-13 13:44:34','2017-04-13 13:44:34');
 ####### Basically the table 'port_range' is modified by the system only.
+
+# icmp_type_range
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `icmp_type_range`;
+
+CREATE TABLE `icmp_type_range` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `mitigation_scope_id` bigint(20) DEFAULT NULL,
+  `lower_type` int(11) DEFAULT NULL,
+  `upper_type` int(11) DEFAULT NULL,
+  `created` datetime DEFAULT NULL,
+  `updated` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+INSERT INTO `icmp_type_range` (`id`, `mitigation_scope_id`, `lower_type`, `upper_type`, `created`, `updated`)
+VALUES
+  (1,1,10,11,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
+  (2,2,12,13,'2017-04-13 13:44:34','2017-04-13 13:44:34');
+
 
 # prefix
 # ------------------------------------------------------------
@@ -153,7 +179,7 @@ CREATE TABLE `prefix` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `customer_id` int(11) DEFAULT NULL,
   `mitigation_scope_id` bigint(20) DEFAULT NULL,
-  `type` enum('TARGET_PREFIX','SOURCE_IPV4_NETWORK','DESTINATION_IPV4_NETWORK','IP','PREFIX','ADDRESS_RANGE','IP_ADDRESS','TARGET_IP') NOT NULL,
+  `type` enum('TARGET_PREFIX','SOURCE_PREFIX','SOURCE_IPV4_NETWORK','DESTINATION_IPV4_NETWORK','IP','PREFIX','ADDRESS_RANGE','IP_ADDRESS','TARGET_IP') NOT NULL,
   `addr` varchar(255) DEFAULT NULL,
   `prefix_len` int(11) DEFAULT NULL,
   `created` datetime DEFAULT NULL,

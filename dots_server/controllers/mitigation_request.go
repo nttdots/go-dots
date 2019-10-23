@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"net/http"
 	"fmt"
+	"net"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
@@ -111,11 +112,27 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		for _, item := range mp.mitigation.TargetPrefix {
 			scopeStates.TargetPrefix = append(scopeStates.TargetPrefix, item.String())
 		}
-		
 		for _, item := range mp.mitigation.TargetPortRange {
 			portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
 			scopeStates.TargetPortRange = append(scopeStates.TargetPortRange, portRange)
 		}
+
+		// Set SourcePrefix, SourcePortRange, SourceICMPTypeRange
+		scopeStates.SourcePrefix = make([]string, 0, len(mp.mitigation.SourcePrefix))
+		scopeStates.SourcePortRange = make([]messages.PortRangeResponse, 0, len(mp.mitigation.SourcePortRange))
+		scopeStates.SourceICMPTypeRange = make([]messages.ICMPTypeRangeResponse, 0, len(mp.mitigation.SourceICMPTypeRange))
+		for _, item := range mp.mitigation.SourcePrefix {
+			scopeStates.SourcePrefix = append(scopeStates.SourcePrefix, item.String())
+		}
+		for _, item := range mp.mitigation.SourcePortRange {
+			portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
+			scopeStates.SourcePortRange = append(scopeStates.SourcePortRange, portRange)
+		}
+		for _, item := range mp.mitigation.SourceICMPTypeRange {
+			typeRange := messages.ICMPTypeRangeResponse{LowerType: item.LowerType, UpperType: item.UpperType}
+			scopeStates.SourceICMPTypeRange = append(scopeStates.SourceICMPTypeRange, typeRange)
+		}
+
 		// Set Acl list into response
 		scopeStates.AclList = make([]messages.ACL, 0, len(mp.mitigation.ControlFilteringList))
 		for _, item := range mp.mitigation.ControlFilteringList {
@@ -277,9 +294,22 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			}
 		}
 
+		scope := body.MitigationScope.Scopes[0]
+		// Handle Sinal Channel Call Home
+		// Ignore this process if put efficacy update
+		if !isIfMatchOption && scope.SourcePrefix != nil {
+			log.Debug("Handle Signal Channel Call Home")
+			valid, errMessage := validateForCallHome(customer, scope)
+			errorMessage = errMessage
+			if !valid {
+				goto ResponseNG
+			}
+		} else if scope.SourcePrefix == nil && (scope.SourcePortRange != nil || scope.SourceICMPTypeRange != nil) {
+			errorMessage = fmt.Sprintf("The signal channel MUST NOT contain 'source-port-range' or 'source-icmp-type-range'")
+			goto ResponseNG
+		}
 		// Handle Control Filtering: Check what data channel ACL need to be changed activation-type
 		// Ignore this process if put efficacy update
-		scope := body.MitigationScope.Scopes[0]
 		if !isIfMatchOption && scope.AclList != nil && len(scope.AclList) != 0 {
 			log.Debugf("Handle Signal Channel Control Filtering")
 
@@ -491,12 +521,24 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	} else {
 		m.TriggerMitigation = *req.TriggerMitigation
 	}
-	m.TargetPrefix, err = newTargetPrefix(req.TargetPrefix)
+	m.TargetPrefix, err = newPrefix(req.TargetPrefix)
 	if err != nil {
 		return
 	}
 	m.ClientDomainIdentifier = clientDomainIdentifier
-	m.TargetPortRange, err = newTargetPortRange(req.TargetPortRange)
+	m.TargetPortRange, err = newPortRange(req.TargetPortRange)
+	if err != nil {
+		return
+	}
+	m.SourcePrefix, err = newPrefix(req.SourcePrefix)
+	if err != nil {
+		return
+	}
+	m.SourcePortRange, err = newPortRange(req.SourcePortRange)
+	if err != nil {
+		return
+	}
+	m.SourceICMPTypeRange, err = newICMPTypeRange(req.SourceICMPTypeRange)
 	if err != nil {
 		return
 	}
@@ -506,9 +548,9 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 }
 
 /*
- * Parse the 'targetPrefix' field in a mitigationScope and return a list of Prefix objects.
+ * Parse the 'targetPrefix'/'sourcePrefix' field in a mitigationScope and return a list of Prefix objects.
  */
-func newTargetPrefix(targetPrefix []string) (prefixes []models.Prefix, err error) {
+func newPrefix(targetPrefix []string) (prefixes []models.Prefix, err error) {
 	prefixes = make([]models.Prefix, len(targetPrefix))
 	for i, cidr := range targetPrefix {
 		prefix, err := models.NewPrefix(cidr)
@@ -523,20 +565,40 @@ func newTargetPrefix(targetPrefix []string) (prefixes []models.Prefix, err error
 }
 
 /*
- * Parse the 'targetPortRange' field in a mitigationScope and return a list of PortRange objects.
+ * Parse the 'targetPortRange'/'sourcePortRange' field in a mitigationScope and return a list of PortRange objects.
  */
-func newTargetPortRange(targetPortRange []messages.TargetPortRange) (portRanges []models.PortRange, err error) {
+func newPortRange(targetPortRange []messages.PortRange) (portRanges []models.PortRange, err error) {
 	portRanges = make([]models.PortRange, len(targetPortRange))
 	for i, r := range targetPortRange {
 		if r.LowerPort == nil {
-			log.Warn("lower port is mandatory for target-port-range data.")
-			errMsg := fmt.Sprintf("%+v: lower port is mandatory for target-port-range data.", models.ValidationError)
+			log.Warn("lower port is mandatory for port-range data.")
+			errMsg := fmt.Sprintf("%+v: lower port is mandatory for port-range data.", models.ValidationError)
 			return nil, errors.New(errMsg)
 		}
 		if r.UpperPort == nil {
 			r.UpperPort = r.LowerPort
 		}
 		portRanges[i] = models.NewPortRange(*r.LowerPort, *r.UpperPort)
+	}
+	return
+}
+
+/*
+ * Parse the 'source-icmp-type-range' field in a mitigationScope and return a list of ICMPTypeRange objects.
+ */
+ func newICMPTypeRange(icmpTypeRange []messages.SourceICMPTypeRange) (icmpTypeRanges []models.ICMPTypeRange, err error) {
+	icmpTypeRanges = make([]models.ICMPTypeRange, len(icmpTypeRange))
+	for i, r := range icmpTypeRange {
+		// Check the lower-type is mandatory
+		if r.LowerType == nil {
+			log.Warn("lower type is mandatory for icmp-type-range data.")
+			errMsg := fmt.Sprintf("%+v: lower type is mandatory for icmp-type-range data.", models.ValidationError)
+			return nil, errors.New(errMsg)
+		}
+		if r.UpperType == nil {
+			r.UpperType = r.LowerType
+		}
+		icmpTypeRanges[i] = models.NewICMPTypeRange(*r.LowerType, *r.UpperType)
 	}
 	return
 }
@@ -984,7 +1046,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 
 	// store mitigation request into the mitigationScope table
 	if requestScope.TriggerMitigation == false { requestScope.Status = models.Triggered }
-	mitigationScope, err := models.CreateMitigationScope(*requestScope, *customer)
+	mitigationScope, err := models.CreateMitigationScope(*requestScope, *customer, isIfMatchOption)
 	if err != nil {
 		return nil, err
 	}
@@ -1262,8 +1324,8 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 func checkRepeatParameters(customer *models.Customer, messageScope *messages.MitigationRequest, currentScope *models.MitigationScope) (bool, string) {
 	// Convert type of scope in request to type of scope in DB
 	m := models.NewMitigationScope(customer, messageScope.EffectiveClientIdentifier())
-	m.TargetPrefix,_ = newTargetPrefix(messageScope.MitigationScope.Scopes[0].TargetPrefix)
-	m.TargetPortRange,_ = newTargetPortRange(messageScope.MitigationScope.Scopes[0].TargetPortRange)
+	m.TargetPrefix,_ = newPrefix(messageScope.MitigationScope.Scopes[0].TargetPrefix)
+	m.TargetPortRange,_ = newPortRange(messageScope.MitigationScope.Scopes[0].TargetPortRange)
 	m.TargetProtocol.AddList(messageScope.MitigationScope.Scopes[0].TargetProtocol)
 	m.FQDN.AddList(messageScope.MitigationScope.Scopes[0].FQDN)
 	m.URI.AddList(messageScope.MitigationScope.Scopes[0].URI)
@@ -1325,7 +1387,7 @@ func appendAliasParametersToRequest(aliases types.Aliases, scope *messages.Scope
 			if portRange.UpperPort != nil {
 				upper = int(*portRange.UpperPort)
 			}
-			scope.TargetPortRange = append(scope.TargetPortRange, messages.TargetPortRange{ LowerPort: &lower, UpperPort: &upper })
+			scope.TargetPortRange = append(scope.TargetPortRange, messages.PortRange{ LowerPort: &lower, UpperPort: &upper })
 		}
 
 		// append target protocol parameter
@@ -1896,4 +1958,55 @@ func checkActiveForCurrentCuid(customer *models.Customer, cuid string) (bool, st
 		}
 	}
 	return isActive, msg, nil
+}
+
+/*
+ * Check validate for the signal channel call home
+ */
+func validateForCallHome(customer *models.Customer, scope messages.Scope) (bool, string) {
+	isActive := false
+	msg      := ""
+	targetOnlyIPv4 := true
+	targetOnlyIPv6 := true
+	sourceOnlyIPv4 := true
+	sourceOnlyIPv6 := true
+	if scope.TriggerMitigation != nil && !*scope.TriggerMitigation {
+		msg = fmt.Sprintf("Failed to the 'trigger-mitigation' attribute set to false")
+		log.Error(msg)
+		return isActive, msg
+	}
+	if scope.TargetPrefix == nil {
+		msg = fmt.Sprintf("Missing required the 'target-prefix' attribute")
+		log.Error(msg)
+		return isActive, msg
+	}
+
+	for _, v := range scope.TargetPrefix {
+		ip, _, _ := net.ParseCIDR(v)
+		if ip.To4() != nil {
+			targetOnlyIPv6 = false
+		} else {
+			targetOnlyIPv4 = false
+		}
+	}
+	for _, v := range scope.SourcePrefix {
+		ip, _, _ := net.ParseCIDR(v)
+		if ip.To4() != nil {
+			sourceOnlyIPv6 = false
+		} else if ip.To4() == nil {
+			sourceOnlyIPv4 =false
+		}
+	}
+	// If target-prefix only contains IPv4 and source-prefix only contains IPv6, the server will return 400 Bad Request
+	// If target-prefix only contains IPv6 and source-prefix only contains IPv4, the server will return 400 Bad Request
+	if targetOnlyIPv4 && sourceOnlyIPv6 {
+		msg = fmt.Sprintf("Failed to the 'target-prefix' only contains IPv4 and the 'source-prefix' only contains IPv6")
+		log.Error(msg)
+		return isActive, msg
+	} else if targetOnlyIPv6 && sourceOnlyIPv4 {
+		msg = fmt.Sprintf("Failed to the 'target-prefix' only contains IPv6 and the 'source-prefix' only contains IPv4")
+		log.Error(msg)
+		return isActive, msg
+	}
+	return true, ""
 }

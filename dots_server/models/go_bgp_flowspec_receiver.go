@@ -60,6 +60,12 @@ type FlowspecPort struct {
 	Port        *int     `json:"port"`
 }
 
+// GoBGP Flowspec icmp type that mapping with mitigation request or data channel icmp type
+type FlowspecICMPType struct {
+	LowerType   *int     `json:"lower-type"`
+	UpperType   *int     `json:"upper-type"`
+}
+
 // GoBGP Flowspec bitmask that mapping with mitigation request or data channel flags
 type FlowspecBitmask struct {
 	Bitmask    uint8   `json:"bitmask"`
@@ -74,7 +80,7 @@ type FlowSpecMapping struct {
 	Port                     []FlowspecPort    `json:"port"`
 	DestinationPort          []FlowspecPort    `json:"destination-port"`
 	SourcePort               []FlowspecPort    `json:"source-port"`
-	ImcpType                 *int              `json:"imcp-type"`
+	ImcpType                 []FlowspecICMPType `json:"imcp-type"`
 	ImcpCode                 *int              `json:"imcp-code"`
 	TcpFlags                 []FlowspecBitmask `json:"tcp-flags"`
 	PacketLength             *int              `json:"packet-length"`
@@ -552,8 +558,10 @@ func CreateFlowSpecTargetsForDataChannelACL(acl *types.ACL) ([]FlowSpecTarget, e
 			matches := ace.Matches.ICMP
 			// if existed Type of ICMP, messageType = ICMP.Type
 			if matches.Type != nil {
+				var icmp FlowspecICMPType
 				temp := int(*matches.Type)
-				flowMapping.ImcpType = &temp
+				icmp.LowerType = &temp
+				flowMapping.ImcpType = append(flowMapping.ImcpType, icmp)
 			}
 
 			// if existed Code of ICMP, messageCode = ICMP.Code
@@ -586,12 +594,28 @@ func CreateFlowSpecTargetsForDataChannelACL(acl *types.ACL) ([]FlowSpecTarget, e
  *   err               the error
  */
 func CreateFlowSpecTargetsForMitigation(m *MitigationScope, vrf string) ([]FlowSpecTarget, error) {
-	destAddresses   := make([]string, 0)
+	destAddressesIPv4 := make([]string, 0)
+	destAddressesIPv6 := make([]string, 0)
+	srcAddressesIPv4  := make([]string, 0)
+	srcAddressesIPv6  := make([]string, 0)
 	flowspecTargets := make([]FlowSpecTarget, 0)
 	log.Debugf("Create flowspec target from mitigation with id: %+v", m.MitigationId)
 
 	for _, target := range m.TargetList {
-		destAddresses = append(destAddresses, target.TargetPrefix.String())
+		ip, _, _ := net.ParseCIDR(target.TargetPrefix.String())
+		if ip.To4() != nil {
+			destAddressesIPv4 = append(destAddressesIPv4, target.TargetPrefix.String())
+		} else {
+			destAddressesIPv6 = append(destAddressesIPv6, target.TargetPrefix.String())
+		}
+	}
+	for _, srcPrefix := range m.SourcePrefix {
+		ip, _, _ := net.ParseCIDR(srcPrefix.String())
+		if  ip.To4() != nil {
+			srcAddressesIPv4 = append(srcAddressesIPv4, srcPrefix.String())
+		} else {
+			srcAddressesIPv6 = append(srcAddressesIPv6, srcPrefix.String())
+		}
 	}
 
 	// ActionType: discard or redirect
@@ -608,29 +632,112 @@ func CreateFlowSpecTargetsForMitigation(m *MitigationScope, vrf string) ([]FlowS
 	// Protocol: if existed protocol in mitigation request, protocol = scope.target_protocol
 	// DestinationPrefix: destination = scope.target_prefix
 	// DestinationPort: if protocol is TCP/UDP, destination-port = scope.target_port
-	for i, prefix := range destAddresses {
-		flowMapping := FlowSpecMapping{}
-		flowMapping.MapMitigationFlow(m.TargetProtocol, prefix, m.TargetPortRange)
-		flowMapping.TrafficActionType = action
-		flowMapping.TrafficActionValue = value
-		flowSpec, err := flowMapping.ToDB()
-		if err != nil {
-			log.Errorf("Parse object to DB json failed, error: %+v", err)
-			return nil, err
+	// SourcePrefix: source = scope.source_prefix
+	// SourcePort: if protocol is TCP/UDP, source-port = scope.source_port
+	// SourceICMPType: if protocol is ICMP, icmp-type = scope.source_icmp_type
+	if len(destAddressesIPv4) > 0 && len(srcAddressesIPv4) > 0 {
+		// If the target-prefix and the source-prefix contain IPv4, Created the flowspec with the destAddr is target-prefix and the srcAddr is source-prefix
+		for _, destAddr := range destAddressesIPv4 {
+			for _, srcAddr := range srcAddressesIPv4 {
+				targets, err := createFlowSpecTargetsForMitigation(m.TargetProtocol, destAddr, m.TargetPortRange, srcAddr, m.SourcePortRange, m.SourceICMPTypeRange, action, value)
+				if err != nil {
+					return nil, err
+				}
+				flowspecTargets = append(flowspecTargets, targets...)
+			}
 		}
-		flowspecTargets = append(flowspecTargets, FlowSpecTarget{ flowMapping.FlowType, flowSpec })
-		log.Infof("Created flowspec target (i=%+v) with mapping data: %+v", i, flowMapping.String())
+	} else if len(destAddressesIPv4) > 0 && len(srcAddressesIPv4) == 0 {
+		// If the target-prefix contains IPv4 but the source-prefix doesn't contain IPv4, Created the flowspec with the destAddr is target-prefix and the srcAddr is ""
+		srcAddr := EMPTY_VALUE
+		for _, destAddr := range destAddressesIPv4 {
+			targets, err := createFlowSpecTargetsForMitigation(m.TargetProtocol, destAddr, m.TargetPortRange, srcAddr, m.SourcePortRange, m.SourceICMPTypeRange, action, value)
+			if err != nil {
+				return nil, err
+			}
+			flowspecTargets = append(flowspecTargets, targets...)
+		}
+	} else if len(destAddressesIPv4) == 0 && len(srcAddressesIPv4) > 0 {
+		// If the target-prefix doesn't contain IPv4 but the source-prefix contains IPv4, Created the flowspec with the destAddr is "" and the srcAddr is source-prefix
+		destAddr := EMPTY_VALUE
+		for _, srcAddr := range srcAddressesIPv4 {
+			targets, err := createFlowSpecTargetsForMitigation(m.TargetProtocol, destAddr, m.TargetPortRange, srcAddr, m.SourcePortRange, m.SourceICMPTypeRange, action, value)
+			if err != nil {
+				return nil, err
+			}
+			flowspecTargets = append(flowspecTargets, targets...)
+		}
+	}
+
+	if len(destAddressesIPv6) > 0 && len(srcAddressesIPv6) > 0 {
+		// If the target-prefix and the source-prefix contain IPv6, Created the flowspec with the destAddr is target-prefix and the srcAddr is source-prefix
+		for _, destAddr := range destAddressesIPv6 {
+			for _, srcAddr := range srcAddressesIPv6 {
+				targets, err := createFlowSpecTargetsForMitigation(m.TargetProtocol, destAddr, m.TargetPortRange, srcAddr, m.SourcePortRange, m.SourceICMPTypeRange, action, value)
+				if err != nil {
+					return nil, err
+				}
+				flowspecTargets = append(flowspecTargets, targets...)
+			}
+		}
+	} else if len(destAddressesIPv6) > 0 && len(srcAddressesIPv6) == 0 {
+		// If the target-prefix contains IPv6 but the source-prefix doesn't contain IPv6, Created the flowspec with the destAddr is target-prefix and the srcAddr is ""
+		srcAddr := EMPTY_VALUE
+		for _, destAddr := range destAddressesIPv6 {
+			targets, err := createFlowSpecTargetsForMitigation(m.TargetProtocol, destAddr, m.TargetPortRange, srcAddr, m.SourcePortRange, m.SourceICMPTypeRange, action, value)
+			if err != nil {
+				return nil, err
+			}
+			flowspecTargets = append(flowspecTargets, targets...)
+		}
+	} else if len(destAddressesIPv6) == 0 && len(srcAddressesIPv6) > 0 {
+		// If the target-prefix doesn't contain IPv6 but the source-prefix contains IPv6, Created the flowspec with the destAddr is "" and the srcAddr is source-prefix
+		destAddr := EMPTY_VALUE
+		for _, srcAddr := range srcAddressesIPv6 {
+			targets, err := createFlowSpecTargetsForMitigation(m.TargetProtocol, destAddr, m.TargetPortRange, srcAddr, m.SourcePortRange, m.SourceICMPTypeRange, action, value)
+			if err != nil {
+				return nil, err
+			}
+			flowspecTargets = append(flowspecTargets, targets...)
+		}
 	}
 	return flowspecTargets, nil
 }
 
+/*
+ * Create Flowspec targets for mitigation
+ * Parameter:
+ *     targetProtocols: the target-protocol
+ *     targetAddress:   the target-prefix
+ *     targetPorts:     the target-port
+ *     sourceAddress:   the source-prefix
+ *     sourcePorts:     the source-port
+ *     sourceICMPTypes: the source-icmp-type
+ *     action:          the action
+ *     value:           the value
+ * Return Flowspec targets
+ */
+ func createFlowSpecTargetsForMitigation(targetProtocols SetInt, targetAddress string, targetPorts []PortRange, sourceAddress string, sourcePorts []PortRange,
+						sourceICMPTypes []ICMPTypeRange, action string, value string) (flowspecTargets []FlowSpecTarget, err error) {
+	flowMapping := FlowSpecMapping{}
+	flowMapping.MapMitigationFlow(targetProtocols, targetAddress, targetPorts, sourceAddress, sourcePorts, sourceICMPTypes)
+	flowMapping.TrafficActionType = action
+	flowMapping.TrafficActionValue = value
+	flowSpec, err := flowMapping.ToDB()
+	if err != nil {
+		log.Errorf("Parse object to DB json failed, error: %+v", err)
+		return nil, err
+	}
+	flowspecTargets = append(flowspecTargets, FlowSpecTarget{ flowMapping.FlowType, flowSpec })
+	log.Infof("Created flowspec target with mapping data: %+v", flowMapping.String())
+	return flowspecTargets, nil
+ }
 // Mapping mitigation request to flowspec mapping object
 // ====================****====================
 
 /*
  * Map protocol, source address, destination address to GoBGP Flow Spec
  */
-func (mapping *FlowSpecMapping) MapMitigationFlow(targetProtocols SetInt, targetAddress string, targetPorts []PortRange) {
+func (mapping *FlowSpecMapping) MapMitigationFlow(targetProtocols SetInt, targetAddress string, targetPorts []PortRange, sourceAddress string, sourcePorts []PortRange, sourceICMPTypes []ICMPTypeRange) {
 	// if acl type is empty, check aclType by targetAddr (target-prefix)
 	ip, _, _ := net.ParseCIDR(targetAddress)
 	if ip.To4() != nil {
@@ -653,10 +760,25 @@ func (mapping *FlowSpecMapping) MapMitigationFlow(targetProtocols SetInt, target
 	if targetPorts != nil && (targetProtocols.Include(6) || targetProtocols.Include(17)) {
 		mapping.MapMitigationPortFlow(targetPorts)
 	}
+
+	// if existed source-address, source = source-address
+	if sourceAddress != EMPTY_VALUE {
+		mapping.SourcePrefix = sourceAddress
+	}
+
+	// if existed source-port, source-port = source-port
+	if sourcePorts != nil && (targetProtocols.Include(6) || targetProtocols.Include(17)) {
+		mapping.MapMitigationSourcePortFlow(sourcePorts)
+	}
+
+	// if existed source-icmp-type, icmp-type = source-icmp-type
+	if sourceICMPTypes != nil && targetProtocols.Include(1) {
+		mapping.MapMitigationICMPTypeFlow(sourceICMPTypes)
+	}
 }
 
 /*
- * Map mitigation port range to GoBGP flow spec port
+ * Map mitigation port range to GoBGP flow spec destination port
  */
  func (mapping *FlowSpecMapping) MapMitigationPortFlow(portRanges []PortRange) {
 	// if existed DestinationPort of TCP, destinationPort is port range or operator port
@@ -668,6 +790,36 @@ func (mapping *FlowSpecMapping) MapMitigationFlow(targetProtocols SetInt, target
 		ports = append(ports, port)
 	}
 	mapping.DestinationPort = ports
+}
+
+/*
+ * Map mitigation source port range to GoBGP flow spec source port
+ */
+ func (mapping *FlowSpecMapping) MapMitigationSourcePortFlow(portRanges []PortRange) {
+	// if existed DestinationPort of TCP, destinationPort is port range or operator port
+	ports := make([]FlowspecPort, 0)
+	for _, portRange := range portRanges {
+		lower := portRange.LowerPort
+		upper := portRange.UpperPort
+		port := FlowspecPort{ LowerPort: &lower, UpperPort: &upper }
+		ports = append(ports, port)
+	}
+	mapping.SourcePort = ports
+}
+
+/*
+ * Map mitigation icmp type range to GoBGP flow spec icmp type
+ */
+ func (mapping *FlowSpecMapping) MapMitigationICMPTypeFlow(icmpTypeRanges []ICMPTypeRange) {
+	// if existed DestinationPort of TCP, destinationPort is port range or operator port
+	icmpTypes := make([]FlowspecICMPType, 0)
+	for _, icmpTypeRange := range icmpTypeRanges {
+		lower := icmpTypeRange.LowerType
+		upper := icmpTypeRange.UpperType
+		icmpType := FlowspecICMPType{ LowerType: &lower, UpperType: &upper }
+		icmpTypes = append(icmpTypes, icmpType)
+	}
+	mapping.ImcpType = icmpTypes
 }
 
 // Mapping data channel ACL to flowspec mapping object
@@ -858,6 +1010,32 @@ func createFlowSpecPort(flowspecPorts []FlowspecPort) (items []*bgp.FlowSpecComp
 	return
 }
 
+// Mapping flowspec mapping to GoBGP flowspec NRLI
+// ====================****====================
+
+/*
+ * Create flowspec icmp type from flowspec mapping
+ */
+ func createFlowSpecICMPType(flowspecICMPTypes []FlowspecICMPType) (items []*bgp.FlowSpecComponentItem) {
+	items = make([]*bgp.FlowSpecComponentItem, 0)
+	for _, icmpType := range flowspecICMPTypes {
+		var item *bgp.FlowSpecComponentItem
+		if icmpType.LowerType != nil && icmpType.UpperType != nil {
+			if *icmpType.LowerType == *icmpType.UpperType {
+				item = bgp.NewFlowSpecComponentItem(bgp.DEC_NUM_OP_EQ, uint64(*icmpType.LowerType))
+			} else {
+				item = bgp.NewFlowSpecComponentItem(bgp.DEC_NUM_OP_GT_EQ, uint64(*icmpType.LowerType))
+				items = append(items, item)
+				item = bgp.NewFlowSpecComponentItem(bgp.DEC_NUM_OP_AND|bgp.DEC_NUM_OP_LT_EQ, uint64(*icmpType.UpperType))
+			}
+		} else if icmpType.UpperType == nil {
+			item = bgp.NewFlowSpecComponentItem(bgp.DEC_NUM_OP_EQ, uint64(*icmpType.LowerType))
+		}
+		items = append(items, item)
+	}
+	return
+}
+
 /*
  * Create flowspec protocol from flowspec mapping
  */
@@ -911,10 +1089,10 @@ func (mapping *FlowSpecMapping) CreateFlowSpec() (bgp.AddrPrefixInterface, error
 		if err != nil { return nil, err }
 
 		if mapping.FlowType == IPV4_FLOW_SPEC {
-			log.Debugf("Create GoBGP ipv4 flowspec for destination prefix: %+v", mapping.DestinationPrefix)
+			log.Debugf("Create GoBGP ipv4 flowspec for destination prefix: %+v, source prefix: %+v", mapping.DestinationPrefix, mapping.SourcePrefix)
 			cmp = append(cmp, bgp.NewFlowSpecDestinationPrefix(bgp.NewIPAddrPrefix(uint8(cdir.PrefixLen), cdir.Addr)))
 		} else if mapping.FlowType == IPV6_FLOW_SPEC {
-			log.Debugf("Create GoBGP ipv6 flowspec for destination prefix: %+v", mapping.DestinationPrefix)
+			log.Debugf("Create GoBGP ipv6 flowspec for destination prefix: %+v, source prefix: %+v", mapping.DestinationPrefix, mapping.SourcePrefix)
 			cmp = append(cmp, bgp.NewFlowSpecDestinationPrefix6(bgp.NewIPv6AddrPrefix(uint8(cdir.PrefixLen), cdir.Addr), 12))
 		}
 	}
@@ -947,9 +1125,8 @@ func (mapping *FlowSpecMapping) CreateFlowSpec() (bgp.AddrPrefixInterface, error
 	if mapping.SourcePort != nil && len(mapping.SourcePort) != 0 {
 		cmp = append(cmp, bgp.NewFlowSpecComponent(bgp.FLOW_SPEC_TYPE_SRC_PORT, createFlowSpecPort(mapping.SourcePort)))
 	}
-	if mapping.ImcpType != nil {
-		cmp = append(cmp, bgp.NewFlowSpecComponent(bgp.FLOW_SPEC_TYPE_ICMP_TYPE,
-			[]*bgp.FlowSpecComponentItem{bgp.NewFlowSpecComponentItem(bgp.DEC_NUM_OP_EQ, uint64(*mapping.ImcpType))}))
+	if mapping.ImcpType != nil && len(mapping.ImcpType) != 0 {
+		cmp = append(cmp, bgp.NewFlowSpecComponent(bgp.FLOW_SPEC_TYPE_ICMP_TYPE, createFlowSpecICMPType(mapping.ImcpType)))
 	}
 	if mapping.ImcpCode != nil {
 		cmp = append(cmp, bgp.NewFlowSpecComponent(bgp.FLOW_SPEC_TYPE_ICMP_CODE,

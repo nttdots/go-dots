@@ -397,7 +397,7 @@ func GetActiveProtectionByTargetIDAndTargetType(targetID int64, targetType strin
 //		return nil, errors.New("duplicate mitigationId.")
 //	}
 
-	return toProtection(engine, ps[0])
+	return toProtection(engine, ps[len(ps)-1])
 }
 
 func GetProtectionById(id int64) (p Protection, err error) {

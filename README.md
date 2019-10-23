@@ -12,6 +12,7 @@
 * draft-ietf-dots-requirements-14
 * draft-ietf-dots-use-cases-14
 * draft-nishizuka-dots-signal-control-filtering-06
+* draft-ietf-dots-signal-call-home-06
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
@@ -352,6 +353,16 @@ Therefore, when DOTS client is under attacked by DDoS, the DOTS client can use D
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftControlFiltering.json
+
+## Signal Channel Call Home
+The DOTS signal channel Call Home identify the source to block DDoS attack traffic closer to the source(s) of a DDoS attack.
+when the DOTS client is under attacked by DDoS, the DOTS client sends the attack traffic information to the DOTS server. The DOTS server in turn uses the attack traffic information to identify the compromised devices launching the outgoing DDoS attack and takes appropriate mitigation action.
+
+### Client Controller [mitigation_call_home]
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftCallHome.json
 
 ## DB
 

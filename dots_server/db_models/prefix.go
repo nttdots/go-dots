@@ -7,20 +7,21 @@ import (
 	"github.com/go-xorm/xorm"
 )
 
-const PrefixTypeIp = "IP"
-const PrefixTypePrefix = "PREFIX"
-const PrefixTypeAddressRange = "ADDRESS_RANGE"
-const PrefixTypeIpAddress = "IP_ADDRESS"
-const PrefixTypeTargetIp = "TARGET_IP"
-const PrefixTypeTargetPrefix = "TARGET_PREFIX"
-const PrefixTypeSourceIpv4Network = "SOURCE_IPV4_NETWORK"
+const PrefixTypeIp                     = "IP"
+const PrefixTypePrefix                 = "PREFIX"
+const PrefixTypeAddressRange           = "ADDRESS_RANGE"
+const PrefixTypeIpAddress              = "IP_ADDRESS"
+const PrefixTypeTargetIp               = "TARGET_IP"
+const PrefixTypeTargetPrefix           = "TARGET_PREFIX"
+const PrefixTypeSourcePrefix           = "SOURCE_PREFIX"
+const PrefixTypeSourceIpv4Network      = "SOURCE_IPV4_NETWORK"
 const PrefixTypeDestinationIpv4Network = "DESTINATION_IPV4_NETWORK"
 
 type Prefix struct {
 	Id                       int64     `xorm:"'id' pk autoincr"`
 	CustomerId               int       `xorm:"'customer_id'"`
 	MitigationScopeId        int64     `xorm:"'mitigation_scope_id'"`
-	Type                     string    `xorm:"'type' enum('IP','PREFIX','ADDRESS_RANGE','IP_ADDRESS','TARGET_IP','TARGET_PREFIX','SOURCE_IPV4_NETWORK','DESTINATION_IPV4_NETWORK') not null"`
+	Type                     string    `xorm:"'type' enum('IP','PREFIX','ADDRESS_RANGE','IP_ADDRESS','TARGET_IP','TARGET_PREFIX','SOURCE_PREFIX','SOURCE_IPV4_NETWORK','DESTINATION_IPV4_NETWORK') not null"`
 	Addr                     string    `xorm:"'addr'"`
 	PrefixLen                int       `xorm:"'prefix_len'"`
 	Created                  time.Time `xorm:"created"`
@@ -80,6 +81,14 @@ func CreateTargetIpParam(addr string, prefixLen int) (prefix *Prefix) {
 func CreateTargetPrefixParam(addr string, prefixLen int) (prefix *Prefix) {
 	prefix = new(Prefix)
 	prefix.Type = PrefixTypeTargetPrefix
+	prefix.Addr = addr
+	prefix.PrefixLen = prefixLen
+	return
+}
+
+func CreateSourcePrefixParam(addr string, prefixLen int) (prefix *Prefix) {
+	prefix = new(Prefix)
+	prefix.Type = PrefixTypeSourcePrefix
 	prefix.Addr = addr
 	prefix.PrefixLen = prefixLen
 	return

@@ -19,6 +19,8 @@ type mitigationScopeValidator interface {
 	ValidatePortRange([]PortRange) (string)
 	ValidateProtocol(SetInt) (string)
 	ValidateAliasName(SetString, *types.Aliases) (string)
+	ValidateSourcePrefix(*Customer, *MitigationScope) (string)
+	ValidateSourceICMPTypeRange([]ICMPTypeRange) (string)
 	CheckOverlap(*MitigationScope, *MitigationScope, bool) (bool, *ConflictInformation, error)
 }
 
@@ -102,6 +104,24 @@ func (v *mitigationScopeValidatorBase) ValidateScope(m MessageEntity, c *Custome
 
 		errMsg = validator.ValidateAliasName(mc.AliasName, aliases)
 		if errMsg != ""{
+			return
+		}
+
+		// Validated source-prefix of the signal channel call home
+		errMsg = validator.ValidateSourcePrefix(c, mc)
+		if errMsg != "" {
+			return
+		}
+
+		// Validated source-port of signal channel call home
+		errMsg = validator.ValidatePortRange(mc.SourcePortRange)
+		if errMsg != "" {
+			return
+		}
+
+		// Validated source-icmp-type of the signal channel call home
+		errMsg = validator.ValidateSourceICMPTypeRange(mc.SourceICMPTypeRange)
+		if errMsg != "" {
 			return
 		}
 		return
@@ -467,6 +487,55 @@ func isValid(targets []Target) (errMsg string) {
 	for _, target := range targets {
 		if target.TargetPrefix.IsMulticast() || target.TargetPrefix.IsBroadCast() || target.TargetPrefix.IsLoopback() {
 			errMsg = fmt.Sprintf("invalid %+v: %+v", target.TargetType, target.TargetValue)
+			log.Warn(errMsg)
+			return
+		}
+	}
+	return
+}
+
+/*
+ * Check if the source prefix include multicast, broadcast or loopback ip address
+ * Check if the target prefix is not included in customer's domain address
+ * parameters:
+ *   targets  list of mitigation source address
+ * return: string
+ *   ""     all targets are valid
+ *   errMsg some of targets is invalid
+ */
+func (v *mitigationScopeValidatorBase) ValidateSourcePrefix(customer *Customer, scope *MitigationScope) (errMsg string) {
+	for _,srcPrefix := range scope.SourcePrefix {
+		if srcPrefix.IsMulticast() || srcPrefix.IsBroadCast() || srcPrefix.IsLoopback() {
+			errMsg = fmt.Sprintf("invalid source prefix: %+v", srcPrefix.Addr)
+			log.Warn(errMsg)
+			return
+		}
+		if !customer.CustomerNetworkInformation.AddressRange.Includes(srcPrefix) {
+			errMsg = fmt.Sprintf("invalid source prefix: %+v", srcPrefix.Addr)
+			log.Warn(errMsg)
+			return
+		}
+	}
+	return
+}
+
+/*
+ * Check the upper-type is greater than the lower-type
+ * parameters:
+ *   icmpTypeRanges list if source icmp-type-range
+ * return: string
+ *   errMsg icmp-type-range value is invalid
+ *   ""     icmp-type-range value is valid
+ */
+ func (v *mitigationScopeValidatorBase) ValidateSourceICMPTypeRange(icmpTypeRanges []ICMPTypeRange) (errMsg string) {
+	for _, typeRange := range icmpTypeRanges {
+		if typeRange.LowerType < 0 || typeRange.LowerType > 255 || typeRange.UpperType < 0 || typeRange.UpperType > 255 {
+			errMsg = fmt.Sprintf("invalid icmp-type-range: lower-type: %+v, upper-type: %+v", typeRange.LowerType, typeRange.UpperType)
+			log.Warn(errMsg)
+			return
+		}
+		if typeRange.UpperType < typeRange.LowerType  {
+			errMsg = fmt.Sprintf("upper-type: %+v is less than lower-type: %+v", typeRange.UpperType, typeRange.LowerType)
 			log.Warn(errMsg)
 			return
 		}

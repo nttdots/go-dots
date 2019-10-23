@@ -23,6 +23,12 @@ type PortRangeResponse struct {
 	UpperPort int `json:"upper-port" codec:"9,omitempty"`
 }
 
+type ICMPTypeRangeResponse struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	LowerType int `json:"lower-type" codec:"32771,omitempty"`
+	UpperType int `json:"upper-type" codec:"32772,omitempty"`
+}
+
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mid"    codec:"5"`
@@ -33,6 +39,9 @@ type ScopeStatus struct {
 	FQDN            []string `json:"target-fqdn" codec:"11,omitempty"`
 	URI             []string `json:"target-uri" codec:"12,omitempty"`
 	AliasName       []string `json:"alias-name" codec:"13,omitempty"`
+	SourcePrefix    []string `json:"ietf-dots-call-home:source-prefix" codec:"32768,omitempty"`
+	SourcePortRange []PortRangeResponse`json:"ietf-dots-call-home:source-port-range" codec:"32769,omitempty"`
+	SourceICMPTypeRange []ICMPTypeRangeResponse`json:"ietf-dots-call-home:source-icmp-type-range" codec:"32770,omitempty"`
 	AclList         []ACL    `json:"acl-list" codec:"22,omitempty"`
 	TriggerMitigation bool `json:"trigger-mitigation" codec:"45,omitempty"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
@@ -181,6 +190,19 @@ func (m *MitigationResponse) String() (result string) {
 		}
 		for k, v := range scope.AliasName {
 			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
+		}
+		for k, v := range scope.SourcePrefix {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n","ietf-dots-call-home:source-prefix", k+1, v)
+		}
+		for k, v := range scope.SourcePortRange {
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-call-home:source-port-range", k+1)
+			result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", v.LowerPort)
+			result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", v.UpperPort)
+		}
+		for k, v := range scope.SourceICMPTypeRange {
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-call-home:source-icmp-type-range", k+1)
+			result += fmt.Sprintf("       \"%s\": %d\n", "lower-type", v.LowerType)
+			result += fmt.Sprintf("       \"%s\": %d\n", "upper-type", v.UpperType)
 		}
 		for k, v := range scope.AclList {
 			result += fmt.Sprintf("     \"%s[%d]\":\n", "acl-list", k+1)

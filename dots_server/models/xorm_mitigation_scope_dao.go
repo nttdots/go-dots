@@ -22,7 +22,7 @@ import (
  * return:
  *  err error
  */
-func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (newMitigationScope db_models.MitigationScope, err error) {
+func CreateMitigationScope(mitigationScope MitigationScope, customer Customer, isIfMatchOption bool) (newMitigationScope db_models.MitigationScope, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -111,12 +111,21 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 	if err != nil {
 		return
 	}
-	// Registering Control Filtering
-	err = createControlFiltering(session, mitigationScope, newMitigationScope.Id)
-	if err != nil {
-		return
+	// Registering SourcePrefix, SourcePort and SourceICMPPort
+	if !isIfMatchOption {
+		err = createMitigationScopeCallHome(session, mitigationScope, newMitigationScope.Id)
+		if err != nil {
+			return
+		}
 	}
 
+	// Registering Control Filtering
+	if !isIfMatchOption {
+		err = createControlFiltering(session, mitigationScope, newMitigationScope.Id)
+		if err != nil {
+			return
+		}
+	}
 	// add Commit() after all actions
 	err = session.Commit()
 
@@ -258,6 +267,13 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 			log.Errorf("PortRange record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
 			return
 		}
+		// Delete icmp type range
+		err = db_models.DeleteMitigationScopeICMPTypeRange(session, dbMitigationScope.Id)
+		if err != nil {
+			session.Rollback()
+			log.Errorf("ICMPTypeRange record delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
+			return
+		}
 		// Delete control filtering, then register new data
 		err = db_models.DeleteControlFiltering(session, dbMitigationScope.Id)
 		if err != nil {
@@ -278,6 +294,11 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		}
 		// Registered TragetPortRange
 		err = createMitigationScopePortRange(session, mitigationScope, dbMitigationScope.Id)
+		if err != nil {
+			return
+		}
+		// Registered the signal channel call home
+		err = createMitigationScopeCallHome(session, mitigationScope, dbMitigationScope.Id)
 		if err != nil {
 			return
 		}
@@ -404,7 +425,7 @@ func createMitigationScopePrefix(session *xorm.Session, mitigationScope Mitigati
 		_, err = session.Insert(&newTargetIPList)
 		if err != nil {
 			session.Rollback()
-			log.Printf("TargetIP insert err: %s", err)
+			log.Errorf("TargetIP insert err: %s", err)
 			return
 		}
 	}
@@ -420,7 +441,7 @@ func createMitigationScopePrefix(session *xorm.Session, mitigationScope Mitigati
 		_, err = session.Insert(&newTargetPrefixList)
 		if err != nil {
 			session.Rollback()
-			log.Printf("TargetPrefix insert err: %s", err)
+			log.Errorf("TargetPrefix insert err: %s", err)
 			return
 		}
 	}
@@ -442,7 +463,7 @@ func createMitigationScopePortRange(session *xorm.Session, mitigationScope Mitig
 	// TargetPortRange is registered
 	newTargetPortRangeList := []*db_models.PortRange{}
 	for _, v := range mitigationScope.TargetPortRange {
-		newPortRange := db_models.CreatePortRangeParam(v.LowerPort, v.UpperPort)
+		newPortRange := db_models.CreateTargetPortRangeParam(v.LowerPort, v.UpperPort)
 		newPortRange.MitigationScopeId = mitigationScopeId
 		newTargetPortRangeList = append(newTargetPortRangeList, newPortRange)
 	}
@@ -700,13 +721,53 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 
 	// Get TargetPortRange data
 	dbPrefixTargetPortRangeList := []db_models.PortRange{}
-	err = engine.Where("mitigation_scope_id = ?", dbMitigationScope.Id).OrderBy("id ASC").Find(&dbPrefixTargetPortRangeList)
+	err = engine.Where("mitigation_scope_id = ? AND type=?", dbMitigationScope.Id, db_models.PortRangeTypeTargetPort).OrderBy("id ASC").Find(&dbPrefixTargetPortRangeList)
 	if err != nil {
 		return
 	}
 	if len(dbPrefixTargetPortRangeList) > 0 {
 		for _, v := range dbPrefixTargetPortRangeList {
 			mitigationScope.TargetPortRange = append(mitigationScope.TargetPortRange, PortRange{LowerPort: v.LowerPort, UpperPort: v.UpperPort})
+		}
+	}
+
+	// Get SourcePrefix data
+	dbPrefixSourcePrefixList := []db_models.Prefix{}
+	err = engine.Where("mitigation_scope_id = ? AND type = ?", dbMitigationScope.Id, db_models.PrefixTypeSourcePrefix).OrderBy("id ASC").Find(&dbPrefixSourcePrefixList)
+	if err != nil {
+		return
+	}
+	if len(dbPrefixSourcePrefixList) > 0 {
+		for _, v := range dbPrefixSourcePrefixList {
+			loadPrefix, err := NewPrefix(db_models.CreateIpAddress(v.Addr, v.PrefixLen))
+			if err != nil {
+				continue
+			}
+			mitigationScope.SourcePrefix = append(mitigationScope.SourcePrefix, loadPrefix)
+		}
+	}
+
+	// Get SourcePortRange
+	dbPrefixSourcePortRangeList := []db_models.PortRange{}
+	err = engine.Where("mitigation_scope_id = ? AND type=?", dbMitigationScope.Id, db_models.PortRangeTypeSourcePort).OrderBy("id ASC").Find(&dbPrefixSourcePortRangeList)
+	if err != nil {
+		return
+	}
+	if len(dbPrefixSourcePortRangeList) > 0 {
+		for _, v := range dbPrefixSourcePortRangeList {
+			mitigationScope.SourcePortRange = append(mitigationScope.SourcePortRange, PortRange{LowerPort: v.LowerPort, UpperPort: v.UpperPort})
+		}
+	}
+
+	// Get SourceICMPTypeRange
+	dbPrefixSourceICMPTypeRangeList := []db_models.IcmpTypeRange{}
+	err = engine.Where("mitigation_scope_id = ?", dbMitigationScope.Id).OrderBy("id ASC").Find(&dbPrefixSourceICMPTypeRangeList)
+	if err != nil {
+		return
+	}
+	if len(dbPrefixSourceICMPTypeRangeList) > 0 {
+		for _, v := range dbPrefixSourceICMPTypeRangeList {
+			mitigationScope.SourceICMPTypeRange = append(mitigationScope.SourceICMPTypeRange, ICMPTypeRange{LowerType: v.LowerType, UpperType: v.UpperType})
 		}
 	}
 
@@ -856,6 +917,14 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 	if err != nil {
 		session.Rollback()
 		log.Errorf("delete portRange error: %s", err)
+		return
+	}
+
+	// Delete imcp_type_range table data
+	_, err = session.Delete(db_models.IcmpTypeRange{MitigationScopeId: dbMitigationScope.Id})
+	if err != nil {
+		session.Rollback()
+		log.Errorf("delete icmpTypeRange error: %s", err)
 		return
 	}
 
@@ -1040,4 +1109,59 @@ func RemoveControlFilteringByID(controlFilteringID int64, controlFiltering db_mo
 	}
 
 	return nil
+}
+
+/*
+ * Create Mitigation scope with the signal channel call home (source-prefix, source-port-range, source-icmp-type-range)
+ */
+func createMitigationScopeCallHome(session *xorm.Session, mitigationScope MitigationScope, mitigationScopeId int64) (err error) {
+	// SourcePrefix is registered
+	newSourcePrefixList := []*db_models.Prefix{}
+	for _, v := range mitigationScope.SourcePrefix {
+		newPrefix := db_models.CreateSourcePrefixParam(v.Addr, v.PrefixLen)
+		newPrefix.MitigationScopeId = mitigationScopeId
+		newSourcePrefixList = append(newSourcePrefixList, newPrefix)
+	}
+	if len(newSourcePrefixList) > 0 {
+		_, err = session.Insert(&newSourcePrefixList)
+		if err != nil {
+			session.Rollback()
+			log.Errorf("SourcePrefix insert err: %s", err)
+			return
+		}
+	}
+
+	// SourcePortRange is registered
+	newSourcePortRangeList := []*db_models.PortRange{}
+	for _, v := range mitigationScope.SourcePortRange {
+		newPortRange := db_models.CreateSourcePortRangeParam(v.LowerPort, v.UpperPort)
+		newPortRange.MitigationScopeId = mitigationScopeId
+		newSourcePortRangeList = append(newSourcePortRangeList, newPortRange)
+	}
+	if len(newSourcePortRangeList) > 0 {
+		_, err = session.Insert(&newSourcePortRangeList)
+		if err != nil {
+			session.Rollback()
+			log.Printf("SourcePortRange insert err: %s", err)
+			return
+		}
+	}
+
+	// SourceICMPTypeRange is registered
+	newSourceICMPTypeRangeList := []*db_models.IcmpTypeRange{}
+	for _, v := range mitigationScope.SourceICMPTypeRange {
+		newTypeRange := db_models.CreateSourceICMPTypeRangeParam(v.LowerType, v.UpperType)
+		newTypeRange.MitigationScopeId = mitigationScopeId
+		newSourceICMPTypeRangeList = append(newSourceICMPTypeRangeList, newTypeRange)
+	}
+	if len(newSourceICMPTypeRangeList) > 0 {
+		_, err = session.Insert(&newSourceICMPTypeRangeList)
+		if err != nil {
+			session.Rollback()
+			log.Printf("SourceICMPTypeRange insert err: %s", err)
+			return
+		}
+	}
+
+	return
 }
