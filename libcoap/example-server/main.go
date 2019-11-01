@@ -34,12 +34,12 @@ func main() {
     certFile := "../../certs/server-cert.pem"
     keyFile  := "../../certs/server-key.pem"
     caFile   := "../../certs/ca-cert.pem"
-    dtls := libcoap.DtlsParam{ &caFile, nil, &certFile, &keyFile }
+    dtls := libcoap.DtlsParam{ &caFile, nil, &certFile, &keyFile, nil}
 
 //    systemCerts := "/etc/ssl/certs"
 //    dtls := libcoap.DtlsParam{ nil, &systemCerts, &certFile, &keyFile }
 
-    ctx := libcoap.NewContextDtls(nil, &dtls)
+    ctx := libcoap.NewContextDtls(nil, &dtls, int(libcoap.SERVER_PEER))
     if ctx == nil {
         log.Println("NewContext() -> nil")
         return
