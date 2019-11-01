@@ -121,3 +121,53 @@ func DeleteClientByCuid(tx *db.Tx, customer *models.Customer, cuid string) (bool
 
   return 0 < affected, nil
 }
+
+/*
+ * Find all cuids by customerId.
+ *
+ * parameter:
+ *  customerId   the id of the Customer
+ * return:
+ *  cuids        the list of cuid
+ *  error        the error
+ */
+func FindCuidsByCustomerId(tx *db.Tx, customer *models.Customer) (cuids []string, err error) {
+
+  err = tx.Session.Table("data_clients").Where("customer_id=?", customer.Id).Cols("cuid").Find(&cuids)
+  if err != nil {
+    log.WithError(err).Error("FindCuidsByCustomerId() failed.")
+    return nil, err
+  }
+
+  return
+}
+
+/*
+ * Find client by id
+ *
+ * parameter:
+ *  id the id of data_client
+ * return:
+ *  client the data_client
+ */
+func FindClientByID(id int64) (data_db_models.Client, error) {
+  client := data_db_models.Client{}
+  // database connection create
+  engine, err := models.ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return client, err
+	}
+
+	// Get data client
+	has, err := engine.Table("data_clients").Where("id = ?", id).Get(&client)
+	if err != nil {
+		log.Errorf("Get data client error: %s\n", err)
+		return client, err
+  }
+  if !has {
+    log.Error("Not found data client")
+  }
+
+	return client, nil
+}

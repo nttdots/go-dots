@@ -11,6 +11,7 @@ import (
   "github.com/nttdots/go-dots/dots_server/db_models/data"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_common/messages"
+  "github.com/nttdots/go-dots/dots_common"
 )
 
 type ACL struct {
@@ -154,9 +155,13 @@ func deleteACL(tx *db.Tx, p *data_db_models.ACL) (bool, error) {
     return false, err
   }
 
-  affected, err := tx.Session.Id(p.Id).Delete(p)
+  // update the acl's activation-type to not-type
+  activationType := types.ActivationType_NotType
+  p.ACL.ActivationType = &activationType
+  affected, err := tx.Session.ID(p.Id).Update(p)
+
   if err != nil {
-    log.WithError(err).Error("Delete() failed.")
+    log.WithError(err).Error("Update activate-type to not-type failed.")
     return false, err
   }
 
@@ -225,6 +230,8 @@ func CallBlocker(acls []ACL, customerID int) (err error){
     counter++
   }
 
+  sessName := string(dots_common.RandStringBytes(10))
+
   // loop until we can obtain just enough blockers for the data channel acl
 	for counter > 0 {
 		select {
@@ -248,6 +255,13 @@ func CallBlocker(acls []ACL, customerID int) (err error){
       aclList.Blocker.UnregisterProtection(p)
       })
 
+      action := models.EXIT_VALUE
+      if counter == 1 {
+        action = models.COMMIT_VALUE
+      }
+
+      p.SetSessionName(sessName)
+      p.SetAction(action)
 			// invoke the protection on the blocker
 			e = aclList.Blocker.ExecuteProtection(p)
 			if e != nil {
@@ -285,7 +299,7 @@ func CancelBlocker(aclID int64, activationType types.ActivationType) (err error)
   }
 
 	if p == nil {
-    if activationType == types.ActivationType_ActivateWhenMitigating {
+    if activationType == types.ActivationType_ActivateWhenMitigating || activationType == types.ActivationType_Deactivate {
       return
     } else {
       log.WithField("data channel acl id", aclID).Error("protection not found.")
@@ -304,7 +318,9 @@ func CancelBlocker(aclID int64, activationType types.ActivationType) (err error)
 	}
 
 	// cancel
-	blocker := p.TargetBlocker()
+  blocker := p.TargetBlocker()
+  sessName := string(dots_common.RandStringBytes(10))
+  p.SetSessionName(sessName)
 	err = blocker.StopProtection(p)
 	if err != nil {
 		return err
@@ -368,23 +384,22 @@ func GetACLWithActivateWhenMitigating(customer *models.Customer, cuid string) ([
 		log.Printf("Get Acl error: %s\n", err)
 		return
 	}
-
 	return
 }
 
 /*
- * Parse string activation type to ACL activation type
+ * Parse int activation type to ACL activation type
  *
  * return:
  *  acl activation type
  */
-func ToActivationType(activationType string) (types.ActivationType) {
+ func ToActivationType(activationType int) (types.ActivationType) {
   switch (activationType) {
-  case string(types.ActivationType_ActivateWhenMitigating):
+  case int(models.ActiveWhenMitigating):
     return types.ActivationType_ActivateWhenMitigating
-  case string(types.ActivationType_Immediate):
+  case int(models.Immediate):
     return types.ActivationType_Immediate
-  case string(types.ActivationType_Deactivate):
+  case int(models.Deactivate):
     return types.ActivationType_Deactivate
   default: return ""
   }
@@ -423,4 +438,77 @@ func IsActive(customerId int, cuid string, activationType types.ActivationType) 
   } else {
     return false, nil
   }
+}
+
+/*
+ * Find acl by id
+ *
+ * parameter:
+ *  id the id of data_client
+ * return:
+ *  acl the data_acl
+ */
+ func FindACLByID(id int64) (data_db_models.ACL, error) {
+  acl := data_db_models.ACL{}
+  // database connection create
+  engine, err := models.ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return acl, err
+	}
+
+	// Get data client
+	has, err := engine.Table("data_acls").Where("id = ?", id).Get(&acl)
+	if err != nil {
+		log.Errorf("Get data acl error: %s\n", err)
+		return acl, err
+  }
+  if !has {
+    log.Error("Not found data acl")
+  }
+
+  return acl, nil
+ }
+/*
+ * Check active data channel acl
+ * If data channel acl is active, the server will return true
+ * Else the server will return false
+ */
+ func CheckActiveDataChannelACL(customer *models.Customer, cuid string) (bool, error) {
+  // Connect DB
+  engine, err := models.ConnectDB()
+	if err != nil {
+	  log.WithError(err).Error("Failed connect to database.")
+	  return false, nil
+	}
+	session := engine.NewSession()
+  tx := &db.Tx{ engine, session }
+
+  // Find client by cuid
+  client, err := FindClientByCuid(tx, customer, cuid)
+  if err != nil {
+    log.Errorf("Failed to find client by cuid. Error: %+v", err)
+    return false, err
+  }
+  if client == nil {
+    return false, nil
+  }
+
+  // Find acls
+  acls, err := FindACLs(tx, client, time.Now())
+  if err != nil {
+    log.Errorf("Failed to find acls by data client. Error: %+v", err)
+    return false, err
+  }
+  for _, acl := range acls {
+    isActive, err := acl.IsActive()
+    if err != nil {
+      log.Errorf("Failed to check active acl. Error: %+v", err)
+      return false, err
+    }
+    if isActive {
+      return true, nil
+    }
+  }
+  return false, nil
 }

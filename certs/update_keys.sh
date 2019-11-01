@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-CERTTOOL=gnutls-certtool
+CERTTOOL=certtool
 
 # update CA
 $CERTTOOL --generate-privkey --bits 4096 --outfile ca-key.pem

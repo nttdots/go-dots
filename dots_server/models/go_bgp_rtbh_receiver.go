@@ -317,15 +317,8 @@ func (g *GoBgpRtbhReceiver) toPath(b *RTBH) []*api.Path {
 }
 
 func (g *GoBgpRtbhReceiver) RegisterProtection(r *MitigationOrDataChannelACL, targetID int64, customerID int, targetType string) (p Protection, err error) {
-	forwardedStatus := NewProtectionStatus(
-		0, 0, 0,
-		NewThroughputData(0, 0, 0),
-		NewThroughputData(0, 0, 0),
-	)
-	blockedStatus := NewProtectionStatus(
-		0, 0, 0,
-		NewThroughputData(0, 0, 0),
-		NewThroughputData(0, 0, 0),
+	droppedStatus := NewProtectionStatus(
+		0, 0, 0, 0, 0,
 	)
 
 	if r.MitigationRequest != nil {
@@ -335,13 +328,14 @@ func (g *GoBgpRtbhReceiver) RegisterProtection(r *MitigationOrDataChannelACL, ta
 			targetID,
 			targetType,
 			"",
+			"",
+			"",
 			g,
 			false,
 			time.Unix(0, 0),
 			time.Unix(0, 0),
 			time.Unix(0, 0),
-			forwardedStatus,
-			blockedStatus,
+			droppedStatus,
 		}
 
 		// persist to external storage

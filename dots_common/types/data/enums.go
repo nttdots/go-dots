@@ -33,6 +33,7 @@ const (
 type ActivationType string
 
 const (
+  ActivationType_NotType                ActivationType = "not-type"   // When the acl is deleted or expired
   ActivationType_ActivateWhenMitigating ActivationType = "activate-when-mitigating"
   ActivationType_Immediate              ActivationType = "immediate"
   ActivationType_Deactivate             ActivationType = "deactivate"
@@ -52,8 +53,9 @@ const (
 type OperatorBit string
 
 const (
-  Operator_NOT OperatorBit = "not"
+  Operator_NOT   OperatorBit = "not"
   Operator_MATCH OperatorBit = "match"
+  Operator_ANY   OperatorBit = "any"
 )
 
 type FragmentType string
@@ -202,6 +204,9 @@ func (p *ActivationType) UnmarshalJSON(data []byte) error {
   }
 
   switch s {
+  case string(ActivationType_NotType):
+    *p = ActivationType_NotType
+    return nil
   case string(ActivationType_ActivateWhenMitigating):
     *p = ActivationType_ActivateWhenMitigating
     return nil
@@ -270,6 +275,9 @@ func (p *OperatorBit) UnmarshalJSON(data []byte) error {
     return nil
   case string(Operator_MATCH):
     *p = Operator_MATCH
+    return nil
+  case string(Operator_ANY):
+    *p = Operator_ANY
     return nil
   default:
     return fmt.Errorf("Unexpected Operator: %v", s)

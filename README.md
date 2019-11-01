@@ -6,12 +6,13 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-signal-channel-26
-* draft-ietf-dots-data-channel-24
+* draft-ietf-dots-signal-channel-35
+* draft-ietf-dots-data-channel-30
 * draft-ietf-dots-architecture-06
 * draft-ietf-dots-requirements-14
 * draft-ietf-dots-use-cases-14
-* draft-nishizuka-dots-signal-control-filtering-03
+* draft-nishizuka-dots-signal-control-filtering-06
+* draft-ietf-dots-signal-call-home-06
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
@@ -25,14 +26,17 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.11 or later is required. (for the latest GoBGP - v2.1.0)
+  * go 1.13.3 or later is required. (for the latest GoBGP - v2.9.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
-  * OpenSSL 1.1.1 or higher (for libcoap)
+  * OpenSSL 1.1.1d or higher (for libcoap)
 
 * MySQL 5.7.x and its development package (MySQL 8.0.x or higher not yet supported)
   * Install mysql development package in Ubuntu:
     $ sudo apt-get install libmysqld-dev
+
+* gnuTLS (install to configure the certificate)
+    $ sudo apt-get install gnutls-bin
 
 ## Recommandation Environment
 * Ubuntu 16.04+
@@ -41,15 +45,19 @@ Licensed under Apache License 2.0.
 ## How to build go-dots
 ### Build libcoap for go-dots
 
-Currenly supported libcoap version : 1eadd91
+Currenly supported libcoap version : f1a5435
 
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
-    $ git checkout 1eadd91366cab46767f26e4d10e005198246eac1
+    $ git checkout f1a5435193131ea0edbbdf2558d61244a768c961
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
     $ make
     $ sudo make install
+
+### Install gorilla-mux for go-dots client router to handle RESTful API
+
+    $ go get -u github.com/gorilla/mux
     
 ### Install go-dots
 To install go-dots source codes and command line programs, use the following command:
@@ -346,6 +354,16 @@ Therefore, when DOTS client is under attacked by DDoS, the DOTS client can use D
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftControlFiltering.json
 
+## Signal Channel Call Home
+The DOTS signal channel Call Home identify the source to block DDoS attack traffic closer to the source(s) of a DDoS attack.
+when the DOTS client is under attacked by DDoS, the DOTS client sends the attack traffic information to the DOTS server. The DOTS server in turn uses the attack traffic information to identify the compromised devices launching the outgoing DDoS attack and takes appropriate mitigation action.
+
+### Client Controller [mitigation_call_home]
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftCallHome.json
+
 ## DB
 
 To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)  
@@ -413,3 +431,51 @@ Check the flowspec route is installed successfully in gobgp server
    Network                                                                   Next Hop      AS_PATH    Age        Attrs
 *> [destination: 1.1.2.0/24][protocol: ==tcp][destination-port: >=443&<=800] fictitious               00:00:06   [{Origin: i} {Extcomms: [redirect: 1.1.1.0:100]}]
 ```
+
+# Certificate Configuration
+
+### Precondition
+* The GnuTLS has been installed.
+
+### Configure The Certificate
+
+Typically, the client's/server's certificate is a single identifier type which means that the certificate has only one common name (CN-ID) as identifier. However, the Common Name is not strongly typed because the Common Name can contain a human-friendly string, not a DNS domain name. Moreover, the client's/server's certificate can be multi identifiers type which including the Common Name (CN-ID) and some Subject Alternative Name (DNS-ID, SRV-ID), in order to ensure that at least one DNS qualified domain name. In go-dots, two certificate types are configured as below:
+
+* The single identifier type
+
+   The template file only has the Common Name (CN-ID)
+
+   Example: In file [template_client](./certs/template_client.txt), configure as follow:
+    ```
+    # X.509 server certificate options
+
+    organization = "sample client"
+    state = "Tokyo"
+    country = JP
+    cn = "client.sample.example.com"
+    expiration_days = 365
+
+    # X.509 v3 extensions
+    signing_key
+    encryption_key
+    ```
+
+* The multi identifiers type
+
+    The template file has the Common Name (CN-ID) and some Subject Alternative Name (DNS-ID, SRV-ID)
+
+    Example: In file [template_client](./certs/template_client.txt), add more Subject Alternative Name as follow:
+
+    ```
+    # DNS name(s) of the server
+    dns_name = "xample1.example.com"
+    dns_name = "_xampp.example.com
+    ```
+
+To add/change the server's certificate or the client's certificate, execute with following command:
+```
+./update_keys.sh
+```
+
+For more detailed information about configuration of the certificate and the GnuTLS, refer to the following link:
+* [action_gnutls_scripted.md](https://gist.github.com/epcim/832cec2482a255e3f392)

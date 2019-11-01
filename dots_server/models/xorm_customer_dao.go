@@ -2,6 +2,7 @@ package models
 
 import (
 	"net"
+	"errors"
 
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_server/db_models"
@@ -50,7 +51,7 @@ func CreateCustomer(customer Customer) (newCustomer db_models.Customer, err erro
 	// for customer
 	newCustomer = db_models.Customer{
 		Id:   customer.Id,
-		Name: customer.Name,
+		CommonName: customer.CommonName,
 	}
 	_, err = session.Insert(&newCustomer)
 	if err != nil {
@@ -59,11 +60,6 @@ func CreateCustomer(customer Customer) (newCustomer db_models.Customer, err erro
 		return
 	}
 
-	// Registered CommonName
-	err = createCommonNames(session, customer, newCustomer.Id)
-	if err != nil {
-		return
-	}
 	// Registered FQDN and URI
 	err = createCustomerParameterValue(session, customer, newCustomer.Id)
 	if err != nil {
@@ -77,44 +73,6 @@ func CreateCustomer(customer Customer) (newCustomer db_models.Customer, err erro
 
 	// add Commit() after all actions
 	err = session.Commit()
-
-	return
-}
-
-/*
- * Register new certificate CommonName to the table.
- * If the same CN is already registered in the table, do nothing.
- *
- * Parameter:
- *  session Session information
- *  customer Customer
- *  customer_id The ID of the customer
- * return:
- *  err error
- */
-func createCommonNames(session *xorm.Session, customer Customer, customerId int) (err error) {
-	// check if it's already registered.
-	for _, commonName := range customer.CommonName.List() {
-		dbCommonName := db_models.CustomerCommonName{}
-		_, err = session.Where("customer_id = ? AND common_name = ?", customerId, commonName).Get(&dbCommonName)
-		if err != nil {
-			session.Rollback()
-			log.Printf("CommonNames select err: %s", err)
-			return
-		}
-		if dbCommonName.Id == 0 {
-			// CommonName is registered
-			newCommonName := db_models.CustomerCommonName{}
-			newCommonName.CustomerId = customerId
-			newCommonName.CommonName = commonName
-			_, err = session.Insert(newCommonName)
-			if err != nil {
-				session.Rollback()
-				log.Printf("CommonNames insert err: %s", err)
-				return
-			}
-		}
-	}
 
 	return
 }
@@ -243,7 +201,7 @@ func UpdateCustomer(customer Customer) (err error) {
 	// customer data settings
 	// for customer
 	updCustomer.Id = customer.Id
-	updCustomer.Name = customer.Name
+	updCustomer.CommonName = customer.CommonName
 	_, err = session.Id(updCustomer.Id).Update(updCustomer)
 	if err != nil {
 		session.Rollback()
@@ -265,11 +223,6 @@ func UpdateCustomer(customer Customer) (err error) {
 		return
 	}
 
-	// Updated CommonName
-	err = createCommonNames(session, customer, updCustomer.Id)
-	if err != nil {
-		return
-	}
 	// Registered FQDN and URI
 	err = createCustomerParameterValue(session, customer, updCustomer.Id)
 	if err != nil {
@@ -299,7 +252,6 @@ func UpdateCustomer(customer Customer) (err error) {
 func GetCustomer(customerId int) (customer Customer, err error) {
 	// default value setting
 	customer = Customer{}
-	customer.CommonName = NewSetString()
 
 	// database connection create
 	engine, err := ConnectDB()
@@ -319,23 +271,12 @@ func GetCustomer(customerId int) (customer Customer, err error) {
 		return
 	}
 	customer.Id = dbCustomer.Id
-	customer.Name = dbCustomer.Name
+	customer.CommonName = dbCustomer.CommonName
 
 	// Variables related to this customer.
 	CustomerNetworkInformation := NewCustomerNetworkInformation()
 	AddressRange := AddressRange{}
 
-	// Get CommonName data
-	dbCommonNameList := []db_models.CustomerCommonName{}
-	err = engine.Where("customer_id = ?", dbCustomer.Id).OrderBy("id ASC").Find(&dbCommonNameList)
-	if err != nil {
-		return
-	}
-	if len(dbCommonNameList) > 0 {
-		for _, v := range dbCommonNameList {
-			customer.CommonName.Append(v.CommonName)
-		}
-	}
 	// Get FQDN data
 	dbParameterValueFqdnList := []db_models.ParameterValue{}
 	err = engine.Where("customer_id = ? AND type = ?", dbCustomer.Id, db_models.ParameterValueTypeFqdn).OrderBy("id ASC").Find(&dbParameterValueFqdnList)
@@ -391,7 +332,6 @@ func GetCustomer(customerId int) (customer Customer, err error) {
 func GetCustomerCommonName(commonName string) (customer Customer, err error) {
 	// default value setting
 	customer = Customer{}
-	customer.CommonName = NewSetString()
 
 	// database connection create
 	engine, err := ConnectDB()
@@ -400,34 +340,21 @@ func GetCustomerCommonName(commonName string) (customer Customer, err error) {
 		return
 	}
 
-	// Get CommonName data
-	dbCommonName := db_models.CustomerCommonName{}
-	chk, err := engine.Where("common_name = ?", commonName).Get(&dbCommonName)
-	if err != nil {
-		log.WithField("cn", commonName).WithError(err).Error("customer_common_name select error")
-		return
-	}
-	if !chk {
-		// no data
-		log.Error("customer_common_name no data")
-		return
-	}
-	customer.CommonName.Append(dbCommonName.CommonName)
-
 	// Get customer table data
 	dbCustomer := db_models.Customer{}
-	chk, err = engine.Id(dbCommonName.CustomerId).Get(&dbCustomer)
+	chk, err := engine.Where("common_name = ?", commonName).Get(&dbCustomer)
 	if err != nil {
 		log.Errorf("customer select error: %s", err)
 		return
 	}
 	if !chk {
 		// no data
-		log.Error("customer no data")
+		err = errors.New("customer no data")
+		log.Error(err)
 		return
 	}
 	customer.Id = dbCustomer.Id
-	customer.Name = dbCustomer.Name
+	customer.CommonName = dbCustomer.CommonName
 
 	// Variables related to this customer.
 	CustomerNetworkInformation := NewCustomerNetworkInformation()
@@ -502,14 +429,6 @@ func DeleteCustomer(customerId int) (err error) {
 	err = session.Begin()
 	if err != nil {
 		session.Rollback()
-		return
-	}
-
-	// Delete customerCommonName table data
-	_, err = session.Delete(db_models.CustomerCommonName{CustomerId: customerId})
-	if err != nil {
-		session.Rollback()
-		log.Errorf("delete customerCommonName error: %s", err)
 		return
 	}
 

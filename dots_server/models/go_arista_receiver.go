@@ -1,22 +1,23 @@
 package models
 
 import (
-	"time"
-	"net"
 	"bytes"
+	"errors"
+	"net"
 	"strconv"
 	"strings"
-	"errors"
+	"time"
+
 	"github.com/aristanetworks/goeapi"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	module "github.com/aristanetworks/goeapi/module"
-	log "github.com/sirupsen/logrus"
 	types "github.com/nttdots/go-dots/dots_common/types/data"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
-	ARISTA_BLOCKER_CONNECTION    = "aristaConnection"
-	ARISTA_BLOCKER_INTERFACE     = "aristaInterface"
+	ARISTA_BLOCKER_CONNECTION = "aristaConnection"
+	ARISTA_BLOCKER_INTERFACE  = "aristaInterface"
 )
 
 const (
@@ -45,6 +46,8 @@ const (
 	INTERFACE_VALUE    = "interface"
 	ACCESS_LIST_VALUE  = "access-list"
 	ACCESS_GROUP_VALUE = "access-group"
+	CONFIGURE_SESSION  = "configure session"
+	COMMIT_VALUE       = "commit"
 	EXIT_VALUE         = "exit"
 	NO_VALUE           = "no"
 	INBOUND_PACKET     = "in"
@@ -181,6 +184,10 @@ func (g *GoAristaReceiver) ExecuteProtection(p Protection) (err error) {
 	log.Infof("arista connect[%p]", node)
 	acl := module.Acl(node)
 
+	// Create configure session
+	configSession := CreateConfigureSession(p.SessionName())
+	cmds := []string {configSession}
+
 	// Create acl rule
 	ipv4AccessList := CreateAccessList(IPV4_VALUE, p.AclName())
 	ipv6AccessList := CreateAccessList(IPV6_VALUE, p.AclName())
@@ -198,37 +205,39 @@ func (g *GoAristaReceiver) ExecuteProtection(p Protection) (err error) {
 	ipv6Cmds = append(ipv6Cmds, IPV6_PERMIT_RULE)
 	ipv6Cmds = append(ipv6Cmds, EXIT_VALUE)
 
-	if len(ipv4Cmds) > LEN_CMDS_ACL_WITHOUT_RULE {
-		if ok := acl.Configure(ipv4Cmds ...); !ok {
-			log.Warnf("Failed to create ipv4 ACL. cmds=%+v", ipv4Cmds)
-			err = errors.New("Failed to create ipv4 ACL")
-			return
-		}
-	}
-	if len(ipv6Cmds) > LEN_CMDS_ACL_WITHOUT_RULE {
-		if ok := acl.Configure(ipv6Cmds ...); !ok {
-			log.Warnf("Failed to create ipv6 ACL. cmds=%+v", ipv6Cmds)
-			err = errors.New("Failed to create ipv6 ACL")
-			return
-		}
-	}
-
 	// Apply acl to interface
-	cmds := []string{INTERFACE_VALUE+" "+g.AristaInterface()}
+	interfaceCmds := []string{INTERFACE_VALUE+" "+g.AristaInterface()}
 	if len(ipv4Cmds) > LEN_CMDS_ACL_WITHOUT_RULE {
+		cmds = append(cmds, ipv4Cmds ...)
 		ipv4AccessGroup := CreateAccessGroup(IPV4_VALUE, p.AclName())
-		cmds = append(cmds, ipv4AccessGroup)
+		interfaceCmds = append(interfaceCmds, ipv4AccessGroup)
 	}
 	if len(ipv6Cmds) > LEN_CMDS_ACL_WITHOUT_RULE {
+		cmds = append(cmds, ipv6Cmds ...)
 		ipv6AccessGroup := CreateAccessGroup(IPV6_VALUE, p.AclName())
-		cmds = append(cmds, ipv6AccessGroup)
+		interfaceCmds = append(interfaceCmds, ipv6AccessGroup)
 	}
-	cmds = append(cmds, EXIT_VALUE)
+	interfaceCmds = append(interfaceCmds, EXIT_VALUE)
+
+	cmds = append(cmds, interfaceCmds ...)
+	cmds = append(cmds, p.Action())
 
 	if ok := acl.Configure(cmds ...); !ok {
-		log.Warnf("Failed to apply ACL to Interface. cmds=%+v", cmds)
-		err = errors.New("Failed to apply ACL to Interface")
+		log.Warnf("Failed to apply configure session. cmds=%+v", cmds)
+		configSession = RemoveConfigureSession(p.SessionName())
+		if ok := acl.Configure([]string{configSession} ...); !ok {
+			log.Warnf("Failed to remove configure session. cmds = %+v", cmds)
+		}
+		err = errors.New("Failed to apply configure session")
 		return
+	}
+
+	// Remove configure session after configure session commited
+	if p.Action() == COMMIT_VALUE {
+		configSession = RemoveConfigureSession(p.SessionName())
+		if ok := acl.Configure([]string{configSession} ...); !ok {
+			log.Warnf("Failed to remove configure session. cmds = %+v", cmds)
+		}
 	}
 
 	// update db
@@ -274,11 +283,12 @@ func (g *GoAristaReceiver) StopProtection(p Protection) (err error) {
 	log.Infof("arista connect[%p]", node)
 	acl := module.Acl(node)
 
-	cmds := []string{}
 	countIPv4 := 0
 	countIPv6 := 0
-	// Remove acl applyed to interface
-	cmds = append(cmds, INTERFACE_VALUE+" "+g.AristaInterface())
+
+	// Create configure session
+	configSession := CreateConfigureSession(p.SessionName())
+	cmds := []string {configSession}
 	for _,target := range t.aclTargets {
 		if countIPv4 > 0 && countIPv6 > 0 {
 			break
@@ -290,37 +300,38 @@ func (g *GoAristaReceiver) StopProtection(p Protection) (err error) {
 			countIPv6 ++
 		}
 	}
+	cmds = append(cmds, INTERFACE_VALUE+" "+g.AristaInterface())
 	if countIPv4 > 0 {
+		// Remove acl applyed to interface
 		ipv4AccessGroup := RemoveAccessGroup(IPV4_VALUE, p.AclName())
+		// Remove acl
+		ipv4AccessList  := RemoveAccessList(IPV4_VALUE, p.AclName())
 		cmds = append(cmds, ipv4AccessGroup)
+		cmds = append(cmds, ipv4AccessList)
 	}
 	if countIPv6 > 0 {
+		// Remove acl applyed to interface
 		ipv6AccessGroup := RemoveAccessGroup(IPV6_VALUE, p.AclName())
+		// Remove acl
+		ipv6AccessList  := RemoveAccessList(IPV6_VALUE, p.AclName())
 		cmds = append(cmds, ipv6AccessGroup)
+		cmds = append(cmds, ipv6AccessList)
 	}
-	cmds = append(cmds, EXIT_VALUE)
+	cmds = append(cmds, COMMIT_VALUE)
 
 	if ok := acl.Configure(cmds ...); !ok {
-		log.Warnf("Failed to remove ACL rule from Intreface. cmds = %+v", cmds)
-		err = errors.New("Failed to remove ACL rule from Intreface")
+		log.Warnf("Failed to apply configure session. cmds = %+v", cmds)
+		configSession = RemoveConfigureSession(p.SessionName())
+		if ok := acl.Configure([]string{configSession} ...); !ok {
+			log.Warnf("Failed to remove configure session. cmds = %+v", cmds)
+		}
+		err = errors.New("Failed to apply configure session")
 		return
 	}
-
-	// Remove acl
-	aclCmds := []string {}
-	if countIPv4 > 0 {
-		ipv4AccessList := RemoveAccessList(IPV4_VALUE, p.AclName())
-		aclCmds = append(aclCmds, ipv4AccessList)
-	}
-	if countIPv6 > 0 {
-		ipv6AccessList := RemoveAccessList(IPV6_VALUE, p.AclName())
-		aclCmds = append(aclCmds, ipv6AccessList)
-	}
-	aclCmds = append(aclCmds, EXIT_VALUE)
-	if ok := acl.Configure(aclCmds ...); !ok {
-		log.Warnf("Failed to remove ACL rule. cmds=%+v", aclCmds)
-		err = errors.New("Failed to remove ACL rule")
-		return
+	// Remove configure session after configure session commited
+	configSession = RemoveConfigureSession(p.SessionName())
+	if ok := acl.Configure([]string{configSession} ...); !ok {
+		log.Warnf("Failed to remove configure session. cmds = %+v", cmds)
 	}
 
 	err = StopProtection(p, g)
@@ -358,15 +369,8 @@ func (g *GoAristaReceiver) connectArista() (node *goeapi.Node, err error) {
  *  err error
  */
 func (g *GoAristaReceiver) RegisterProtection(r *MitigationOrDataChannelACL, targetID int64, customerID int, targetType string) (p Protection, err error) {
-	forwardedStatus := NewProtectionStatus(
-		0, 0, 0,
-		NewThroughputData(0, 0, 0),
-		NewThroughputData(0, 0, 0),
-	)
-	blockedStatus := NewProtectionStatus(
-		0, 0, 0,
-		NewThroughputData(0, 0, 0),
-		NewThroughputData(0, 0, 0),
+	droppedStatus := NewProtectionStatus(
+		0, 0, 0, 0, 0,
 	)
 
 	var aclName string
@@ -383,13 +387,14 @@ func (g *GoAristaReceiver) RegisterProtection(r *MitigationOrDataChannelACL, tar
 		targetID,
 		targetType,
 		aclName,
+		"",
+		"",
 		g,
 		false,
 		time.Unix(0, 0),
 		time.Unix(0, 0),
 		time.Unix(0, 0),
-		forwardedStatus,
-		blockedStatus,
+		droppedStatus,
 	}
 
 	// persist to external storage
@@ -521,57 +526,198 @@ func CreateACLTargetsForDataChannel(d *types.ACL) []ACLTarget {
  * Create ACL target for mitigation request
  */
 func CreateACLTargetsForMitigation(m *MitigationScope) []ACLTarget {
-	destAddresses := make([]string, 0)
-	destPorts     := make([]string, 0)
-	aclTargets    := make([]ACLTarget, 0)
+	destAddressesIPv4 := make([]string, 0)
+	destAddressesIPv6 := make([]string, 0)
+	srcAddressesIPv4  := make([]string, 0)
+	srcAddressesIPv6  := make([]string, 0)
+	destPorts         := make([]string, 0)
+	sourcePorts       := make([]string, 0)
+	icmpTypes         := make([]string, 0)
+	aclTargets        := make([]ACLTarget, 0)
 
 	protocols := m.TargetProtocol.List()
 	for _, target := range m.TargetList {
-		destAddresses = append(destAddresses, target.TargetPrefix.String())
+		ip, _, _ := net.ParseCIDR(target.TargetPrefix.String())
+		if ip.To4() != nil {
+			destAddressesIPv4 = append(destAddressesIPv4, target.TargetPrefix.String())
+		} else {
+			destAddressesIPv6 = append(destAddressesIPv6, target.TargetPrefix.String())
+		}
+	}
+	for _, srcPrefix := range m.SourcePrefix {
+		ip, _, _ := net.ParseCIDR(srcPrefix.String())
+		if  ip.To4() != nil {
+			srcAddressesIPv4 = append(srcAddressesIPv4, srcPrefix.String())
+		} else {
+			srcAddressesIPv6 = append(srcAddressesIPv6, srcPrefix.String())
+		}
 	}
 
-	for _,port := range m.TargetPortRange {
-		if port.LowerPort == port.UpperPort{
-			destPorts = append(destPorts, "eq " + strconv.Itoa(port.LowerPort))
+	for _, port := range m.TargetPortRange {
+		if port.LowerPort == port.UpperPort {
+			destPorts = append(destPorts, "eq "+strconv.Itoa(port.LowerPort))
 		} else {
-			destPorts = append(destPorts, "range " + strconv.Itoa(port.LowerPort) + " " + strconv.Itoa(port.UpperPort))
+			destPorts = append(destPorts, "range "+strconv.Itoa(port.LowerPort)+" "+strconv.Itoa(port.UpperPort))
 		}
+	}
+	for _, port := range m.SourcePortRange {
+		if port.LowerPort == port.UpperPort {
+			sourcePorts = append(sourcePorts, "eq "+strconv.Itoa(port.LowerPort))
+		} else {
+			sourcePorts = append(sourcePorts, "range "+strconv.Itoa(port.LowerPort)+" "+strconv.Itoa(port.UpperPort))
+		}
+	}
+
+	for _, icmpType := range m.SourceICMPTypeRange {
+		icmpTypes = append(icmpTypes, strconv.Itoa(icmpType.LowerType))
 	}
 
 	// ActionType: deny
 	// Protocol: if existed protocol in mitigation request, protocol = scope.target_protocol; Else base on IP, protocol is ip/ipv6
-	// SourceAddress: any
+	// SourceAddress: if existed source_prefix in mitigation request, sourceAddress = scope.source_prefix; Else sourceAddress is any
 	// DestAddress: destAddress = scope.target_prefix
 	// DestPort: if protocol is TCP/UDP, destPort = scope.target_port
+	// SourcePort: if existed source_prefix and source_port with protocol is TCP/UDP, sourcePort = scope.source_port
+	// SourceICMPType: if existed source_prefix and source_icmp_type with protocol is ICMP, messageType = scope.source_icmp_type
 	if len(protocols) > 0 {
 		for _, protocol := range protocols {
-			if len(destPorts) > 0 && (protocol == 6 || protocol == 17){
-				for _, port := range destPorts {
-					for _, addr := range destAddresses {
-						aclMapping := ACLMapping{}
-						aclMapping.MapMitigationACLRule(strconv.Itoa(protocol), addr, port)
-						rule := aclMapping.CreateACLRule()
-						aclTargets = append(aclTargets, ACLTarget{aclMapping.aclType, rule})
+			if protocol == 6 || protocol == 17 {
+				if len(destPorts) > 0 && len(sourcePorts) > 0 {
+					// Exited the destination port and the source port
+					icmpType := EMPTY_VALUE
+					for _, destPort := range destPorts {
+						for _, srcPort := range sourcePorts {
+							targets := createACLTargetsForMitigation(strconv.Itoa(protocol), destAddressesIPv4, destAddressesIPv6, srcAddressesIPv4, srcAddressesIPv6,
+																	destPort, srcPort, icmpType)
+							aclTargets = append(aclTargets, targets...)
+						}
 					}
+				} else if len(destPorts) > 0 && len(sourcePorts) == 0 {
+					// The destination port exist but the source port doesn't exist
+					srcPort := EMPTY_VALUE
+					icmpType := EMPTY_VALUE
+					for _, destPort := range destPorts {
+						targets := createACLTargetsForMitigation(strconv.Itoa(protocol), destAddressesIPv4, destAddressesIPv6, srcAddressesIPv4, srcAddressesIPv6,
+																destPort, srcPort, icmpType)
+						aclTargets = append(aclTargets, targets...)
+					}
+				} else if len(destPorts) == 0 && len(sourcePorts) > 0 {
+					// The destination port doesn't exist but the source port exist
+					destPort := EMPTY_VALUE
+					icmpType := EMPTY_VALUE
+					for _, srcPort := range sourcePorts {
+						targets := createACLTargetsForMitigation(strconv.Itoa(protocol), destAddressesIPv4, destAddressesIPv6, srcAddressesIPv4, srcAddressesIPv6,
+																destPort, srcPort, icmpType)
+						aclTargets = append(aclTargets, targets...)
+					}
+				} else if len(destPorts) == 0 && len(sourcePorts) == 0 {
+					// The destination port and the source port don't exist
+					destPort := EMPTY_VALUE
+					srcPort  := EMPTY_VALUE
+					icmpType := EMPTY_VALUE
+					targets := createACLTargetsForMitigation(strconv.Itoa(protocol), destAddressesIPv4, destAddressesIPv6, srcAddressesIPv4, srcAddressesIPv6,
+															destPort, srcPort, icmpType)
+					aclTargets = append(aclTargets, targets...)
+				}
+			} else if len(icmpTypes) > 0 && protocol == 1 {
+				destPort := EMPTY_VALUE
+				srcPort  := EMPTY_VALUE
+				for _, icmpType := range icmpTypes {
+					targets := createACLTargetsForMitigation(strconv.Itoa(protocol), destAddressesIPv4, destAddressesIPv6, srcAddressesIPv4, srcAddressesIPv6,
+															destPort, srcPort, icmpType)
+					aclTargets = append(aclTargets, targets...)
 				}
 			} else {
-				for _, addr := range destAddresses {
-					aclMapping := ACLMapping{}
-					aclMapping.MapMitigationACLRule(strconv.Itoa(protocol), addr, EMPTY_VALUE)
-					rule := aclMapping.CreateACLRule()
-					aclTargets = append(aclTargets, ACLTarget{aclMapping.aclType, rule})
-				}
+				destPort := EMPTY_VALUE
+				srcPort  := EMPTY_VALUE
+				icmpType := EMPTY_VALUE
+				targets := createACLTargetsForMitigation(strconv.Itoa(protocol), destAddressesIPv4, destAddressesIPv6, srcAddressesIPv4, srcAddressesIPv6,
+														destPort, srcPort, icmpType)
+				aclTargets = append(aclTargets, targets...)
 			}
 		}
 	} else {
-		for _, addr := range destAddresses {
-			aclMapping := ACLMapping{}
-			aclMapping.MapMitigationACLRule(EMPTY_VALUE, addr, EMPTY_VALUE)
+		protocol := EMPTY_VALUE
+		destPort := EMPTY_VALUE
+		srcPort  := EMPTY_VALUE
+		icmpType := EMPTY_VALUE
+		targets := createACLTargetsForMitigation(protocol, destAddressesIPv4, destAddressesIPv6, srcAddressesIPv4, srcAddressesIPv6,
+												destPort, srcPort, icmpType)
+		aclTargets = append(aclTargets, targets...)
+	}
+	return aclTargets
+}
+
+/*
+ * Create Acls for mitigation
+ * Parameter
+ *     protocol:          the target-protocol
+ *     destAddressesIPv4: the target-prefix contains IPv4
+ *     destAddressesIPv6: the target-prefix cotains IPv6
+ *     srcAddressesIPv4:  the source-prefix contains IPv4
+ *     srcAddressesIPv6:  the source-prefix contains IPv6
+ *     destPort:          the target-port-range
+ *     srcPort:           the source-port-range
+ *     icmpType:          the source-icmp-type-range
+ * Return ACL Targets
+ */
+func createACLTargetsForMitigation(protocol string, destAddressesIPv4 []string, destAddressesIPv6 []string, srcAddressesIPv4 []string, srcAddressesIPv6 []string,
+	destPort string, srcPort string, icmpType string) (aclTargets []ACLTarget) {
+	aclMapping := ACLMapping{}
+	if len(destAddressesIPv4) > 0 && len(srcAddressesIPv4) > 0 {
+		// If the target-prefix and the source-prefix contain IPv4, Created the acl rule with the destAddr is target-prefix and the srcAddr is source-prefix
+		for _,destAddr := range destAddressesIPv4 {
+			for _, srcAddr := range srcAddressesIPv4 {
+				aclMapping.MapMitigationACLRule(protocol, destAddr, destPort, srcAddr, srcPort, icmpType)
+				rule := aclMapping.CreateACLRule()
+				aclTargets = append(aclTargets, ACLTarget{aclMapping.aclType, rule})
+			}
+		}
+	} else if len(destAddressesIPv4) > 0 && len(srcAddressesIPv4) == 0 {
+		// If the target-prefix contains IPv4 but the source-prefix doesn't contain IPv4, Created the acl rule with the destAddr is target-prefix and the srcAddr is ""
+		srcAddr := EMPTY_VALUE
+		for _,destAddr := range destAddressesIPv4 {
+			aclMapping.MapMitigationACLRule(protocol, destAddr, destPort, srcAddr, srcPort, icmpType)
+			rule := aclMapping.CreateACLRule()
+			aclTargets = append(aclTargets, ACLTarget{aclMapping.aclType, rule})
+		}
+	} else if len(destAddressesIPv4) == 0 && len(srcAddressesIPv4) > 0 {
+		// If the target-prefix doesn't contain IPv4 but the source-prefix contains IPv4, Created the acl rule with the destAddr is "" and the srcAddr is source-prefix
+		destAddr := EMPTY_VALUE
+		for _, srcAddr := range srcAddressesIPv4 {
+			aclMapping.MapMitigationACLRule(protocol, destAddr, destPort, srcAddr, srcPort, icmpType)
 			rule := aclMapping.CreateACLRule()
 			aclTargets = append(aclTargets, ACLTarget{aclMapping.aclType, rule})
 		}
 	}
-	return aclTargets
+
+	if len(destAddressesIPv6) > 0 && len(srcAddressesIPv6) > 0 {
+		// If the target-prefix and the source-prefix contain IPv6, Created the acl rule with the destAddr is target-prefix and the srcAddr is source-prefix
+		for _,destAddr := range destAddressesIPv6 {
+			for _, srcAddr := range srcAddressesIPv6 {
+				aclMapping.MapMitigationACLRule(protocol, destAddr, destPort, srcAddr, srcPort, icmpType)
+				rule := aclMapping.CreateACLRule()
+				aclTargets = append(aclTargets, ACLTarget{aclMapping.aclType, rule})
+			}
+		}
+	} else if len(destAddressesIPv6) > 0 && len(srcAddressesIPv6) == 0 {
+		// If the target-prefix contains IPv6 but the source-prefix doesn't contain IPv6, Created the acl rule with the destAddr is target-prefix and the srcAddr is ""
+		srcAddr := EMPTY_VALUE
+		for _,destAddr := range destAddressesIPv6 {
+			aclMapping.MapMitigationACLRule(protocol, destAddr, destPort, srcAddr, srcPort, icmpType)
+			rule := aclMapping.CreateACLRule()
+			aclTargets = append(aclTargets, ACLTarget{aclMapping.aclType, rule})
+		}
+	} else if len(destAddressesIPv6) == 0 && len(srcAddressesIPv6) > 0 {
+		// If the target-prefix doesn't contain IPv6 but the source-prefix contains IPv6, Created the acl rule with the destAddr is "" and the srcAddr is source-prefix
+		destAddr := EMPTY_VALUE
+		for _, srcAddr := range srcAddressesIPv6 {
+			aclMapping.MapMitigationACLRule(protocol, destAddr, destPort, srcAddr, srcPort, icmpType)
+			rule := aclMapping.CreateACLRule()
+			aclTargets = append(aclTargets, ACLTarget{aclMapping.aclType, rule})
+		}
+	}
+	return
 }
 
 /*
@@ -631,9 +777,8 @@ func (mapping *ACLMapping) MapDataChannelACLRule(protocol *uint8, sourceAddr *ty
 /*
  * Map protocol, source address, destination address to arista ACL rule
  */
-func (mapping *ACLMapping) MapMitigationACLRule(targetProtocol string, targetAddr string, targetPort string) {
+func (mapping *ACLMapping) MapMitigationACLRule(targetProtocol string, targetAddr string, targetPort string, srcAddr string, srcPort string, srcICMPType string) {
 	mapping.actionType = ACTION_TYPE_DENY
-	mapping.sourceAddress = ANY_VALUE
 	// if acl type is empty, check aclType by targetAddr (target-prefix)
 	ip, _, _ := net.ParseCIDR(targetAddr)
 	if ip.To4() != nil {
@@ -661,6 +806,24 @@ func (mapping *ACLMapping) MapMitigationACLRule(targetProtocol string, targetAdd
 	// if existed target-port, destinationPort = target-port
 	if targetPort != EMPTY_VALUE {
 		mapping.destinationPort = targetPort
+	}
+
+	// if existed source-address, sourceAddress = source-address
+	// else default sourceAddress = any
+	if srcAddr != EMPTY_VALUE {
+		mapping.sourceAddress = srcAddr
+	} else {
+		mapping.sourceAddress = ANY_VALUE
+	}
+
+	// if existed source-port, sourcePort = source-port
+	if srcPort != EMPTY_VALUE {
+		mapping.sourcePort = srcPort
+	}
+
+	// if existed source-icmp-type, messageType = source-icmp-type
+	if srcICMPType != EMPTY_VALUE {
+		mapping.messageType = srcICMPType
 	}
 }
 
@@ -830,4 +993,32 @@ func RemoveAccessGroup(aclType string, aclName string) string {
 	accessGroup.WriteString(" ")
 
 	return accessGroup.String()
+}
+
+/*
+ * Create configure session
+ */
+func CreateConfigureSession(sessName string) string {
+	var configSession bytes.Buffer
+	configSession.WriteString(CONFIGURE_SESSION)
+	configSession.WriteString(" ")
+	configSession.WriteString(sessName)
+	configSession.WriteString(" ")
+
+	return configSession.String()
+}
+
+/*
+ * Remove configure session
+ */
+func RemoveConfigureSession(sessName string) string {
+	var configSession bytes.Buffer
+	configSession.WriteString(NO_VALUE)
+	configSession.WriteString(" ")
+	configSession.WriteString(CONFIGURE_SESSION)
+	configSession.WriteString(" ")
+	configSession.WriteString(sessName)
+	configSession.WriteString(" ")
+
+	return configSession.String()
 }

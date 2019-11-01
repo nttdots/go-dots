@@ -6,6 +6,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"strings"
 	"strconv"
+	"time"
 
 	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
@@ -26,6 +27,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 	log.WithField("request", request).Debug("[GET] receive message")
 
 	config := dots_config.GetServerSystemConfig().SignalConfigurationParameter
+	maxAge := dots_config.GetServerSystemConfig().MaxAgeOption
 
 	resp := messages.ConfigurationResponse{}
 	resp.SignalConfigs = messages.ConfigurationResponseConfigs{}
@@ -42,17 +44,26 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 	resp.SignalConfigs.IdleConfig.AckTimeout.SetMinMax(config.AckTimeoutIdle)
 	resp.SignalConfigs.IdleConfig.AckRandomFactor.SetMinMax(config.AckRandomFactorIdle)
 
-	signalSessionConfiguration, err := models.GetCurrentSignalSessionConfiguration(customer.Id)
+	// Check Uri-Path sid for session configuration request
+	sid, err := parseSidFromUriPath(request.PathInfo)
 	if err != nil {
+		errMessage := fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
+		log.Errorf(errMessage)
 		res = Response{
 			Type: common.Acknowledgement,
-			Code: common.NotFound,
-			Body: nil,
+			Code: common.BadRequest,
+			Body: errMessage,
 		}
-		return res, err
+		return res, nil
 	}
 
-	if signalSessionConfiguration == nil {
+	// When coap_check_notify() calling Get handler, it will use resource path as uri-path
+	// --> Check customerId information in request path to identify current process is notification or client request
+	isNotify := strings.Contains(strings.Join(request.PathInfo, "/"), "customerId")
+
+	// If sid is provided in request or server is notifying to client => get session configuration with the sid from DB and return
+	// Else => return the default session configuration.
+	if sid == nil && !isNotify {
 		defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
 
 		resp.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue = defaultValue.HeartbeatInterval
@@ -65,7 +76,32 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue           = defaultValue.MaxRetransmitIdle
 		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue              = decimal.NewFromFloat(defaultValue.AckTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue         = decimal.NewFromFloat(defaultValue.AckRandomFactorIdle).Round(2)
-	}else {
+	} else {
+		// return 4.04 (NotFound) if there is not any session configuration with request sid in DB
+		signalSessionConfiguration, err := models.GetCurrentSignalSessionConfiguration(customer.Id)
+		if err != nil {
+			errMessage := fmt.Sprintf("Failed to get current signal session configuration with session id=%+v", *sid)
+			log.Error(errMessage)
+			res = Response{
+				Type: common.Acknowledgement,
+				Code: common.InternalServerError,
+				Body: errMessage,
+			}
+			return res, err
+		}
+		// Not check session id with uri-path sid of request in observe case
+		if isNotify { sid = &signalSessionConfiguration.SessionId }
+		if signalSessionConfiguration == nil || signalSessionConfiguration.SessionId != *sid {
+			errMessage := fmt.Sprintf("Not found signal session configuration with session id=%+v", *sid)
+			log.Error(errMessage)
+			res = Response{
+				Type: common.Acknowledgement,
+				Code: common.NotFound,
+				Body: errMessage,
+			}
+			return res, nil
+		}
+
 		resp.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue = signalSessionConfiguration.HeartbeatInterval
 		resp.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue  = signalSessionConfiguration.MissingHbAllowed
 		resp.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
@@ -76,12 +112,17 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue    	   = signalSessionConfiguration.MaxRetransmitIdle
 		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue       	   = decimal.NewFromFloat(signalSessionConfiguration.AckTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue   	   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactorIdle).Round(2)
+
+		// Add Max-age option into response to indicate the limit time of freshness mechanism
+		// Does not add Max-age option into response in case session configuration is reset by expired Max-age and notify to client
+		_, isPresent := models.GetFreshSessionMap()[customer.Id]
+		if isPresent {
+			// Handle freshness mechanism -> refresh active session configuration whenever response with Max-age option
+			models.RefreshActiveSessionConfiguration(customer.Id, *sid, maxAge)
+			request.Options = append(request.Options, libcoap.OptionMaxage.String(strconv.FormatUint(uint64(maxAge), 10)))
+		}
 	}
-	maxAgeOption := dots_config.GetServerSystemConfig().MaxAgeOption
-	if maxAgeOption < 0 {
-		maxAgeOption = 0
-	}
-	request.Options = append(request.Options, libcoap.OptionMaxage.String(strconv.FormatUint(uint64(maxAgeOption), 10)))
+
 	res = Response{
 			Type: common.Acknowledgement,
 			Code: common.Content,
@@ -108,39 +149,52 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 
 	log.WithField("request", newRequest).Debug("[PUT] receive message")
 
+	// Check Uri-Path sid for session configuration request
 	sid, err := parseSidFromUriPath(newRequest.PathInfo)
 	if err != nil {
-		log.Errorf("Failed to parse Uri-Path, error: %s", err)
+		errMessage := fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
+		log.Errorf(errMessage)
 		res = Response{
 			Type: common.Acknowledgement,
 			Code: common.BadRequest,
-			Body: nil,
+			Body: errMessage,
 		}
-		return
+		return res, nil
+	}
+	if sid == nil {
+		errMessage := "Uri-Path sid is mandatory option"
+		log.Errorf(errMessage)
+		res = Response{
+			Type: common.Acknowledgement,
+			Code: common.BadRequest,
+			Body: errMessage,
+		}
+		return res, nil
 	}
 
 	request := newRequest.Body
-
 	if request == nil {
+		errMessage := "Request body must be provided for PUT method"
+		log.Errorf(errMessage)
 		res = Response{
 			Type: common.Acknowledgement,
 			Code: common.BadRequest,
-			Body: nil,
+			Body: errMessage,
 		}
-		return
+		return res, nil
 	}
 
 	payload := &request.(*messages.SignalConfigRequest).SignalConfigs
 	// Check missing session config
 	v := models.SignalConfigurationValidator{}
-	checkMissingResult := v.CheckMissingSessionConfiguration(payload, *customer)
+	checkMissingResult, errMessage := v.CheckMissingSessionConfiguration(payload, *customer)
 	if !checkMissingResult {
 		res = Response{
 			Type: common.Acknowledgement,
-			Code: common.BadRequest,
-			Body: nil,
+			Code: common.UnprocessableEntity,
+			Body: errMessage,
 		}
-		return
+		return res, nil
 	}
 
 	setDefaultValues(payload)
@@ -151,7 +205,7 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 	ackRandomFactorIdle, _ := payload.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
 	// validate
 	signalSessionConfiguration := models.NewSignalSessionConfiguration(
-		sid,
+		*sid,
 		*payload.MitigatingConfig.HeartbeatInterval.CurrentValue,
 		*payload.MitigatingConfig.MissingHbAllowed.CurrentValue,
 		*payload.MitigatingConfig.MaxRetransmit.CurrentValue,
@@ -163,16 +217,25 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 		ackTimeoutIdle,
 		ackRandomFactorIdle,
 	)
-	validateResult, isPresent := v.Validate(signalSessionConfiguration, *customer)
-	if !validateResult {
-		goto ResponseNG
+	isPresent, isUnprocessableEntity, errMessage := v.Validate(signalSessionConfiguration, *customer)
+	if errMessage != "" {
+		if isUnprocessableEntity {
+			goto ResponseUnprocessableEntity
+		} else {
+			goto ResponseNG
+		}
 	} else {
 		// Register or Update SignalConfigurationParameter
 		_, err = models.CreateSignalSessionConfiguration(*signalSessionConfiguration, *customer)
 		if err != nil {
+			errMessage = fmt.Sprint(err)
 			goto ResponseNG
 		}
 
+		maxAge := dots_config.GetServerSystemConfig().MaxAgeOption
+		// If session with sid is founded: Refresh max-age and return updated response
+		// If session with sid is not founded: Override new max-age and sid and return created response
+		models.RefreshActiveSessionConfiguration(customer.Id, signalSessionConfiguration.SessionId, maxAge)
 		if isPresent {
 			goto ResponseUpdated
 		} else {
@@ -185,7 +248,15 @@ ResponseNG:
 	res = Response{
 		Type: common.Acknowledgement,
 		Code: common.BadRequest,
-		Body: nil,
+		Body: errMessage,
+	}
+	return
+ResponseUnprocessableEntity:
+// on validation heartbeat-interval', 'missing-hb-allowed', 'max-retransmit', 'ack-timeout', and 'ack-random-factor' error
+	res = Response{
+		Type: common.Acknowledgement,
+		Code: common.UnprocessableEntity,
+		Body: errMessage,
 	}
 	return
 ResponseCreated:
@@ -211,30 +282,60 @@ func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models
 
 	log.WithField("request", newRequest).Debug("[DELETE] receive message")
 
-	defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
-	signalSessionConfiguration := models.NewSignalSessionConfiguration(
-		-1,           // fake sid value to compare with new sid when PUT new session configuration
-		defaultValue.HeartbeatInterval,
-		defaultValue.MissingHbAllowed,
-		defaultValue.MaxRetransmit,
-		defaultValue.AckTimeout,
-		defaultValue.AckRandomFactor,
-		defaultValue.HeartbeatIntervalIdle,
-		defaultValue.MissingHbAllowedIdle,
-		defaultValue.MaxRetransmitIdle,
-		defaultValue.AckTimeoutIdle,
-		defaultValue.AckRandomFactorIdle,
-	)
+	// Check Uri-Path sid for session configuration request
+	sid, err := parseSidFromUriPath(newRequest.PathInfo)
+	if err != nil {
+		errMessage := fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
+		log.Errorf(errMessage)
+		res = Response{
+			Type: common.Acknowledgement,
+			Code: common.BadRequest,
+			Body: errMessage,
+		}
+		return res, nil
+	}
 
-	_, err = models.CreateSignalSessionConfiguration(*signalSessionConfiguration, *customer)
+	// If sid is provided, check if the session configuration with request sid has not registered in DB
+	if sid != nil {
+		// return 4.04 (NotFound) if there is no any session configuration with request sid in DB
+		signalSessionConfiguration, err := models.GetCurrentSignalSessionConfiguration(customer.Id)
+		if err != nil {
+			errMessage := fmt.Sprintf("Failed to get current signal session configuration with session id=:%+v", *sid)
+			log.Error(errMessage)
+			res = Response{
+				Type: common.Acknowledgement,
+				Code: common.InternalServerError,
+				Body: errMessage,
+			}
+			return res, err
+		}
+		if signalSessionConfiguration == nil || signalSessionConfiguration.SessionId != *sid {
+			errMessage := fmt.Sprintf("Not found signal session configuration with session id=:%+v", *sid)
+			log.Error(errMessage)
+			res = Response{
+				Type: common.Acknowledgement,
+				Code: common.NotFound,
+				Body: errMessage,
+			}
+			return res, err
+		}
+	}
+
+	signalSessionConfiguration := DefaultSessionConfiguration()
+	signalSessionConfiguration.SessionId = -1           // fake sid value to compare with new sid when PUT new session configuration
+
+	_, err = models.CreateSignalSessionConfiguration(signalSessionConfiguration, *customer)
 	if err != nil {
 		return Response{}, err
 	}
 
+	// Remove fresh session configuration
+	models.RemoveActiveSessionConfiguration(customer.Id)
+
 	res = Response{
 		Type: common.Acknowledgement,
 		Code: common.Deleted,
-		Body: nil,
+		Body: "Deleted",
 	}
 	return
 }
@@ -299,21 +400,27 @@ func sessionConfigurationPayloadDisplay(data *messages.SignalConfigs) {
 /*
 *  Get sid value from URI-Path
 */
-func parseSidFromUriPath(uriPath []string) (sid int, err error){
+func parseSidFromUriPath(uriPath []string) (sid *int, err error) {
 	log.Debugf("Parsing URI-Path : %+v", uriPath)
 	// Get sid from Uri-Path
 	for _, uriPath := range uriPath{
-		if(strings.HasPrefix(uriPath, "sid")){
+		if (strings.HasPrefix(uriPath, "sid")){
 			sidStr := uriPath[strings.Index(uriPath, "=")+1:]
 			sidValue, err := strconv.Atoi(sidStr)
 			if err != nil {
-				log.Errorf("Mid is not integer type.")
+				log.Errorf("Sid is not integer type.")
 				return sid, err
 			}
-			sid = sidValue
+			if sidStr == "" {
+			    sid = nil
+			} else {
+			    sid = &sidValue
+			}
 		}
 	}
-	log.Debugf("Parsing URI-Path result : sid=%+v", sid)
+	if sid != nil {
+		log.Debugf("Parsing URI-Path result : sid=%+v", *sid)
+	}
 	return
 }
 
@@ -329,31 +436,70 @@ func GetSessionConfig(customer *models.Customer) (*models.SignalSessionConfigura
 
 	if signalSessionConfiguration == nil {
 		// If dots client has not registered custom session configuration. Return default configured value.
-		defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
-
-		resp.HeartbeatInterval     = defaultValue.HeartbeatInterval
-		resp.MissingHbAllowed      = defaultValue.MissingHbAllowed
-		resp.MaxRetransmit         = defaultValue.MaxRetransmit
-		resp.AckTimeout            = defaultValue.AckTimeout
-		resp.AckRandomFactor       = defaultValue.AckRandomFactor
-		resp.HeartbeatIntervalIdle = defaultValue.HeartbeatIntervalIdle
-		resp.MissingHbAllowedIdle  = defaultValue.MissingHbAllowedIdle
-		resp.MaxRetransmitIdle     = defaultValue.MaxRetransmitIdle
-		resp.AckTimeoutIdle        = defaultValue.AckTimeoutIdle
-		resp.AckRandomFactorIdle   = defaultValue.AckRandomFactorIdle
+		resp = DefaultSessionConfiguration()
 	} else {
 		// If dots client has registered custom session configuration. Return this configured value.
-		resp.HeartbeatInterval     = signalSessionConfiguration.HeartbeatInterval
-		resp.MissingHbAllowed      = signalSessionConfiguration.MissingHbAllowed
-		resp.MaxRetransmit         = signalSessionConfiguration.MaxRetransmit
-		resp.AckTimeout            = signalSessionConfiguration.AckTimeout
-		resp.AckRandomFactor       = signalSessionConfiguration.AckRandomFactor
-		resp.HeartbeatIntervalIdle = signalSessionConfiguration.HeartbeatIntervalIdle
-		resp.MissingHbAllowedIdle  = signalSessionConfiguration.MissingHbAllowedIdle
-		resp.MaxRetransmitIdle     = signalSessionConfiguration.MaxRetransmitIdle
-		resp.AckTimeoutIdle        = signalSessionConfiguration.AckTimeoutIdle
-		resp.AckRandomFactorIdle   = signalSessionConfiguration.AckRandomFactorIdle
+		resp = *signalSessionConfiguration
 	}
 
 	return &resp, nil
+}
+
+/*
+ *  Set default configured values to session config and return
+ */
+func DefaultSessionConfiguration() (sessionConfig models.SignalSessionConfiguration) {
+	defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
+
+	sessionConfig.HeartbeatInterval     = defaultValue.HeartbeatInterval
+	sessionConfig.MissingHbAllowed      = defaultValue.MissingHbAllowed
+	sessionConfig.MaxRetransmit         = defaultValue.MaxRetransmit
+	sessionConfig.AckTimeout            = defaultValue.AckTimeout
+	sessionConfig.AckRandomFactor       = defaultValue.AckRandomFactor
+	sessionConfig.HeartbeatIntervalIdle = defaultValue.HeartbeatIntervalIdle
+	sessionConfig.MissingHbAllowedIdle  = defaultValue.MissingHbAllowedIdle
+	sessionConfig.MaxRetransmitIdle     = defaultValue.MaxRetransmitIdle
+	sessionConfig.AckTimeoutIdle        = defaultValue.AckTimeoutIdle
+	sessionConfig.AckRandomFactorIdle   = defaultValue.AckRandomFactorIdle
+
+	return
+}
+
+/*
+ *  Reset to default values for session configuration that are expired
+ *  Params:
+ *    lifetimeInterval   the interval time for checking session configuration
+ */
+func ManageExpiredSessionMaxAge(lifetimeInterval int) {
+    // Manage expired Session Congiguration
+    for {
+        for customerId, asc := range models.GetFreshSessionMap() {
+            if asc.MaxAge <= 0 {
+				// This session configuration does not execute freshness mechanism
+            } else {
+				validThrough := asc.LastRefresh.Add(time.Second * time.Duration(int64(asc.MaxAge)))
+				now := time.Now()
+                if now.After(validThrough) {
+                    log.Debugf("[Max-age Mngt Thread]: Session Configuration (sid=%+v) is expired ==> reset to default", asc.SessionId)
+                    // Reset session configuration to default values with customer id
+					signalSessionConfiguration := DefaultSessionConfiguration()
+
+					customer, err := models.GetCustomer(customerId)
+					if err != nil {
+						log.Errorf("Get customer (id = %+v) failed. Error: %+v", customerId, err)
+					}
+
+					_, err = models.CreateSignalSessionConfiguration(signalSessionConfiguration, customer)
+					if err != nil {
+						log.Errorf("Reset expired session configuration (sid = %+v) failed. Error: %+v", asc.SessionId, err)
+					}
+
+					// Rmove active session configuration after reset it to default values
+					models.RemoveActiveSessionConfiguration(customerId)
+                }
+            }
+        }
+
+        time.Sleep(time.Duration(lifetimeInterval) * time.Second)
+	}
 }

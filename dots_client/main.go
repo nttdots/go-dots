@@ -24,6 +24,7 @@ import (
 	"github.com/nttdots/go-dots/libcoap"
 	dots_config "github.com/nttdots/go-dots/dots_client/config"
 	client_message "github.com/nttdots/go-dots/dots_client/messages"
+	restful_router "github.com/nttdots/go-dots/dots_client/router"
 )
 
 const (
@@ -104,9 +105,9 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 		}
 
 	} else {
-		dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile }
+		dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile, config.PinnedCertificate }
 		if orgEnv == nil {
-			ctx = libcoap.NewContextDtls(nil, &dtlsParam)
+			ctx = libcoap.NewContextDtls(nil, &dtlsParam, int(libcoap.CLIENT_PEER))
 			if ctx == nil {
 				log.Error("NewContextDtls() -> nil")
 				err = errors.New("NewContextDtls() -> nil")
@@ -135,19 +136,19 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 			if orgEnv != nil {
 				orgEnv.SetReplacingSession(session)
 			}
-		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
+		} else if event == libcoap.EventSessionDisconnected {
 			session.SessionRelease()
 			restartConnection(env)
 		}
 	})
 
 	ctx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
-		env.HandleResponse(received)
+		handleResponse(env, received)
 		if received != nil && oSess != nil && oSess == env.CoapSession(){
 			sess.SessionRelease()
 			log.Debugf("Restarted connection successfully with current session: %+v.", oSess.String())
 			env.Run(task.NewPingTask(
-					time.Duration(config.HeartbeatInterval) * time.Second,
+					time.Duration(config.DefaultSessionConfiguration.HeartbeatInterval) * time.Second,
 					pingResponseHandler,
 					pingTimeoutHandler))
 		}
@@ -156,10 +157,10 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	ctx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
 			// Pong message
-			env.HandleResponse(sent)
+			handleResponse(env, sent)
 		} else if (reason == libcoap.NackTooManyRetries){
 			// Ping timeout
-			env.HandleTimeout(sent)
+			handleRequestTimeout(env, sent)
 		} else {
 			// Unsupported type
 			log.Infof("nack_handler gets fired with unsupported reason type : %+v.", reason)
@@ -200,6 +201,16 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			requestQuerys = tmpPaths[i+1:]
 			break
 		}
+
+		// The 'cuid' should be less than or equal to 22 characters
+		for _,query := range requestQuerys {
+			querySplit := strings.Split(query, "cuid=")
+			if len(querySplit) > 1 && len(querySplit[1]) > int(messages.CUID_LEN) {
+				log.Warnf("The 'cuid' (%+v) should not be greater than 22 characters", len(querySplit[1]))
+				return
+			}
+		}
+
 		options := make(map[messages.Option]string)
 		// Create observe option
 		observeStr := r.Header.Get(string(messages.OBSERVE))
@@ -248,14 +259,15 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			return
 		}
 
-		err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env, options)
+		res, err := sendRequest(jsonData, requestName, r.Method, requestQuerys, env, options)
 		if err != nil {
 			fmt.Printf("dots_client.serverHandler -- %s", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write([]byte(err.Error()))
 		}
 
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(res.StatusCode.HttpCode())
+		w.Write(res.data)
 	}
 }
 
@@ -272,7 +284,7 @@ func isClientConfigRequest(requestName string) bool {
 /*
  * sendRequest is a function that sends requests to the server.
  */
-func sendRequest(jsonData []byte, requestName, method string, queryParams []string, env *task.Env, options map[messages.Option]string) (err error) {
+func sendRequest(jsonData []byte, requestName, method string, queryParams []string, env *task.Env, options map[messages.Option]string) (res Response, err error) {
 	if jsonData != nil {
 		err = common.ValidateJson(requestName, string(jsonData))
 		if err != nil {
@@ -289,11 +301,11 @@ func sendRequest(jsonData []byte, requestName, method string, queryParams []stri
 	case messages.DATA:
 		errorMsg := fmt.Sprintf("unsupported channel type error: %s", requestName)
 		log.Errorf("dots_client.sendRequest -- %s", errorMsg)
-		return errors.New(errorMsg)
+		return res, errors.New(errorMsg)
 	default:
 		errorMsg := fmt.Sprintf("unknown channel type error: %s", requestName)
 		log.Errorf("dots_client.sendRequest -- %s", errorMsg)
-		return errors.New(errorMsg)
+		return res, errors.New(errorMsg)
 	}
 
 	if jsonData != nil {
@@ -307,8 +319,8 @@ func sendRequest(jsonData []byte, requestName, method string, queryParams []stri
 	requestMessage.CreateRequest()
 	log.Infof("dots_client.main -- request message: %+v", requestMessage)
 
-	requestMessage.Send()
-	return
+	res = requestMessage.Send()
+	return res, nil
 }
 
 var activeConWg sync.WaitGroup
@@ -338,20 +350,6 @@ func getDefaultCertPath(path string) string {
 	return packageRootPath + "certs/"
 }
 
-func pingResponseHandler(_ *task.PingTask, pdu *libcoap.Pdu) {
-	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("Ping Ack")
-}
-
-func pingTimeoutHandler(_ *task.PingTask, env *task.Env) {
-	log.Info("Ping Timeout #", env.CurrentMissingHb())
-
-	if !env.IsHeartbeatAllowed() {
-		log.Debug("Exceeded missing_hb_allowed. Stop ping task...")
-		env.StopPing()
-
-		restartConnection(env)
-	}
-}
 
 func restartConnection (env *task.Env) {
 	log.Debug("Restart connection to server...")
@@ -362,22 +360,81 @@ func restartConnection (env *task.Env) {
 	}
 }
 
-var config *dots_config.SignalConfiguration
+/*
+ * Handle response from server with client environment
+ * parameter:
+ *  pdu   response pdu notification
+ *  env   the client environment data
+ */
+func handleResponse(env *task.Env, pdu *libcoap.Pdu) {
+    key := pdu.AsMapKey()
+    t, ok := env.Requests()[key]
+    if !ok {
+		// If existed token, handle notification
+		// Else handle forget notification
+        if env.IsTokenExist(string(pdu.Token)) {
+            handleNotification(env, nil, pdu)
+        } else {
+			observe, err := pdu.GetOptionIntegerValue(libcoap.OptionObserve)
+			if err != nil {
+				log.WithError(err).Warn("Failed to get observe option.")
+				return
+			}
+			if observe >= 0 && pdu.Type == libcoap.TypeNon {
+				log.Debug("Handle forget notification")
+				env.CoapSession().HandleForgetNotification(pdu)
+			} else {
+				log.Debugf("Unexpected incoming PDU: %+v", pdu)
+			}
+        }
+    } else if !t.IsStop() {
+        if pdu.Type != libcoap.TypeNon {
+            log.Debugf("Success incoming PDU (HandleResponse): %+v", pdu)
+        }
+        delete(env.Requests(), key)
+        t.Stop()
+        t.GetResponseHandler()(t, pdu, env)
+        // Reset current_missing_hb
+	    env.SetCurrentMissingHb(0)
+    }
+}
 
+/*
+ * Handle request timeout with client environment
+ * parameter:
+ *  pdu   response pdu notification
+ *  env   the client environment data
+ */
+func handleRequestTimeout(env *task.Env, sent *libcoap.Pdu) {
+    key := sent.AsMapKey()
+    t, ok := env.Requests()[key]
+
+    if !ok {
+        log.Info("Unexpected PDU: %v", sent)
+    } else {
+        t.Stop()
+
+        // Request timeout -> Counting up missing-hb
+        // Code = 0: Code of Ping task
+        if sent.Code == 0 {
+            env.SetCurrentMissingHb(env.GetCurrentMissingHb() + 1)
+            delete(env.Requests(), key)
+        } else {
+            log.Debugf("Session config request timeout")
+        }
+        t.GetTimeoutHandler()(t, env)
+    }
+}
+
+var config *dots_config.ClientSystemConfig
 /**
 * Load config file
 */
-func loadConfig(env *task.Env) error{
-	var err error
-	config,err = dots_config.LoadClientConfig(configFile)
-	if err != nil {
-		return err
-	}
-	log.Debugf("dots client starting with config: %# v", config)
-
-	env.SetMissingHbAllowed(config.MissingHbAllowed)
+func loadConfig(env *task.Env) {
+	env.SetMissingHbAllowed(config.DefaultSessionConfiguration.MissingHbAllowed)
 	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
-	env.SetRetransmitParams(config.MaxRetransmit, decimal.NewFromFloat(config.AckTimeout).Round(2), decimal.NewFromFloat(config.AckRandomFactor).Round(2))
+	env.SetRetransmitParams(config.DefaultSessionConfiguration.MaxRetransmit, decimal.NewFromFloat(config.DefaultSessionConfiguration.AckTimeout).Round(2),
+		decimal.NewFromFloat(config.DefaultSessionConfiguration.AckRandomFactor).Round(2))
 	env.SetIntervalBeforeMaxAge(config.IntervalBeforeMaxAge)
 	if config.InitialRequestBlockSize != nil && *config.InitialRequestBlockSize >= 0 {
 		env.SetInitialRequestBlockSize(config.InitialRequestBlockSize)
@@ -385,7 +442,6 @@ func loadConfig(env *task.Env) error{
 	if config.SecondRequestBlockSize != nil && *config.SecondRequestBlockSize >= 0 {
 		env.SetSecondRequestBlockSize(config.SecondRequestBlockSize)
 	}
-	return nil
 }
 
 func main() {
@@ -394,6 +450,14 @@ func main() {
 	flag.Parse()
 
 	common.SetUpLogger()
+
+	err := dots_config.LoadClientConfig(configFile)
+	if err != nil {
+		log.WithError(err).Errorf("LoadClientConfig() failed")
+		os.Exit(1)
+	}
+	config = dots_config.GetSystemConfig()
+	log.Debugf("dots client starting with config: %# v", config)
 
 	serverIPs, err := net.LookupIP(server)
 	if err != nil {
@@ -458,14 +522,14 @@ func main() {
 	srv := &http.Server{Handler: nil, ConnState: connectionStateChange}
 	go srv.Serve(l)
 
+	// Run restful api server to service external systems
+	address := config.ClientRestfulApiConfiguration.RestfulApiAddress + config.ClientRestfulApiConfiguration.RestfulApiPort
+	go restful_router.ListenRestfulApi(address, makeServerHandler(env))
+
 	// Load session configuration
-	errConf := loadConfig(env)
-	if errConf != nil {
-		log.Error("Load client config data error.")
-		return
-	}
+	loadConfig(env)
 	env.Run(task.NewPingTask(
-		time.Duration(config.HeartbeatInterval) * time.Second,
+		time.Duration(config.DefaultSessionConfiguration.HeartbeatInterval) * time.Second,
 		pingResponseHandler,
 		pingTimeoutHandler))
 loop:
@@ -488,7 +552,7 @@ func CheckReplacingSession(env *task.Env) {
 	if isReplace {
         loadConfig(env)
 		env.Run(task.NewPingTask(
-				time.Duration(config.HeartbeatInterval) * time.Second,
+				time.Duration(config.DefaultSessionConfiguration.HeartbeatInterval) * time.Second,
 				pingResponseHandler,
 				pingTimeoutHandler))
 	}

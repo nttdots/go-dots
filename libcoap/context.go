@@ -7,66 +7,25 @@ import "C"
 #cgo darwin LDFLAGS: -L /usr/local/opt/openssl@1.1/lib
 #include <coap2/coap.h>
 #include "callback.h"
-
-// Verify certificate data and set list of available ciphers for context
-// @param ctx     The CoAP context
-// @param setup_data  certificate data
-// @return            Return 1 for success, 0 for failure
-int verify_certificate(coap_context_t *ctx, coap_dtls_pki_t * setup_data) {
-    char* ciphers = "TLSv1.2:TLSv1.0:!PSK";
-    coap_openssl_context_t *context = (coap_openssl_context_t *)(ctx->dtls_context);
-    const char* ca_file = setup_data->pki_key.key.pem.ca_file;
-    const char* public_cert = setup_data->pki_key.key.pem.public_cert;
-
-    if (context->dtls.ctx) {
-        if (ca_file) {
-            SSL_CTX_set_verify(context->dtls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
-            if (0 == SSL_CTX_load_verify_locations(context->dtls.ctx, ca_file, NULL)) {
-                ERR_print_errors_fp(stderr);
-                coap_log(LOG_WARNING, "*** verify_certificate: DTLS: %s: Unable to load verify locations\n", ca_file);
-                return 0;
-            }
-        }
-
-        if (public_cert && public_cert[0]) {
-            if (0 == SSL_CTX_set_cipher_list(context->dtls.ctx, ciphers)){
-                ERR_print_errors_fp(stderr);
-                coap_log(LOG_WARNING, "*** verify_certificate: DTLS Unable to set ciphers %s \n",  ciphers);
-                return 0;
-            }
-        }
-    }
-
-    if (context->tls.ctx) {
-        if (ca_file) {
-            SSL_CTX_set_verify(context->tls.ctx, SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, NULL);
-            if (0 == SSL_CTX_load_verify_locations(context->tls.ctx, ca_file, NULL)) {
-                ERR_print_errors_fp(stderr);
-                coap_log(LOG_WARNING, "*** verify_certificate: TLS: %s: Unable to load verify locations\n", ca_file);
-                return 0;
-            }
-        }
-        if (public_cert && public_cert[0]) {
-            if (0 == SSL_CTX_set_cipher_list(context->tls.ctx, ciphers)){
-                ERR_print_errors_fp(stderr);
-                coap_log(LOG_WARNING, "*** verify_certificate: TLS Unable to set ciphers %s \n",  ciphers);
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
 */
 import "C"
 import "time"
+import "strings"
 import "unsafe"
+import "errors"
+import "crypto/x509"
+import "io/ioutil"
+import "encoding/pem"
+import "github.com/nttdots/go-dots/dots_client/config"
 import log "github.com/sirupsen/logrus"
+import cache "github.com/patrickmn/go-cache"
 
 type DtlsParam struct {
     CaFilename          *string
     CaPath              *string
     CertificateFilename *string
     PrivateKeyFilename  *string
+    PinnedCertificate   *config.PinnedCertificate
 }
 
 type Context struct {
@@ -77,6 +36,13 @@ type Context struct {
     eventHandler EventHandler
     dtls    *C.coap_dtls_pki_t
 }
+
+type ContextPeer int
+
+const (
+	CLIENT_PEER ContextPeer = iota
+	SERVER_PEER
+)
 
 var contexts = make(map[*C.coap_context_t] *Context)
 
@@ -106,7 +72,37 @@ func NewContext(addr *Address) *Context {
     }
 }
 
-func NewContextDtls(addr *Address, dtls *DtlsParam) *Context {
+//export export_validate_cn_call_back
+func export_validate_cn_call_back(presentIdentifier *C.char, depth C.uint, referenceIdentifierList *C.coap_strlist_t) C.int {
+    isMatch := false
+    keyCache := C.GoString(presentIdentifier)
+    presentDNS, presentServiceType := SplitIdentifier(keyCache)
+    for {
+       if referenceIdentifierList == nil { break }
+       cnTemp := referenceIdentifierList.str.toString()
+       referenceDNS, referenceServiceType := SplitIdentifier(*cnTemp)
+       if strings.Compare(presentDNS, referenceDNS) == 0 && strings.Compare(presentServiceType, referenceServiceType) == 0 {
+            isMatch = true
+            break
+        }
+       referenceIdentifierList = referenceIdentifierList.next
+    }
+
+    // Case #1: Match Found
+    if isMatch {
+        return 1
+    }
+
+    // Case #2: No Match Found, Pinned Certificate
+    if _, found := caches.Get(keyCache); found {
+        return 1
+    }
+
+    // Case #3: No Match Found, No Pinned Certificate
+    return 0
+}
+
+func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
     var caddr *C.coap_address_t = nil
     if addr != nil {
       caddr = &addr.value
@@ -132,8 +128,21 @@ func NewContextDtls(addr *Address, dtls *DtlsParam) *Context {
         setupData.allow_no_crl            = 1
         setupData.allow_expired_crl       = 1
 
-        setupData.validate_cn_call_back   = nil
-        setupData.cn_call_back_arg        = nil
+        if ctxPeer == int(CLIENT_PEER) {
+            // Set up data for the client
+            cnArg, err := GetDomainNameListFromCertificateFile(dtls.CertificateFilename)
+            if err != nil {
+                log.Errorf("Failed to get domain name list from certificate file, error = %+v", err)
+                return nil
+            }
+            PinnedCertificate(dtls.PinnedCertificate, cnArg)
+            setupData.validate_cn_call_back   = C.coap_dtls_cn_callback_t(C.validate_cn_call_back)
+            setupData.cn_call_back_arg        = unsafe.Pointer(cnArg)
+        } else {
+            // Set up data for the server
+            setupData.validate_cn_call_back   = nil
+            setupData.cn_call_back_arg        = nil
+        }
         setupData.validate_sni_call_back  = nil
         setupData.sni_call_back_arg       = nil
 
@@ -231,13 +240,85 @@ func (context *Context) EnableResourceDirty(query string) (resource *Resource) {
 }
 
 /*
- * Check if there is resource that removable => remove it
+ * Get domain name list from the certificate file
  */
-func (context *Context) CheckRemovableResources() {
-    for _, resource := range resources {
-        if resource.isRemovable == true {
-            log.Debugf("Delete the sub-resource (uri-path=%+v)", resource.UriPath())
-            context.DeleteResource(resource)
+func GetDomainNameListFromCertificateFile(certFileName *string) (*C.coap_strlist_t, error) {
+    var head *C.coap_strlist_t
+    var tail *C.coap_strlist_t
+
+    r, err := ioutil.ReadFile(*certFileName)
+    if err != nil {
+        return nil, err
+    }
+    block, _ := pem.Decode(r)
+    if block == nil {
+        err := errors.New("PEM data is not found or wrong PEM format")
+        return nil, err
+    }
+    cert, err := x509.ParseCertificate(block.Bytes)
+    if err != nil {
+        return nil, err
+    }
+    dnsList := cert.DNSNames
+    dnsList = append(dnsList, cert.Subject.CommonName)
+
+    for i := 0; i < len(dnsList); i++ {
+        cn := C.coap_common_name(head, tail, C.CString(dnsList[i]))
+        if head == nil {
+            head, tail = cn, cn
+        } else {
+            tail = cn
         }
     }
+    return head, nil
+}
+
+/*
+ * Splitting the identifier into the DNS domain name portion and the application service type portion
+ *
+ * The CN-ID/ DNS-ID includes the DNS domain name portion, but doesn't include the application service type portion
+ * The SRV-ID includes both the DNS domain name portion and the application service type portion
+ */
+func SplitIdentifier(identifier string) (dns string, serviceType string) {
+    serviceSRV := "_"
+    identifier = strings.ToLower(identifier)
+    if strings.Index(identifier, serviceSRV) == 0 {
+        // Handle split the identifier which is SRV-ID
+        identifierSplit :=  strings.SplitN(identifier, ".", 2)
+        serviceType = identifierSplit[0]
+        dns         = identifierSplit[1]
+    } else {
+        // Handle split the identifier which is CN-ID/DNS-ID
+        serviceType = ""
+        dns         = identifier
+    }
+    return
+}
+
+/*
+ * Pinned certificate into the cache
+ */
+func PinnedCertificate(pinCert *config.PinnedCertificate, cnArg *C.coap_strlist_t) {
+    // Create new cache
+    CreateNewCache(expirationDefault, cleanupIntervalDefault)
+
+    // In file config, the pinned certificate doesn't exist
+    if pinCert == nil {
+        return
+    }
+
+    presentIDList := strings.Split(pinCert.PresentIdentifierList, ",")
+    for {
+        if cnArg == nil { break }
+        // If the 'referenceIdentifier' is get from the config file which equals with one of reference identifers, the client will pin certificate into cache
+        if pinCert.ReferenceIdentifier == *cnArg.str.toString() {
+            log.Debugf("The pinned certificate with reference identifier = %+v is saved into cache", pinCert.ReferenceIdentifier)
+            for _, presentID := range presentIDList {
+                caches.Set(strings.TrimSpace(strings.ToLower(presentID)), "",cache.NoExpiration)
+            }
+            return
+        }
+        cnArg = cnArg.next
+    }
+    log.Warn("The configured reference identifer doesn't match with any identifiers in client's certificate")
 }

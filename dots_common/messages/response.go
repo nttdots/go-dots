@@ -15,7 +15,6 @@ type MitigationResponse struct {
 type MitigationScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	Scopes []ScopeStatus `json:"scope" codec:"2"`
-	ClientDomainIdentifier string `json:"cdid" codec:"3,omitempty"`
 }
 
 type PortRangeResponse struct {
@@ -24,17 +23,27 @@ type PortRangeResponse struct {
 	UpperPort int `json:"upper-port" codec:"9,omitempty"`
 }
 
+type ICMPTypeRangeResponse struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	LowerType int `json:"lower-type" codec:"32771,omitempty"`
+	UpperType int `json:"upper-type" codec:"32772,omitempty"`
+}
+
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mid"    codec:"5"`
-	MitigationStart float64 `json:"mitigation-start" codec:"15,omitempty"`
+	MitigationStart uint64 `json:"mitigation-start" codec:"15,omitempty"`
 	TargetPrefix    []string `json:"target-prefix" codec:"6,omitempty"`
 	TargetPortRange []PortRangeResponse `json:"target-port-range" codec:"7,omitempty"`
 	TargetProtocol  []int  `json:"target-protocol"   codec:"10,omitempty"`
 	FQDN            []string `json:"target-fqdn" codec:"11,omitempty"`
 	URI             []string `json:"target-uri" codec:"12,omitempty"`
 	AliasName       []string `json:"alias-name" codec:"13,omitempty"`
-	TriggerMitigation bool `json:"trigger-mitigation" codec:"45"`
+	SourcePrefix    []string `json:"ietf-dots-call-home:source-prefix" codec:"32768,omitempty"`
+	SourcePortRange []PortRangeResponse`json:"ietf-dots-call-home:source-port-range" codec:"32769,omitempty"`
+	SourceICMPTypeRange []ICMPTypeRangeResponse`json:"ietf-dots-call-home:source-icmp-type-range" codec:"32770,omitempty"`
+	AclList         []ACL    `json:"acl-list" codec:"22,omitempty"`
+	TriggerMitigation bool `json:"trigger-mitigation" codec:"45,omitempty"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
 	Status          int   `json:"status"           codec:"16"`
 	BytesDropped    int   `json:"bytes-dropped"    codec:"25"`
@@ -161,7 +170,7 @@ func (m *MitigationResponse) String() (result string) {
 	for key, scope := range m.MitigationScope.Scopes {
 		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
 		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
-		result += fmt.Sprintf("     \"%s\": %f\n", "mitigation-start", scope.MitigationStart)
+		result += fmt.Sprintf("     \"%s\": %d\n", "mitigation-start", scope.MitigationStart)
 		for k, v := range scope.TargetPrefix {
 			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-prefix", k+1, v)
 		}
@@ -181,6 +190,26 @@ func (m *MitigationResponse) String() (result string) {
 		}
 		for k, v := range scope.AliasName {
 			result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
+		}
+		for k, v := range scope.SourcePrefix {
+			result += fmt.Sprintf("     \"%s[%d]\": %s\n","ietf-dots-call-home:source-prefix", k+1, v)
+		}
+		for k, v := range scope.SourcePortRange {
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-call-home:source-port-range", k+1)
+			result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", v.LowerPort)
+			result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", v.UpperPort)
+		}
+		for k, v := range scope.SourceICMPTypeRange {
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-call-home:source-icmp-type-range", k+1)
+			result += fmt.Sprintf("       \"%s\": %d\n", "lower-type", v.LowerType)
+			result += fmt.Sprintf("       \"%s\": %d\n", "upper-type", v.UpperType)
+		}
+		for k, v := range scope.AclList {
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "acl-list", k+1)
+			result += fmt.Sprintf("       \"%s\": %s\n", "acl-name", v.AclName)
+			if v.ActivationType != nil {
+				result += fmt.Sprintf("       \"%s\": %d\n", "activation-type", *v.ActivationType)
+			}
 		}
 		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
 		result += fmt.Sprintf("     \"%s\": %d\n", "status", scope.Status)

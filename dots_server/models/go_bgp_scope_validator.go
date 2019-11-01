@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -24,15 +25,16 @@ type goBgpScopeValidator struct {
  * parameters:
  *   customer the customer
  *	 scope mitigation request scope
- * return: bool
- *   true  uri value is valid
- *   false uri value is invalid
+ * return: string
+ *   errMsg uri value is invalid
+ *   ""     uri value is valid
  */
-func (v *goBgpScopeValidator) ValidateUri(customer *Customer, scope *MitigationScope) (bool) {
+func (v *goBgpScopeValidator) ValidateUri(customer *Customer, scope *MitigationScope) (errMsg string) {
 	// Currently, go-dots does not support to validate target uri => return bad request if any target-uri that is presented
 	if len(scope.URI.List()) != 0 {
-		log.Warnf("invalid uri: %+v", scope.URI.List())
-		return false
+		errMsg = fmt.Sprintf("invalid uri: %+v", scope.URI.List())
+		log.Warn(errMsg)
+		return
 	}
-	return true
+	return
 }

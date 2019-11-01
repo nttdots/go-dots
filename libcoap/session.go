@@ -204,3 +204,14 @@ func (session *Session) SetSessionConfig(missingHbAllowed int, maxRetransmit int
     C.coap_handle_event(context.ptr, C.COAP_EVENT_DTLS_CLOSED, session.ptr)
     C.coap_session_disconnected(session.ptr, C.COAP_NACK_TLS_FAILED)
 }
+
+/*
+ * Handle forget notification
+ * Send RST message to the dots_server to remove the observe out of resource
+ */
+func (session *Session) HandleForgetNotification(pdu *Pdu) {
+    pdut, err := pdu.toC(session)
+    if err == nil {
+        C.coap_send_rst(session.ptr, pdut)
+    }
+}

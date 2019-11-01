@@ -1,22 +1,26 @@
 package models
 
 import(
+	"fmt"
+
+	"github.com/nttdots/go-dots/dots_common/messages"
 	log "github.com/sirupsen/logrus"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
-	"github.com/nttdots/go-dots/dots_common/messages"
 	types "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
 // The mitigation scope validator interface
 type mitigationScopeValidator interface {
-	ValidateScope(MessageEntity, *Customer, *types.Aliases) (ret bool)
-	ValidateLifetime(int) (bool)
-	ValidatePrefix(*Customer, *MitigationScope) (bool)
-	ValidateFqdn(*Customer, *MitigationScope) (bool)
-	ValidateUri(*Customer, *MitigationScope) (bool)
-	ValidatePortRange([]PortRange) (bool)
-	ValidateProtocol(SetInt) (bool)
-	ValidateAliasName(SetString, *types.Aliases) (bool)
+	ValidateScope(MessageEntity, *Customer, *types.Aliases) (string)
+	ValidateLifetime(int) (string)
+	ValidatePrefix(*Customer, *MitigationScope) (string)
+	ValidateFqdn(*Customer, *MitigationScope) (string)
+	ValidateUri(*Customer, *MitigationScope) (string)
+	ValidatePortRange([]PortRange) (string)
+	ValidateProtocol(SetInt) (string)
+	ValidateAliasName(SetString, *types.Aliases) (string)
+	ValidateSourcePrefix(*Customer, *MitigationScope) (string)
+	ValidateSourceICMPTypeRange([]ICMPTypeRange) (string)
 	CheckOverlap(*MitigationScope, *MitigationScope, bool) (bool, *ConflictInformation, error)
 }
 
@@ -52,13 +56,14 @@ type mitigationScopeValidatorBase struct {
   5. Check if the protocol values are invalid
   6. Check if the alias-name values are invalid
 */
-func (v *mitigationScopeValidatorBase) ValidateScope(m MessageEntity, c *Customer, aliases *types.Aliases) (ret bool) {
+func (v *mitigationScopeValidatorBase) ValidateScope(m MessageEntity, c *Customer, aliases *types.Aliases) (errMsg string) {
 
 	if mc, ok := m.(*MitigationScope); ok {
 		// Must include target information in mitigation request
 		if len(mc.TargetPrefix) == 0 && len(mc.FQDN) == 0 && len(mc.URI) == 0 && len(mc.AliasName) == 0 {
-			log.Warn("At least one of the attributes 'target-prefix','target-fqdn','target-uri', or 'alias-name' MUST be present.")
-			return false
+			errMsg = fmt.Sprint("At least one of the attributes 'target-prefix','target-fqdn','target-uri', or 'alias-name' MUST be present.")
+			log.Warn(errMsg)
+			return
 		}
 
 		log.Printf("addressrange: %+v", c.CustomerNetworkInformation.AddressRange)
@@ -67,13 +72,64 @@ func (v *mitigationScopeValidatorBase) ValidateScope(m MessageEntity, c *Custome
 		validator := GetMitigationScopeValidator(v.blockerType)
 
 		// Validate data inside mitigation request scope
-		return v.ValidateLifetime(mc.Lifetime) && validator.ValidatePrefix(c, mc) && validator.ValidateFqdn(c, mc) && validator.ValidateUri(c, mc) &&
-		       validator.ValidatePortRange(mc.TargetPortRange) && validator.ValidateProtocol(mc.TargetProtocol) && validator.ValidateAliasName(mc.AliasName, aliases)
+		errMsg = v.ValidateLifetime(mc.Lifetime)
+		if errMsg != "" {
+			return
+		}
 
+		errMsg = validator.ValidatePrefix(c, mc)
+		if errMsg != "" {
+			return
+		}
+
+		errMsg = validator.ValidateFqdn(c, mc)
+		if errMsg != "" {
+			return
+		}
+
+		errMsg = validator.ValidateUri(c, mc)
+		if errMsg != "" {
+			return
+		}
+
+		errMsg = validator.ValidatePortRange(mc.TargetPortRange)
+		if errMsg != "" {
+			return
+		}
+
+		errMsg = validator.ValidateProtocol(mc.TargetProtocol)
+		if errMsg != "" {
+			return
+		}
+
+		errMsg = validator.ValidateAliasName(mc.AliasName, aliases)
+		if errMsg != ""{
+			return
+		}
+
+		// Validated source-prefix of the signal channel call home
+		errMsg = validator.ValidateSourcePrefix(c, mc)
+		if errMsg != "" {
+			return
+		}
+
+		// Validated source-port of signal channel call home
+		errMsg = validator.ValidatePortRange(mc.SourcePortRange)
+		if errMsg != "" {
+			return
+		}
+
+		// Validated source-icmp-type of the signal channel call home
+		errMsg = validator.ValidateSourceICMPTypeRange(mc.SourceICMPTypeRange)
+		if errMsg != "" {
+			return
+		}
+		return
 	} else {
 		// wrong type.
-		log.Warnf("wrong type: %T", m)
-		return false
+		errMsg = fmt.Sprintf("wrong type: %T", m)
+		log.Warn(errMsg)
+		return
 	}
 }
 
@@ -230,16 +286,17 @@ func (v *mitigationScopeValidatorBase) CheckOverlap(requestScope *MitigationScop
  * Check if the mitigation lifetime is less than 0 or different -1 (indefinite lifetime)
  * parameters:
  *	 lifetime the mitigation lifetime
- * return: bool
- *   true  lifetime value is valid
- *   false lifetime value is invalid
+ * return: string
+ *   errMsg lifetime value is invalid
+ *   ""     lifetime value is valid
  */
-func (v *mitigationScopeValidatorBase) ValidateLifetime(lifetime int) (bool) {
+func (v *mitigationScopeValidatorBase) ValidateLifetime(lifetime int) (errMsg string) {
 	if lifetime <= 0 && lifetime != int(messages.INDEFINITE_LIFETIME) {
-		log.Warnf("invalid lifetime: %+v.", lifetime)
-		return false
+		errMsg = fmt.Sprintf("invalid lifetime: %+v.", lifetime)
+		log.Warn(errMsg)
+		return
 	}
-	return true
+	return
 }
 
 /*
@@ -247,17 +304,24 @@ func (v *mitigationScopeValidatorBase) ValidateLifetime(lifetime int) (bool) {
  * parameters:
  *   customer the customer
  *	 scope mitigation request scope
- * return: bool
- *   true  prefix value is valid
- *   false prefix value is invalid
+ * return: string
+ *   errMsg prefix value is invalid
+ *   ""     prefix value is valid
  */
-func (v *mitigationScopeValidatorBase) ValidatePrefix(customer *Customer, scope *MitigationScope) (bool) {
+func (v *mitigationScopeValidatorBase) ValidatePrefix(customer *Customer, scope *MitigationScope) (errMsg string) {
 	targets := scope.GetPrefixAsTarget()
-	ret := isValid(targets) && isInCustomerDomain(customer, targets)
-	if ret {
-		scope.TargetList = append(scope.TargetList, targets...)
+	errMsg = isValid(targets)
+	if errMsg != "" {
+		return
 	}
-	return ret
+
+	errMsg = isInCustomerDomain(customer, targets)
+	if errMsg != "" {
+		return
+	}
+
+	scope.TargetList = append(scope.TargetList, targets...)
+	return
 }
 
 /*
@@ -265,21 +329,28 @@ func (v *mitigationScopeValidatorBase) ValidatePrefix(customer *Customer, scope 
  * parameters:
  *   customer the customer
  *	 scope mitigation request scope
- * return: bool
- *   true  fqdn value is valid
- *   false fqdn value is invalid
+ * return: string
+ *   errMsg fqdn value is invalid
+ *   ""     fqdn value is valid
  */
-func (v *mitigationScopeValidatorBase) ValidateFqdn(customer *Customer, scope *MitigationScope) (bool) {
+func (v *mitigationScopeValidatorBase) ValidateFqdn(customer *Customer, scope *MitigationScope) (errMsg string) {
 	targets, err := scope.GetFqdnAsTarget()
 	if err != nil {
 		log.Warnf("failed to parse fqnd to prefix: %+v", err)
-		return false
+		return
 	}
-	ret := isValid(targets) && isInCustomerDomain(customer, targets)
-	if ret {
-		scope.TargetList = append(scope.TargetList, targets...)
+	errMsg = isValid(targets)
+	if errMsg != "" {
+		return
 	}
-	return ret
+
+	errMsg = isInCustomerDomain(customer, targets)
+	if errMsg != "" {
+		return
+	}
+
+	scope.TargetList = append(scope.TargetList, targets...)
+	return
 }
 
 /*
@@ -287,61 +358,71 @@ func (v *mitigationScopeValidatorBase) ValidateFqdn(customer *Customer, scope *M
  * parameters:
  *   customer the customer
  *	 scope mitigation request scope
- * return: bool
- *   true  uri value is valid
- *   false uri value is invalid
+ * return: string
+ *   errMsg uri value is invalid
+ *   ""     uri value is valid
  */
-func (v *mitigationScopeValidatorBase) ValidateUri(customer *Customer, scope *MitigationScope) (bool) {
+func (v *mitigationScopeValidatorBase) ValidateUri(customer *Customer, scope *MitigationScope) (errMsg string) {
 	targets, err := scope.GetUriAsTarget()
 	if err != nil {
 		log.Warnf("failed to parse uri to prefix: %+v", err)
-		return false
+		return
 	}
-	ret := isValid(targets) && isInCustomerDomain(customer, targets)
-	if ret {
-		scope.TargetList = append(scope.TargetList, targets...)
+	errMsg = isValid(targets)
+	if errMsg != "" {
+		return
 	}
-	return ret
+
+	errMsg = isInCustomerDomain(customer, targets)
+	if errMsg != "" {
+		return
+	}
+
+	scope.TargetList = append(scope.TargetList, targets...)
+	return
 }
 
 /*
  * Check if the lower-port is not presented or the upper-port is greater than the lower-port
  * parameters:
  *   targetPortRanges list if target port-range
- * return: bool
- *   true  port-range value is valid
- *   false port-range value is invalid
+ * return: string
+ *   errMsg port-range value is invalid
+ *   ""     port-range value is valid
  */
-func (v *mitigationScopeValidatorBase) ValidatePortRange(targetPortRanges []PortRange) (bool) {
+func (v *mitigationScopeValidatorBase) ValidatePortRange(targetPortRanges []PortRange) (errMsg string) {
 	for _, portRange := range targetPortRanges {
 		if portRange.LowerPort < 0 || 0xffff < portRange.LowerPort || portRange.UpperPort < 0 || 0xffff < portRange.UpperPort {
-			log.Warnf("invalid port-range: lower-port: %+v, upper-port: %+v", portRange.LowerPort, portRange.UpperPort)
-			return false
+			errMsg = fmt.Sprintf("invalid port-range: lower-port: %+v, upper-port: %+v", portRange.LowerPort, portRange.UpperPort)
+			log.Warn(errMsg)
+			return
 		} else if portRange.UpperPort < portRange.LowerPort  {
-			log.Warnf("upper-port: %+v is less than lower-port: %+v", portRange.UpperPort, portRange.LowerPort)
-			return false
+			errMsg = fmt.Sprintf("upper-port: %+v is less than lower-port: %+v", portRange.UpperPort, portRange.LowerPort) 
+			log.Warn(errMsg)
+			return
 		}
 	}
-	return true
+	return
 }
 
 /*
  * Check if the target protocol is less than 0 or greater than 255 
  * parameters:
  *   targetPorotocols  list if target protocol
- * return: bool
- *   true  protocol value is valid
- *   false protocol value is invalid
+ * return: string
+ *   errMsg protocol value is invalid
+ *   ""     protocol value is valid
  */
-func (v *mitigationScopeValidatorBase) ValidateProtocol(targetPorotocols SetInt) (bool) {
+func (v *mitigationScopeValidatorBase) ValidateProtocol(targetPorotocols SetInt) (errMsg string) {
 	// Validate protocol value: follow to Protocol Numbers of IANA in 2011
 	for _, protocol := range targetPorotocols.List() {
 		if protocol < 0 || protocol > 255 {
-			log.Warnf("invalid protocol: %+v", protocol)
-			return false
+			errMsg = fmt.Sprintf("invalid protocol: %+v", protocol)
+			log.Warn(errMsg)
+			return
 		}
 	}
-	return true
+	return
 }
 
 /*
@@ -349,14 +430,14 @@ func (v *mitigationScopeValidatorBase) ValidateProtocol(targetPorotocols SetInt)
  * parameters:
  *   aliasNames  list of alias-name
  *   aliases     list of alias data from datachannel
- * return: bool
- *   true  alias-name value is valid
- *   false alias-name value is invalid
+ * return: string
+ *   errMsg alias-name value is invalid
+ *   ""     alias-name value is valid
  */
-func (v *mitigationScopeValidatorBase) ValidateAliasName(aliasNames SetString, aliases *types.Aliases) (bool) {
+func (v *mitigationScopeValidatorBase) ValidateAliasName(aliasNames SetString, aliases *types.Aliases) (errMsg string) {
 	// Skip check validate alias-name in case aliases value is nil (it is set empty in case there is no alias with name in data channel)
 	if aliases == nil {
-		return true
+		return
 	}
 
 	for _, name := range aliasNames.List() {
@@ -365,11 +446,12 @@ func (v *mitigationScopeValidatorBase) ValidateAliasName(aliasNames SetString, a
 			if name == alias.Name { isRegistered = true }
 		}
 		if !isRegistered {
-			log.Warnf("invalid alias-name: %+v", name)
-			return false
+			errMsg = fmt.Sprintf("invalid alias-name: %+v", name)
+			log.Warn(errMsg)
+			return
 		}
 	}
-	return true
+	return
 }
 
 /*
@@ -377,35 +459,86 @@ func (v *mitigationScopeValidatorBase) ValidateAliasName(aliasNames SetString, a
  * parameters:
  *   customer the customer
  *   targets  list of mitigation target address
- * return:
- *   true  all targets are in customer's domain
- *   false some of targets is not in customer's domain
+ * return: string
+ *   ""     all targets are in customer's domain
+ *   errMsg some of targets is not in customer's domain
  */
-func isInCustomerDomain(customer *Customer, targets []Target) bool {
+func isInCustomerDomain(customer *Customer, targets []Target) (errMsg string) {
 	// Are the destination_ip specified in these MitigationScopes are included by the customer AddressRange?
 	for _, target := range targets {
 		if !customer.CustomerNetworkInformation.AddressRange.Includes(target.TargetPrefix) {
-			log.Warnf("invalid %+v: %+v", target.TargetType, target.TargetValue)
-			return false
+			errMsg = fmt.Sprintf("invalid %+v: %+v", target.TargetType, target.TargetValue)
+			log.Warn(errMsg)
+			return
 		}
 	}
-	return true
+	return
 }
 
 /*
  * Check if the target prefix include multicast, broadcast or loopback ip address
  * parameters:
  *   targets  list of mitigation target address
- * return:
- *   true  all targets are valid
- *   false some of targets is invalid
+ * return: string
+ *   ""     all targets are valid
+ *   errMsg some of targets is invalid
  */
-func isValid(targets []Target) bool {
+func isValid(targets []Target) (errMsg string) {
 	for _, target := range targets {
 		if target.TargetPrefix.IsMulticast() || target.TargetPrefix.IsBroadCast() || target.TargetPrefix.IsLoopback() {
-			log.Warnf("invalid %+v: %+v", target.TargetType, target.TargetValue)
-			return false
+			errMsg = fmt.Sprintf("invalid %+v: %+v", target.TargetType, target.TargetValue)
+			log.Warn(errMsg)
+			return
 		}
 	}
-	return true
+	return
+}
+
+/*
+ * Check if the source prefix include multicast, broadcast or loopback ip address
+ * Check if the target prefix is not included in customer's domain address
+ * parameters:
+ *   targets  list of mitigation source address
+ * return: string
+ *   ""     all targets are valid
+ *   errMsg some of targets is invalid
+ */
+func (v *mitigationScopeValidatorBase) ValidateSourcePrefix(customer *Customer, scope *MitigationScope) (errMsg string) {
+	for _,srcPrefix := range scope.SourcePrefix {
+		if srcPrefix.IsMulticast() || srcPrefix.IsBroadCast() || srcPrefix.IsLoopback() {
+			errMsg = fmt.Sprintf("invalid source prefix: %+v", srcPrefix.Addr)
+			log.Warn(errMsg)
+			return
+		}
+		if !customer.CustomerNetworkInformation.AddressRange.Includes(srcPrefix) {
+			errMsg = fmt.Sprintf("invalid source prefix: %+v", srcPrefix.Addr)
+			log.Warn(errMsg)
+			return
+		}
+	}
+	return
+}
+
+/*
+ * Check the upper-type is greater than the lower-type
+ * parameters:
+ *   icmpTypeRanges list if source icmp-type-range
+ * return: string
+ *   errMsg icmp-type-range value is invalid
+ *   ""     icmp-type-range value is valid
+ */
+ func (v *mitigationScopeValidatorBase) ValidateSourceICMPTypeRange(icmpTypeRanges []ICMPTypeRange) (errMsg string) {
+	for _, typeRange := range icmpTypeRanges {
+		if typeRange.LowerType < 0 || typeRange.LowerType > 255 || typeRange.UpperType < 0 || typeRange.UpperType > 255 {
+			errMsg = fmt.Sprintf("invalid icmp-type-range: lower-type: %+v, upper-type: %+v", typeRange.LowerType, typeRange.UpperType)
+			log.Warn(errMsg)
+			return
+		}
+		if typeRange.UpperType < typeRange.LowerType  {
+			errMsg = fmt.Sprintf("upper-type: %+v is less than lower-type: %+v", typeRange.UpperType, typeRange.LowerType)
+			log.Warn(errMsg)
+			return
+		}
+	}
+	return
 }

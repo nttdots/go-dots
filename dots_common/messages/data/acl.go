@@ -437,6 +437,13 @@ func (v *aclValidatorBase) ValidateTCP(name string, matches *types.Matches) (boo
       errorMsg := fmt.Sprintf("Body Data Error : Invalid 'destination-port' (%v) at acl 'name'(%v)", *tcp.DestinationPort, name)
       return false, errorMsg
     }
+
+    // 'flags' and 'FlagsBitmask' must not set these fields in the same request
+    if tcp.Flags != nil && tcp.FlagsBitmask != nil {
+      log.Errorf("Only one of 'flags' and 'FlagsBitmask' is allowed at acl 'name' = %+v", name)
+      errorMsg := fmt.Sprintf("Body Data Error : Only one of 'flags' and 'FlagsBitmask' is allowed at acl 'name' (%v)", name)
+      return false, errorMsg
+    }
   }
   return true, ""
 }

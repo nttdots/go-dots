@@ -30,9 +30,6 @@ type Error struct{
   ErrorType     ErrType `yang:"nonconfig" json:"error-type"`
   ErrorTag      ErrTag  `yang:"nonconfig" json:"error-tag"`
   ErrorMessage  string  `yang:"nonconfig" json:"error-message"`
-  //ErrorAppTag string  `yang:"nonconfig" json:"error-app-tag"`   //TODO : support later
-  //ErrorPath   instance-identifier  `yang:"nonconfig" json:"error-path"`   //TODO : support later
-  //ErrorInfo   string  `yang:"nonconfig" json:"error-info"`   //TODO : support later
 }
 
 const (

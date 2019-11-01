@@ -1,18 +1,14 @@
 package task
 
 import (
-	"github.com/shopspring/decimal"
-	"fmt"
-	"github.com/nttdots/go-dots/libcoap"
-	log "github.com/sirupsen/logrus"
+    "time"
     "reflect"
-    client_message "github.com/nttdots/go-dots/dots_client/messages"
-    "bytes"
-    "strings"
-	"encoding/hex"
-	"github.com/ugorji/go/codec"
-    "github.com/nttdots/go-dots/dots_common"
+    "strconv"
+    "github.com/shopspring/decimal"
+    "github.com/nttdots/go-dots/libcoap"
     "github.com/nttdots/go-dots/dots_common/messages"
+    log "github.com/sirupsen/logrus"
+    client_message "github.com/nttdots/go-dots/dots_client/messages"
 )
 
 type Env struct {
@@ -25,8 +21,8 @@ type Env struct {
     current_missing_hb int
     pingTask *PingTask
     sessionConfigTask *SessionConfigTask
-    tokens   map[string][]byte
-    blocks   map[int][]byte
+    requestQueries   map[string] *RequestQuery
+    responseBlocks   map[string] *libcoap.Pdu
 
     sessionConfigMode string
     intervalBeforeMaxAge int
@@ -35,6 +31,11 @@ type Env struct {
 
     // The new connected session that will replace the current
     replacingSession *libcoap.Session
+}
+
+type RequestQuery struct {
+    Query              string
+    CountMitigation    *int
 }
 
 func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
@@ -47,8 +48,8 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         0,
         nil,
         nil,
-        make(map[string][]byte),
-        make(map[int][]byte),
+        make(map[string] *RequestQuery),
+        make(map[string] *libcoap.Pdu),
         string(client_message.IDLE),
         0,
         nil,
@@ -65,8 +66,8 @@ func (env *Env) RenewEnv(context *libcoap.Context, session *libcoap.Session) *En
     env.current_missing_hb = 0
     env.pingTask = nil
     env.sessionConfigTask = nil
-    env.tokens = make(map[string][]byte)
-    env.blocks = make(map[int][]byte)
+    env.requestQueries = make(map[string] *RequestQuery)
+    env.responseBlocks = make(map[string] *libcoap.Pdu)
     env.replacingSession = nil
     return env
 }
@@ -87,6 +88,10 @@ func (env *Env) SetSessionConfigMode(sessionConfigMode string) {
 
 func (env *Env) SessionConfigMode() string {
     return env.sessionConfigMode
+}
+
+func (env *Env) SessionConfigTask() *SessionConfigTask {
+    return env.sessionConfigTask
 }
 
 func (env *Env) SetIntervalBeforeMaxAge(intervalBeforeMaxAge int) {
@@ -121,12 +126,12 @@ func (env *Env) Requests() (map[string] *MessageTask) {
     return env.requests
 }
 
-func (env *Env) Blocks() (map[int][]byte) {
-    return env.blocks
+func (env *Env) Blocks() (map[string] *libcoap.Pdu) {
+    return env.responseBlocks
 }
 
-func (env *Env) GetBlockData(eTag int) []byte {
-    return env.blocks[eTag]
+func (env *Env) GetBlockData(key string) *libcoap.Pdu {
+    return env.responseBlocks[key]
 }
 
 func (env *Env) Run(task Task) {
@@ -137,7 +142,7 @@ func (env *Env) Run(task Task) {
 
     switch t := task.(type) {
     case *MessageTask:
-        key := asMapKey(t.message)
+        key := t.message.AsMapKey()
         env.requests[key] = t
 
     case *PingTask:
@@ -147,61 +152,6 @@ func (env *Env) Run(task Task) {
         env.sessionConfigTask = t
     }
     go task.run(env.channel)
-}
-
-func (env *Env) HandleResponse(pdu *libcoap.Pdu) {
-    key := asMapKey(pdu)
-    t, ok := env.requests[key]
-    isLastBlock := false
-    if !ok {
-        if env.isTokenExist(pdu.Token) {
-            log.Debugf("Success incoming PDU(NotificationResponse): %+v", pdu)
-            LogNotification(pdu)
-        } else {
-            log.Debugf("Unexpected incoming PDU: %+v", pdu)
-        }
-    } else if !t.isStop {
-        if pdu.Code == libcoap.ResponseContent {
-            blockValue, err := pdu.GetOptionIntegerValue(libcoap.OptionBlock2)
-            if err != nil {
-                log.WithError(err).Warn("Get block2 option value failed.")
-            }
-            block := libcoap.IntToBlock(int(blockValue))
-            if (block != nil && block.M == libcoap.LAST_BLOCK) || block == nil {
-                isLastBlock = true
-            }
-        }
-
-        if pdu.Code != libcoap.ResponseContent || pdu.Type != libcoap.TypeNon || isLastBlock  {
-            log.Debugf("Success incoming PDU(HandleResponse): %+v", pdu)
-        }
-        delete(env.requests, key)
-        t.stop()
-        t.responseHandler(t, pdu)
-        // Reset current_missing_hb
-	    env.current_missing_hb = 0
-    }
-}
-
-func (env *Env) HandleTimeout(sent *libcoap.Pdu) {
-    key := asMapKey(sent)
-    t, ok := env.requests[key]
-
-    if !ok {
-        log.Info("Unexpected PDU: %v", sent)
-    } else {
-        t.stop()
-
-        // Couting to missing-hb
-        // 0: Code of Ping task
-        if sent.Code == 0 {
-            env.current_missing_hb = env.current_missing_hb + 1
-            delete(env.requests, key)
-        } else {
-            log.Debugf("Session config request timeout")
-        }
-        t.timeoutHandler(t, env.requests)
-    }
 }
 
 func (env *Env) CoapContext() *libcoap.Context {
@@ -216,13 +166,7 @@ func (env *Env) EventChannel() chan Event {
     return env.channel
 }
 
-func asMapKey(pdu *libcoap.Pdu) string {
-    // return fmt.Sprintf("%d[%x]", pdu.MessageID, pdu.Token)
-    return fmt.Sprintf("%x", pdu.Token)
-    // return fmt.Sprintf("%d", pdu.MessageID)
-}
-
-func (env *Env) IsHeartbeatAllowed () bool {
+func (env *Env) IsHeartbeatAllowed() bool {
     return env.current_missing_hb < env.missing_hb_allowed
 }
 
@@ -235,91 +179,74 @@ func (env *Env) StopPing() {
 func (env *Env) StopSessionConfig() {
     if env.sessionConfigTask != nil {
         env.sessionConfigTask.stop()
+        env.sessionConfigTask = nil
     }
 }
 
-func (env *Env) CurrentMissingHb() int {
+func (env *Env) GetCurrentMissingHb() int {
     return env.current_missing_hb
 }
 
-func (env *Env) AddToken(token []byte, query string) {
-    env.tokens[query] = token
+func (env *Env) SetCurrentMissingHb(currentMissingHb int) {
+    env.current_missing_hb = currentMissingHb
 }
 
-func (env *Env) GetToken(query string) (token []byte) {
-    return env.tokens[query]
+func (env *Env) AddRequestQuery(token string, requestQuery *RequestQuery) {
+    env.requestQueries[token] = requestQuery
 }
 
-func (env *Env) RemoveToken(query string) {
-    delete(env.tokens, query)
+func (env *Env) GetTokenAndRequestQuery(query string) ([]byte, *RequestQuery) {
+    for key, value := range env.requestQueries {
+        if value.Query == query {
+            return []byte(key), value
+        }
+    }
+    return nil, nil
+}
+
+func (env *Env) RemoveRequestQuery(token string) {
+    delete(env.requestQueries, token)
+}
+
+func (env *Env) GetRequestQuery(token string) *RequestQuery {
+    return env.requestQueries[token]
+}
+
+func (env *Env) GetAllRequestQuery() (map[string] *RequestQuery) {
+    return env.requestQueries
 }
 
 func QueryParamsToString(queryParams []string) (str string) {
 	str = ""
-	for i, query := range queryParams {
-		if i == 0 {
-			str = query
-		}
-		str += "&" + query
+	for _, query := range queryParams {
+		str += "/" + query
 	}
 	return
 }
 
-func (env *Env) isTokenExist(key []byte) (bool) {
-    for _, token := range env.tokens {
-        if bytes.Compare(token, key) == 0 {
-            return true
-        }
+func (env *Env) IsTokenExist(key string) (bool) {
+    if env.requestQueries[key] != nil {
+        return true
     }
     return false
 }
 
 /*
- * Print log of notification when observe the mitigation
+ * Waiting for response that received from server after sending request successfully
  * parameter:
- *  pdu response pdu notification
+ *   task: the request task
+ * return:
+ *   pdu:  the response data
  */
-func LogNotification(pdu *libcoap.Pdu) {
-    log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
-
-	if pdu.Data == nil {
-		return
+func (env *Env) WaitingForResponse(task *MessageTask) (pdu *libcoap.Pdu) {
+    timeout := time.After(task.timeout)
+    select {
+    case pdu := <-task.response:
+        return pdu
+    case <- timeout:
+        log.Warnf("<<Waiting for response timeout>>")
+        return nil
     }
-
-    var err error
-    var logStr string
-
-    observe, err := pdu.GetOptionIntegerValue(libcoap.OptionObserve)
-    if err != nil {
-        log.WithError(err).Warn("Get observe option value failed.")
-        return
-    }
-    log.WithField("Observe Value:", observe).Info("Notification Message")
-
-    log.Infof("        Raw payload: %s", pdu.Data)
-    hex := hex.Dump(pdu.Data)
-	log.Infof("        Raw payload hex: \n%s", hex)
-
-    dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
-
-    // Identify response is mitigation or session configuration by cbor data in heximal
-    if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
-        var v messages.MitigationResponse
-        err = dec.Decode(&v)
-        logStr = v.String()
-    } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
-        var v messages.ConfigurationResponse
-        err = dec.Decode(&v)
-        logStr = v.String()
-    } else {
-        log.Warnf("Unknown notification is received.")
-    }
-
-    if err != nil {
-        log.WithError(err).Warn("CBOR Decode failed.")
-        return
-    }
-    log.Infof("        CBOR decoded: %s", logStr)
 }
 
 /*
@@ -365,15 +292,15 @@ func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *int, *libcoap.Block) {
         log.WithError(err).Warn("Get Etag option value failed.")
         return false, nil, nil
     }
-    // eTag = 1
-    
+
     if block != nil {
         isMoreBlock := true
+        blockKey := strconv.Itoa(eTag) + string(pdu.Token)
         // If block.M = 1, block is more block. If block.M = 0, block is last block
         if block.M == libcoap.MORE_BLOCK {
-            log.Debugf("Response block is comming (eTag=%+v, block=%+v, size2=%+v), waiting for the next block.", eTag, block.ToString(), size2Value)
+            log.Debugf("Response block is comming (eTag=%+v, block=%+v, size2=%+v) for request (token=%+v), waiting for the next block.", eTag, block.ToString(), size2Value, pdu.Token)
             if block.NUM == 0 {
-                env.blocks[eTag] = pdu.Data
+                env.responseBlocks[blockKey] = pdu
                 initialBlockSize := env.InitialRequestBlockSize()
                 secondBlockSize := env.SecondRequestBlockSize()
                 // Check what block_size is used for block2 option
@@ -393,12 +320,12 @@ func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *int, *libcoap.Block) {
                     block.NUM += 1
                 }
             } else {
-                if data, ok := env.blocks[eTag]; ok {
-                    env.blocks[eTag] = append(data, pdu.Data...)
+                if data, ok := env.responseBlocks[blockKey]; ok {
+                    env.responseBlocks[blockKey].Data = append(data.Data, pdu.Data...)
                     block.NUM += 1
                 } else {
                     log.Warnf("The block version is not unknown. Re-request from the first block")
-                    delete(env.blocks, eTag)
+                    delete(env.responseBlocks, blockKey)
                     block.NUM = 0
                 }
             }
@@ -407,11 +334,11 @@ func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *int, *libcoap.Block) {
         } else if block.M == libcoap.LAST_BLOCK {
             log.Debugf("Response block is comming (eTag=%+v, block=%+v, size2=%+v), this is the last block.", eTag, block.ToString(), size2Value)
             isMoreBlock = false
-            if data, ok := env.blocks[eTag]; ok {
-                env.blocks[eTag] = append(data, pdu.Data...)
+            if data, ok := env.responseBlocks[blockKey]; ok {
+                env.responseBlocks[blockKey].Data = append(data.Data, pdu.Data...)
             } else if block.NUM > 0 {
                 log.Warnf("The block version is not unknown. Re-request from the first block")
-                delete(env.blocks, eTag)
+                delete(env.responseBlocks, blockKey)
                 block.NUM = 0
                 isMoreBlock = true
             }
@@ -419,4 +346,62 @@ func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *int, *libcoap.Block) {
         }
     }
     return false, nil, nil
+}
+
+
+/*
+ * Set the number of mitigation in case receive response from getting all mitigation with observe option
+ */
+func (env *Env) SetCountMitigation(v messages.MitigationResponse, token string) {
+    lenScopes := len(v.MitigationScope.Scopes)
+    query := env.GetRequestQuery(token)
+ 
+    if query != nil && lenScopes >= 1 {
+        // handle get response in observation case
+        query.CountMitigation = &lenScopes
+        log.Debugf("The current number of observed mitigations is:  %+v", *query.CountMitigation)
+    }
+}
+
+/*
+ * Update the number of observed mitigation
+ * if response is notification response (Existed token mitigation all with observe is register):
+ *     mitigation status = 2, CountMitigation increase 1
+ *     mitigation status = 6, CountMitigation decrease 1
+ *     CountMitigation = 0, remove query request with token is token of all mitigation observer
+ */
+func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationResponse, token string) {
+    scopes := v.MitigationScope.Scopes
+    query := ""
+
+    // This is the last block from re-request block-wise transfer to retrieve all notification data
+    if req != nil {
+        query = QueryParamsToString(req.QueryParams())
+    } else {
+        // This is notification without re-request block-wise transfer
+        // Use token to get RequestQuery
+        query = env.GetRequestQuery(token).Query
+    }
+
+    // check mitigation status from notification to count the number of mitigations that are being observed
+    tokenReq, queryReq := env.GetTokenAndRequestQuery(query)
+    if tokenReq != nil && queryReq != nil && scopes[0].Status == 6 {
+        // The notification indicate that a mitigation is expired
+        if *queryReq.CountMitigation >= 1 {
+            lenScopeReq := *queryReq.CountMitigation - 1
+            queryReq.CountMitigation = &lenScopeReq
+        }
+
+        // Remove query request with token is token of all mitigation
+        if *queryReq.CountMitigation == 0 {
+            env.RemoveRequestQuery(string(tokenReq))
+        }
+
+    } else if tokenReq != nil && queryReq != nil && scopes[0].Status == 2 {
+        // The notification indicate that a mitigation is created
+        lenScopeReq := *queryReq.CountMitigation + 1
+        queryReq.CountMitigation = &lenScopeReq
+    }
+
+    log.Debugf("The current number of observed mitigations is changed to: %+v", *queryReq.CountMitigation)
 }

@@ -4,13 +4,14 @@ import "time"
 import "github.com/nttdots/go-dots/libcoap"
 import log "github.com/sirupsen/logrus"
 
-type ResponseHandler func(*MessageTask, *libcoap.Pdu)
-type TimeoutHandler  func(*MessageTask, map[string] *MessageTask)
+type ResponseHandler func(*MessageTask, *libcoap.Pdu, *Env)
+type TimeoutHandler  func(*MessageTask, *Env)
 
 type MessageTask struct {
     TaskBase
 
     message  *libcoap.Pdu
+    response chan *libcoap.Pdu
 
     interval time.Duration
     retry    int
@@ -34,6 +35,7 @@ func NewMessageTask(message *libcoap.Pdu,
     return &MessageTask {
         newTaskBase(),
         message,
+        make(chan *libcoap.Pdu),
         interval,
         retry,
         timeout,
@@ -45,6 +47,26 @@ func NewMessageTask(message *libcoap.Pdu,
 
 func (task *MessageTask) GetMessage() (*libcoap.Pdu) {
     return task.message
+}
+
+func (task *MessageTask) SetMessage(pdu *libcoap.Pdu) {
+    task.message = pdu
+}
+
+func (task *MessageTask) IsStop() (bool) {
+    return task.isStop
+}
+
+func (task *MessageTask) Stop() {
+    task.stop()
+}
+
+func (task *MessageTask) GetResponseHandler() ResponseHandler {
+    return task.responseHandler
+}
+
+func (task *MessageTask) GetTimeoutHandler() TimeoutHandler {
+    return task.timeoutHandler
 }
 
 func (t *MessageTask) run(out chan Event) {
@@ -89,5 +111,9 @@ func (e *MessageEvent) Handle(env *Env) {
 
 func (e *TimeoutEvent) Handle(env *Env) {
     task := e.Task().(*MessageTask)
-    task.timeoutHandler(task, env.requests)
+    task.timeoutHandler(task, env)
+}
+
+func (t *MessageTask) AddResponse(pdu *libcoap.Pdu) {
+    t.response <- pdu
 }

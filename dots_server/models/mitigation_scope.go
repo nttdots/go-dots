@@ -9,8 +9,12 @@ type PortRange struct {
 	LowerPort int
 	UpperPort int
 }
+type ICMPTypeRange struct {
+	LowerType int
+	UpperType int
+}
 
-const ValidationError string = "validation error."
+const ValidationError string = "validation error"
 
 /*
  * Check if the PortRange includes the port.
@@ -35,6 +39,19 @@ func (p *PortRange) Includes(port int) bool {
  */
 func NewPortRange(lower_port int, upper_port int) PortRange {
 	return PortRange{lower_port, upper_port}
+}
+
+/*
+ * Create a new icmp type range.
+ *
+ * parameter:
+ *  LowerType LowerTYpe
+ *  UpperType UpperType
+ * return:
+ *  ICMPTypeRange ICMPTypeRange
+ */
+ func NewICMPTypeRange(lower_type int, upper_type int) ICMPTypeRange {
+	return ICMPTypeRange{lower_type, upper_type}
 }
 
 const (
@@ -76,8 +93,15 @@ type ACL struct {
 
 type ControlFiltering struct {
 	ACLName        string
-	ActivationType string
+	ActivationType *int
 }
+
+type ActivationType int
+const (
+	ActiveWhenMitigating ActivationType = iota + 1
+	Immediate
+	Deactivate
+)
 
 type ConflictScope struct {
 	MitigationId     int
@@ -125,12 +149,16 @@ type MitigationScope struct {
 	TriggerMitigation bool
 	TargetIP         []Prefix
 	TargetPrefix     []Prefix
+	SourcePrefix     []Prefix
 	TargetPortRange  []PortRange
+	SourcePortRange  []PortRange
+	SourceICMPTypeRange []ICMPTypeRange
 	Customer         *Customer
 	ClientIdentifier string
 	ClientDomainIdentifier string
 	AclName          string
 	TargetList       []Target     // List of target prefix/fqdn/uri
+	ControlFilteringList []ControlFiltering
 }
 
 // Conflict Scope constructor
@@ -164,12 +192,16 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 		true,
 		make([]Prefix, 0),
 		make([]Prefix, 0),
+		make([]Prefix, 0),
 		make([]PortRange, 0),
+		make([]PortRange, 0),
+		make([]ICMPTypeRange, 0),
 		c,
 		clientIdentifier,
 		"",
 		"",
 		make([]Target, 0),
+		make([]ControlFiltering, 0),
 	}
 	return
 }

@@ -15,7 +15,6 @@ const ParameterValueTypeTargetProtocol = "TARGET_PROTOCOL"
 type ParameterValue struct {
 	Id                int64     `xorm:"'id' pk autoincr"`
 	CustomerId        int       `xorm:"'customer_id'"`
-	IdentifierId      int64     `xorm:"'identifier_id'"`
 	MitigationScopeId int64     `xorm:"'mitigation_scope_id'"`
 	Type              string    `xorm:"'type' enum('FQDN','URI','TRAFFIC_PROTOCOL','ALIAS_NAME','TARGET_PROTOCOL') not null"`
 	StringValue       string    `xorm:"'string_value'"`
@@ -38,8 +37,8 @@ const ParameterValueFieldTrafficProtocol = "TrafficProtocol"
 var valueTypesString = []string{ParameterValueTypeFqdn, ParameterValueTypeUri}
 var valueTypesInt = []string{ParameterValueFieldTrafficProtocol}
 
-func CreateParameterValue(value interface{}, typeString string, identifierId int64) *ParameterValue {
-	parameterValue := &ParameterValue{Type: typeString, IdentifierId: identifierId}
+func CreateParameterValue(value interface{}, typeString string) *ParameterValue {
+	parameterValue := &ParameterValue{Type: typeString}
 	if contains(valueTypesString, typeString) {
 		parameterValue.StringValue = value.(string)
 	} else if contains(valueTypesInt, typeString) {
@@ -116,10 +115,5 @@ func DeleteCustomerParameterValue(session *xorm.Session, customerId int) (err er
 
 func DeleteMitigationScopeParameterValue(session *xorm.Session, mitigationScopeId int64) (err error) {
 	_, err = session.Delete(&ParameterValue{MitigationScopeId: mitigationScopeId})
-	return
-}
-
-func DeleteIdentifierParameterValue(session *xorm.Session, identifierId int64) (err error) {
-	_, err = session.Delete(&ParameterValue{IdentifierId: identifierId})
 	return
 }

@@ -28,7 +28,7 @@ func NewSessionConfigTask(message  *libcoap.Pdu, interval time.Duration, respons
         interval,
         responseHandler,
         timeoutHandler,
-        "",
+        "0",  // fake value to avoid collision with id of ping task 
 	}
 }
 
@@ -62,10 +62,10 @@ func (e *SessionConfigEvent) Handle(env *Env) {
         0,
         time.Duration(0),
         false,
-        func (_ *MessageTask, pdu *libcoap.Pdu) {
+        func (_ *MessageTask, pdu *libcoap.Pdu, env *Env) {
             task.responseHandler(task, pdu, env)
         },
-        func (*MessageTask, map[string] *MessageTask) {
+        func (*MessageTask, *Env) {
             task.timeoutHandler(task, env)
         })
     env.Run(newTask)

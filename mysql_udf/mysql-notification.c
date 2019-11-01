@@ -33,6 +33,8 @@ enum TRIGGER_TYPE {
 #define PORT 9999
 #define MITIGATION_SCOPE      "mitigation_scope"
 #define SESSION_CONFIGURATION "signal_session_configuration"
+#define PREFIX_ADDRESS_RANGE  "prefix"
+#define DATA_ACLS             "data_acls"
 
 my_bool MySQLNotification_init(UDF_INIT *initid, 
                                           UDF_ARGS *args,
@@ -46,14 +48,38 @@ my_bool MySQLNotification_init(UDF_INIT *initid,
     if (strcmp((char*)args->args[0], MITIGATION_SCOPE) == 0) {
 
         // check the arguments format
-        if(args->arg_count != 6) {
-            strcpy(message, "MySQLNotification() requires exactly six arguments");
+        if(args->arg_count != 7) {
+            strcpy(message, "MySQLNotification() requires exactly seven arguments");
             return 1;
         }
 
         if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT || args->arg_type[2] != INT_RESULT ||
-            args->arg_type[3] != STRING_RESULT || args->arg_type[4] != INT_RESULT || args->arg_type[5] != INT_RESULT) {
-            strcpy(message, "MySQLNotification() requires four integers, one string, and table name");
+            args->arg_type[3] != STRING_RESULT || args->arg_type[4] != INT_RESULT || args->arg_type[5] != STRING_RESULT || args->arg_type[6] != INT_RESULT) {
+            strcpy(message, "MySQLNotification() requires four integers, two strings, and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], PREFIX_ADDRESS_RANGE) == 0) {
+
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT) {
+            strcpy(message, "MySQLNotification() requires two integers, and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], DATA_ACLS) == 0) {
+
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT) {
+            strcpy(message, "MySQLNotification() requires one integer, and table name");
             return 1;
         }
     } else if (strcmp((char*)args->args[0], SESSION_CONFIGURATION) == 0) {
@@ -119,12 +145,20 @@ longlong MySQLNotification(UDF_INIT *initid, UDF_ARGS *args,
     if(strcmp((char*)args->args[0], MITIGATION_SCOPE) == 0){
 
         // format a message containing id of row and type of change
-        sprintf(packet, "{\"table_trigger\":\"%s\", \"id\":\"%lld\", \"cid\":\"%lld\", \"cuid\":\"%s\", \"mid\":\"%lld\", \"status\":\"%lld\"}", ((char*)args->args[0]),
-            *((longlong*)args->args[1]), *((longlong*)args->args[2]), ((char*)args->args[3]), *((longlong*)args->args[4]), *((longlong*)args->args[5]));
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"id\":\"%lld\", \"cid\":\"%lld\", \"cuid\":\"%s\", \"mid\":\"%lld\", \"cdid\":\"%s\", \"status\":\"%lld\"}", ((char*)args->args[0]),
+            *((longlong*)args->args[1]), *((longlong*)args->args[2]), ((char*)args->args[3]), *((longlong*)args->args[4]), ((char*)args->args[5]), *((longlong*)args->args[6]));
     } else if(strcmp((char*)args->args[0], SESSION_CONFIGURATION) == 0) {
 
         // format a message containing id of row and type of change
         sprintf(packet, "{\"table_trigger\":\"%s\", \"cid\":\"%lld\", \"sid\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]), *((longlong*)args->args[2]));
+    } else if(strcmp((char*)args->args[0], PREFIX_ADDRESS_RANGE) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"cid\":\"%lld\" }", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if(strcmp((char*)args->args[0], DATA_ACLS) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"aclId\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
     }
 
     send(_server, packet, strlen(packet), 0);

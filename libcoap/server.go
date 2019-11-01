@@ -9,6 +9,7 @@ import "C"
 import "errors"
 import "unsafe"
 import "strings"
+import "strconv"
 import log "github.com/sirupsen/logrus"
 import cache "github.com/patrickmn/go-cache"
 
@@ -47,8 +48,8 @@ func export_method_handler(ctx   *C.coap_context_t,
                            rsrc  *C.coap_resource_t,
                            sess  *C.coap_session_t,
                            req   *C.coap_pdu_t,
-                           tok   *C.str,
-                           query *C.str,
+                           tok   *C.coap_string_t,
+                           query *C.coap_string_t,
                            resp  *C.coap_pdu_t) {
 
     context, ok := contexts[ctx]
@@ -100,21 +101,41 @@ func export_method_handler(ctx   *C.coap_context_t,
     token := tok.toBytes()
     queryString := query.toString()
 
+    // Identify the current notification progress is on resource one or resource all
+    isObserveOne := false
+    mid := ""
+    resourceOneUriPaths := strings.Split(*(rsrc.uri_path.toString()), "/mid=")
+    if len(resourceOneUriPaths) > 1 && queryString == nil {
+        isObserveOne = true
+        mid = resourceOneUriPaths[1]
+    }
+
     handler, ok := resource.handlers[request.Code]
     if ok {
+        etag, err := request.GetOptionIntegerValue(OptionEtag)
+        if err != nil {
+            log.WithError(err).Warn("Get Etag option value failed.")
+            return
+        }
+        itemKey := strconv.Itoa(etag)
+        if isObserveOne {
+            itemKey = itemKey + mid
+        }
         response := Pdu{}
-        res, isFound := caches.Get(string(*token))
-        // If data does not exist in cache, add data to cache. Else response from data in cache
+        res, isFound := caches.Get(itemKey)
+
+        // If data does not exist in cache, add data to cache. Else get data from cache for response body
         if !isFound {
             SetBlockOptionFirstRequest(request)
             handler(context, resource, session, request, token, queryString, &response)
         } else {
             response = res.(Pdu)
             response.MessageID = request.MessageID
+            response.Token = request.Token
         }
 
         // add observe option value to notification header
-        if is_observe {
+        if is_observe && response.Type != TypeNon {
             response.SetOption(OptionObserve, rsrc.observe)
         }
 
@@ -130,10 +151,15 @@ func export_method_handler(ctx   *C.coap_context_t,
             coapToken := &C.coap_binary_t{}
             coapToken.s = req.token
             coapToken.length = C.size_t(len(string(*token)))
+            // If the process is observation, request is nil
+            if is_observe {
+                req = nil
+            }
             C.coap_add_data_blocked_response(resource.ptr, session.ptr, req, resp, coapToken, C.COAP_MEDIATYPE_APPLICATION_CBOR, C.int(maxAge),
                                             C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])))
             resPdu,_ := resp.toGo()
-            HandleCache(resPdu, response, string(*token))
+
+            HandleCache(resPdu, response, resource, context, isObserveOne, mid)
         }
     }
 }
@@ -249,17 +275,33 @@ func SetBlockOptionFirstRequest(request *Pdu) {
  * Handle delete item if block is last block
  * Handle add item if item does not exist in cache
  */
-func HandleCache(resp *Pdu, response Pdu, keyItem string) {
+func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, isObserveOne bool, mid string) error {
     blockValue,_ := resp.GetOptionIntegerValue(OptionBlock2)
     block := IntToBlock(int(blockValue))
+    etag, err := resp.GetOptionIntegerValue(OptionEtag)
+    if err != nil { return err }
+
+    keyItem := strconv.Itoa(etag)
+    if isObserveOne {
+        keyItem = keyItem + mid
+    }
+
     // Delete block in cache when block is last block
+    // Set isBlockwiseInProgress = false as one of conditions to remove resource if it expired
     if block != nil && block.NUM > 0 && block.M == LAST_BLOCK {
         log.Debugf("Delete item cache with key = %+v", keyItem)
         caches.Delete(keyItem)
+        resource.isBlockwiseInProgress = false
     }
-    // Add item with key does not exits
+
+    // Add item with key if it does not exists
+    // Set isBlockwiseInProgress = true to not remove resource in case it expired because block-wise transfer is in progress
     if block != nil && block.NUM == 0 && block.M == MORE_BLOCK {
         log.Debug("Create item cache with key = ", keyItem)
         caches.Set(keyItem, response, cache.DefaultExpiration)
+        if isObserveOne {
+            resource.isBlockwiseInProgress = true
+        }
     }
+    return nil
 }

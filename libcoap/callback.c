@@ -30,6 +30,10 @@ extern void export_event_handler(coap_context_t *ctx,
                     coap_event_t event,
                     coap_session_t *sess);
 
+extern int export_validate_cn_call_back(const char *cn,
+                        unsigned depth,
+                        coap_strlist_t *cn_list);
+
 void response_handler(coap_context_t *context,
                       coap_session_t *session,
                       coap_pdu_t *sent,
@@ -72,6 +76,55 @@ void event_handler(coap_context_t *context,
                       void *data) {
 
     export_event_handler(context, event, (coap_session_t *)data);
+}
+
+int validate_cn_call_back(const char *cn,
+                        const uint8_t *asn1_public_cert,
+                        size_t asn1_length,
+                        coap_session_t *coap_session,
+                        unsigned depth,
+                        int validated,
+                        void *arg){
+
+    X509 *x509 = d2i_X509(NULL, &asn1_public_cert, (long) asn1_length);
+    int valid = 0;
+    char *cnt;
+    // If the present identifier is CA (depth = 1), the client doesn't validate this idenifier
+    if (depth == 1) return 1;
+
+    if (x509) {
+        STACK_OF(GENERAL_NAME) *san_list;
+        san_list = X509_get_ext_d2i(x509, NID_subject_alt_name, NULL, NULL);
+        // If existed the Subject Alternative Name, the client validate DNS-ID/SRV-ID (Subject Alternative Name)
+        // Else the client validate CN-ID (Common Name)
+        if (san_list) {
+            int san_count = sk_GENERAL_NAME_num(san_list);
+
+            for (int n = 0; n < san_count; n++) {
+                const GENERAL_NAME * name = sk_GENERAL_NAME_value(san_list, n);
+
+                if (name->type == GEN_DNS) {
+                    const char *dns_name = (const char *)ASN1_STRING_get0_data(name->d.dNSName);
+
+                    /* Make sure that there is not an embedded NUL in the dns_name */
+                    if (ASN1_STRING_length(name->d.dNSName) != (int)strlen (dns_name))
+                        continue;
+                    cnt = OPENSSL_strdup(dns_name);
+                }
+                valid = export_validate_cn_call_back(cnt, depth, (coap_strlist_t*) arg);
+                if (valid == 1) return valid;
+            }
+        } else {
+            valid = export_validate_cn_call_back(cn, depth, (coap_strlist_t*) arg);
+        }
+    }
+
+    if (valid == 0) {
+        coap_log(LOG_ERR, "Terminate the communication attempt with a bad certificate error \n");
+        coap_session_release(coap_session);
+    }
+
+    return valid;
 }
 
 int coap_dtls_get_peer_common_name(coap_session_t *session,
@@ -151,4 +204,47 @@ int coap_check_subscribers(coap_resource_t *resource) {
 
 int coap_check_dirty(coap_resource_t *resource) {
     return resource->dirty;
+}
+
+// Get token from subcribers
+char* coap_get_token_subscribers(coap_resource_t *resource) {
+    coap_subscription_t *subscriber = resource->subscribers;
+    if (subscriber != NULL) {
+        return subscriber->token;
+    }
+    return (char*)0;
+}
+
+// Get size of block 2 from subcribers
+int coap_get_size_block2_subscribers(coap_resource_t *resource) {
+    coap_subscription_t *subscriber = resource->subscribers;
+    if (subscriber != NULL) {
+        coap_block_t block2 = subscriber->block2;
+        return block2.szx;
+    }
+    return 0;
+}
+
+// create coap_block_t
+coap_block_t coap_create_block(unsigned int num, unsigned int m, unsigned int size) {
+   coap_block_t block = { num, m, size };
+   return block;
+}
+
+// create coap_strlist_t
+coap_strlist_t* coap_common_name(coap_strlist_t* head, coap_strlist_t* tail, char* str) {
+    coap_strlist_t* element = malloc(sizeof(coap_strlist_t));
+    coap_string_t *cstr = coap_new_string(strlen(str));
+    cstr->s = (uint8_t*)str;
+    cstr->length = strlen(str);
+    element->str = cstr;
+    element->next = NULL;
+
+    if (head == NULL) {
+        head = tail = element;
+    } else {
+        tail->next = element;
+        tail = element;
+    }
+    return element;
 }

@@ -6,10 +6,10 @@ import (
 
 type ProtectionStatus struct {
 	Id                  int64     `xorm:"'id' pk autoincr"`
-	TotalPackets        int       `xorm:"'total_packets'"`
-	TotalBits           int       `xorm:"'total_bits'"`
-	PeakThroughputId    int64     `xorm:"'peak_throughput_id'"`
-	AverageThroughputId int64     `xorm:"'average_throughput_id'"`
+	BytesDropped        int       `xorm:"'bytes_dropped'"`
+	PacketsDropped      int       `xorm:"'pkts_dropped'"`
+	BpsDropped          int       `xorm:"'bps_dropped'"`
+	PpsDropped int       `xorm:"'pps_dropped'"`
 	Created             time.Time `xorm:"created"`
 	Updated             time.Time `xorm:"updated"`
 }

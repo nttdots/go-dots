@@ -10,6 +10,7 @@ import (
 	"time"
 	"strconv"
 
+	dots_config "github.com/nttdots/go-dots/dots_client/config"
 	log "github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
 	"github.com/nttdots/go-dots/dots_common"
@@ -23,7 +24,7 @@ import (
 type RequestInterface interface {
 	LoadJson([]byte) error
 	CreateRequest()
-	Send()
+	Send() Response
 }
 
 /*
@@ -40,6 +41,14 @@ type Request struct {
 
 	env         *task.Env
 	options     map[messages.Option]string
+}
+
+/*
+ * Dots response
+ */
+type Response struct {
+	StatusCode libcoap.Code
+	data       []byte
 }
 
 /*
@@ -148,18 +157,22 @@ func (r *Request) CreateRequest() {
 		if observe == uint16(messages.Register) || observe == uint16(messages.Deregister) {
 			r.pdu.SetOption(libcoap.OptionObserve, observe)
 			queryString := task.QueryParamsToString(r.queryParams)
-			token := r.env.GetToken(queryString)
+			token, _ := r.env.GetTokenAndRequestQuery(queryString)
+
+			// if observe is register, add request query with token as key and value (query = query of request, countMitigation = nil, isNotification = false)
+			// if observe is deregister, remove query request
 			if observe == uint16(messages.Register) {
 				if token != nil {
 					r.pdu.Token = token
 				} else {
-					r.env.AddToken(r.pdu.Token, queryString)
+					reqQuery := task.RequestQuery{ queryString, nil }
+					r.env.AddRequestQuery(string(r.pdu.Token), &reqQuery)
 				}
 			} else {
 				if token != nil {
 					r.pdu.Token = token
+					r.env.RemoveRequestQuery(string(token))
 				}
-				r.env.RemoveToken(queryString)
 			}
 		}
 	}
@@ -195,68 +208,145 @@ SKIP_OBSERVE:
 }
 
 /*
- * Handle response from server
+ * Handle response from server for message task
+ * parameter:
+ *  task       the request message task
+ *  response   the response message for client request
+ *  env        the client environment data
  */
-func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu) {
+func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, env *task.Env) {
 	isMoreBlock, eTag, block := r.env.CheckBlock(response)
 	// if block is more block, sent request to server with block option
 	// else display data received from server
 	if isMoreBlock {
 		r.pdu.MessageID = r.env.CoapSession().NewMessageID()
 		r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
-		r.Send()
+		r.pdu.SetOption(libcoap.OptionEtag, uint32(*eTag))
+
+		// Add block2 option for waiting for response
+		r.options[messages.BLOCK2] = block.ToString()
+		task.SetMessage(r.pdu)
+		r.env.Run(task)
 	} else {
 		if eTag != nil && block.NUM > 0 {
-			response.Data = r.env.GetBlockData(*eTag)
-			delete(r.env.Blocks(), *eTag)
+			blockKey := strconv.Itoa(*eTag) + string(response.Token)
+			response = r.env.GetBlockData(blockKey)
+			delete(r.env.Blocks(), blockKey)
 		}
-		r.logMessage(response)
+		if response.Type == libcoap.TypeNon {
+			log.Debugf("Success incoming PDU(HandleResponse): %+v", response)
+		}
+
+		// Skip set analyze response data if it is the ping response
+		if response.Code != 0 {
+			task.AddResponse(response)
+		}
 	}
-	// If this is response of session config Get without abnormal, restart ping task with latest parameters
-	if (r.requestName == "session_configuration") && (r.method == "GET") &&
-		(response.Code == libcoap.ResponseContent) {
-		RestartPingTask(response, r.env)
-		RefreshSessionConfig(response, r.env, r.pdu)
+
+	// Handle Session config task and ping task after receive response message 
+	// If this is response of Get session config without abnormal, restart ping task with latest parameters
+	// Check if the request does not contains sid option -> if not, does not restart ping task when receive response
+	// Else if this is response of Put session config with code Created -> stop the current session config task
+	// Else if this is response of Delete session config with code Deleted -> stop the current session config task
+	log.Debugf("r.queryParam=%v", r.queryParams)
+	if (r.requestName == "session_configuration") {
+		if (r.method == "GET") && (response.Code == libcoap.ResponseContent) && len(r.queryParams) > 0 {
+			log.Debug("Get with sid - Client update new values to system session configuration and restart ping task.")
+			RestartPingTask(response, r.env)
+			RefreshSessionConfig(response, r.env, r.pdu)
+		} else if (r.method == "PUT") && (response.Code == libcoap.ResponseCreated) {
+			log.Debug("The new session configuration has been created. Stop the current session config task")
+			RefreshSessionConfig(response, r.env, r.pdu)
+		} else if (r.method == "DELETE") && (response.Code == libcoap.ResponseDeleted) {
+			log.Debug("The current session configuration has been deleted. Stop the current session config task")
+			RefreshSessionConfig(response, r.env, r.pdu)
+		}
 	}
 }
 
-func handleTimeout(task *task.MessageTask, request map[string] *task.MessageTask) {
+/*
+ * Handle request timeout for message task
+ * parameter:
+ *  task       the request message task
+ *  env        the client environment data
+ */
+func handleTimeout(task *task.MessageTask, env *task.Env) {
 	key := fmt.Sprintf("%x", task.GetMessage().Token)
-	delete(request, key)
+	delete(env.Requests(), key)
 	log.Info("<<< handleTimeout >>>")
 }
 
+/*
+ * Handle response from server for ping message task
+ * parameter:
+ *  _       the request message task
+ *  pdu     the the response for ping request
+ */
+func pingResponseHandler(_ *task.PingTask, pdu *libcoap.Pdu) {
+	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("Ping Ack")
+}
+
+/*
+ * Handle request timeout for ping message task
+ * parameter:
+ *  _       the request message task
+ *  env     the client environment data
+ */
+func pingTimeoutHandler(_ *task.PingTask, env *task.Env) {
+	log.Info("Ping Timeout #", env.GetCurrentMissingHb())
+
+	if !env.IsHeartbeatAllowed() {
+		log.Debug("Exceeded missing_hb_allowed. Stop ping task...")
+		env.StopPing()
+
+		restartConnection(env)
+	}
+}
 
 /*
  * Send the request to the server.
-*/
-func (r *Request) Send() {
-	var interval = 0
-	var retry = 0
-	var timeout = 0
+ */
+func (r *Request) Send() (res Response) {
+	var config *dots_config.MessageTaskConfiguration
 	if r.pdu.Type == libcoap.TypeNon {
-		interval = 2
-		retry = 2
-		timeout = 10
+		config = dots_config.GetSystemConfig().NonConfirmableMessageTask
+	} else if r.pdu.Type == libcoap.TypeCon {
+		config = dots_config.GetSystemConfig().ConfirmableMessageTask
 	}
 	task := task.NewMessageTask(
 		r.pdu,
-		time.Duration(interval) * time.Second,
-		retry,
-		time.Duration(timeout) * time.Second,
+		time.Duration(config.TaskInterval) * time.Second,
+		config.TaskRetryNumber,
+		time.Duration(config.TaskTimeout) * time.Second,
 		false,
 		r.handleResponse,
 		handleTimeout)
 
 	r.env.Run(task)
+
+	// Waiting for response after send a request
+	pdu := r.env.WaitingForResponse(task)
+	data := r.analyzeResponseData(pdu)
+
+	if pdu == nil {
+		str := "Request timeout"
+		res = Response{ libcoap.ResponseInternalServerError, []byte(str) }
+	} else {
+		res = Response{ pdu.Code, data }
+	}
+	return
 }
 
-func (r *Request) logMessage(pdu *libcoap.Pdu) {
+func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 	var err error
 	var logStr string
 
-	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
-	maxAgeRes:= pdu.GetOptionStringValue(libcoap.OptionMaxage)
+	if pdu == nil {
+		return
+	}
+
+	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
+	maxAgeRes := pdu.GetOptionStringValue(libcoap.OptionMaxage)
 	if maxAgeRes != "" {
 		log.Infof("Max-Age Option: %v", maxAgeRes)
 	}
@@ -277,6 +367,12 @@ func (r *Request) logMessage(pdu *libcoap.Pdu) {
 	log.Infof("        Raw payload: %s", pdu.Data)
 	log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
 
+	// Check if the response body data is a string message (not an object)
+	if pdu.IsMessageResponse() {
+		data = pdu.Data
+		return
+	}
+
 	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 
 	switch r.requestName {
@@ -285,35 +381,57 @@ func (r *Request) logMessage(pdu *libcoap.Pdu) {
 		case "GET":
 			var v messages.MitigationResponse
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
+			r.env.SetCountMitigation(v, string(pdu.Token))
+			log.Debugf("Request query with token as key in map: %+v", r.env.GetAllRequestQuery())
 		case "PUT":
 			var v messages.MitigationResponsePut
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
 		default:
 			var v messages.MitigationRequest
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
 		}
 	case "session_configuration":
 		if r.method == "GET" {
 			var v messages.ConfigurationResponse
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
 		} else {
 			var v messages.SignalConfigRequest
 			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
 			logStr = v.String()
 		}
 	}
 	if err != nil {
-		log.WithError(err).Warn("CBOR Decode failed.")
+		log.WithError(err).Warn("Parse object to JSON failed.")
 		return
 	}
 	log.Infof("        CBOR decoded: %s", logStr)
+	return
+
+CBOR_DECODE_FAILED:
+	log.WithError(err).Warn("CBOR Decode failed.")
+	return
 }
 
 func RestartPingTask(pdu *libcoap.Pdu, env *task.Env) {
+	// Check if the response body data is a string message (not an object)
+	if pdu.IsMessageResponse() {
+		return
+	}
+
 	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 	var v messages.ConfigurationResponse
 	err := dec.Decode(&v)
@@ -367,7 +485,7 @@ func RestartPingTask(pdu *libcoap.Pdu, env *task.Env) {
  */
 func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu) {
 	env.StopSessionConfig()
-	maxAgeRes,_ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
+	maxAgeRes, _ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
 	timeFresh := maxAgeRes - env.IntervalBeforeMaxAge()
 	if timeFresh > 0 {
 		env.Run(task.NewSessionConfigTask(
@@ -381,7 +499,7 @@ func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu)
 }
 
 /*
- * Session config response handler
+ * Handle response from server for session config task
  * If Get session config is successfully
  *   1. Restart Ping task
  *   2. Refresh session config
@@ -390,12 +508,17 @@ func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu)
  *    pdu: result response from server
  *    env: env session config
  */
-func sessionConfigResponseHandler (t *task.SessionConfigTask, pdu *libcoap.Pdu, env *task.Env) {
-	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode(pdu.Code))
-	maxAgeRes,_ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
+func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, env *task.Env) {
+	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
+	maxAgeRes, _ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
 	log.Infof("Max-Age Option: %v", maxAgeRes)
 	log.Infof("        Raw payload: %s", pdu.Data)
 	log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
+
+	// Check if the response body data is a string message (not an object)
+	if pdu.IsMessageResponse() {
+		return
+	}
 
 	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 	var v messages.ConfigurationResponse
@@ -412,7 +535,7 @@ func sessionConfigResponseHandler (t *task.SessionConfigTask, pdu *libcoap.Pdu, 
 }
 
 /*
- * Session config timeout handler
+ * Handle request timeout for session config task
  * Stop current session config task
  * parameter:
  *    _: session config task
@@ -421,4 +544,179 @@ func sessionConfigResponseHandler (t *task.SessionConfigTask, pdu *libcoap.Pdu, 
 func sessionConfigTimeoutHandler(_ *task.SessionConfigTask, env *task.Env) {
 	log.Info("Session config refresh timeout")
 	env.StopSessionConfig()
+}
+
+/*
+ * Print log of notification when observe the mitigation
+ * parameter:
+ *  pdu   response pdu notification
+ *  task  the request task for blockwise transfer process
+ *  env   the client environment data
+ */
+func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
+    log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
+
+	if pdu.Data == nil {
+		return
+    }
+
+    var err error
+    var logStr string
+    var req *libcoap.Pdu
+    if task != nil {
+        req = task.GetMessage()
+    } else {
+        req = nil
+    }
+
+    observe, err := pdu.GetOptionIntegerValue(libcoap.OptionObserve)
+    if err != nil {
+        log.WithError(err).Warn("Get observe option value failed.")
+        return
+    }
+    log.WithField("Observe Value:", observe).Info("Notification Message")
+
+	maxAgeRes := pdu.GetOptionStringValue(libcoap.OptionMaxage)
+	if maxAgeRes != "" {
+		log.Infof("Max-Age Option: %v", maxAgeRes)
+	}
+
+    log.Infof("        Raw payload: %s", pdu.Data)
+    hex := hex.Dump(pdu.Data)
+	log.Infof("        Raw payload hex: \n%s", hex)
+
+	// Check if the response body data is a string message (not an object)
+	if pdu.IsMessageResponse() {
+		log.Debugf("Server send notification with error message: %+v", pdu.Data)
+		return
+	}
+
+    dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
+
+    // Identify response is mitigation or session configuration by cbor data in heximal
+    if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
+        var v messages.MitigationResponse
+        err = dec.Decode(&v)
+        logStr = v.String()
+        env.UpdateCountMitigation(req, v, string(pdu.Token))
+        log.Debugf("Request query with token as key in map: %+v", env.GetAllRequestQuery())
+    } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
+        var v messages.ConfigurationResponse
+        err = dec.Decode(&v)
+        logStr = v.String()
+        log.Debug("Receive session notification - Client update new values to system session configuration and restart ping task.")
+		RestartPingTask(pdu, env)
+
+		// Not refresh session config in case session config task is nil (server send notification after reset by expired Max-age)
+		sessionTask := env.SessionConfigTask()
+		if sessionTask != nil {
+			RefreshSessionConfig(pdu, env, sessionTask.MessageTask())
+		}
+    } else {
+        log.Warnf("Unknown notification is received.")
+    }
+
+    if err != nil {
+        log.WithError(err).Warn("CBOR Decode failed.")
+        return
+    }
+    log.Infof("        CBOR decoded: %s", logStr)
+}
+
+/*
+ * Handle notification response from observer
+ * If block is more block, send request with new token to retrieve remaining blocks
+ * Else block is the last block, display response as server log
+ * parameter:
+ *  pdu   response pdu notification
+ *  task  the request task for blockwise transfer process
+ *  env   the client environment data
+ */
+func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libcoap.Pdu) {
+    isMoreBlock, eTag, block := env.CheckBlock(pdu)
+    var blockKey string
+    if eTag != nil {
+        blockKey = strconv.Itoa(*eTag) + string(pdu.Token)
+    }
+
+    if !isMoreBlock || pdu.Type != libcoap.TypeNon {
+        if eTag != nil && block.NUM > 0 {
+            pdu = env.GetBlockData(blockKey)
+            delete(env.Blocks(), blockKey)
+        }
+
+        log.Debugf("Success incoming PDU (NotificationResponse): %+v", pdu)
+        logNotification(env, messageTask, pdu)
+    } else if isMoreBlock {
+        // Re-create request for block-wise transfer
+        req := &libcoap.Pdu{}
+        req.MessageID = env.CoapSession().NewMessageID()
+
+        // If the messageTask is nil -> a notification from observer
+        // Else -> a response from requesting to server
+        if messageTask != nil {
+            req = messageTask.GetMessage()
+        } else {
+            log.Debug("Success incoming PDU notification of first block. Re-request to retrieve remaining blocks of notification")
+
+            req.Type = pdu.Type
+            req.Code = libcoap.RequestGet
+
+            // Create uri-path for block-wise transfer request from observation request query
+            reqQuery := env.GetRequestQuery(string(pdu.Token))
+            if reqQuery == nil {
+                log.Error("Failed to get query param for re-request notification blocks")
+                return
+            }
+            messageCode := messages.MITIGATION_REQUEST
+            path := messageCode.PathString() + reqQuery.Query
+            req.SetPathString(path)
+
+            // Renew token value to re-request remaining blocks
+            req.Token = dots_common.RandStringBytes(8)
+            if eTag != nil {
+                delete(env.Blocks(), blockKey)
+                newBlockKey := strconv.Itoa(*eTag) + string(req.Token)
+                env.Blocks()[newBlockKey] = pdu
+            }
+        }
+
+        req.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+        req.SetOption(libcoap.OptionEtag, uint32(*eTag))
+
+        // Run new message task for re-request remaining blocks of notification
+        newTask := task.NewMessageTask(
+            req,
+            time.Duration(2) * time.Second,
+            2,
+            time.Duration(10) * time.Second,
+            false,
+            handleResponseNotification,
+            handleTimeoutNotification)
+
+        env.Run(newTask)
+    }
+}
+
+/**
+ * handle notification response and check block-wise transfer
+ * parameter:
+ *  task       the request task in notification process (request blocks)
+ *  response   the response from the request remaining blocks or the notification
+ *  env        the client environment data
+ */
+func handleResponseNotification(task *task.MessageTask, response *libcoap.Pdu, env *task.Env){
+    handleNotification(env, task, response)
+}
+
+/**
+ * handle timeout in case re-request to retrieve remaining blocks of notification
+ * parameter:
+ *  task       the request task in notification process (request blocks)
+ *  env        the client environment data
+ */
+func handleTimeoutNotification(task *task.MessageTask, env *task.Env) {
+	key := fmt.Sprintf("%x", task.GetMessage().Token)
+	delete(env.Requests(), key)
+	log.Info("<<< handleTimeout Notification>>>")
 }

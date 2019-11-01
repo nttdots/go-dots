@@ -3,7 +3,6 @@ package task
 import "time"
 import "github.com/nttdots/go-dots/libcoap"
 import log "github.com/sirupsen/logrus"
-import "fmt"
 
 type PingResponseHandler func(*PingTask, *libcoap.Pdu)
 type PingTimeoutHandler  func(*PingTask, *Env)
@@ -57,7 +56,7 @@ func (e *PingEvent) Handle(env *Env) {
     currentTask := env.requests[pingTask.current_ping_id]
 
     if currentTask != nil {
-        log.Debugf("Waiting for current ping message (id=%+v)to be completed...", pingTask.current_ping_id)
+        log.Debugf("Waiting for current ping message to be completed...")
         return
     }
 
@@ -71,15 +70,15 @@ func (e *PingEvent) Handle(env *Env) {
         0,
         time.Duration(0),
         false,
-        func (_ *MessageTask, pdu *libcoap.Pdu) {
+        func (_ *MessageTask, pdu *libcoap.Pdu, env *Env) {
             task.responseHandler(task, pdu)
         },
-        func (*MessageTask, map[string] *MessageTask) {
+        func (*MessageTask, *Env) {
             task.timeoutHandler(task, env)
         })
     env.Run(newTask)
-    pingTask.current_ping_id = fmt.Sprintf("%d", newTask.message.MessageID)
-    log.Debugf ("Sent new ping message (id = %+v)", pingTask.current_ping_id )
+    pingTask.current_ping_id = newTask.message.AsMapKey()
+    log.Debugf ("Sent new ping message (id = %+v)", newTask.message.MessageID )
 }
 
 func (t * PingTask) IsRunnable() bool {

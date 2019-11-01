@@ -31,26 +31,28 @@ type goAristaAclValidator struct{
  *   false: protocol is invalid
  */
 func (v *goAristaAclValidator) ValidateProtocol(name string, matches *types.Matches) (bool, string) {
-	var protocol int
+	var protocol *int
 
 	if matches.IPv4 != nil && matches.IPv4.Protocol != nil {
-		protocol = int(*matches.IPv4.Protocol)
+		protocoltmp := int(*matches.IPv4.Protocol)
+		protocol = &protocoltmp
 	} else if matches.IPv6 != nil  && matches.IPv6.Protocol != nil{
-		protocol = int(*matches.IPv6.Protocol)
+		protocoltmp := int(*matches.IPv6.Protocol)
+		protocol = &protocoltmp
 	}
 
-	if matches.TCP != nil && protocol != 6 {
-		log.Errorf("invalid protocol = %+v at acl 'name' = %+v", protocol, name)
-		errorMsg := fmt.Sprintf("Body Data Error : protocol (%v) is not TCP at acl 'name' (%v)", protocol, name)
+	if matches.TCP != nil && protocol != nil && *protocol != 6 {
+		log.Errorf("invalid protocol = %+v at acl 'name' = %+v", *protocol, name)
+		errorMsg := fmt.Sprintf("Body Data Error : protocol (%v) is not TCP at acl 'name' (%v)", *protocol, name)
 		return false, errorMsg
-	} else if matches.UDP != nil && protocol != 17 {
-		log.Errorf("invalid protocol = %+v at acl 'name' = %+v", protocol, name)
-		errorMsg := fmt.Sprintf("Body Data Error : protocol (%v) is not UDP at acl 'name' (%v)", protocol, name)
+	} else if matches.UDP != nil && protocol != nil && *protocol != 17 {
+		log.Errorf("invalid protocol = %+v at acl 'name' = %+v", *protocol, name)
+		errorMsg := fmt.Sprintf("Body Data Error : protocol (%v) is not UDP at acl 'name' (%v)", *protocol, name)
 		return false, errorMsg
-	} else if matches.ICMP != nil {
-		if (matches.IPv4 != nil && protocol != 1) || (matches.IPv6 != nil && protocol != 1 && protocol != 58) {
-		log.Errorf("invalid protocol = %+v at acl 'name' = %+v", protocol, name)
-		errorMsg := fmt.Sprintf("Body Data Error : protocol (%v) is not ICMP  at acl 'name' (%v)", protocol, name)
+	} else if matches.ICMP != nil && protocol != nil {
+		if  (matches.IPv4 != nil && *protocol != 1) || (matches.IPv6 != nil && *protocol != 1 && *protocol != 58) {
+		log.Errorf("invalid protocol = %+v at acl 'name' = %+v", *protocol, name)
+		errorMsg := fmt.Sprintf("Body Data Error : protocol (%v) is not ICMP  at acl 'name' (%v)", *protocol, name)
 		return false, errorMsg
 		}
 	}
@@ -85,9 +87,9 @@ func (v *goAristaAclValidator) ValidateUnsupportedAttributes(name string, matche
 	}
 
 	if matches.TCP != nil && (matches.TCP.SequenceNumber != nil || matches.TCP. AcknowledgementNumber != nil || matches.TCP. DataOffset != nil ||
-		matches.TCP.Reserved != nil || matches.TCP.WindowSize != nil || matches.TCP.UrgentPointer != nil || matches.TCP.Options != nil || matches.TCP.FlagsBitmask != nil) {
+		matches.TCP.Reserved != nil || matches.TCP.WindowSize != nil || matches.TCP.UrgentPointer != nil || matches.TCP.Options != nil) {
 		log.Errorf("Acl TCP is not support 'sequence-number', 'acknowledgement-number', 'data-offset', 'reserved', 'window-size', 'urgent-pointer', 'options' and 'flags-bitmask'at acl 'name' = %+v", name)
-		errorMsg := fmt.Sprintf("Body Data Error : Acl TCP is not support 'sequence-number', 'acknowledgement-number', 'data-offset', 'reserved', 'window-size', 'urgent-pointer', 'options' and 'flags-bitmask' at acl 'name' (%v)", name)
+		errorMsg := fmt.Sprintf("Body Data Error : Acl TCP is not support 'sequence-number', 'acknowledgement-number', 'data-offset', 'reserved', 'window-size', 'urgent-pointer' and 'options' at acl 'name' (%v)", name)
 		return false, errorMsg
 	} else if matches.UDP != nil && matches.UDP.Length != nil {
 		log.Errorf("Acl UDP is not support 'lenght' at acl 'name' = %+v", name)

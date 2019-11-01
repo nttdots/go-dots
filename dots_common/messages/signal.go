@@ -3,16 +3,22 @@ package messages
 import "fmt"
 import "github.com/shopspring/decimal"
 
-type TargetPortRange struct {
+type PortRange struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	LowerPort *int `json:"lower-port" codec:"8,omitempty"`
 	UpperPort *int `json:"upper-port" codec:"9,omitempty"`
 }
 
+type SourceICMPTypeRange struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	LowerType *int `json:"lower-type" codec:"32771,omitempty"`
+	UpperType *int `json:"upper-type" codec:"32772,omitempty"`
+}
+
 type ACL struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	AclName string `json:"acl-name" codec:"23,omitempty"`
-	ActivationType string `json:"activation-type" codec:"49,omitempty"`
+	ActivationType *int `json:"activation-type" codec:"49,omitempty"`
 }
 
 type MitigationScope struct {
@@ -31,7 +37,7 @@ type Scope struct {
 	// prefix
 	TargetPrefix []string `json:"target-prefix" codec:"6,omitempty"`
 	// lower-port upper-port
-	TargetPortRange []TargetPortRange `json:"target-port-range" codec:"7,omitempty"`
+	TargetPortRange []PortRange `json:"target-port-range" codec:"7,omitempty"`
 	// Internet Protocol number
 	TargetProtocol []int `json:"target-protocol" codec:"10,omitempty"`
 	// FQDN
@@ -40,6 +46,12 @@ type Scope struct {
 	URI []string `json:"target-uri" codec:"12,omitempty"`
 	// alias name
 	AliasName []string `json:"alias-name" codec:"13,omitempty"`
+	// source prefix
+	SourcePrefix []string `json:"ietf-dots-call-home:source-prefix" codec:"32768,omitempty"`
+	// source port range
+	SourcePortRange []PortRange `json:"ietf-dots-call-home:source-port-range" codec:"32769,omitempty"`
+	// source icmp type range
+	SourceICMPTypeRange []SourceICMPTypeRange `json:"ietf-dots-call-home:source-icmp-type-range" codec:"32770,omitempty"`
 	// list of acl
 	AclList []ACL `json:"acl-list" codec:"22,omitempty"`
 	// lifetime
@@ -47,7 +59,7 @@ type Scope struct {
 	// attack-status
 	AttackStatus *int `json:"attack-status" codec:"29,omitempty"`
 	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
-	TriggerMitigation *bool `json:"trigger-mitigation" codec:"45"`
+	TriggerMitigation *bool `json:"trigger-mitigation" codec:"45,omitempty"`
 }
 
 type MitigationRequest struct {
@@ -143,11 +155,40 @@ func (m *MitigationRequest) String() (result string) {
 				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
 			}
 		}
+		if scope.SourcePrefix != nil {
+			for k, v := range scope.SourcePrefix {
+				result += fmt.Sprintf("     \"%s[%d]\": %s\n","ietf-dots-call-home:source-prefix", k+1, v)
+			}
+		}
+		if scope.SourcePortRange != nil {
+			for k, v := range scope.SourcePortRange {
+				result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-call-home:source-port-range", k+1)
+				if v.LowerPort != nil {
+					result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", *v.LowerPort)
+				}
+				if v.UpperPort != nil {
+					result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", *v.UpperPort)
+				}
+			}
+		}
+		if scope.SourceICMPTypeRange != nil {
+			for k, v := range scope.SourceICMPTypeRange {
+				result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-call-home:source-icmp-type-range", k+1)
+				if v.LowerType != nil {
+					result += fmt.Sprintf("       \"%s\": %d\n", "lower-type", *v.LowerType)
+				}
+				if v.UpperType != nil {
+					result += fmt.Sprintf("       \"%s\": %d\n", "upper-type", *v.UpperType)
+				}
+			}
+		}
 		if scope.AclList != nil {
 			for k, v := range scope.AclList {
 				result += fmt.Sprintf("     \"%s[%d]\":\n", "acl-list", k+1)
 				result += fmt.Sprintf("       \"%s\": %s\n", "acl-name", v.AclName)
-				result += fmt.Sprintf("       \"%s\": %s\n", "activation-type", v.ActivationType)
+				if v.ActivationType != nil {
+					result += fmt.Sprintf("       \"%s\": %d\n", "activation-type", *v.ActivationType)
+				}
 			}
 		}
 		if scope.Lifetime != nil {

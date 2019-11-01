@@ -5,11 +5,13 @@ package libcoap
 #include <coap2/coap.h>
 */
 import "C"
+import "fmt"
 import "errors"
 import "sort"
 import "strings"
 import "unsafe"
 import "reflect"
+import "net/http"
 import log "github.com/sirupsen/logrus"
 
 type Type uint8
@@ -48,6 +50,8 @@ const (
     RequestEntityTooLarge        Code = 141
     ResponseUnsupportedMediaType Code = 143
 
+    ResponseUnprocessableEntity  Code = 150
+
     ResponseInternalServerError Code = 160
     ResponseNotImplemented      Code = 161
     ResponseServiceUnavailable  Code = 163
@@ -77,6 +81,7 @@ const (
 
     CoapRequestEntityTooLarge CoapCode = "4.13 Request Entity Too Large"
     CoapUnsupportedMediaType  CoapCode = "4.15 Unsupported Media Type"
+    CoapUnprocessableEntity   CoapCode = "4.22 Unprocessable Entity"
 
     CoapInternalServerError   CoapCode = "5.00 Internal Server Error"
     CoapNotImplemented        CoapCode = "5.01 Not Implemented"
@@ -255,6 +260,16 @@ func (pdu *Pdu) Path() []string {
     return ret
 }
 
+func (pdu *Pdu) QueryParams() []string {
+    ret := make([]string, 0)
+    for _, o := range pdu.Options {
+        if o.Key == OptionUriPath && strings.Contains(o.String(), "=") {
+            ret = append(ret, o.String())
+        }
+    }
+    return ret
+}
+
 func (pdu *Pdu) PathString() string {
     return strings.Join(pdu.Path(), "/")
 }
@@ -353,14 +368,44 @@ func (pdu *Pdu) SetOption(key OptionKey, val interface{}) {
 }
 
 /*
+ * Get key of Pdu: 3 options
+ *   1. Pdu Message ID
+ *   2. Pdu Token
+ *   3. Pdu Message ID + Token
+ */
+func (pdu *Pdu) AsMapKey() string {
+    // return fmt.Sprintf("%d[%x]", pdu.MessageID, pdu.Token)
+    return fmt.Sprintf("%x", pdu.Token)
+    // return fmt.Sprintf("%d", pdu.MessageID)
+}
+
+/*
+ * The response data is an message (not an object data) in case the response code is different:
+ *   1. Created
+ *   2. Changed
+ *   3. Content
+ *   4. Conflict
+ */
+ func (pdu *Pdu) IsMessageResponse() bool {
+    if pdu.Code != ResponseCreated &&
+       pdu.Code != ResponseChanged &&
+       pdu.Code != ResponseContent &&
+       pdu.Code != ResponseConflict {
+		return true
+    } else {
+        return false
+    }
+}
+
+/*
  * Get full coap code to print debug log when receive response
  * parameter:
  *  code response code
  * return CoapCode:
  *  CoapCode: full coap code that user can easy to read and understand (Ex: 2.01 Created)
  */
-func (pdu *Pdu) CoapCode(code Code) CoapCode {
-    switch code {
+func (pdu *Pdu) CoapCode() CoapCode {
+    switch pdu.Code {
         case ResponseCreated:              return CoapCreated
         case ResponseDeleted:              return CoapDeleted
         case ResponseValid:                return CoapValid
@@ -377,6 +422,7 @@ func (pdu *Pdu) CoapCode(code Code) CoapCode {
         case ResponsePreconditionFailed:   return CoapPreconditionFailed
         case RequestEntityTooLarge:        return CoapRequestEntityTooLarge
         case ResponseUnsupportedMediaType: return CoapUnsupportedMediaType
+        case ResponseUnprocessableEntity:  return CoapUnprocessableEntity
         case ResponseInternalServerError:  return CoapInternalServerError
         case ResponseNotImplemented:       return CoapNotImplemented
         case ResponseBadGateway:           return CoapBadGateway
@@ -385,4 +431,37 @@ func (pdu *Pdu) CoapCode(code Code) CoapCode {
         case ResponseProxyingNotSupported: return CoapProxyingNotSupported
     }
     return CoapCode("")
+}
+
+/**
+ * Parse pdu libcoap code to http status code for response api
+ * Reference: https://tools.ietf.org/id/draft-ietf-core-http-mapping-01.html
+ */
+func (code Code) HttpCode() int {
+	switch code {
+        case ResponseCreated:              return http.StatusCreated
+        case ResponseDeleted:              return http.StatusOK
+        case ResponseValid:                return http.StatusNotModified
+        case ResponseChanged:              return http.StatusOK
+        case ResponseContent:              return http.StatusOK
+        case ResponseBadRequest:           return http.StatusBadRequest
+        case ResponseUnauthorized:         return http.StatusUnauthorized
+        case ResponseBadOption:            return http.StatusBadRequest
+        case ResponseForbidden:            return http.StatusForbidden
+        case ResponseNotFound:             return http.StatusNotFound
+        case ResponseMethodNotAllowed:     return http.StatusBadRequest
+        case ResponseNotAcceptable:        return http.StatusNotAcceptable
+        case ResponseConflict:             return http.StatusConflict
+        case ResponsePreconditionFailed:   return http.StatusPreconditionFailed
+        case RequestEntityTooLarge:        return http.StatusRequestEntityTooLarge
+        case ResponseUnsupportedMediaType: return http.StatusUnsupportedMediaType
+        case ResponseUnprocessableEntity:  return http.StatusUnprocessableEntity
+        case ResponseInternalServerError:  return http.StatusInternalServerError
+        case ResponseNotImplemented:       return http.StatusNotImplemented
+        case ResponseBadGateway:           return http.StatusBadGateway
+        case ResponseServiceUnavailable:   return http.StatusServiceUnavailable
+        case ResponseGatewayTimeout:       return http.StatusGatewayTimeout
+        case ResponseProxyingNotSupported: return http.StatusBadGateway
+    }
+    return 0
 }

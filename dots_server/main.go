@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 	"time"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
@@ -44,10 +45,14 @@ func main() {
 		nil,
 		&config.SecureFile.ServerCertFile,
 		&config.SecureFile.ServerKeyFile,
+		nil,
 	}
 
 	// Thread for monitoring remaining lifetime of mitigation requests
 	go controllers.ManageExpiredMitigation(config.LifetimeConfiguration.ManageLifetimeInterval)
+
+	// Thread for monitoring remaining max-age of signal session configuration
+	go controllers.ManageExpiredSessionMaxAge(config.LifetimeConfiguration.ManageLifetimeInterval)
 
 	// Thread for monitoring remaining lifetime of datachannel alias and acl requests
 	go data_models.ManageExpiredAliasAndAcl(config.LifetimeConfiguration.ManageLifetimeInterval)
@@ -123,7 +128,36 @@ func main() {
 			e.Handle(env)
 		default:
 			signalCtx.RunOnce(time.Duration(100) * time.Millisecond)
-			signalCtx.CheckRemovableResources()
+			CheckDeleteMitigationAndRemovableResource(signalCtx)
 		}
 	}
+}
+
+/*
+ * Check delete mitigation and removable resource
+ */
+func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
+	for _, resource := range libcoap.GetAllResource() {
+        if resource.GetRemovableResource() == true && (resource.GetIsBlockwiseInProgress() == false || !resource.IsObserved()) {
+			_, cuid, mid, err := controllers.ParseURIPath(strings.Split(resource.UriPath(), "/"))
+			if err != nil {
+				log.Warnf("Failed to parse Uri-Path, error: %s", err)
+			}
+
+			customerID := resource.GetCustomerId()
+			if mid != nil && customerID != nil {
+				// Delete mitigation
+				controllers.DeleteMitigation(*customerID, cuid, *mid, 0)
+				// Set resource all with the block wise progress is false to delete resource all
+				uriPathSplit := strings.Split(resource.UriPath(), "/mid")
+				resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
+				if resourceAll != nil {
+					resourceAll.SetIsBlockwiseInProgress(false)
+				}
+			}
+
+			log.Debugf("Delete the sub-resource (uri-path=%+v)", resource.UriPath())
+            context.DeleteResource(resource)
+        }
+    }
 }

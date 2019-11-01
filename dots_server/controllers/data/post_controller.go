@@ -10,7 +10,6 @@ import (
 
   messages "github.com/nttdots/go-dots/dots_common/messages/data"
   types "github.com/nttdots/go-dots/dots_common/types/data"
-  messages_common "github.com/nttdots/go-dots/dots_common/messages"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_server/models/data"
@@ -22,6 +21,7 @@ type PostController struct {
 func (c *PostController) Post(customer *models.Customer, r *http.Request, p httprouter.Params) (Response, error) {
   now := time.Now()
   cuid := p.ByName("cuid")
+  errMsg := ""
   log.WithField("cuid", cuid).Info("[PostController] POST")
 
   // Check missing 'cuid'
@@ -55,10 +55,12 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
         for _,alias := range req.Aliases.Alias {
           e, err := data_models.FindAliasByName(tx, client, alias.Name, now)
           if err != nil {
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alias")
+            errMsg = fmt.Sprintf("Failed to get alias with 'name' = %+v", alias.Name)
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
           }
           if e != nil {
-            return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, "Specified alias 'name' is already registered")
+            errMsg = fmt.Sprintf("Specified alias 'name' (%v) is already registered", alias.Name)
+            return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, errMsg)
           } else {
             alias.TargetPrefix = data_models.RemoveOverlapIPPrefix(alias.TargetPrefix)
             n = append(n, data_models.NewAlias(client, alias, now, defaultAliasLifetime))
@@ -68,7 +70,8 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
         for _,alias := range n {
           err = alias.Save(tx)
           if err != nil {
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save alias")
+            errMsg = fmt.Sprintf("Failed to save alias with 'name' = %+v", alias.Alias.Name)
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
           }
           aliasMap = append(aliasMap, alias)
         }
@@ -83,10 +86,12 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
         for _,acl := range req.ACLs.ACL {
           e, err := data_models.FindACLByName(tx, client, acl.Name, now)
           if err != nil {
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get alc")
+            errMsg = fmt.Sprintf("Failed to get acl with 'name' = %+v", acl.Name)
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
           }
           if e != nil {
-            return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, "Specified acl 'name' is already registered")
+            errMsg = fmt.Sprintf("Specified acl 'name'(%v) is already registered", acl.Name)
+            return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, errMsg)
           } else {
             if acl.ActivationType == nil {
               defValue := types.ActivationType_ActivateWhenMitigating
@@ -116,13 +121,15 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
         for _,acl := range n {
           err = acl.Save(tx)
           if err != nil {
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to save acl")
+            errMsg = fmt.Sprintf("Failed to save acl with 'name' = %+v", acl.ACL.Name)
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
           }
 
           // Handle ACL activation type
           isActive, err := acl.IsActive()
           if err != nil {
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to check acl status")
+            errMsg = fmt.Sprintf("Failed to check acl status with acl 'name' = %+v", acl.ACL.Name)
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
           }
           if isActive {
             acls = append(acls, acl)
@@ -137,20 +144,10 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
           // handle error when call blocker failed
           // Rollback
           for _, acl := range acls {
-            // Get active protection
-            p, err := models.GetActiveProtectionByTargetIDAndTargetType(acl.Id, string(messages_common.DATACHANNEL_ACL))
-            if err != nil {
-              return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get acl protection")
-            }
-
-            // Deactivate and Delete all active ACL
-            if p != nil {
-              // Cancel blocker for active ACL
-              data_models.CancelBlocker(acl.Id, *acl.ACL.ActivationType)
-            }
             data_models.DeleteACLByName(tx, client.Id, acl.ACL.Name, now)
+            errMsg = fmt.Sprintf("Failed to call blocker with acl 'name' = %+v", acl.ACL.Name)
           }
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to call blocker")
+          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
         }
         for _,acl := range aclMap {
           // Add acl to check expired

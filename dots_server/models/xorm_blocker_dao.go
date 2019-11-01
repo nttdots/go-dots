@@ -44,12 +44,6 @@ func CreateBlocker(blocker Blocker) (newBlocker db_models.Blocker, err error) {
 		goto Rollback
 	}
 
-	if blocker.LoginProfile() != nil {
-		err = createBlockerLoginProfile(session, *blocker.LoginProfile(), newBlocker.Id)
-		if err != nil {
-			goto Rollback
-		}
-	}
 	blockerParameters = toBlockerParameters(blocker, newBlocker.Id)
 
 	if len(blockerParameters) > 0 {
@@ -66,33 +60,7 @@ Rollback:
 	return
 }
 
-/*
- * Stores a LoginInfo object related to a Blocker to the database.
- * Parameter:
- *  session session information
- *  login_info LoginProfile
- *  blocker_id  Blocker ID to which this loginInfo is related.
- * return:
- *  err error
- */
-func createBlockerLoginProfile(session *xorm.Session, loginInfo LoginProfile, blockerId int64) (err error) {
-	// registered LoginProfile
-	newLoginProfile := db_models.LoginProfile{
-		LoginMethod: loginInfo.LoginMethod,
-		LoginName:   loginInfo.LoginName,
-		Password:    loginInfo.Password,
-		BlockerId:   blockerId,
-	}
 
-	_, err = session.Insert(&newLoginProfile)
-	if err != nil {
-		session.Rollback()
-		log.Infof("LoginProfile insert err: %s", err)
-		return
-	}
-
-	return
-}
 
 /*
  * Stores a Blocker parameters related to a Blocker to the database.
@@ -229,41 +197,6 @@ func GetBlockerConfigurationParameters(blockerConfigurationId int64) (blockerCon
 }
 
 /*
- * Obtain the designated LoginProfile by the Blocker ID.
- *
- * parameter:
- *  blockerId  Blocker ID
- * return:
- *  LoginProfile LoginProfile
- *  error error
- */
-func GetLoginProfile(blockerId int64) (loginProfile db_models.LoginProfile, err error) {
-	// default value setting
-	loginProfile = db_models.LoginProfile{}
-
-	// database connection create
-	engine, err := ConnectDB()
-	if err != nil {
-		log.Errorf("database connect error: %s", err)
-		return
-	}
-
-	// Get blocker table data
-	ok, err := engine.Where("blocker_id = ?", blockerId).Get(&loginProfile)
-	if err != nil {
-		return
-	}
-	if !ok {
-		// No data found
-		log.WithField("blocker_id", blockerId).Warn("login_profile data not exist.")
-		return
-	}
-
-	return
-
-}
-
-/*
  * Delete the Blocker by the Blocker ID.
  *
  * parameter:
@@ -292,13 +225,6 @@ func DeleteBlockerById(blockerId int64) (err error) {
 	_, err = session.Delete(db_models.BlockerParameter{BlockerId: blockerId})
 	if err != nil {
 		log.Errorf("delete blockerParameters error: %s", err)
-		goto Rollback
-	}
-
-	// Delete login_profile table data
-	_, err = session.Delete(db_models.LoginProfile{BlockerId: blockerId})
-	if err != nil {
-		log.Errorf("delete loginProfile error: %s", err)
 		goto Rollback
 	}
 
@@ -402,18 +328,11 @@ func BlockerConfigurationParametersToMap(configParams []db_models.BlockerConfigu
 
 func toBlocker(blocker db_models.Blocker, blockerConfig *db_models.BlockerConfiguration) (b Blocker, err error) {
 
-	profile, err := GetLoginProfile(blocker.Id)
-	if err != nil {
-		return nil, err
-	}
-
 	base := BlockerBase{
 		id:        blocker.Id,
 		capacity:  blocker.Capacity,
 		load:      blocker.Load,
-		loginInfo: new(LoginProfile),
 	}
-	base.loginInfo.Load(profile)
 
 	// Get blocker parameter and parse it to map
 	params, err := GetBlockerParameters(blocker.Id)

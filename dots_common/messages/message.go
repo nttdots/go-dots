@@ -38,6 +38,8 @@ type Option string
 const (
 	OBSERVE Option = "Observe"
 	IFMATCH	Option = "If-Match"
+	BLOCK2  Option = "Block2"
+	CONTENT_TYPE Option = "Content-Type"
 )
 
 type ObserveValue uint
@@ -71,6 +73,12 @@ type MitigationAcl string
 
 const (
 	MITIGATION_ACL MitigationAcl = "mitigation-acl-"
+)
+
+type Length int
+
+const (
+	CUID_LEN Length = 22
 )
 
 /*
