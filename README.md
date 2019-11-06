@@ -103,6 +103,10 @@ The blocker configuration of DOTS server is defined in database. For more detail
 ## Client
     $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=4646 --config [config.yml file (ex: go-dots/dots_client/dots_client.yaml)] -vv
 
+## MySQL Notification
+After the go-dots is built, the mysql-notification.* MUST be copied from $GOPATH/src/github.com/nttdots/go-dots/mysql-udf to /usr/lib/mysql/plugin
+
+    $ sudo cp -avr $GOPATH/src/github.com/nttdots/go-dots/mysql-udf/* /usr/lib/mysql/plugin
 
 ## GoBGP Server
 To install and run gobgp-server, refer to the following link:
