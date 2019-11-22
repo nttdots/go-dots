@@ -28,7 +28,8 @@ func unmarshalCbor(pdu *libcoap.Pdu, typ reflect.Type) (interface{}, error) {
     m := reflect.New(typ).Interface()
     reader := bytes.NewReader(pdu.Data)
 
-    d := codec.NewDecoder(reader, dots_common.NewCborHandle())
+    h := new(codec.CborHandle)
+    d := codec.NewDecoder(reader, h)
     err := d.Decode(m)
 
     if err != nil {
@@ -39,7 +40,8 @@ func unmarshalCbor(pdu *libcoap.Pdu, typ reflect.Type) (interface{}, error) {
 
 func marshalCbor(msg interface{}) ([]byte, error) {
     var buf []byte
-    e := codec.NewEncoderBytes(&buf, dots_common.NewCborHandle())
+    h := new(codec.CborHandle)
+    e := codec.NewEncoderBytes(&buf, h)
 
     err := e.Encode(msg)
     if err != nil {
