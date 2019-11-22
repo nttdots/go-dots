@@ -483,3 +483,116 @@ To add/change the server's certificate or the client's certificate, execute with
 
 For more detailed information about configuration of the certificate and the GnuTLS, refer to the following link:
 * [action_gnutls_scripted.md](https://gist.github.com/epcim/832cec2482a255e3f392)
+
+# Kubernetes
+
+Kubernetes is a portable, extensible, open-source platform for managing containerized workloads and services, that facilitates both declarative configuration and automation. It has a large, rapidly growing ecosystem. Kubernetes services, support, and tools are widely available.
+
+**To install kubernetes, refer to the following link:**
+* [kubernetes-ubuntu](https://matthewpalmer.net/kubernetes-app-developer/articles/install-kubernetes-ubuntu-tutorial.html)
+
+**To setup and run the go-dots server and go-dots client on Kubernetes. Following as below:**
+- Starting the virtual machine minikube
+
+    ```
+    $ minikube start
+    ```
+
+- Created the dots folder to Mount it to minikube. The dots folder contains the certs folder and the config folder. The certs folder contains the cert files in the [certs](./certs) folder. The config folder contains the [test_dump.sql](./dots_server/db_models/test_dump.sql), the gobgpd.conf, the [dots_server.yaml](./dots_server/dots_server.yaml) and the [dots_client.yaml](./dots_client/dots_client.yaml).
+    The structure of the dots folder as below:
+    ```
+    ~/dots
+        |--/certs
+                |-- /certs/* files
+        |--/config
+                |-- /test_dump.sql
+                |-- /gobgpd.conf
+                |-- /dots_server.yaml
+                |-- /dots_client.yaml
+    ```
+
+- Mounting the dots folder from host directory to minikube. Then the host directory and the virtual machine minikube contain the dots folder with the files and the values of files that are same.
+    ```
+    $ minikube mount ~/dots:/dots
+    ```
+
+- Created the go-dots client, the go-dots server, the mysql and the gobgp on Kuberbetes by the [Pod.yaml](./docker/Pod.yaml) file
+    ```
+    $ kubectl create -f Pod.yaml
+    ```
+
+- Get Pod to check ip address of the go-dots server and the go-dots client
+    ```
+    $ kubectl get pods --output=wide
+    ```
+
+- Executing the container in the cluster by specifying the Pod name
+    - The go-dots client
+        ```
+        $ kubectl exec -it client /bin/bash
+        ```
+    - The go-dots server
+        ```
+        $ kubectl exec -it server /bin/bash
+        ```
+    - The mysql
+        ```
+        $ kubectl exec -it server -c mysql /bin/bash
+        ```
+    - The gobgp
+        ```
+        $ kubectl exec -it server -c gobgp /bin/bash
+        ```
+
+- After executing the go-dots server container. In the go-dots server container, you to do as below: 
+    - Building the go-dots
+        ```
+        $ cd $GOPATH/src/github.com/nttdots/go-dots
+        $ make && make install
+        ```
+    - Copy the mysql_udf/* to /usr/lib/mysql/plugin to the go-dots server listens to DB notification
+        ```
+        $ sudo cp $GOPATH/src/github.com/nttdots/go-dots/mysql_udf/* /usr/lib/mysql/plugin
+        ```
+    - Run the go-dots server
+        ```
+        $ cd /dots/config
+        $ $GOPATH/bin/dots_server --config dots_server.yaml -vv
+        ```
+
+- After executing the mysql container. In the mysql container, restored the `dots` database from the mysql dump file
+    ```
+    $ cd /dots/config
+    $ mysql -u root -proot dots < test_dump.sql
+    ```
+
+- After executing the gobgp container. In the gobgp container, run gobgp:
+    ```
+    $ cd /dots/config
+    $ sudo $GOPATH/bin/gobgpd -f gobgpd.conf
+    ```
+
+- After executing the go-dots client container. In the go-dots client container, run the go-dots client:
+    ```
+    $ cd /dots/config
+    $ $GOPATH/bin/dots_client --server `ip address of the go-dots server` --signalChannelPort=4646 --config dots_client.yaml -vv
+    ```
+
+- If you want to change port (signalchannel, datachannel) to different port in dots_server.yaml, you have to change it at two places:
+    - ~/dots/config/dot_server.yaml: signalChannelPort: 4646
+    - ~/dots/config/dot_server.yaml: dataChannelPort: 10443
+
+- If you want to change port (signalchannel, datachannel) to different port in Pod.yaml, you have to change it at two places:
+    - [/docker/Pod.yaml](./docker/Pod.yaml): containerPort: 4646
+    - [/docker/Pod.yaml](./docker/Pod.yaml): containerPort: 10443
+
+- If you want to change the fields in dots_server.yaml, you have to change it at '~/dots/config/dots_server.yaml'
+
+- If you want to insert new dots_client, you to do as below:
+    - In the mysql container, Insert new dots_client into database
+        ```
+        $ mysql -u root -proot
+        >mysql use dots;
+        >mysql INSERT INTO `customer` (`id`, `common_name`, `created`, `updated`) VALUES (129,'client.sample.com','2017-04-13 13:44:34','2017-04-13 13:44:34'),
+        ```
+    - Next, In the '~/dots/certs/' folder add client certification as the `Certificate Configuration` above
