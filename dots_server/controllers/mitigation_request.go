@@ -1714,6 +1714,7 @@ var app []data_models.APPair
  * Activate data channel acl with activationType = 'activate-when-mitigating'
  */
 func ActivateDataChannelACL(customer *models.Customer, clientIdentifier string)  error {
+	log.Debug("Activate DataChannel Acl with activationType = 'activate-when-mitigating'")
 	// Get acl with activationType = 'activate-when-mitigating' to call blocker
 	app, err := data_models.GetACLWithActivateWhenMitigating(customer, clientIdentifier)
 	if err != nil {
@@ -1727,10 +1728,7 @@ func ActivateDataChannelACL(customer *models.Customer, clientIdentifier string) 
 	}
 	// Call blocker acl with activationType = 'activate-when-mitigating' and has not actived
 	if len(acls) > 0 {
-		err = data_models.CallBlocker(acls, customer.Id)
-		if err != nil {
-			return err
-		}
+		go data_models.CallBlocker(acls, customer.Id)
 	}
 	return nil
 }
