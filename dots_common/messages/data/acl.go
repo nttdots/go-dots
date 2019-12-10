@@ -38,6 +38,7 @@ type aclValidator interface {
   ValidateTCP(string, *types.Matches) (bool, string)
   ValidateUDP(string, *types.Matches) (bool, string)
   ValidatePort(*types.PortRangeOrOperator) (bool)
+  ValidateMandatoryAttributes(string, *types.Matches) (bool, string)
 }
 
 // Return mitigation scope validator by input blocker type (goBgpScopeValidator or goAristaScopeValidator)
@@ -248,6 +249,7 @@ func (v *aclValidatorBase) ValidateL3(name string, activationType *types.Activat
   isValid := false
   errorMsg := ""
   validator := GetAclValidator(v.blockerType)
+  if isValid, errorMsg = validator.ValidateMandatoryAttributes(name, matches); !isValid { return isValid, errorMsg }
   if isValid, errorMsg = validator.ValidateExistIPv4OrIPv6(name, matches); !isValid { return isValid, errorMsg }
   if isValid, errorMsg = validator.ValidateActivationType(name, activationType, matches); !isValid { return isValid, errorMsg }
   if isValid, errorMsg = validator.ValidateMatchType(name, aclType,matches); !isValid { return isValid, errorMsg }
