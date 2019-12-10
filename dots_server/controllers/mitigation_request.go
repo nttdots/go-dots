@@ -945,8 +945,7 @@ func ManageExpiredMitigation(lifetimeInterval int) {
     // Get all mitigations from DB
     mitigations, err := models.GetAllMitigationScopes()
     if err != nil {
-        log.Error("[Lifetime Mngt Thread]: Failed to get all mitigation from DB")
-        return
+        log.Warn("[Lifetime Mngt Thread]: Failed to get all mitigation from DB")
 	}
 
     // Add all mitigation in DB to managed list
