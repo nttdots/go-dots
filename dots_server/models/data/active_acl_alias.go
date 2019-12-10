@@ -120,14 +120,12 @@ func RemoveActiveACLRequest(id int64) {
 	// Get all alias from DB
 	aliases, err := FindAllAliases()
 	if err != nil {
-	  log.Error("[Lifetime Mngt Thread]: Failed to get all Aliases from DB")
-	  return
+	  log.Warn("[Lifetime Mngt Thread]: Failed to get all Aliases from DB")
 	}
 	// Get all acl from DB
 	acls, err := FindAllACLs()
 	if err != nil {
-	  log.Error("[Lifetime Mngt Thread]: Failed to get all Acls from DB")
-	  return
+	  log.Warn("[Lifetime Mngt Thread]: Failed to get all Acls from DB")
 	}
 
 	for _, alias := range aliases {

@@ -42,4 +42,4 @@ system:
   # In case the server's certificate is not matching, the client compare between the server's certificate and the cache's key
   pinnedCertificate:
     referenceIdentifier: client.sample.example.com
-    presentIdentifierList: _Xampp.sample.example.com, sample.example1.com
+    presentIdentifierList: server.sample.example.com
