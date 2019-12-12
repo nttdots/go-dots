@@ -19,7 +19,7 @@ type Env struct {
     requests map[string] *MessageTask
     missing_hb_allowed int
     current_missing_hb int
-    pingTask *PingTask
+    heartbeatTask *HeartBeatTask
     sessionConfigTask *SessionConfigTask
     requestQueries   map[string] *RequestQuery
     responseBlocks   map[string] *libcoap.Pdu
@@ -64,7 +64,7 @@ func (env *Env) RenewEnv(context *libcoap.Context, session *libcoap.Session) *En
     env.channel = make(chan Event, 32)
     env.requests = make(map[string] *MessageTask)
     env.current_missing_hb = 0
-    env.pingTask = nil
+    env.heartbeatTask = nil
     env.sessionConfigTask = nil
     env.requestQueries = make(map[string] *RequestQuery)
     env.responseBlocks = make(map[string] *libcoap.Pdu)
@@ -80,6 +80,10 @@ func (env *Env) SetRetransmitParams(maxRetransmit int, ackTimeout decimal.Decima
 
 func (env *Env) SetMissingHbAllowed(missing_hb_allowed int) {
     env.missing_hb_allowed = missing_hb_allowed
+}
+
+func (env *Env) GetMissingHbAllowed() int {
+    return env.missing_hb_allowed
 }
 
 func (env *Env) SetSessionConfigMode(sessionConfigMode string) {
@@ -135,8 +139,8 @@ func (env *Env) GetBlockData(key string) *libcoap.Pdu {
 }
 
 func (env *Env) Run(task Task) {
-    if (reflect.TypeOf(task) == reflect.TypeOf(&PingTask{})) && (!task.(*PingTask).IsRunnable()) {
-        log.Debug("Ping task is disabled. Do not start ping task.")
+    if (reflect.TypeOf(task) == reflect.TypeOf(&HeartBeatTask{})) && (!task.(*HeartBeatTask).IsRunnable()) {
+        log.Debug("HeartBeat task is disabled. Do not start heartbeat task.")
         return
     }
 
@@ -145,8 +149,8 @@ func (env *Env) Run(task Task) {
         key := t.message.AsMapKey()
         env.requests[key] = t
 
-    case *PingTask:
-        env.pingTask = t
+    case *HeartBeatTask:
+        env.heartbeatTask = t
 
     case *SessionConfigTask:
         env.sessionConfigTask = t
@@ -170,9 +174,9 @@ func (env *Env) IsHeartbeatAllowed() bool {
     return env.current_missing_hb < env.missing_hb_allowed
 }
 
-func (env *Env) StopPing() {
-    if env.pingTask != nil {
-        env.pingTask.stop()
+func (env *Env) StopHeartBeat() {
+    if env.heartbeatTask != nil {
+        env.heartbeatTask.stop()
     }
 }
 

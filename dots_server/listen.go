@@ -1,7 +1,6 @@
 package main
 
 import (
-    "bytes"
     "errors"
     "net"
     "reflect"
@@ -11,7 +10,6 @@ import (
     "fmt"
 
     log "github.com/sirupsen/logrus"
-    "github.com/ugorji/go/codec"
 
     "github.com/nttdots/go-dots/dots_common"
     "github.com/nttdots/go-dots/dots_common/messages"
@@ -19,36 +17,6 @@ import (
     "github.com/nttdots/go-dots/dots_server/models"
     "github.com/nttdots/go-dots/libcoap"
 )
-
-func unmarshalCbor(pdu *libcoap.Pdu, typ reflect.Type) (interface{}, error) {
-    if len(pdu.Data) == 0 {
-        return nil, nil
-    }
-
-    m := reflect.New(typ).Interface()
-    reader := bytes.NewReader(pdu.Data)
-
-    h := new(codec.CborHandle)
-    d := codec.NewDecoder(reader, h)
-    err := d.Decode(m)
-
-    if err != nil {
-        return nil, err
-    }
-    return m, nil
-}
-
-func marshalCbor(msg interface{}) ([]byte, error) {
-    var buf []byte
-    h := new(codec.CborHandle)
-    e := codec.NewEncoderBytes(&buf, h)
-
-    err := e.Encode(msg)
-    if err != nil {
-        return nil, err
-    }
-    return buf, nil
-}
 
 func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) *libcoap.Resource {
 
@@ -135,6 +103,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
 
         var body interface{}
         var resourcePath string
+        isHeartBeatMechanism := false
         if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
             uri := request.Path()
             for i := range uri {
@@ -147,11 +116,37 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                     log.Debug("Request path includes 'config'. Cbor decode with type SignalConfigRequest")
                     body, resourcePath, err, is_unknown = registerResourceSignalConfig(request, typ, controller, session, context, is_unknown, customer.Id, observe, token)
                     break;
+                } else if strings.HasPrefix(uri[i], "hb") {
+                    isHeartBeatMechanism = true
+                    break;
                 }
             }
 
         } else {
-            body, err = unmarshalCbor(request, typ)
+            body, err = messages.UnmarshalCbor(request, typ)
+        }
+
+        // handle heartbeat mechanism
+        if isHeartBeatMechanism {
+            log.Debug("Handle heartbeat mechanism")
+            body, errMsg := messages.ValidateHeartBeatMechanism(request)
+            session.SetIsStopHeartBeat(true)
+            if body == nil && errMsg != "" {
+                log.Error(errMsg)
+                response.Code = libcoap.ResponseInternalServerError
+                response.Type = responseType(request.Type)
+                response.Data = []byte(errMsg)
+            } else if body != nil && errMsg != "" {
+                log.Error(errMsg)
+                response.Code = libcoap.ResponseBadRequest
+                response.Type = responseType(request.Type)
+                response.Data = []byte(errMsg)
+            } else {
+                response.Code = libcoap.ResponseChanged
+                response.Type = responseType(request.Type)
+            }
+            log.Debugf("response=%+v", response)
+            return
         }
 
         if err != nil {
@@ -186,7 +181,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if reflect.ValueOf(res.Body).Kind() == reflect.String {
             payload = []byte(res.Body.(string))
         } else {
-            payload, err = marshalCbor(res.Body)
+            payload, err = messages.MarshalCbor(res.Body)
         }
         if err != nil {
             log.WithError(err).Error("marshalCbor failed.")
@@ -317,7 +312,7 @@ func responseType(typeReq libcoap.Type) (typeRes libcoap.Type) {
  * Parsing mitigation ids from uri-path and check condition to set removable for the resource
  */
 func handleExpiredMitigation(resource *libcoap.Resource, customer *models.Customer, context *libcoap.Context, status int) {
-    _, cuid, mid, err := controllers.ParseURIPath(strings.Split(resource.UriPath(), "/"))
+    _, cuid, mid, err := messages.ParseURIPath(strings.Split(resource.UriPath(), "/"))
     if err != nil {
         log.Warnf("Failed to parse Uri-Path, error: %s", err)
         return
@@ -361,7 +356,7 @@ func handleExpiredMitigation(resource *libcoap.Resource, customer *models.Custom
 func registerResourceMitigation(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
                                  context  *libcoap.Context, is_unknown bool) (interface{}, string, error) {
 
-    body, err := unmarshalCbor(request, reflect.TypeOf(messages.MitigationRequest{}))
+    body, err := messages.UnmarshalCbor(request, reflect.TypeOf(messages.MitigationRequest{}))
     if err != nil {
         return nil, "", err
     }
@@ -408,7 +403,7 @@ func registerResourceMitigation(request *libcoap.Pdu, typ reflect.Type, controll
 func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
                                    context  *libcoap.Context, is_unknown bool, customerID int, observe int, token *[]byte) (interface{}, string, error, bool) {
 
-    body, err := unmarshalCbor(request, reflect.TypeOf(messages.SignalConfigRequest{}))
+    body, err := messages.UnmarshalCbor(request, reflect.TypeOf(messages.SignalConfigRequest{}))
     if err != nil {
         return nil, "", err, is_unknown
     }

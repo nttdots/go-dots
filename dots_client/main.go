@@ -16,12 +16,13 @@ import (
 	"syscall"
 	"time"
 	"encoding/json"
+	"encoding/hex"
 
-	log "github.com/sirupsen/logrus"
-	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_client/task"
 	"github.com/nttdots/go-dots/libcoap"
+	log "github.com/sirupsen/logrus"
+	common "github.com/nttdots/go-dots/dots_common"
 	dots_config "github.com/nttdots/go-dots/dots_client/config"
 	client_message "github.com/nttdots/go-dots/dots_client/messages"
 	restful_router "github.com/nttdots/go-dots/dots_client/router"
@@ -124,6 +125,13 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 			goto error
 		}
 	}
+	// create resource for heartbeat mechanism from server
+	if ctx != nil {
+		resource := libcoap.ResourceUnknownInit()
+		ctx.AddResource(resource)
+		resource.RegisterServerHandler(libcoap.RequestPut, heartbeatHandler())
+	}
+
 	if (orgEnv == nil){
 		env = task.NewEnv(ctx, sess)
 	} else {
@@ -147,10 +155,12 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 		if received != nil && oSess != nil && oSess == env.CoapSession(){
 			sess.SessionRelease()
 			log.Debugf("Restarted connection successfully with current session: %+v.", oSess.String())
-			env.Run(task.NewPingTask(
+			env.Run(task.NewHeartBeatTask(
 					time.Duration(config.DefaultSessionConfiguration.HeartbeatInterval) * time.Second,
-					pingResponseHandler,
-					pingTimeoutHandler))
+					config.DefaultSessionConfiguration.MissingHbAllowed,
+					time.Duration(config.DefaultSessionConfiguration.AckTimeout)* time.Second,
+					heartbeatResponseHandler,
+					heartbeatTimeoutHandler))
 		}
 	})
 
@@ -171,6 +181,33 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 error:
 	cleanupSignalChannel(ctx, sess)
 	return
+}
+
+// heartbeat handler
+func heartbeatHandler() libcoap.MethodHandler {
+	return func(ctx *libcoap.Context, rsrc *libcoap.Resource, sess *libcoap.Session, request *libcoap.Pdu, token *[]byte, query *string, response *libcoap.Pdu) {
+		log.Info("Handle receive heartbeat from server")
+		log.Debugf("request.Data=\n%s", hex.Dump(request.Data))
+		body, errMsg := messages.ValidateHeartBeatMechanism(request)
+		response.MessageID = request.MessageID
+        response.Token     = request.Token
+		if body == nil && errMsg != "" {
+			log.Error(errMsg)
+			response.Code = libcoap.ResponseInternalServerError
+			response.Type = libcoap.TypeNon
+			response.Data = []byte(errMsg)
+		} else if body != nil && errMsg != "" {
+			log.Error(errMsg)
+			response.Code = libcoap.ResponseBadRequest
+			response.Type = libcoap.TypeNon
+			response.Data = []byte(errMsg)
+		} else {
+			response.Code = libcoap.ResponseChanged
+			response.Type = libcoap.TypeNon
+		}
+		log.Debugf("response=%+v", response)
+		return
+	}
 }
 
 func cleanupSignalChannel(ctx *libcoap.Context, sess *libcoap.Session) {
@@ -390,8 +427,8 @@ func handleResponse(env *task.Env, pdu *libcoap.Pdu) {
     } else if !t.IsStop() {
         if pdu.Type != libcoap.TypeNon {
             log.Debugf("Success incoming PDU (HandleResponse): %+v", pdu)
-        }
-        delete(env.Requests(), key)
+		}
+		delete(env.Requests(), key)
         t.Stop()
         t.GetResponseHandler()(t, pdu, env)
         // Reset current_missing_hb
@@ -413,15 +450,7 @@ func handleRequestTimeout(env *task.Env, sent *libcoap.Pdu) {
         log.Info("Unexpected PDU: %v", sent)
     } else {
         t.Stop()
-
-        // Request timeout -> Counting up missing-hb
-        // Code = 0: Code of Ping task
-        if sent.Code == 0 {
-            env.SetCurrentMissingHb(env.GetCurrentMissingHb() + 1)
-            delete(env.Requests(), key)
-        } else {
-            log.Debugf("Session config request timeout")
-        }
+        log.Debugf("Session config request timeout")
         t.GetTimeoutHandler()(t, env)
     }
 }
@@ -528,10 +557,12 @@ func main() {
 
 	// Load session configuration
 	loadConfig(env)
-	env.Run(task.NewPingTask(
+	env.Run(task.NewHeartBeatTask(
 		time.Duration(config.DefaultSessionConfiguration.HeartbeatInterval) * time.Second,
-		pingResponseHandler,
-		pingTimeoutHandler))
+		config.DefaultSessionConfiguration.MissingHbAllowed,
+		time.Duration(config.DefaultSessionConfiguration.AckTimeout) * time.Second,
+		heartbeatResponseHandler,
+		heartbeatTimeoutHandler))
 loop:
 	for {
 		select {
@@ -551,9 +582,11 @@ func CheckReplacingSession(env *task.Env) {
 	isReplace := env.CheckSessionReplacement()
 	if isReplace {
         loadConfig(env)
-		env.Run(task.NewPingTask(
+		env.Run(task.NewHeartBeatTask(
 				time.Duration(config.DefaultSessionConfiguration.HeartbeatInterval) * time.Second,
-				pingResponseHandler,
-				pingTimeoutHandler))
+				config.DefaultSessionConfiguration.MissingHbAllowed,
+				time.Duration(config.DefaultSessionConfiguration.AckTimeout) * time.Second,
+				heartbeatResponseHandler,
+				heartbeatTimeoutHandler))
 	}
 }

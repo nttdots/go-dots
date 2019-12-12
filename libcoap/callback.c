@@ -14,16 +14,18 @@ extern void export_method_handler(coap_context_t *ctx,
                            coap_string_t *tok,
                            coap_string_t *query,
                            coap_pdu_t *resp);
+extern void export_method_from_server_handler(coap_context_t *ctx,
+                           coap_resource_t *rsrc,
+                           coap_session_t *sess,
+                           coap_pdu_t *req,
+                           coap_string_t *tok,
+                           coap_string_t *query,
+                           coap_pdu_t *resp);
 
 extern void export_nack_handler(coap_context_t *ctx,
                     coap_session_t *sess,
                     coap_pdu_t *sent,
                     coap_nack_reason_t reason,
-                    coap_tid_t id);
-
-extern void export_ping_handler(coap_context_t *ctx,
-                    coap_session_t *sess,
-                    coap_pdu_t *sent,
                     coap_tid_t id);
 
 extern void export_event_handler(coap_context_t *ctx,
@@ -54,6 +56,17 @@ void method_handler(coap_context_t *context,
     export_method_handler(context, resource, session, request, token, queryString, response);
 }
 
+void method_from_server_handler(coap_context_t *context,
+                    coap_resource_t *resource,
+                    coap_session_t *session,
+                    coap_pdu_t *request,
+                    coap_string_t *token,
+                    coap_string_t *queryString,
+                    coap_pdu_t *response) {
+
+    export_method_from_server_handler(context, resource, session, request, token, queryString, response);
+}
+
 void nack_handler(coap_context_t *context,
                     coap_session_t *session,
                     coap_pdu_t *sent,
@@ -61,14 +74,6 @@ void nack_handler(coap_context_t *context,
                     const coap_tid_t id){
 
     export_nack_handler(context, session, sent, reason, id);
-}
-
-void ping_handler(coap_context_t *context,
-                      coap_session_t *session,
-                      coap_pdu_t *sent,
-                      const coap_tid_t id) {
-
-    export_ping_handler(context, session, sent, id);
 }
 
 void event_handler(coap_context_t *context,

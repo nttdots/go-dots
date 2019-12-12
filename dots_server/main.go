@@ -84,12 +84,6 @@ func main() {
 	// Create new cache
 	libcoap.CreateNewCache(int(messages.EXCHANGE_LIFETIME), config.CacheInterval)
 
-	// Register ping handler
-    signalCtx.RegisterPingHandler(func(_ *libcoap.Context, session *libcoap.Session, _ *libcoap.Pdu) {
-		// This session is alive
-		session.SetIsAlive(true)
-	})
-
 	// Register nack handler
     signalCtx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
@@ -109,7 +103,8 @@ func main() {
 		if event == libcoap.EventSessionConnected {
 			// Session connected: Add session to map
 			log.Debugf("New session connecting to dots server: %+v", session.String())
-        	libcoap.AddNewConnectingSession(session)
+			env.ManageSessionTraffic(session)
+			libcoap.AddNewConnectingSession(session)
 		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
 			// Session disconnected: Remove session from map
 			log.Debugf("Remove connecting session from dots server: %+v", session.String())
@@ -120,7 +115,10 @@ func main() {
 		}
 	})
 
-	go env.ManageSessionTraffic()
+	// Register response handler
+	signalCtx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
+		env.HandleResponse(received)
+	})
 	
 	for {
 		select {
@@ -139,7 +137,7 @@ func main() {
 func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 	for _, resource := range libcoap.GetAllResource() {
         if resource.GetRemovableResource() == true && (resource.GetIsBlockwiseInProgress() == false || !resource.IsObserved()) {
-			_, cuid, mid, err := controllers.ParseURIPath(strings.Split(resource.UriPath(), "/"))
+			_, cuid, mid, err := messages.ParseURIPath(strings.Split(resource.UriPath(), "/"))
 			if err != nil {
 				log.Warnf("Failed to parse Uri-Path, error: %s", err)
 			}

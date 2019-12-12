@@ -18,16 +18,18 @@ void method_handler(coap_context_t *,
                     coap_string_t *,
                     coap_string_t *,
                     coap_pdu_t *);
+void method_from_server_handler(coap_context_t *,
+                    coap_resource_t *,
+                    coap_session_t *,
+                    coap_pdu_t *,
+                    coap_string_t *,
+                    coap_string_t *,
+                    coap_pdu_t *);
 
 void nack_handler(struct coap_context_t *,
                     coap_session_t *,
                     coap_pdu_t *,
                     coap_nack_reason_t,
-                    const coap_tid_t);
-
-void ping_handler(struct coap_context_t *,
-                    coap_session_t *,
-                    coap_pdu_t *,
                     const coap_tid_t);
 
 void event_handler(coap_context_t *context,

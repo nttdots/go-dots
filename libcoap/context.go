@@ -32,7 +32,6 @@ type Context struct {
     ptr     *C.coap_context_t
     handler ResponseHandler
     nackHandler NackHandler
-    pingHandler PingHandler
     eventHandler EventHandler
     dtls    *C.coap_dtls_pki_t
 }
@@ -64,7 +63,7 @@ func NewContext(addr *Address) *Context {
 
     ptr := C.coap_new_context(caddr)
     if ptr != nil {
-        context := &Context{ ptr, nil, nil, nil, nil, nil }
+        context := &Context{ ptr, nil, nil, nil, nil }
         contexts[ptr] = context
         return context
     } else {
@@ -160,7 +159,7 @@ func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
         ok := C.coap_context_set_pki(ptr, setupData)
 
         if ok == 1 {
-            context := &Context{ ptr, nil, nil, nil, nil, setupData }
+            context := &Context{ ptr, nil, nil, nil, setupData }
             contexts[ptr] = context
             return context            
         } else {

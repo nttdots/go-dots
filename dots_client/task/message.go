@@ -18,6 +18,7 @@ type MessageTask struct {
     timeout  time.Duration
 
     isStop bool
+    isHeartBeat bool
     responseHandler ResponseHandler
     timeoutHandler  TimeoutHandler
 }
@@ -30,6 +31,7 @@ func NewMessageTask(message *libcoap.Pdu,
                     retry int,
                     timeout time.Duration,
                     isStop bool,
+                    isHeartBeat bool,
                     responseHandler ResponseHandler,
                     timeoutHandler TimeoutHandler) *MessageTask {
     return &MessageTask {
@@ -40,6 +42,7 @@ func NewMessageTask(message *libcoap.Pdu,
         retry,
         timeout,
         isStop,
+        isHeartBeat,
         responseHandler,
         timeoutHandler,
     }
@@ -91,7 +94,9 @@ func (t *MessageTask) run(out chan Event) {
         case <- t.stopChan:
             return
         case <- timeout:
-            log.Debug("Mitigation request timeout")
+            if !t.isHeartBeat {
+                log.Debug("Mitigation request timeout")
+            }
             t.isStop = true
             out <- &TimeoutEvent{ EventBase{ t } }
             t.stop()
