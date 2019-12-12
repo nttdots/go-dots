@@ -17,8 +17,6 @@ import cache "github.com/patrickmn/go-cache"
 // across invocations, sessions are not 'eq'
 type MethodHandler func(*Context, *Resource, *Session, *Pdu, *[]byte, *string, *Pdu)
 
-type PingHandler func(*Context, *Session, *Pdu)
-
 type EventHandler func(*Context, Event, *Session)
 
 type EndPoint struct {
@@ -93,9 +91,6 @@ func export_method_handler(ctx   *C.coap_context_t,
             request.Options = append(request.Options, OptionUriPath.String(path))
         }
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
-    } else {
-        // session is alive when receive a request, not when re-create a notification
-        session.SetIsAlive(true)
     }
     
     token := tok.toBytes()
@@ -164,33 +159,6 @@ func export_method_handler(ctx   *C.coap_context_t,
     }
 }
 
-//export export_ping_handler
-func export_ping_handler(ctx *C.coap_context_t,
-	sess *C.coap_session_t,
-	sent *C.coap_pdu_t,
-	id C.coap_tid_t) {
-
-    context, ok := contexts[ctx]
-	if !ok {
-		return
-	}
-
-    session, ok := sessions[sess]
-    if !ok {
-		return
-	}
-
-	req, err := sent.toGo()
-	if err != nil {
-		return
-	}
-
-    // If previous message is Ping message or Session Config message
-	if context.pingHandler != nil && req.Type == C.COAP_MESSAGE_CON && (req.Code == 0 || req.Code == C.COAP_REQUEST_GET){
-		context.pingHandler(context, session, req)
-	}
-}
-
 // Create Event type from coap_event_t
 func newEvent (ev C.coap_event_t) Event {
     switch ev {
@@ -214,7 +182,7 @@ func export_event_handler(ctx *C.coap_context_t,
 
     session, ok := sessions[sess]
     if !ok {
-        session = &Session{ sess, &SessionConfig{ true, false, 0, 0 } }
+        session = &Session{ sess, &SessionConfig{false, false, 0, 0 } }
     }
     
     // Run event handler when session is connected or disconnected
@@ -226,12 +194,6 @@ func export_event_handler(ctx *C.coap_context_t,
 func (resource *Resource) RegisterHandler(method Code, handler MethodHandler) {
     resource.handlers[method] = handler
     C.coap_register_handler(resource.ptr, C.uchar(method), C.coap_method_handler_t(C.method_handler))
-}
-
-// Register ping handler to libcoap
-func (context *Context) RegisterPingHandler(handler PingHandler) {
-	context.pingHandler = handler
-	C.coap_register_ping_handler(context.ptr, C.coap_ping_handler_t(C.ping_handler))
 }
 
 // Register event handler to libcoap

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 	"reflect"
@@ -38,7 +37,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	var errMessage string
 
 	// Get cuid, mid from Uri-Path
-	_, cuid, mid, err := ParseURIPath(request.PathInfo)
+	_, cuid, mid, err := messages.ParseURIPath(request.PathInfo)
 	if err != nil {
 		errMessage = fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
 		log.Warnf(errMessage)
@@ -201,7 +200,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	log.WithField("message", body.String()).Debug("[PUT] receive message")
 
 	// Get cuid, mid from Uri-Path
-	cdid, cuid, mid, err := ParseURIPath(request.PathInfo)
+	cdid, cuid, mid, err := messages.ParseURIPath(request.PathInfo)
 	if err != nil {
 		errorMessage = fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
 		log.Warn(errorMessage)
@@ -437,7 +436,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 	log.WithField("request", request).Debug("[DELETE] receive message")
 
 	// Get cuid, mid from Uri-Path
-	_, cuid, mid, err := ParseURIPath(request.PathInfo)
+	_, cuid, mid, err := messages.ParseURIPath(request.PathInfo)
 	if err != nil {
 		errMessage := fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
 		log.Warnf(errMessage)
@@ -902,40 +901,6 @@ func callBlockerByScope(scope *models.MitigationScope, c *models.Customer) (err 
 		for _, f := range unregisterCommands {
 			f()
 		}
-	}
-	return
-}
-
-/*
-*  Get cuid, mid value from URI-Path
-*/
-func ParseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err error){
-	log.Debugf("Parsing URI-Path : %+v", uriPath)
-	// Get cuid, mid from Uri-Path
-	for _, uriPath := range uriPath{
-		if(strings.HasPrefix(uriPath, "cuid=")){
-			cuid = uriPath[strings.Index(uriPath, "cuid=")+5:]
-		} else if (strings.HasPrefix(uriPath, "cdid=")){
-			cdid = uriPath[strings.Index(uriPath, "cdid=")+5:]
-		} else if(strings.HasPrefix(uriPath, "mid=")){
-			midStr := uriPath[strings.Index(uriPath, "mid=")+4:]
-			midValue, err := strconv.Atoi(midStr)
-			if err != nil {
-				log.Warn("Mid is not integer type.")
-				return cdid, cuid, mid, err
-			}
-			if midStr == "" {
-			    mid = nil
-			} else {
-			    mid = &midValue
-			}
-		}
-	}
-	// Log nil if mid does not exist in path. Otherwise, log mid's value
-	if mid == nil {
-	    log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, nil)
-	} else {
-        log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, *mid)
 	}
 	return
 }

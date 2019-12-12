@@ -17,8 +17,8 @@ type Session struct {
 }
 
 type SessionConfig struct {
-    isAlive            bool
-    isPingTask         bool
+    isStopHeartBeat    bool
+    isHeartBeatTask    bool
     missing_hb_allowed int
     current_missing_hb int
 }
@@ -107,6 +107,14 @@ func (session *Session) GetCurrentMissingHb() int {
 }
 
 /*
+ * Get session missing-hb-allowed
+ * return: missing-hb-allowed value
+ */
+ func (session *Session) GetMissingHbAllowed() int {
+    return session.sessionConfig.missing_hb_allowed
+}
+
+/*
  * Set current session missing-hb-allowed
  * parameter:
  *  new_hb_allowed new current missing-hb-allowed
@@ -116,37 +124,37 @@ func (session *Session) SetCurrentMissingHb(new_hb_allowed int) {
 }
 
 /*
- * Get session is-alive
- * return: is-live value
+ * Get session is-hb-task
+ * return: is-hb-task value
  */
-func (session *Session) GetIsAlive() bool {
-    return session.sessionConfig.isAlive
+func (session *Session) GetIsHeartBeatTask() bool {
+    return session.sessionConfig.isHeartBeatTask
 }
 
 /*
- * Set session is-alive
+ * Set session is-hb-task
  * parameter:
- *  isAlive new session is-alive
+ *  isHeartBeat new session is-hb-task
  */
-func (session *Session) SetIsAlive(isAlive bool) {
-    session.sessionConfig.isAlive = isAlive
+func (session *Session) SetIsHeartBeatTask(isHeartBeat bool) {
+    session.sessionConfig.isHeartBeatTask = isHeartBeat
 }
 
 /*
- * Get session is-ping-task
- * return: is-ping-task value
+ * Get session is stop heartbeat
+ * return: isStopHeartBeat
  */
-func (session *Session) GetIsPingTask() bool {
-    return session.sessionConfig.isPingTask
+ func (session *Session) GetIsStopHeartBeat() bool {
+    return session.sessionConfig.isStopHeartBeat
 }
 
 /*
- * Set session is-ping-task
+ * Set session is stop heartbeat
  * parameter:
- *  isPing new session is-ping-task
+ *  isStopHeartBeat
  */
-func (session *Session) SetIsPingTask(isPing bool) {
-    session.sessionConfig.isPingTask = isPing
+func (session *Session) SetIsStopHeartBeat(isStopHeartBeat bool) {
+    session.sessionConfig.isStopHeartBeat = isStopHeartBeat
 }
 
 /*
@@ -170,7 +178,7 @@ func (session *Session) IsHeartbeatAllowed() bool {
 func (session *Session) SetSessionDefaultConfigIdle() {
     defaultConfig := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
     if session.sessionConfig == nil {
-        session.sessionConfig = &SessionConfig{ true, false, defaultConfig.MissingHbAllowedIdle, 0 }
+        session.sessionConfig = &SessionConfig{ false, false, defaultConfig.MissingHbAllowedIdle, 0 }
     }
     session.sessionConfig.missing_hb_allowed = defaultConfig.MissingHbAllowedIdle
     session.SetMaxRetransmit(defaultConfig.MaxRetransmitIdle)
@@ -188,7 +196,7 @@ func (session *Session) SetSessionDefaultConfigIdle() {
  */
 func (session *Session) SetSessionConfig(missingHbAllowed int, maxRetransmit int, ackTimeout float64, ackRandomFactor float64) {
     if session.sessionConfig == nil {
-        session.sessionConfig = &SessionConfig{ true, false, missingHbAllowed, 0 }
+        session.sessionConfig = &SessionConfig{ false, false, missingHbAllowed, 0 }
     }
     session.sessionConfig.missing_hb_allowed = missingHbAllowed
     session.SetMaxRetransmit(maxRetransmit)

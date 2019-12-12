@@ -62,6 +62,7 @@ func (e *SessionConfigEvent) Handle(env *Env) {
         0,
         time.Duration(0),
         false,
+        false,
         func (_ *MessageTask, pdu *libcoap.Pdu, env *Env) {
             task.responseHandler(task, pdu, env)
         },
