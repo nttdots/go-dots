@@ -12,7 +12,7 @@ import (
 )
 
 
-var hbRequestPath = ".well-known/dots/v1/hb"
+var hbRequestPath = ".well-known/dots/hb"
 
 /* 
  * Create heartbeat json data
@@ -66,7 +66,8 @@ func NewHeartBeatMessage(session libcoap.Session,jsonFileName string) (*libcoap.
     pdu.Code = libcoap.RequestPut
     pdu.Data = data
     pdu.Token = dots_common.RandStringBytes(8)
-    pdu.MessageID = session.NewMessageID()
+	pdu.MessageID = session.NewMessageID()
+	pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppCbor))
     pdu.SetPathString(hbRequestPath)
     return pdu, nil
 }
