@@ -80,8 +80,7 @@ func (r *Request) LoadMessage(message interface{}) {
  */
 func (r *Request) dumpCbor() []byte {
 	var buf []byte
-	h := new(codec.CborHandle)
-	e := codec.NewEncoderBytes(&buf, h)
+	e := codec.NewEncoderBytes(&buf, dots_common.NewCborHandle())
 
 	err := e.Encode(r.Message)
 	if err != nil {
@@ -374,8 +373,7 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 		return
 	}
 
-	h := new(codec.CborHandle)
-	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), h)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 
 	switch r.requestName {
 	case "mitigation_request":
@@ -434,8 +432,7 @@ func RestartHeartBeatTask(pdu *libcoap.Pdu, env *task.Env) {
 		return
 	}
 
-	h := new(codec.CborHandle)
-	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), h)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 	var v messages.ConfigurationResponse
 	err := dec.Decode(&v)
 	if err != nil {
@@ -525,8 +522,7 @@ func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, e
 		return
 	}
 
-	h := new(codec.CborHandle)
-	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), h)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 	var v messages.ConfigurationResponse
 	err := dec.Decode(&v)
 	if err != nil {
@@ -597,8 +593,7 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
 		return
 	}
 
-	h := new(codec.CborHandle)
-    dec := codec.NewDecoder(bytes.NewReader(pdu.Data), h)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 
     // Identify response is mitigation or session configuration by cbor data in heximal
     if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {

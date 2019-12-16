@@ -5,9 +5,9 @@ import (
 	"reflect"
 	"strings"
 	"strconv"
-	"bytes"
 	"github.com/ugorji/go/codec"
 	"github.com/nttdots/go-dots/libcoap"
+	"github.com/nttdots/go-dots/dots_common"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -220,10 +220,7 @@ func UnmarshalCbor(pdu *libcoap.Pdu, typ reflect.Type) (interface{}, error) {
     }
 
     m := reflect.New(typ).Interface()
-    reader := bytes.NewReader(pdu.Data)
-
-    h := new(codec.CborHandle)
-    d := codec.NewDecoder(reader, h)
+	d := codec.NewDecoderBytes(pdu.Data, dots_common.NewCborHandle())
     err := d.Decode(m)
 
     if err != nil {
@@ -234,9 +231,7 @@ func UnmarshalCbor(pdu *libcoap.Pdu, typ reflect.Type) (interface{}, error) {
 
 func MarshalCbor(msg interface{}) ([]byte, error) {
     var buf []byte
-    h := new(codec.CborHandle)
-    e := codec.NewEncoderBytes(&buf, h)
-
+    e := codec.NewEncoderBytes(&buf, dots_common.NewCborHandle())
     err := e.Encode(msg)
     if err != nil {
         return nil, err

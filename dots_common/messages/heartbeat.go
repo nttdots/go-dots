@@ -84,9 +84,7 @@ func NewHeartBeatMessage(session libcoap.Session,jsonFileName string) (*libcoap.
     }
     
 	var buf []byte
-	h := new(codec.CborHandle)
-	e := codec.NewEncoderBytes(&buf, h)
-
+	e := codec.NewEncoderBytes(&buf, dots_common.NewCborHandle())
     err = e.Encode(m)
 	if err != nil {
         return nil, err
