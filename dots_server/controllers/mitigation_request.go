@@ -9,16 +9,16 @@ import (
 	"fmt"
 	"net"
 
-	log "github.com/sirupsen/logrus"
-	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
 	"github.com/nttdots/go-dots/dots_server/models/data"
-	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/libcoap"
 
+	log "github.com/sirupsen/logrus"
+	common "github.com/nttdots/go-dots/dots_common"
+	types "github.com/nttdots/go-dots/dots_common/types/data"
+	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	data_controllers "github.com/nttdots/go-dots/dots_server/controllers/data"
-	types    "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
 /*
@@ -292,7 +292,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				goto ResponseNG
 			}
 		}
-
+		var conflictInfo *models.ConflictInformation
 		scope := body.MitigationScope.Scopes[0]
 		// Handle Sinal Channel Call Home
 		// Ignore this process if put efficacy update
@@ -302,6 +302,19 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			errorMessage = errMessage
 			if !valid {
 				goto ResponseNG
+			}
+			isConflict, err := CheckConfictWithDataChannelAcceptList(customer, cuid, scope.SourcePrefix)
+			if err != nil {
+				log.Errorf("Failed to check conflict with data channel acl accept list. Error: %+v", err)
+				return Response{}, err
+			}
+			if isConflict {
+				log.Error("Existed data channel acl accept list")
+				conflictInfo = &models.ConflictInformation {
+					ConflictCause:  models.WHITELIST_ACL_COLLISION,
+					ConflictScope:  nil,
+				}
+				goto ResponseConflict
 			}
 		} else if scope.SourcePrefix == nil && (scope.SourcePortRange != nil || scope.SourceICMPTypeRange != nil) {
 			errorMessage = fmt.Sprintf("The signal channel MUST NOT contain 'source-port-range' or 'source-icmp-type-range'")
@@ -339,7 +352,6 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			}
 		}
 
-		var conflictInfo *models.ConflictInformation
 		if currentScope == nil && !isIfMatchOption {
 			// If a DOTS client has to change its 'cuid' for some reason, it MUST NOT do so when mitigations are still active for the old 'cuid'
 			isActive, msg, err := checkActiveForCurrentCuid(customer, cuid)
@@ -1933,7 +1945,7 @@ func validateForCallHome(customer *models.Customer, scope messages.Scope) (bool,
 	sourceOnlyIPv4 := true
 	sourceOnlyIPv6 := true
 	if scope.TriggerMitigation != nil && !*scope.TriggerMitigation {
-		msg = fmt.Sprintf("Failed to the 'trigger-mitigation' attribute set to false")
+		msg = fmt.Sprintf("Call Home DOTS clients MUST NOT send requests with 'trigger-mitigation' set to 'false'")
 		log.Error(msg)
 		return isActive, msg
 	}
@@ -1971,4 +1983,33 @@ func validateForCallHome(customer *models.Customer, scope messages.Scope) (bool,
 		return isActive, msg
 	}
 	return true, ""
+}
+
+/*
+ * Check conflict with data channel acl accept list
+ * return
+ *    true: if existed Acl contains action is accept and source prefix same with source prefix of call home
+ *    false: if Acl doesn't contain action is accept and source prefix same with source prefix of call home
+ */
+func CheckConfictWithDataChannelAcceptList(customer *models.Customer, cuid string, sourceAddressList []string) (bool, error) {
+	aclIpAddressList, err := data_models.GetDataChannelAclAcceptList(customer, cuid)
+	if err != nil {
+		return false, err
+	}
+	for _, aclIpAddress := range aclIpAddressList {
+		aclPrefix, err := models.NewPrefix(aclIpAddress)
+		if err != nil {
+			return false, err
+		}
+		for _, sourceAddress := range sourceAddressList {
+			sourcePrefix, err := models.NewPrefix(sourceAddress)
+			if err != nil {
+				return false, err
+			}
+			if sourcePrefix.Includes(&aclPrefix) || aclPrefix.Includes(&sourcePrefix) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }

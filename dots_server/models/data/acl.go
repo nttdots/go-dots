@@ -512,3 +512,49 @@ func IsActive(customerId int, cuid string, activationType types.ActivationType) 
   }
   return false, nil
 }
+
+/*
+ * Get data channel acl accept list
+ * return
+ *    List data channel acl with action is accept
+ */
+func GetDataChannelAclAcceptList(customer *models.Customer, cuid string) ([]string, error) {
+  engine, err := models.ConnectDB()
+  if err != nil {
+    log.WithError(err).Error("Failed connect to database.")
+    return nil, err
+  }
+
+  session := engine.NewSession()
+  tx := &db.Tx{ engine, session }
+  now := time.Now()
+
+  // Find data_client by cuid
+  client, err := FindClientByCuid(tx, customer, cuid)
+  if err != nil {
+    log.WithError(err).Error("Get() data client failed.")
+    return nil, err
+  }
+
+  // Find data_acl by data_client
+  var aclSourcePrefixList []string
+  if client != nil {
+    acls, err := FindACLs(tx, client, now)
+    if err != nil {
+      log.WithError(err).Error("Get() acl failed.")
+      return nil, err
+    }
+    for _, acl := range acls {
+      for _, ace := range acl.ACL.ACEs.ACE {
+        if *ace.Actions.Forwarding == types.ForwardingAction_Accept {
+          if ace.Matches.IPv4 != nil {
+            aclSourcePrefixList = append(aclSourcePrefixList, ace.Matches.IPv4.SourceIPv4Network.String())
+          } else if ace.Matches.IPv6 != nil {
+            aclSourcePrefixList = append(aclSourcePrefixList, ace.Matches.IPv6.SourceIPv6Network.String())
+          }
+        }
+      }
+    }
+  }
+  return aclSourcePrefixList, nil
+}
