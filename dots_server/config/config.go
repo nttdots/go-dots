@@ -266,7 +266,6 @@ type ServerSystemConfig struct {
 	Database                     *Database
 	LifetimeConfiguration        *LifetimeConfiguration
 	MaxAgeOption                 uint
-	SessionInterval				 int
 	CacheInterval                int
 }
 
@@ -278,7 +277,6 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setDatabase(*sc.Database)
 	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
 	GetServerSystemConfig().setMaxAgeOption(sc.MaxAgeOption)
-	GetServerSystemConfig().setSessionInterval(sc.SessionInterval)
 	GetServerSystemConfig().setCacheInterval(sc.CacheInterval)
 }
 
@@ -290,7 +288,6 @@ type ServerSystemConfigNode struct {
 	Database                     DatabaseNode                     `yaml:"database"`
 	LifetimeConfiguration        LifetimeConfigurationNode        `yaml:"lifetimeConfiguration"`
 	MaxAgeOption                 string                           `yaml:"maxAgeOption"`
-	SessionInterval              string                           `yaml:"manageSessionInterval"`
 	CacheInterval                string                           `yaml:"cacheInterval"`
 }
 
@@ -330,8 +327,6 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
-	sessionInterval := parseIntegerValue(scn.SessionInterval)
-
 	cacheInterval := parseIntegerValue(scn.CacheInterval)
 
 	return &ServerSystemConfig{
@@ -342,7 +337,6 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		Database:                     database.(*Database),
 		LifetimeConfiguration:        lifetimeConfiguration.(*LifetimeConfiguration),
 		MaxAgeOption:                 maxAgeOption,
-		SessionInterval:              sessionInterval,
 		CacheInterval:                cacheInterval,
 	}, nil
 }
@@ -373,10 +367,6 @@ func (sc *ServerSystemConfig) setLifetimeConfiguration(parameter LifetimeConfigu
 
 func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint) {
 	sc.MaxAgeOption = parameter
-}
-
-func (sc *ServerSystemConfig) setSessionInterval(parameter int) {
-	sc.SessionInterval = parameter
 }
 
 func (sc *ServerSystemConfig) setCacheInterval(parameter int) {

@@ -10,14 +10,14 @@ import (
 	"time"
 	"strconv"
 
-	dots_config "github.com/nttdots/go-dots/dots_client/config"
-	log "github.com/sirupsen/logrus"
 	"github.com/ugorji/go/codec"
 	"github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_client/task"
 	"github.com/nttdots/go-dots/libcoap"
 	"github.com/shopspring/decimal"
+	log "github.com/sirupsen/logrus"
+	dots_config "github.com/nttdots/go-dots/dots_client/config"
 	client_message "github.com/nttdots/go-dots/dots_client/messages"
 )
 
@@ -80,8 +80,7 @@ func (r *Request) LoadMessage(message interface{}) {
  */
 func (r *Request) dumpCbor() []byte {
 	var buf []byte
-	h := new(codec.CborHandle)
-	e := codec.NewEncoderBytes(&buf, h)
+	e := codec.NewEncoderBytes(&buf, dots_common.NewCborHandle())
 
 	err := e.Encode(r.Message)
 	if err != nil {
@@ -253,7 +252,7 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 	if (r.requestName == "session_configuration") {
 		if (r.method == "GET") && (response.Code == libcoap.ResponseContent) && len(r.queryParams) > 0 {
 			log.Debug("Get with sid - Client update new values to system session configuration and restart ping task.")
-			RestartPingTask(response, r.env)
+			RestartHeartBeatTask(response, r.env)
 			RefreshSessionConfig(response, r.env, r.pdu)
 		} else if (r.method == "PUT") && (response.Code == libcoap.ResponseCreated) {
 			log.Debug("The new session configuration has been created. Stop the current session config task")
@@ -278,30 +277,29 @@ func handleTimeout(task *task.MessageTask, env *task.Env) {
 }
 
 /*
- * Handle response from server for ping message task
+ * Handle response from server for heartbeat message task
  * parameter:
  *  _       the request message task
  *  pdu     the the response for ping request
  */
-func pingResponseHandler(_ *task.PingTask, pdu *libcoap.Pdu) {
-	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("Ping Ack")
+func heartbeatResponseHandler(_ *task.HeartBeatTask, pdu *libcoap.Pdu) {
+	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("HeartBeat")
+	if pdu.Code != libcoap.ResponseChanged {
+		log.Debugf("Error message: %+v", string(pdu.Data))
+	}
 }
 
 /*
- * Handle request timeout for ping message task
+ * Handle request timeout for heartbeat message task
  * parameter:
  *  _       the request message task
  *  env     the client environment data
  */
-func pingTimeoutHandler(_ *task.PingTask, env *task.Env) {
-	log.Info("Ping Timeout #", env.GetCurrentMissingHb())
-
-	if !env.IsHeartbeatAllowed() {
-		log.Debug("Exceeded missing_hb_allowed. Stop ping task...")
-		env.StopPing()
-
-		restartConnection(env)
-	}
+func heartbeatTimeoutHandler(_ *task.HeartBeatTask, env *task.Env) {
+	log.Info("HeartBeat Timeout")
+	log.Debug("Exceeded missing_hb_allowed. Stop heartbeat task...")
+	env.StopHeartBeat()
+	restartConnection(env)
 }
 
 /*
@@ -319,6 +317,7 @@ func (r *Request) Send() (res Response) {
 		time.Duration(config.TaskInterval) * time.Second,
 		config.TaskRetryNumber,
 		time.Duration(config.TaskTimeout) * time.Second,
+		false,
 		false,
 		r.handleResponse,
 		handleTimeout)
@@ -374,8 +373,7 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 		return
 	}
 
-	h := new(codec.CborHandle)
-	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), h)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 
 	switch r.requestName {
 	case "mitigation_request":
@@ -428,14 +426,13 @@ CBOR_DECODE_FAILED:
 	return
 }
 
-func RestartPingTask(pdu *libcoap.Pdu, env *task.Env) {
+func RestartHeartBeatTask(pdu *libcoap.Pdu, env *task.Env) {
 	// Check if the response body data is a string message (not an object)
 	if pdu.IsMessageResponse() {
 		return
 	}
 
-	h := new(codec.CborHandle)
-	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), h)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 	var v messages.ConfigurationResponse
 	err := dec.Decode(&v)
 	if err != nil {
@@ -466,13 +463,15 @@ func RestartPingTask(pdu *libcoap.Pdu, env *task.Env) {
 	log.Debugf("Got session configuration data from server. Restart ping task with heatbeat-interval=%v, missing-hb-allowed=%v...", heartbeatInterval, missingHbAllowed)
 	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
 	env.SetRetransmitParams(maxRetransmit, ackTimeout, ackRandomFactor)
-	
-	env.StopPing()
+	pingTimeout, _ := ackTimeout.Float64()
+	env.StopHeartBeat()
 	env.SetMissingHbAllowed(missingHbAllowed)
-	env.Run(task.NewPingTask(
-			time.Duration(heartbeatInterval) * time.Second,
-			pingResponseHandler,
-			pingTimeoutHandler))
+	env.Run(task.NewHeartBeatTask(
+			time.Duration(heartbeatInterval)* time.Second,
+			missingHbAllowed,
+			time.Duration(pingTimeout) * time.Second,
+			heartbeatResponseHandler,
+			heartbeatTimeoutHandler))
 }
 
 /*
@@ -523,8 +522,7 @@ func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, e
 		return
 	}
 
-	h := new(codec.CborHandle)
-	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), h)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 	var v messages.ConfigurationResponse
 	err := dec.Decode(&v)
 	if err != nil {
@@ -533,7 +531,7 @@ func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, e
 	}
 	log.Infof("        CBOR decoded: %+v", v.String())
 	if pdu.Code == libcoap.ResponseContent {
-		RestartPingTask(pdu, env)
+		RestartHeartBeatTask(pdu, env)
 		RefreshSessionConfig(pdu, env, t.MessageTask())
 	}
 }
@@ -595,8 +593,7 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
 		return
 	}
 
-	h := new(codec.CborHandle)
-    dec := codec.NewDecoder(bytes.NewReader(pdu.Data), h)
+	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 
     // Identify response is mitigation or session configuration by cbor data in heximal
     if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
@@ -610,7 +607,7 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
         err = dec.Decode(&v)
         logStr = v.String()
         log.Debug("Receive session notification - Client update new values to system session configuration and restart ping task.")
-		RestartPingTask(pdu, env)
+		RestartHeartBeatTask(pdu, env)
 
 		// Not refresh session config in case session config task is nil (server send notification after reset by expired Max-age)
 		sessionTask := env.SessionConfigTask()
@@ -695,7 +692,8 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
             time.Duration(2) * time.Second,
             2,
             time.Duration(10) * time.Second,
-            false,
+			false,
+			false,
             handleResponseNotification,
             handleTimeoutNotification)
 

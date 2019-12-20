@@ -305,3 +305,24 @@ func (m *SignalConfigRequest) String() (result string) {
 	}
 	return
 }
+
+type HeartBeatRequest struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	HeartBeat HeartBeat `json:"ietf-dots-signal-channel:heartbeat" codec:"49,omitempty"`
+}
+
+type HeartBeat struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	PeerHbStatus *bool `json:"peer-hb-status" codec:"51,omitempty"`
+}
+
+/*
+ * Convert SignalConfigRequest to strings
+ */
+ func (hb *HeartBeatRequest) String() (result string) {
+	result = "\n \"ietf-dots-signal-channel:heartbeat\":\n"
+	if hb.HeartBeat.PeerHbStatus != nil {
+		result += fmt.Sprintf("       \"%s\": %t\n", "peer-hb-status", *hb.HeartBeat.PeerHbStatus)
+	}
+	return
+}

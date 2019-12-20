@@ -1,0 +1,5 @@
+{
+    "ietf-dots-signal-channel:heartbeat": {
+       "peer-hb-status": true
+    }
+}

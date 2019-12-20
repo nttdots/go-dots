@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 	"reflect"
@@ -10,16 +9,16 @@ import (
 	"fmt"
 	"net"
 
-	log "github.com/sirupsen/logrus"
-	common "github.com/nttdots/go-dots/dots_common"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
 	"github.com/nttdots/go-dots/dots_server/models/data"
-	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/nttdots/go-dots/libcoap"
 
+	log "github.com/sirupsen/logrus"
+	common "github.com/nttdots/go-dots/dots_common"
+	types "github.com/nttdots/go-dots/dots_common/types/data"
+	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	data_controllers "github.com/nttdots/go-dots/dots_server/controllers/data"
-	types    "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
 /*
@@ -38,7 +37,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	var errMessage string
 
 	// Get cuid, mid from Uri-Path
-	_, cuid, mid, err := ParseURIPath(request.PathInfo)
+	_, cuid, mid, err := messages.ParseURIPath(request.PathInfo)
 	if err != nil {
 		errMessage = fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
 		log.Warnf(errMessage)
@@ -201,7 +200,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	log.WithField("message", body.String()).Debug("[PUT] receive message")
 
 	// Get cuid, mid from Uri-Path
-	cdid, cuid, mid, err := ParseURIPath(request.PathInfo)
+	cdid, cuid, mid, err := messages.ParseURIPath(request.PathInfo)
 	if err != nil {
 		errorMessage = fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
 		log.Warn(errorMessage)
@@ -293,7 +292,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 				goto ResponseNG
 			}
 		}
-
+		var conflictInfo *models.ConflictInformation
 		scope := body.MitigationScope.Scopes[0]
 		// Handle Sinal Channel Call Home
 		// Ignore this process if put efficacy update
@@ -303,6 +302,19 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			errorMessage = errMessage
 			if !valid {
 				goto ResponseNG
+			}
+			isConflict, err := CheckConfictWithDataChannelAcceptList(customer, cuid, scope.SourcePrefix)
+			if err != nil {
+				log.Errorf("Failed to check conflict with data channel acl accept list. Error: %+v", err)
+				return Response{}, err
+			}
+			if isConflict {
+				log.Error("Existed data channel acl accept list")
+				conflictInfo = &models.ConflictInformation {
+					ConflictCause:  models.WHITELIST_ACL_COLLISION,
+					ConflictScope:  nil,
+				}
+				goto ResponseConflict
 			}
 		} else if scope.SourcePrefix == nil && (scope.SourcePortRange != nil || scope.SourceICMPTypeRange != nil) {
 			errorMessage = fmt.Sprintf("The signal channel MUST NOT contain 'source-port-range' or 'source-icmp-type-range'")
@@ -340,7 +352,6 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			}
 		}
 
-		var conflictInfo *models.ConflictInformation
 		if currentScope == nil && !isIfMatchOption {
 			// If a DOTS client has to change its 'cuid' for some reason, it MUST NOT do so when mitigations are still active for the old 'cuid'
 			isActive, msg, err := checkActiveForCurrentCuid(customer, cuid)
@@ -437,7 +448,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 	log.WithField("request", request).Debug("[DELETE] receive message")
 
 	// Get cuid, mid from Uri-Path
-	_, cuid, mid, err := ParseURIPath(request.PathInfo)
+	_, cuid, mid, err := messages.ParseURIPath(request.PathInfo)
 	if err != nil {
 		errMessage := fmt.Sprintf("Failed to parse Uri-Path, error: %s", err)
 		log.Warnf(errMessage)
@@ -902,40 +913,6 @@ func callBlockerByScope(scope *models.MitigationScope, c *models.Customer) (err 
 		for _, f := range unregisterCommands {
 			f()
 		}
-	}
-	return
-}
-
-/*
-*  Get cuid, mid value from URI-Path
-*/
-func ParseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err error){
-	log.Debugf("Parsing URI-Path : %+v", uriPath)
-	// Get cuid, mid from Uri-Path
-	for _, uriPath := range uriPath{
-		if(strings.HasPrefix(uriPath, "cuid=")){
-			cuid = uriPath[strings.Index(uriPath, "cuid=")+5:]
-		} else if (strings.HasPrefix(uriPath, "cdid=")){
-			cdid = uriPath[strings.Index(uriPath, "cdid=")+5:]
-		} else if(strings.HasPrefix(uriPath, "mid=")){
-			midStr := uriPath[strings.Index(uriPath, "mid=")+4:]
-			midValue, err := strconv.Atoi(midStr)
-			if err != nil {
-				log.Warn("Mid is not integer type.")
-				return cdid, cuid, mid, err
-			}
-			if midStr == "" {
-			    mid = nil
-			} else {
-			    mid = &midValue
-			}
-		}
-	}
-	// Log nil if mid does not exist in path. Otherwise, log mid's value
-	if mid == nil {
-	    log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, nil)
-	} else {
-        log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, *mid)
 	}
 	return
 }
@@ -1713,6 +1690,7 @@ var app []data_models.APPair
  * Activate data channel acl with activationType = 'activate-when-mitigating'
  */
 func ActivateDataChannelACL(customer *models.Customer, clientIdentifier string)  error {
+	log.Debug("Activate DataChannel Acl with activationType = 'activate-when-mitigating'")
 	// Get acl with activationType = 'activate-when-mitigating' to call blocker
 	app, err := data_models.GetACLWithActivateWhenMitigating(customer, clientIdentifier)
 	if err != nil {
@@ -1726,10 +1704,7 @@ func ActivateDataChannelACL(customer *models.Customer, clientIdentifier string) 
 	}
 	// Call blocker acl with activationType = 'activate-when-mitigating' and has not actived
 	if len(acls) > 0 {
-		err = data_models.CallBlocker(acls, customer.Id)
-		if err != nil {
-			return err
-		}
+		go data_models.CallBlocker(acls, customer.Id)
 	}
 	return nil
 }
@@ -1970,7 +1945,7 @@ func validateForCallHome(customer *models.Customer, scope messages.Scope) (bool,
 	sourceOnlyIPv4 := true
 	sourceOnlyIPv6 := true
 	if scope.TriggerMitigation != nil && !*scope.TriggerMitigation {
-		msg = fmt.Sprintf("Failed to the 'trigger-mitigation' attribute set to false")
+		msg = fmt.Sprintf("Call Home DOTS clients MUST NOT send requests with 'trigger-mitigation' set to 'false'")
 		log.Error(msg)
 		return isActive, msg
 	}
@@ -2008,4 +1983,33 @@ func validateForCallHome(customer *models.Customer, scope messages.Scope) (bool,
 		return isActive, msg
 	}
 	return true, ""
+}
+
+/*
+ * Check conflict with data channel acl accept list
+ * return
+ *    true: if existed Acl contains action is accept and source prefix same with source prefix of call home
+ *    false: if Acl doesn't contain action is accept and source prefix same with source prefix of call home
+ */
+func CheckConfictWithDataChannelAcceptList(customer *models.Customer, cuid string, sourceAddressList []string) (bool, error) {
+	aclIpAddressList, err := data_models.GetDataChannelAclAcceptList(customer, cuid)
+	if err != nil {
+		return false, err
+	}
+	for _, aclIpAddress := range aclIpAddressList {
+		aclPrefix, err := models.NewPrefix(aclIpAddress)
+		if err != nil {
+			return false, err
+		}
+		for _, sourceAddress := range sourceAddressList {
+			sourcePrefix, err := models.NewPrefix(sourceAddress)
+			if err != nil {
+				return false, err
+			}
+			if sourcePrefix.Includes(&aclPrefix) || aclPrefix.Includes(&sourcePrefix) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }

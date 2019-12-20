@@ -3,7 +3,12 @@ package messages
 import (
 	"fmt"
 	"reflect"
+	"strings"
+	"strconv"
+	"github.com/ugorji/go/codec"
 	"github.com/nttdots/go-dots/libcoap"
+	"github.com/nttdots/go-dots/dots_common"
+	log "github.com/sirupsen/logrus"
 )
 
 type Code int
@@ -81,6 +86,13 @@ const (
 	CUID_LEN Length = 22
 )
 
+type jsonHeartBeatPath string
+
+const (
+	JSON_HEART_BEAT_SERVER = "jsonHeartBeatServer.json"
+	JSON_HEART_BEAT_CLIENT = "jsonHeartBeatClient.json"
+)
+
 /*
  * Dots message structure.
  */
@@ -115,6 +127,7 @@ func register(code Code, role Role, libcoapType libcoap.Type, channelType Channe
 func init() {
 	register(MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/mitigate", MitigationRequest{})
 	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/config", SignalConfigRequest{})
+	register(HEARTBEAT, REQUEST, libcoap.TypeNon, SIGNAL, "heartbeat", ".well-known/dots/hb", HeartBeatRequest{})
 
 	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots", SignalChannelRequest{})
 }
@@ -199,4 +212,63 @@ func Contains(stringList []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func UnmarshalCbor(pdu *libcoap.Pdu, typ reflect.Type) (interface{}, error) {
+    if len(pdu.Data) == 0 {
+        return nil, nil
+    }
+
+    m := reflect.New(typ).Interface()
+	d := codec.NewDecoderBytes(pdu.Data, dots_common.NewCborHandle())
+    err := d.Decode(m)
+
+    if err != nil {
+        return nil, err
+    }
+    return m, nil
+}
+
+func MarshalCbor(msg interface{}) ([]byte, error) {
+    var buf []byte
+    e := codec.NewEncoderBytes(&buf, dots_common.NewCborHandle())
+    err := e.Encode(msg)
+    if err != nil {
+        return nil, err
+    }
+    return buf, nil
+}
+
+/*
+*  Get cuid, mid value from URI-Path
+*/
+func ParseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err error){
+	log.Debugf("Parsing URI-Path : %+v", uriPath)
+	// Get cuid, mid from Uri-Path
+	for _, uriPath := range uriPath{
+		if(strings.HasPrefix(uriPath, "cuid=")){
+			cuid = uriPath[strings.Index(uriPath, "cuid=")+5:]
+		} else if (strings.HasPrefix(uriPath, "cdid=")){
+			cdid = uriPath[strings.Index(uriPath, "cdid=")+5:]
+		} else if(strings.HasPrefix(uriPath, "mid=")){
+			midStr := uriPath[strings.Index(uriPath, "mid=")+4:]
+			midValue, err := strconv.Atoi(midStr)
+			if err != nil {
+				log.Warn("Mid is not integer type.")
+				return cdid, cuid, mid, err
+			}
+			if midStr == "" {
+			    mid = nil
+			} else {
+			    mid = &midValue
+			}
+		}
+	}
+	// Log nil if mid does not exist in path. Otherwise, log mid's value
+	if mid == nil {
+	    log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, nil)
+	} else {
+        log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, *mid)
+	}
+	return
 }

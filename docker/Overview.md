@@ -50,88 +50,68 @@ To install kubernetes, refer to the following link:
     $ minikube mount ~/dots:/dots
     ```
 
-- Created the go-dots client, the go-dots server, the mysql and the gobgp on Kuberbetes by the [Pod.yaml](https://github.com/nttdots/go-dots/blob/master/docker/Pod.yaml) file.
+- Created the go-dots server, the mysql and the gobgp on Kubernetes by the [DeploymentServer.yaml](https://github.com/nttdots/go-dots/blob/master/docker/DeploymentServer.yaml) file. 
 
     ```
-    $ curl -OL https://raw.githubusercontent.com/nttdots/go-dots/master/docker/Pod.yaml
-    $ kubectl create -f Pod.yaml
+    $ curl -OL https://raw.githubusercontent.com/nttdots/go-dots/master/docker/DeploymentServer.yaml
     ```
+- Created the go-dots client on Kubernetes by the [DeploymentClient.yaml](https://github.com/nttdots/go-dots/blob/master/docker/DeploymentClient.yaml) file. 
 
-- Get Pod to check ip address of the go-dots server and the go-dots client
     ```
-    $ kubectl get pods --output=wide
+    $ curl -OL https://raw.githubusercontent.com/nttdots/go-dots/master/docker/DeploymentClient.yaml
     ```
 
 # Using Docker container
 
-Executing the container in the cluster by specifying the Pod name
-- The go-dots client
-    ```
-    $ kubectl exec -it client /bin/bash
-    ```
+To use the go-dots server, the go-dots client, the mysql and go-bgp. Following as below:
 
-- The go-dots server
+- Created Deployment server (Ran the go-dots server and gobgp)
     ```
-    $ kubectl exec -it server /bin/bash
+    $ kubectl create -f DeploymentServer.yaml
     ```
 
-- The mysql
+- Import data into mysql container
     ```
-    $ kubectl exec -it server -c mysql /bin/bash
-    ```
-
-- The gobgp
-    ```
-    $ kubectl exec -it server -c gobgp /bin/bash
+    $ cd ~/dots/config
+    $ kubectl exec -it deployment/server -c mysql -- mysql -uroot -proot dots < test_dump.mysql
     ```
 
-## Go-dots server
-
-After executing the go-dots server container. In the go-dots server container, you to do as below: 
-
-- Copy the certificate files to the certificate folder
-
+- Get Pod to check ip address of the go-dots server
     ```
-    cd /dots/certs
-    sudo cp $GOPATH/src/github.com/nttdots/go-dots/certs/* .
+    $ kubectl get pods --output=wide
     ```
 
-- Copy the configuration files to the configuration folder
-
+- Setting environment parameters in configmap
     ```
-    cd /dots/config
-    sudo cp $GOPATH/src/github.com/nttdots/go-dots/dots_server/dots_server.yaml .
-    sudo cp $GOPATH/src/github.com/nttdots/go-dots/dots_client/dots_client.yaml .
-    sudo cp $GOPATH/src/github.com/nttdots/go-dots/dots_server/db_models/test_dump.sql .
-    sudo cp $GOPATH/src/github.com/nttdots/go-dots/gobgp-server/gobgpd.conf .
+    $ kubectl create configmap client-config --from-literal SERVER_IP_ADDRESS=172.17.0.7 --from-literal SERVER_PORT=4646
     ```
 
-- Copy the mysql_udf/* to /usr/lib/mysql/plugin to the go-dots server listens to DB notification
-
+- Created Deployment client (Ran the go-dots client)
     ```
-    $ sudo cp $GOPATH/src/github.com/nttdots/go-dots/mysql_udf/* /usr/lib/mysql/plugin
-    ```
-
-- Run the go-dots server
-
-    ```
-    $ cd /dots/config
-    $ $GOPATH/bin/dots_server --config dots_server.yaml -vv
+    $ kubectl create -f DeploymentClient.yaml
     ```
 
-## Database
+- Executing the go-dots client controller
+    ```
+    $ kubectl exec -it deployment/go-dots-client /bin/bash
+    ```
 
-After executing the mysql container. In the mysql container, restored the `dots` database from the mysql dump file
+- To get logs of go-dots server/client. Using kubectl command
+    ```
+    $ kubectl logs deployment/server -c go-dots-server
+    $ kubectl logs deployment/go-dots-lient
+    ```
 
-    $ cd /dots/config
-    $ mysql -u root -proot dots < test_dump.sql
+- After modify go-dots config, you restart deployment
+    ```
+    $ kubectl rollout restart deployment/server
+    ```
+    or
+    ```
+    $ kubectl rollout restart deployment/go-dots-client
+    ```
 
 ## GoBGP
-
-After executing the gobgp container. In the gobgp container, run gobgp:
-
-    $ cd /dots/config
-    $ sudo $GOPATH/bin/gobgpd -f gobgpd.conf
 
 Check the route is installed successfully in gobgp server
 
@@ -151,13 +131,6 @@ Check the flowspec route is installed successfully in gobgp server
     Network                                                                   Next Hop      AS_PATH    Age        Attrs
     *> [destination: 1.1.2.0/24][protocol: ==tcp][destination-port: >=443&<=800] fictitious               00:00:06   [{Origin: i} {Extcomms: [redirect: 1.1.1.0:100]}]
     ```
-
-## Go-dots client
-
-After executing the go-dots client container. In the go-dots client container, run the go-dots client:
-
-    $ cd /dots/config
-    $ $GOPATH/bin/dots_client --server `ip address of the go-dots server` --signalChannelPort=4646 --config dots_client.yaml -vv
 
 ##  Signal Channel
 The primary purpose of the signal channel is for a DOTS client to ask a DOTS server for help in mitigating an attack, and for the DOTS server to inform the DOTS client about the status of such mitigation.
