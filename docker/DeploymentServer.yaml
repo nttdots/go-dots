@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    run: server
+  name: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: server
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        run: server
+    spec:
+      containers:
+      - name: go-dots-server
+        image: eurekaeru/go-dots:latest
+        workingDir: "/dots/config"
+        command: [ "/bin/sh", "-c", "--"]
+        args: ["cp -n $GOPATH/src/github.com/nttdots/go-dots/dots_server/dots_server.yaml .
+                cp -n $GOPATH/src/github.com/nttdots/go-dots/dots_server/db_models/test_dump.sql .;
+                cp -n $GOPATH/src/github.com/nttdots/go-dots/gobgp-server/gobgpd.conf .;
+                cp -n $GOPATH/src/github.com/nttdots/go-dots/mysql_udf/* /usr/lib/mysql/plugin;
+                cp -n $GOPATH/src/github.com/nttdots/go-dots/certs/* /dots/certs;
+                $GOPATH/bin/dots_server --config dots_server.yaml -vv;
+                while true; do sleep 30; done;"]
+        ports:
+        - containerPort: 4646
+          name: signalchannel
+        - containerPort: 10443
+          name: datachannel
+        volumeMounts:
+        - mountPath: "/dots"
+          name: volume-config-dots
+        - mountPath: "/usr/lib/mysql/plugin"
+          name: volume-mysql-notification
+      - name: mysql
+        image: mysql:5.7.28
+        workingDir: "/dots/config"
+        args: ["--default-authentication-plugin=mysql_native_password"]
+        env:
+        - name: "MYSQL_DATABASE"
+          value: "dots"
+        - name: "MYSQL_ROOT_PASSWORD"
+          value: "root"
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - mountPath: "/dots"
+          name: volume-config-dots
+        - mountPath: "/usr/lib/mysql/plugin"
+          name: volume-mysql-notification
+      - name: gobgp
+        image: osrg/gobgp:latest
+        workingDir: "/dots/config"
+        command: [ "/bin/sh", "-c", "--" ]
+        args: ["$GOPATH/bin/gobgpd -f gobgpd.conf;
+                while true; do sleep 30; done;"]
+        volumeMounts:
+        - mountPath: "/dots"
+          name: volume-config-dots
+      volumes:
+      - name: volume-config-dots
+        hostPath:
+          path: "/dots"
+          type: Directory
+      - name: volume-mysql-notification
+        emptyDir: {}

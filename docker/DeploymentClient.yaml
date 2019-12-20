@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    run: go-dots-client
+  name: go-dots-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: go-dots-client
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        run: go-dots-client
+    spec:
+      containers:
+      - name: go-dots-client
+        image: eurekaeru/go-dots:latest
+        workingDir: "/dots/config"
+        env:
+        - name: "SERVER_IP_ADDRESS"
+          valueFrom:
+            configMapKeyRef:
+              name: client-config
+              key: SERVER_IP_ADDRESS
+        - name: "SIGNAL_CHANNEL_PORT"
+          valueFrom:
+            configMapKeyRef:
+              name: client-config
+              key: SERVER_PORT
+        command: [ "/bin/sh", "-c", "--"]
+        args: ["cp -n $GOPATH/src/github.com/nttdots/go-dots/dots_client/dots_client.yaml .;
+                $GOPATH/bin/dots_client --server $(SERVER_IP_ADDRESS) --signalChannelPort=$(SIGNAL_CHANNEL_PORT) --config dots_client.yaml -vv;
+                while true; do sleep 30; done;"]
+        ports:
+        - containerPort: 4646
+        volumeMounts:
+        - mountPath: "/dots"
+          name: volume-config-dots
+      volumes:
+      - name: volume-config-dots
+        hostPath:
+          path: "/dots"
