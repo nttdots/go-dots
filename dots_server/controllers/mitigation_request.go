@@ -1797,9 +1797,15 @@ func HandleControlFiltering(customer *models.Customer, cuid string, aclList []me
 			Body: errMsg,
 		}
 		return &res, nil
-	case http.StatusInternalServerError:
-		err := errors.New(string(response.Content))
-		return nil, err
+	case http.StatusServiceUnavailable:
+		errMsg := fmt.Sprintf("Data Channel response: %+v", string(response.Content))
+		log.Error(errMsg)
+		res := Response{
+			Type: common.NonConfirmable,
+			Code: common.ServiceUnavailable,
+			Body: errMsg,
+		}
+		return &res, nil
 	case http.StatusBadRequest:
 		errMsg := fmt.Sprintf("Data Channel response: %+v", string(response.Content))
 		log.Error(errMsg)
