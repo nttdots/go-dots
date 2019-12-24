@@ -120,9 +120,14 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 
 		sess = ctx.NewClientSessionDTLS(addr, libcoap.ProtoDtls)
 		if sess == nil {
-			log.Error("NewClientSessionDTLS() -> nil")
-			err = errors.New("NewClientSessionDTLS() -> nil")
-			goto error
+			if orgEnv == nil {
+				log.Error("NewClientSessionDTLS() -> nil")
+				err = errors.New("NewClientSessionDTLS() -> nil")
+				goto error
+			} else {
+				log.Debug("NewClientSessionDTLS() -> nil. Retry re-create new DTLS session")
+				connectSignalChannel(orgEnv)
+			}
 		}
 	}
 	// create resource for heartbeat mechanism from server
