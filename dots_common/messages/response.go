@@ -42,7 +42,7 @@ type ScopeStatus struct {
 	SourcePrefix    []string `json:"ietf-dots-call-home:source-prefix" codec:"32768,omitempty"`
 	SourcePortRange []PortRangeResponse`json:"ietf-dots-call-home:source-port-range" codec:"32769,omitempty"`
 	SourceICMPTypeRange []ICMPTypeRangeResponse`json:"ietf-dots-call-home:source-icmp-type-range" codec:"32770,omitempty"`
-	AclList         []ACL    `json:"acl-list" codec:"22,omitempty"`
+	AclList         []ACL    `json:"ietf-dots-signal-control:acl-list" codec:"22,omitempty"`
 	TriggerMitigation bool `json:"trigger-mitigation" codec:"45,omitempty"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
 	Status          int   `json:"status"           codec:"16"`
@@ -205,10 +205,10 @@ func (m *MitigationResponse) String() (result string) {
 			result += fmt.Sprintf("       \"%s\": %d\n", "upper-type", v.UpperType)
 		}
 		for k, v := range scope.AclList {
-			result += fmt.Sprintf("     \"%s[%d]\":\n", "acl-list", k+1)
-			result += fmt.Sprintf("       \"%s\": %s\n", "acl-name", v.AclName)
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-signal-control:acl-list", k+1)
+			result += fmt.Sprintf("       \"%s\": %s\n", "ietf-dots-signal-control:acl-name", v.AclName)
 			if v.ActivationType != nil {
-				result += fmt.Sprintf("       \"%s\": %d\n", "activation-type", *v.ActivationType)
+				result += fmt.Sprintf("       \"%s\": %d\n", "ietf-dots-signal-control:activation-type", *v.ActivationType)
 			}
 		}
 		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
@@ -343,5 +343,43 @@ func (m *ConfigurationResponse) String() (result string) {
 	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
 	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
 	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	return
+}
+
+type MitigationResponseServiceUnavailable struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	MitigationScopeControlFiltering MitigationScopeControlFiltering `json:"ietf-dots-signal-channel:mitigation-scope" codec:"1"`
+}
+
+type MitigationScopeControlFiltering struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	ScopeControlFiltering            []ScopeControlFiltering  `json:"scope"             codec:"2"`
+}
+
+type ScopeControlFiltering struct {
+	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
+	MitigationId    int   `json:"mid"    codec:"5"`
+	AclList         []ACL    `json:"ietf-dots-signal-control:acl-list" codec:"22,omitempty"`
+}
+
+/*
+ * Parse Mitigation Response Service Unavailable model to string for log
+ * parameter:
+ *  m Mitigation Response Service Unavailable model
+ * return: Mitigation Response Service Unavailable in string
+ */
+ func (m *MitigationResponseServiceUnavailable) String() (result string) {
+	result = "\n \"ietf-dots-signal-channel:mitigation-scope\":\n"
+	for key, scope := range m.MitigationScopeControlFiltering.ScopeControlFiltering {
+		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
+		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
+		for k, v := range scope.AclList {
+			result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-signal-control:acl-list", k+1)
+			result += fmt.Sprintf("       \"%s\": %s\n", "ietf-dots-signal-control:acl-name", v.AclName)
+			if v.ActivationType != nil {
+				result += fmt.Sprintf("       \"%s\": %d\n", "ietf-dots-signal-control:activation-type", *v.ActivationType)
+			}
+		}
+	}
 	return
 }

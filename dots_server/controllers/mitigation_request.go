@@ -325,16 +325,15 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		if !isIfMatchOption && scope.AclList != nil && len(scope.AclList) != 0 {
 			log.Debugf("Handle Signal Channel Control Filtering")
 
-			// Mitigation Request must repeat all parameters except lifetime and acl-*
+			// A new 'mid' MUST be used
 			if currentScope != nil {
-				isInvalid, errMessage := checkRepeatParameters(customer, body, currentScope)
-				errorMessage = errMessage
-				if isInvalid {
-					goto ResponseNG
-				}
+				errorMessage = "A new 'mid' MUST be used"
+				log.Error(errorMessage)
+				goto ResponseNG
+
 			}
 
-			res, err := HandleControlFiltering(customer, cuid, scope.AclList)
+			res, err := HandleControlFiltering(customer, cuid, mid, scope.AclList)
 			if err != nil {
 				log.Error("Failed to Handle Control Filtering.")
 				return Response{}, err
@@ -1751,7 +1750,7 @@ func DeActivateDataChannelACL(customerID int, clientIdentifier string) error {
  *  res           the response
  *  err            error
  */
-func HandleControlFiltering(customer *models.Customer, cuid string, aclList []messages.ACL) (*Response, error) {
+func HandleControlFiltering(customer *models.Customer, cuid string, mid *int, aclList []messages.ACL) (*Response, error) {
 
 	// No need to check peace time for control filtering mitigation request.
 	// If the client using control filtering, that's mean it has already "attacked"
@@ -1769,7 +1768,7 @@ func HandleControlFiltering(customer *models.Customer, cuid string, aclList []me
 			controlFilteringList[i] = controlFiltering
 		} else {
 			errMsg := "Acl Name must be included in Control Filtering."
-			log.Warn(errMsg)
+			log.Error(errMsg)
 			res := Response{
 				Type: common.NonConfirmable,
 				Code: common.BadRequest,
@@ -1777,6 +1776,33 @@ func HandleControlFiltering(customer *models.Customer, cuid string, aclList []me
 			}
 			return &res, nil
 		}
+	}
+	// Check active the SignalChanel
+	isPeaceTime, err := models.CheckPeaceTimeSignalChannel(customer.Id, cuid)
+	if err != nil {
+		log.Errorf("Failed to check active signal channel. Error = %+v", err)
+		scopes := make([]messages.ScopeControlFiltering,0)
+		scope := messages.ScopeControlFiltering{
+			MitigationId: *mid,
+			AclList: aclList,
+		}
+		scopes = append(scopes, scope)
+		res := Response{
+			Type: common.NonConfirmable,
+			Code: common.ServiceUnavailable,
+			Body: messages.MitigationResponseServiceUnavailable { MitigationScopeControlFiltering: messages.MitigationScopeControlFiltering { ScopeControlFiltering: scopes }},
+		}
+		return &res, nil
+	}
+	if isPeaceTime {
+		errMsg := "DOTS clients MUST NOT use the filtering control over DOTS signal channel in 'idle' time."
+		log.Error(errMsg)
+		res := Response{
+			Type: common.NonConfirmable,
+			Code: common.BadRequest,
+			Body: errMsg,
+		}
+		return &res, nil
 	}
 
 	// Process Signal Channel Control Filtering
@@ -1800,10 +1826,16 @@ func HandleControlFiltering(customer *models.Customer, cuid string, aclList []me
 	case http.StatusServiceUnavailable:
 		errMsg := fmt.Sprintf("Data Channel response: %+v", string(response.Content))
 		log.Error(errMsg)
+		scopes := make([]messages.ScopeControlFiltering,0)
+		scope := messages.ScopeControlFiltering{
+			MitigationId: *mid,
+			AclList: aclList,
+		}
+		scopes = append(scopes, scope)
 		res := Response{
 			Type: common.NonConfirmable,
 			Code: common.ServiceUnavailable,
-			Body: errMsg,
+			Body: messages.MitigationResponseServiceUnavailable { MitigationScopeControlFiltering: messages.MitigationScopeControlFiltering { ScopeControlFiltering: scopes }},
 		}
 		return &res, nil
 	case http.StatusBadRequest:

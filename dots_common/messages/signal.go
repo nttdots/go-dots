@@ -17,8 +17,8 @@ type SourceICMPTypeRange struct {
 
 type ACL struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	AclName string `json:"acl-name" codec:"23,omitempty"`
-	ActivationType *int `json:"activation-type" codec:"49,omitempty"`
+	AclName string `json:"ietf-dots-signal-control:acl-name" codec:"23,omitempty"`
+	ActivationType *int `json:"ietf-dots-signal-control:activation-type" codec:"49,omitempty"`
 }
 
 type MitigationScope struct {
@@ -53,7 +53,7 @@ type Scope struct {
 	// source icmp type range
 	SourceICMPTypeRange []SourceICMPTypeRange `json:"ietf-dots-call-home:source-icmp-type-range" codec:"32770,omitempty"`
 	// list of acl
-	AclList []ACL `json:"acl-list" codec:"22,omitempty"`
+	AclList []ACL `json:"ietf-dots-signal-control:acl-list" codec:"22,omitempty"`
 	// lifetime
 	Lifetime *int `json:"lifetime" codec:"14,omitempty"`
 	// attack-status
@@ -184,10 +184,10 @@ func (m *MitigationRequest) String() (result string) {
 		}
 		if scope.AclList != nil {
 			for k, v := range scope.AclList {
-				result += fmt.Sprintf("     \"%s[%d]\":\n", "acl-list", k+1)
-				result += fmt.Sprintf("       \"%s\": %s\n", "acl-name", v.AclName)
+				result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-signal-control:acl-list", k+1)
+				result += fmt.Sprintf("       \"%s\": %s\n", "ietf-dots-signal-control:acl-name", v.AclName)
 				if v.ActivationType != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "activation-type", *v.ActivationType)
+					result += fmt.Sprintf("       \"%s\": %d\n", "ietf-dots-signal-control:activation-type", *v.ActivationType)
 				}
 			}
 		}
