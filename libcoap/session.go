@@ -2,7 +2,9 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
+#cgo darwin LDFLAGS: -L /usr/local/opt/openssl@1.1/lib
 #include <coap2/coap.h>
+#include "callback.h"
 */
 import "C"
 import "strings"
@@ -30,7 +32,7 @@ func (session *Session) SessionRelease() {
 
     delete(sessions, ptr)
     session.ptr = nil
-    C.coap_session_release(ptr)
+    C.coap_session_handle_release(ptr)
 }
 
 func (session *Session) SetMaxRetransmit (value int) {

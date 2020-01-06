@@ -127,3 +127,5 @@ int coap_get_size_block2_subscribers(coap_resource_t *resource);
 coap_block_t coap_create_block(unsigned int num, unsigned int m, unsigned int size);
 
 coap_strlist_t* coap_common_name(coap_strlist_t* head, coap_strlist_t* tail, char* str);
+
+void coap_session_handle_release(coap_session_t *session);

@@ -253,3 +253,9 @@ coap_strlist_t* coap_common_name(coap_strlist_t* head, coap_strlist_t* tail, cha
     }
     return element;
 }
+
+// handle release session
+void coap_session_handle_release(coap_session_t *session) {
+    session->context->handle_event = NULL;
+    coap_session_release(session);
+}
