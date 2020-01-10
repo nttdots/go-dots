@@ -26,7 +26,7 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.13.3 or later is required. (for the latest GoBGP - v2.9.0)
+  * go 1.13.5 or later is required. (for the latest GoBGP - v2.12.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.1d or higher (for libcoap)
@@ -45,11 +45,11 @@ Licensed under Apache License 2.0.
 ## How to build go-dots
 ### Build libcoap for go-dots
 
-Currenly supported libcoap version : f1a5435
+Currenly supported libcoap version : 6fc3a73
 
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
-    $ git checkout f1a5435193131ea0edbbdf2558d61244a768c961
+    $ git checkout 6fc3a7315f6629d804cc7928004cddeb4a84443c
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
     $ make
