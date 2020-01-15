@@ -286,6 +286,8 @@ func heartbeatResponseHandler(_ *task.HeartBeatTask, pdu *libcoap.Pdu) {
 	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("HeartBeat")
 	if pdu.Code != libcoap.ResponseChanged {
 		log.Debugf("Error message: %+v", string(pdu.Data))
+	} else {
+		task.SetIsReceiveResponseContent(true)
 	}
 }
 

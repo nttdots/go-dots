@@ -16,6 +16,7 @@ import (
     "github.com/nttdots/go-dots/dots_server/controllers"
     "github.com/nttdots/go-dots/dots_server/models"
     "github.com/nttdots/go-dots/libcoap"
+    "github.com/nttdots/go-dots/dots_server/task"
 )
 
 func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) *libcoap.Resource {
@@ -130,7 +131,6 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if isHeartBeatMechanism {
             log.Debug("Handle heartbeat mechanism")
             body, errMsg := messages.ValidateHeartBeatMechanism(request)
-            session.SetIsStopHeartBeat(true)
             if body == nil && errMsg != "" {
                 log.Error(errMsg)
                 response.Code = libcoap.ResponseInternalServerError
@@ -146,6 +146,12 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                 response.Type = responseType(request.Type)
             }
             log.Debugf("response=%+v", response)
+            // After receiving heartbeat from DOTS client and heartbeat of DOTS server doesn't exist, DOTS server will send heartbeat message to DOTS client
+            session.SetIsReceiveHeartBeat(true)
+            env := task.GetEnv()
+            if env.GetHbMessageTask() == nil {
+                go env.HeartBeatMechaism(session, customer)
+            }
             return
         }
 

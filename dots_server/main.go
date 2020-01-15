@@ -103,7 +103,6 @@ func main() {
 		if event == libcoap.EventSessionConnected {
 			// Session connected: Add session to map
 			log.Debugf("New session connecting to dots server: %+v", session.String())
-			env.ManageSessionTraffic(session)
 			libcoap.AddNewConnectingSession(session)
 		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
 			// Session disconnected: Remove session from map
@@ -115,6 +114,8 @@ func main() {
 		}
 	})
 
+	// Set env
+	task.SetEnv(env)
 	// Register response handler
 	signalCtx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
 		env.HandleResponse(received)

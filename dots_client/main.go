@@ -211,6 +211,7 @@ func heartbeatHandler() libcoap.MethodHandler {
 			response.Type = libcoap.TypeNon
 		}
 		log.Debugf("response=%+v", response)
+		task.SetIsReceiveHeartBeat(true)
 		return
 	}
 }

@@ -182,7 +182,7 @@ func export_event_handler(ctx *C.coap_context_t,
 
     session, ok := sessions[sess]
     if !ok {
-        session = &Session{ sess, &SessionConfig{false, false, 0, 0 } }
+        session = &Session{ sess, &SessionConfig{false, false, false, 0, 0 } }
     }
     
     // Run event handler when session is connected or disconnected
