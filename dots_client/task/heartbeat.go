@@ -23,6 +23,16 @@ type HeartBeatTask struct {
 
 type HeartBeatEvent struct { EventBase }
 
+var isReceiveResponseContent bool
+var isReceiveHeartBeat bool
+
+func SetIsReceiveResponseContent(isContent bool) {
+    isReceiveResponseContent = isContent
+}
+
+func SetIsReceiveHeartBeat(ishb bool) {
+    isReceiveHeartBeat = ishb
+}
 
 func NewHeartBeatTask(interval time.Duration, retry int, timeout time.Duration, responseHandler HeartBeatResponseHandler, timeoutHandler HeartBeatTimeoutHandler) *HeartBeatTask {
     return &HeartBeatTask {
@@ -58,12 +68,22 @@ func (e *HeartBeatEvent) Handle(env *Env) {
         return
     }
 
+    // If DOTS client receives 2.04 but DOTS client doesn't recieve heartbeat from DOTS server,  DOTS client set 'peer-hb-status' to false
+    // Else  DOTS client set 'peer-hb-status' to true
+    hbValue := true
+    if isReceiveResponseContent && !isReceiveHeartBeat {
+        hbValue  = false
+    }
+
     // Send new heartbeat message
-    pdu, err := messages.NewHeartBeatMessage(*env.CoapSession(), messages.JSON_HEART_BEAT_CLIENT)
+    pdu, err := messages.NewHeartBeatMessage(*env.CoapSession(), messages.JSON_HEART_BEAT_CLIENT, hbValue)
     if err != nil {
         log.Errorf("Failed to create heartbeat message")
         return
     }
+
+    isReceiveHeartBeat = false
+    isReceiveResponseContent =false
     task := e.Task().(*HeartBeatTask)
     newTask := NewMessageTask(
         pdu,

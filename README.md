@@ -6,13 +6,13 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-signal-channel-35
-* draft-ietf-dots-data-channel-30
-* draft-ietf-dots-architecture-06
-* draft-ietf-dots-requirements-14
-* draft-ietf-dots-use-cases-14
-* draft-nishizuka-dots-signal-control-filtering-06
-* draft-ietf-dots-signal-call-home-06
+* draft-ietf-dots-signal-channel-40
+* draft-ietf-dots-data-channel-31
+* draft-ietf-dots-architecture-14
+* RFC 8612 (was draft-ietf-dots-requirements)
+* draft-ietf-dots-use-cases-20
+* draft-ietf-dots-signal-filter-control-02
+* draft-ietf-dots-signal-call-home-07
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
@@ -26,7 +26,7 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.13.3 or later is required. (for the latest GoBGP - v2.9.0)
+  * go 1.13.5 or later is required. (for the latest GoBGP - v2.12.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.1d or higher (for libcoap)
@@ -45,11 +45,11 @@ Licensed under Apache License 2.0.
 ## How to build go-dots
 ### Build libcoap for go-dots
 
-Currenly supported libcoap version : f1a5435
+Currenly supported libcoap version : 6fc3a73
 
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
-    $ git checkout f1a5435193131ea0edbbdf2558d61244a768c961
+    $ git checkout 6fc3a7315f6629d804cc7928004cddeb4a84443c
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
     $ make

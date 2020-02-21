@@ -3,7 +3,6 @@ package task
 import (
     "time"
     "github.com/nttdots/go-dots/libcoap"
-    log "github.com/sirupsen/logrus"
 )
 
 type HeartBeatResponseHandler func(*HeartBeatMessageTask, *libcoap.Pdu)
@@ -72,15 +71,6 @@ func (t *HeartBeatMessageTask) run(out chan Event) {
 
 func (e *HeartBeatEvent) Handle(env *Env) {
     task := e.Task().(*HeartBeatMessageTask)
-    if env.CoapSession().GetIsStopHeartBeat() == true {
-        log.Debug("Stop heartbeat mechanism from server to client")
-        task.stop()
-        return
-    }
-    if env.CoapSession().GetIsHeartBeatTask() == true {
-        log.Debugf("[Session Mngt Thread]: Waiting for current heartbeat task (id = %+v)", env.hbMessageTask.message.MessageID)
-        return
-    }
     env.session.SetIsHeartBeatTask(true)
     env.session.Send(task.message)
 }

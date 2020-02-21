@@ -100,6 +100,24 @@ typedef struct coap_strlist_t {
     coap_string_t* str;
 } coap_strlist_t;
 
+// Coppied from the coap_session_internal.h file in the libcoap
+struct coap_subscription_t {
+  struct coap_subscription_t *next; /**< next element in linked list */
+  struct coap_session_t *session;   /**< subscriber session */
+
+  unsigned int non_cnt:4;  /**< up to 15 non-confirmable notifies allowed */
+  unsigned int fail_cnt:2; /**< up to 3 confirmable notifies can fail */
+  unsigned int dirty:1;    /**< set if the notification temporarily could not be
+                            *   sent (in that case, the resource's partially
+                            *   dirty flag is set too) */
+  unsigned int has_block2:1; /**< GET request had Block2 definition */
+  uint16_t tid;             /**< transaction id, if any, in regular host byte order */
+  coap_block_t block2;     /**< GET request Block2 definition */
+  size_t token_length;     /**< actual length of token */
+  unsigned char token[8];  /**< token used for subscription */
+  struct coap_string_t *query; /**< query string used for subscription, if any */
+};
+
 void coap_set_dirty(coap_resource_t *resource, char *query, int length);
 
 int coap_check_subscribers(coap_resource_t *resource);
@@ -109,3 +127,5 @@ int coap_get_size_block2_subscribers(coap_resource_t *resource);
 coap_block_t coap_create_block(unsigned int num, unsigned int m, unsigned int size);
 
 coap_strlist_t* coap_common_name(coap_strlist_t* head, coap_strlist_t* tail, char* str);
+
+void coap_session_handle_release(coap_session_t *session);

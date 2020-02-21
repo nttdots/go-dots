@@ -2,7 +2,9 @@ package libcoap
 
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
+#cgo darwin LDFLAGS: -L /usr/local/opt/openssl@1.1/lib
 #include <coap2/coap.h>
+#include "callback.h"
 */
 import "C"
 import "strings"
@@ -17,10 +19,11 @@ type Session struct {
 }
 
 type SessionConfig struct {
-    isStopHeartBeat    bool
-    isHeartBeatTask    bool
-    missing_hb_allowed int
-    current_missing_hb int
+    isReceiveHeartBeat       bool
+    isReceiveResponseContent bool
+    isHeartBeatTask          bool
+    missing_hb_allowed       int
+    current_missing_hb       int
 }
 
 var sessions = make(map[*C.coap_session_t] *Session)
@@ -30,7 +33,7 @@ func (session *Session) SessionRelease() {
 
     delete(sessions, ptr)
     session.ptr = nil
-    C.coap_session_release(ptr)
+    C.coap_session_handle_release(ptr)
 }
 
 func (session *Session) SetMaxRetransmit (value int) {
@@ -141,20 +144,37 @@ func (session *Session) SetIsHeartBeatTask(isHeartBeat bool) {
 }
 
 /*
- * Get session is stop heartbeat
- * return: isStopHeartBeat
+ * Get session is receive heartbeat
+ * return: isReceiveHeartBeat
  */
- func (session *Session) GetIsStopHeartBeat() bool {
-    return session.sessionConfig.isStopHeartBeat
+ func (session *Session) GetIsReceiveHeartBeat() bool {
+    return session.sessionConfig.isReceiveHeartBeat
 }
 
 /*
- * Set session is stop heartbeat
+ * Set session is receive heartbeat
  * parameter:
- *  isStopHeartBeat
+ *  isReceiveHeartBeat
  */
-func (session *Session) SetIsStopHeartBeat(isStopHeartBeat bool) {
-    session.sessionConfig.isStopHeartBeat = isStopHeartBeat
+func (session *Session) SetIsReceiveHeartBeat(isReceiveHeartBeat bool) {
+    session.sessionConfig.isReceiveHeartBeat = isReceiveHeartBeat
+}
+
+/*
+ * Get session is Receive Response Content heartbeat
+ * return: isReceiveResponseContent
+ */
+ func (session *Session) GetIsReceiveResponseContent() bool {
+    return session.sessionConfig.isReceiveResponseContent
+}
+
+/*
+ * Set session is receive  response heartbeat
+ * parameter:
+ *  isReceiveResponseContent
+ */
+func (session *Session) SetIsReceiveResponseContent(isReceiveResponseContent bool) {
+    session.sessionConfig.isReceiveResponseContent = isReceiveResponseContent
 }
 
 /*
@@ -178,7 +198,7 @@ func (session *Session) IsHeartbeatAllowed() bool {
 func (session *Session) SetSessionDefaultConfigIdle() {
     defaultConfig := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
     if session.sessionConfig == nil {
-        session.sessionConfig = &SessionConfig{ false, false, defaultConfig.MissingHbAllowedIdle, 0 }
+        session.sessionConfig = &SessionConfig{ false, false, false, defaultConfig.MissingHbAllowedIdle, 0 }
     }
     session.sessionConfig.missing_hb_allowed = defaultConfig.MissingHbAllowedIdle
     session.SetMaxRetransmit(defaultConfig.MaxRetransmitIdle)
@@ -196,7 +216,7 @@ func (session *Session) SetSessionDefaultConfigIdle() {
  */
 func (session *Session) SetSessionConfig(missingHbAllowed int, maxRetransmit int, ackTimeout float64, ackRandomFactor float64) {
     if session.sessionConfig == nil {
-        session.sessionConfig = &SessionConfig{ false, false, missingHbAllowed, 0 }
+        session.sessionConfig = &SessionConfig{ false, false, false, missingHbAllowed, 0 }
     }
     session.sessionConfig.missing_hb_allowed = missingHbAllowed
     session.SetMaxRetransmit(maxRetransmit)

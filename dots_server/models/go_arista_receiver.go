@@ -502,6 +502,8 @@ func CreateACLTargetsForDataChannel(d *types.ACL) []ACLTarget {
 			// if existed Flags of TCP, flagBits = TCP.Flags
 			if matches.Flags != nil {
 				aclMapping.flagBits = matches.Flags.String()
+			} else if matches.FlagsBitmask != nil && *matches.FlagsBitmask.Operator == types.Operator_MATCH {
+				aclMapping.MapACLTcpFlagsFlowWithFlagsBitmask(matches.FlagsBitmask)
 			}
 			aclMapping.MapACLPort(matches.SourcePort, matches.DestinationPort)
 
@@ -520,6 +522,23 @@ func CreateACLTargetsForDataChannel(d *types.ACL) []ACLTarget {
 		aclTargets = append(aclTargets, ACLTarget{aclMapping.aclType, aclMapping.CreateACLRule()})
 	}
 	return aclTargets
+}
+
+/*
+ * Map data channel tcp flags bitmask to Arista Acl tcp-flags
+ */
+func (mapping *ACLMapping) MapACLTcpFlagsFlowWithFlagsBitmask(flag *types.FlagsBitmask) {
+	// if existed Flags of TCP, tcp-flags = TCP.FlagsBitsmak
+	bitMask := ""
+	switch flag.Bitmask {
+	case 1:   bitMask = types.TCPFlag_FIN.String()
+	case 2:   bitMask = types.TCPFlag_SYN.String()
+	case 4:   bitMask = types.TCPFlag_RST.String()
+	case 8:   bitMask = types.TCPFlag_PSH.String()
+	case 16:  bitMask = types.TCPFlag_ACK.String()
+	case 32:  bitMask = types.TCPFlag_URG.String()
+	}
+	mapping.flagBits = bitMask
 }
 
 /*

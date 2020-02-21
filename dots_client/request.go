@@ -286,6 +286,8 @@ func heartbeatResponseHandler(_ *task.HeartBeatTask, pdu *libcoap.Pdu) {
 	log.WithField("Type", pdu.Type).WithField("Code", pdu.Code).Debug("HeartBeat")
 	if pdu.Code != libcoap.ResponseChanged {
 		log.Debugf("Error message: %+v", string(pdu.Data))
+	} else {
+		task.SetIsReceiveResponseContent(true)
 	}
 }
 
@@ -387,11 +389,19 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			r.env.SetCountMitigation(v, string(pdu.Token))
 			log.Debugf("Request query with token as key in map: %+v", r.env.GetAllRequestQuery())
 		case "PUT":
-			var v messages.MitigationResponsePut
-			err = dec.Decode(&v)
-			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			if pdu.Code == libcoap.ResponseServiceUnavailable {
+				var v messages.MitigationResponseServiceUnavailable
+				err = dec.Decode(&v)
+				if err != nil { goto CBOR_DECODE_FAILED }
+				data, err = json.Marshal(v)
+				logStr = v.String()
+			} else {
+				var v messages.MitigationResponsePut
+				err = dec.Decode(&v)
+				if err != nil { goto CBOR_DECODE_FAILED }
+				data, err = json.Marshal(v)
+				logStr = v.String()
+			}
 		default:
 			var v messages.MitigationRequest
 			err = dec.Decode(&v)

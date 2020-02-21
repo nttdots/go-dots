@@ -385,12 +385,14 @@ func (pdu *Pdu) AsMapKey() string {
  *   2. Changed
  *   3. Content
  *   4. Conflict
+ *   5. ServiceUnavailable
  */
  func (pdu *Pdu) IsMessageResponse() bool {
     if pdu.Code != ResponseCreated &&
        pdu.Code != ResponseChanged &&
        pdu.Code != ResponseContent &&
-       pdu.Code != ResponseConflict {
+       pdu.Code != ResponseConflict &&
+       pdu.Code != ResponseServiceUnavailable {
 		return true
     } else {
         return false

@@ -17,8 +17,7 @@ var hbRequestPath = ".well-known/dots/hb"
 /* 
  * Create heartbeat json data
  */
-func CreateHeartBeatJsonData(jsonFileName string) {
-	hbValue := true
+func CreateHeartBeatJsonData(jsonFileName string, hbValue bool) {
 	data := HeartBeatRequest{
 		HeartBeat: HeartBeat{
 			PeerHbStatus: &hbValue,
@@ -51,8 +50,8 @@ func ValidateHeartBeatMechanism(request *libcoap.Pdu) (body *HeartBeatRequest, e
 }
 
 // create new heartbeat message
-func NewHeartBeatMessage(session libcoap.Session,jsonFileName string) (*libcoap.Pdu, error) {
-    CreateHeartBeatJsonData(jsonFileName)
+func NewHeartBeatMessage(session libcoap.Session,jsonFileName string, hbValue bool) (*libcoap.Pdu, error) {
+    CreateHeartBeatJsonData(jsonFileName, hbValue)
     jsonData, err := readJsonFile(jsonFileName)
     if err != nil {
         return nil, err

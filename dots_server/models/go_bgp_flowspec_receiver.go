@@ -548,8 +548,11 @@ func CreateFlowSpecTargetsForDataChannelACL(acl *types.ACL) ([]FlowSpecTarget, e
 
 		if ace.Matches.TCP != nil {
 			matches := ace.Matches.TCP
-			flowMapping.MapACLTcpFlagsFlow(matches.Flags)
-
+			if matches.Flags != nil {
+				flowMapping.MapACLTcpFlagsFlowWithFlags(matches.Flags)
+			} else if matches.FlagsBitmask != nil {
+				flowMapping.MapACLTcpFlagsFlowWithFlagsBitmask(matches.FlagsBitmask)
+			}
 			flowMapping.MapACLPortFlow(matches.SourcePort, matches.DestinationPort)
 		} else if ace.Matches.UDP != nil {
 			matches := ace.Matches.UDP
@@ -952,28 +955,50 @@ func (mapping *FlowSpecMapping) MapACLFragmentFlow(flags *types.IPv4Flags, aclFr
 /*
  * Map data channel tcp flags to GoBGP flow spec tcp-flags
  */
-func (mapping *FlowSpecMapping) MapACLTcpFlagsFlow(flags *types.TCPFlags) {
+func (mapping *FlowSpecMapping) MapACLTcpFlagsFlowWithFlags(flags *types.TCPFlags) {
 	// if existed Flags of TCP, tcp-flags = TCP.Flags
-	if flags != nil {
-		tcpFlags := make([]FlowspecBitmask, 0)
-		for _, flag := range strings.Split(flags.String(), " ") {
-			var tcpFlag FlowspecBitmask
-			tcpFlag.Bitmask = bgp.BITMASK_FLAG_OP_MATCH
-			switch types.TCPFlag(flag) {
-			case types.TCPFlag_FIN: tcpFlag.Flag = bgp.TCP_FLAG_FIN
-			case types.TCPFlag_SYN: tcpFlag.Flag = bgp.TCP_FLAG_SYN
-			case types.TCPFlag_RST: tcpFlag.Flag = bgp.TCP_FLAG_RST
-			case types.TCPFlag_PSH: tcpFlag.Flag = bgp.TCP_FLAG_PUSH
-			case types.TCPFlag_ACK: tcpFlag.Flag = bgp.TCP_FLAG_ACK
-			case types.TCPFlag_URG: tcpFlag.Flag = bgp.TCP_FLAG_URGENT
-			case types.TCPFlag_ECE: tcpFlag.Flag = bgp.TCP_FLAG_ECE
-			case types.TCPFlag_CWR: tcpFlag.Flag = bgp.TCP_FLAG_CWR
-			}
-			tcpFlags = append(tcpFlags, tcpFlag)
+	tcpFlags := make([]FlowspecBitmask, 0)
+	for _, flag := range strings.Split(flags.String(), " ") {
+		var tcpFlag FlowspecBitmask
+		tcpFlag.Bitmask = bgp.BITMASK_FLAG_OP_MATCH
+		switch types.TCPFlag(flag) {
+		case types.TCPFlag_FIN: tcpFlag.Flag = bgp.TCP_FLAG_FIN
+		case types.TCPFlag_SYN: tcpFlag.Flag = bgp.TCP_FLAG_SYN
+		case types.TCPFlag_RST: tcpFlag.Flag = bgp.TCP_FLAG_RST
+		case types.TCPFlag_PSH: tcpFlag.Flag = bgp.TCP_FLAG_PUSH
+		case types.TCPFlag_ACK: tcpFlag.Flag = bgp.TCP_FLAG_ACK
+		case types.TCPFlag_URG: tcpFlag.Flag = bgp.TCP_FLAG_URGENT
+		case types.TCPFlag_ECE: tcpFlag.Flag = bgp.TCP_FLAG_ECE
+		case types.TCPFlag_CWR: tcpFlag.Flag = bgp.TCP_FLAG_CWR
 		}
-
-		mapping.TcpFlags = tcpFlags
+		tcpFlags = append(tcpFlags, tcpFlag)
 	}
+
+	mapping.TcpFlags = tcpFlags
+}
+
+/*
+ * Map data channel tcp flags bitmaks to GoBGP flow spec tcp-flags
+ */
+ func (mapping *FlowSpecMapping) MapACLTcpFlagsFlowWithFlagsBitmask(flag *types.FlagsBitmask) {
+	// if existed Flags of TCP, tcp-flags = TCP.FlagsBitsmaks
+	var tcpFlag FlowspecBitmask
+	switch *flag.Operator {
+	case types.Operator_MATCH: tcpFlag.Bitmask = bgp.BITMASK_FLAG_OP_MATCH
+	case types.Operator_NOT:   tcpFlag.Bitmask = bgp.BITMASK_FLAG_OP_NOT
+	case types.Operator_ANY:   tcpFlag.Bitmask = bgp.BITMASK_FLAG_OP_NOT_MATCH
+	}
+	switch flag.Bitmask {
+	case 1:   tcpFlag.Flag = bgp.TCP_FLAG_FIN
+	case 2:   tcpFlag.Flag = bgp.TCP_FLAG_SYN
+	case 4:   tcpFlag.Flag = bgp.TCP_FLAG_RST
+	case 8:   tcpFlag.Flag = bgp.TCP_FLAG_PUSH
+	case 16:  tcpFlag.Flag = bgp.TCP_FLAG_ACK
+	case 32:  tcpFlag.Flag = bgp.TCP_FLAG_URGENT
+	case 64:  tcpFlag.Flag = bgp.TCP_FLAG_ECE
+	case 128: tcpFlag.Flag = bgp.TCP_FLAG_CWR
+	}
+	mapping.TcpFlags = append(mapping.TcpFlags, tcpFlag)
 }
 
 // Mapping flowspec mapping to GoBGP flowspec NRLI

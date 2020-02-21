@@ -323,7 +323,7 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
         acl, err := data_models.FindACLByName(tx, client, aclName, now)
         if err != nil {
           errMsg = fmt.Sprintf("Failed to get acl with name = %+v", aclName)
-          res, err = ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          res, err = ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
           break
         }
         if acl == nil {
@@ -349,14 +349,14 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
         err = acl.Save(tx)
         if err != nil {
           errMsg = fmt.Sprintf("Failed to save acl with name = %+v", aclName)
-          res, err = ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          res, err = ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
           break
         }
 
         // Call bocker or cancel blocker
         errMsg = HandleCallBlockerOrCancelBlocker(acl, customer, cuid, oldActivateType)
         if errMsg != "" {
-          res, err = ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          res, err = ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
           break
         }
         log.Debugf("[Control Filtering]: Update ACL (name=%+v) activation-type from: %+v to: %+v", acl.ACL.Name, oldActivateType, acl.ACL.ActivationType)
@@ -369,7 +369,7 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
           if err != nil {
             errMsg = fmt.Sprintf("Failed to save acl with name = %+v", oldACL.ACL.Name)
             log.Error(errMsg)
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+            return ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
           }
 
           // Call bocker or cancel blocker
@@ -377,7 +377,7 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
           if errMsgRollBack != "" {
             errMsg = errMsgRollBack
             log.Error(errMsg)
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+            return ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
           }
           log.Debugf("[Rollback Control Filtering]: Update ACL (name=%+v) activation-type from: %+v to: %+v", oldACL.ACL.Name, newActivateTypeMap[oldACL.Id], oldACL.ACL.ActivationType)
         }
