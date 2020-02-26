@@ -22,6 +22,7 @@ type SessionConfig struct {
     isReceiveHeartBeat       bool
     isReceiveResponseContent bool
     isHeartBeatTask          bool
+    isSentHeartBeat          bool
     missing_hb_allowed       int
     current_missing_hb       int
 }
@@ -144,6 +145,23 @@ func (session *Session) SetIsHeartBeatTask(isHeartBeat bool) {
 }
 
 /*
+ * Get session is-sent-hb
+ * return: is-sent-hb value
+ */
+ func (session *Session) GetIsSentHeartBeat() bool {
+    return session.sessionConfig.isSentHeartBeat
+}
+
+/*
+ * Set session is-sent-hb
+ * parameter:
+ *  isHeartBeat new session is-sent-hb
+ */
+func (session *Session) SetIsSentHeartBeat(isSentHeartBeat bool) {
+    session.sessionConfig.isSentHeartBeat = isSentHeartBeat
+}
+
+/*
  * Get session is receive heartbeat
  * return: isReceiveHeartBeat
  */
@@ -188,6 +206,14 @@ func (session *Session) IsHeartbeatAllowed() bool {
 }
 
 /*
+ * Get session ptr
+ * return: C.coap_session_t
+ */
+func (session *Session) GetSessionPtr() *C.coap_session_t {
+    return session.ptr
+}
+
+/*
  * Set default session configuration for the session
  * parameter:
  *  missingHbAllowed  the default missingHbAllowed
@@ -198,7 +224,7 @@ func (session *Session) IsHeartbeatAllowed() bool {
 func (session *Session) SetSessionDefaultConfigIdle() {
     defaultConfig := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
     if session.sessionConfig == nil {
-        session.sessionConfig = &SessionConfig{ false, false, false, defaultConfig.MissingHbAllowedIdle, 0 }
+        session.sessionConfig = &SessionConfig{ false, false, false, false, defaultConfig.MissingHbAllowedIdle, 0 }
     }
     session.sessionConfig.missing_hb_allowed = defaultConfig.MissingHbAllowedIdle
     session.SetMaxRetransmit(defaultConfig.MaxRetransmitIdle)
@@ -216,7 +242,7 @@ func (session *Session) SetSessionDefaultConfigIdle() {
  */
 func (session *Session) SetSessionConfig(missingHbAllowed int, maxRetransmit int, ackTimeout float64, ackRandomFactor float64) {
     if session.sessionConfig == nil {
-        session.sessionConfig = &SessionConfig{ false, false, false, missingHbAllowed, 0 }
+        session.sessionConfig = &SessionConfig{ false, false, false, false, missingHbAllowed, 0 }
     }
     session.sessionConfig.missing_hb_allowed = missingHbAllowed
     session.SetMaxRetransmit(maxRetransmit)

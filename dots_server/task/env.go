@@ -109,6 +109,11 @@ func (env *Env) CoapSession() *libcoap.Session {
 	return env.session
 }
 
+// Set env session
+func (env *Env) SetCoapSession(session *libcoap.Session) {
+	env.session = session
+}
+
 /*
  * Get env event
  * return:
@@ -209,8 +214,15 @@ func heartbeatTimeoutHandler(_ *HeartBeatMessageTask, env *Env) {
 
 // Handle heartbeat from server to client
 func (env *Env) HeartBeatMechaism(session *libcoap.Session, customer *models.Customer) {
-	env.session = session
+	// Set isSentHeartBeat is true to check the DOTS server sent ping to DOTS client
+	session.SetIsSentHeartBeat(true)
 	for {
+		// If session is closed, DOTS server will doesn't sent Ping to DOTS client
+		sessions := libcoap.ConnectingSessions()
+		if sessions[session.GetSessionPtr()] == nil {
+			return
+		}
+		env.session = session
 		// Get session configuration of this session by customer id
 		sessionConfig, err := controllers.GetSessionConfig(customer)
 		if err != nil {

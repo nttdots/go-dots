@@ -149,7 +149,8 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             // After receiving heartbeat from DOTS client and heartbeat of DOTS server doesn't exist, DOTS server will send heartbeat message to DOTS client
             session.SetIsReceiveHeartBeat(true)
             env := task.GetEnv()
-            if env.GetHbMessageTask() == nil {
+            // if the DOTS server doesn't send ping to DOTS client, DOTS server will handle ping to DOTS client
+            if !session.GetIsSentHeartBeat() {
                 go env.HeartBeatMechaism(session, customer)
             }
             return
