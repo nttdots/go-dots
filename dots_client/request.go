@@ -423,6 +423,21 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			data, err = json.Marshal(v)
 			logStr = v.String()
 		}
+	case "telemetry_setup_request":
+		switch r.method {
+		case "GET":
+			var v messages.TelemetrySetupResponse
+			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
+			logStr = v.String()
+		case "PUT":
+			var v messages.TelemetrySetupResponseConflict
+			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
+			logStr = v.String()
+		}
 	}
 	if err != nil {
 		log.WithError(err).Warn("Parse object to JSON failed.")

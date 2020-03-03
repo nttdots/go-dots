@@ -120,6 +120,10 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                 } else if strings.HasPrefix(uri[i], "hb") {
                     isHeartBeatMechanism = true
                     break;
+                } else if strings.HasPrefix(uri[i], "tm-setup") {
+                    log.Debug("Request path includes 'tm-setup'. Cbor decode with type TelemetrySetupRequest")
+                    body, resourcePath, err = registerResourceTelemetrySetup(request, typ, controller, session, context, is_unknown)
+                    break;
                 }
             }
 
@@ -481,4 +485,36 @@ func AddOrDeleteObserve(resource *libcoap.Resource, session *libcoap.Session, qu
         log.Debugf("Delete observer in sub-resource with query: %+v", resource.UriPath())
         resource.DeleteObserver(session, token)
     }
+}
+
+/*
+ * Register resource for telemetry setup
+ */
+func registerResourceTelemetrySetup(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
+                                 context  *libcoap.Context, is_unknown bool) (interface{}, string, error) {
+
+    body, err := messages.UnmarshalCbor(request, reflect.TypeOf(messages.TelemetrySetupRequest{}))
+    if err != nil {
+        return nil, "", err
+    }
+
+    var resourcePath string
+
+    // Create sub resource to handle observation on behalf of Unknown resource in case of telemetry setup configuration PUT
+    if is_unknown && request.Code == libcoap.RequestPut {
+        p := request.PathString()
+        resourcePath = p
+        resource := context.GetResourceByQuery(&resourcePath)
+        if resource == nil {
+            r := libcoap.ResourceInit(&p, 0)
+            r.TurnOnResourceObservable()
+            r.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
+            r.RegisterHandler(libcoap.RequestPut,    toMethodHandler(controller.HandlePut, typ, controller, !is_unknown))
+            r.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost, typ, controller, !is_unknown))
+            r.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete, typ, controller, !is_unknown))
+            context.AddResource(r)
+            log.Debugf("Create sub resource to handle observation later : uri-path=%+v", p)
+        }
+    }
+    return body, resourcePath, nil
 }

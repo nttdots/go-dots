@@ -553,3 +553,203 @@ CREATE TABLE `control_filtering` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 ####### Basically the table 'control_filtering' is modified by the system only.
+
+
+# telemetry_setup
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `telemetry_setup`;
+
+CREATE TABLE `telemetry_setup` (
+  `id`          bigint(20)   NOT NULL AUTO_INCREMENT,
+  `customer_id` int(11)      NOT NULL,
+  `cuid`        varchar(255) NOT NULL,
+  `cdid`        varchar(255) DEFAULT NULL,
+  `tsid`        int(11)      NOT NULL,
+  `setup_type`  enum('TELEMETRY_CONFIGURATION','PIPE','BASELINE') NOT NULL,
+  `created`     datetime     DEFAULT NULL,
+  `updated`     datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+####### Basically the table 'telemetry_setup' is modified by the system only.
+
+# telemetry_configuration
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `telemetry_configuration`;
+
+CREATE TABLE `telemetry_configuration` (
+  `id`                           bigint(20)   NOT NULL AUTO_INCREMENT,
+  `tele_setup_id`                bigint(20)   NOT NULL,
+  `measurement_interval`         enum('HOUR','DAY','WEEK','MONTH') NOT NULL,
+  `measurement_sample`           enum('SECOND','5_SECONDS','30_SECONDS','ONE_MINUTE','5_MINUTES','10_MINUTES','30_MINUTES','ONE_HOUR') NOT NULL,
+  `low_percentile`               double       DEFAULT NULL,
+  `mid_percentile`               double       DEFAULT NULL,
+  `high_percentile`              double       DEFAULT NULL,
+  `server_originated_telemetry`  tinyint(1)   NOT NULL,
+  `telemetry_notify_interval`    int(11)      DEFAULT NULL,
+  `created`                      datetime     DEFAULT NULL,
+  `updated`                      datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+####### Basically the table 'telemetry_configuration' is modified by the system only.
+
+# unit_configuration
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `unit_configuration`;
+
+CREATE TABLE `unit_configuration` (
+  `id`             bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_config_id` bigint(20) NOT NULL,
+  `unit`           enum('PPS','KILO_PPS','BPS','KILOBYTES_PS','MEGABYTES_PS','GIGABYTES_PS') NOT NULL,
+  `unit_status`    tinyint(1) DEFAULT NULL,
+  `created`        datetime   DEFAULT NULL,
+  `updated`        datetime   DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+####### Basically the table 'unit_configuration' is modified by the system only.
+
+# total_pipe_capability
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `total_pipe_capacity`;
+
+CREATE TABLE `total_pipe_capacity` (
+  `id`            bigint(20)   NOT NULL AUTO_INCREMENT,
+  `tele_setup_id` bigint(20)   NOT NULL,
+  `link_id`       varchar(255) DEFAULT NULL,
+  `capacity`      int(11)      DEFAULT NULL,
+  `unit`          enum('PPS','KILO_PPS','BPS','KILOBYTES_PS','MEGABYTES_PS','GIGABYTES_PS') NOT NULL,
+  `created`       datetime     DEFAULT NULL,
+  `updated`       datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+####### Basically the table 'total_pipe_capacity' is modified by the system only.
+
+# baseline
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `baseline`;
+
+CREATE TABLE `baseline` (
+  `id`            bigint(20)   NOT NULL AUTO_INCREMENT,
+  `tele_setup_id` bigint(20)   NOT NULL,
+  `baseline_id`   int(11)      NOT NULL,
+  `created`       datetime     DEFAULT NULL,
+  `updated`       datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+####### Basically the table 'baseline' is modified by the system only.
+
+# telemetry_prefix
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `telemetry_prefix`;
+
+CREATE TABLE `telemetry_prefix` (
+  `id`          bigint(20)   NOT NULL AUTO_INCREMENT,
+  `type`        enum('TELEMETRY','TELEMETRY_SETUP') NOT NULL,
+  `type_id`     bigint(20)   NOT NULL,
+  `prefix_type` enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
+  `addr`        varchar(255) DEFAULT NULL,
+  `prefix_len`  int(11)      DEFAULT NULL,
+  `created`     datetime     DEFAULT NULL,
+  `updated`     datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8;
+
+####### Basically the table 'telemetry_prefix' is modified by the system only.
+
+# telemetry_port_range
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `telemetry_port_range`;
+
+CREATE TABLE `telemetry_port_range` (
+  `id`         bigint(20) NOT NULL AUTO_INCREMENT,
+  `type`       enum('TELEMETRY','TELEMETRY_SETUP') NOT NULL,
+  `type_id`    bigint(20) NOT NULL,
+  `lower_port` int(11)    NOT NULL,
+  `upper_port` int(11)    DEFAULT NULL,
+  `created`    datetime   DEFAULT NULL,
+  `updated`    datetime   DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+####### Basically the table 'telemetry_port_range' is modified by the system only.
+
+# telemetry_parameter_value
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `telemetry_parameter_value`;
+
+CREATE TABLE `telemetry_parameter_value` (
+  `id`             bigint(20)   NOT NULL AUTO_INCREMENT,
+  `type`           enum('TELEMETRY','TELEMETRY_SETUP') NOT NULL,
+  `type_id`        bigint(20)   NOT NULL,
+  `parameter_type` enum('TARGET_PROTOCOL','FQDN','URI') NOT NULL,
+  `string_value`   varchar(255) DEFAULT NULL,
+  `int_value`      int(11)      DEFAULT NULL,
+  `created`        datetime     DEFAULT NULL,
+  `updated`        datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+####### Basically the table 'telemetry_parameter_value' is modified by the system only.
+
+# traffic
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `traffic`;
+
+CREATE TABLE `traffic` (
+  `id`                bigint(20)   NOT NULL AUTO_INCREMENT,
+  `customer_id`       int(11)      NOT NULL,
+  `cuid`              varchar(255) NOT NULL,
+  `type`              enum('TELEMETRY','TELEMETRY_SETUP') NOT NULL,
+  `type_id`           bigint(20)   NOT NULL,
+  `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL_BASELINE','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
+  `unit`              enum('PPS','KILO_PPS','BPS','KILOBYTES_PS','MEGABYTES_PS','GIGABYTES_PS') NOT NULL,
+  `protocol`          int(11)     NOT NULL,
+  `low_percentile_g`  int(11)     DEFAULT NULL,
+  `mid_percentile_g`  int(11)     DEFAULT NULL,
+  `high_percentile_g` int(11)     DEFAULT NULL,
+  `peak_g`            int(11)     DEFAULT NULL,
+  `created`           datetime    DEFAULT NULL,
+  `updated`           datetime    DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+####### Basically the table 'traffic' is modified by the system only.
+
+# total_connection_capacity
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `total_connection_capacity`;
+
+CREATE TABLE `total_connection_capacity` (
+  `id`                        bigint(20)   NOT NULL AUTO_INCREMENT,
+  `tele_baseline_id`          bigint(20)   NOT NULL,
+  `protocol`                  int(11)      NOT NULL,
+  `connection`                int(11)      DEFAULT NULL,
+  `connection_client`         int(11)      DEFAULT NULL,
+  `embryonic`                 int(11)      DEFAULT NULL,
+  `embryonic_client`          int(11)      DEFAULT NULL,
+  `connection_ps`             int(11)      DEFAULT NULL,
+  `connection_client_ps`      int(11)      DEFAULT NULL,
+  `request_ps`                int(11)      DEFAULT NULL,
+  `request_client_ps`         int(11)      DEFAULT NULL,
+  `partial_request_ps`        int(11)      DEFAULT NULL,
+  `partial_request_client_ps` int(11)      DEFAULT NULL,
+  `created`                   datetime     DEFAULT NULL,
+  `updated`                   datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+####### Basically the table 'total_connection_capacity' is modified by the system only.

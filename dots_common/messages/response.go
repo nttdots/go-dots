@@ -383,3 +383,287 @@ type ScopeControlFiltering struct {
 	}
 	return
 }
+
+type TelemetrySetupResponse struct {
+	_struct        bool               `codec:",uint"` //encode struct with "unsigned integer" keys
+	TelemetrySetup TelemetrySetupResp `json:"ietf-dots-telemetry:telemetry-setup" codec:"32788,omitempty"`
+}
+
+type TelemetrySetupResp struct {
+	_struct   bool                `codec:",uint"` //encode struct with "unsigned integer" keys
+	Telemetry []TelemetryResponse `json:"telemetry" codec:"32834,omitempty"` // CBOR key temp
+}
+
+type TelemetryResponse struct {
+	_struct                bool                                         `codec:",uint"` //encode struct with "unsigned integer" keys
+	Tsid                   int                                          `json:"tsid" codec:"32777,omitempty"`
+	TelemetryConfiguration *TelemetryConfigurationCurrentMinMaxResponse `json:"telemetry-config" codec:"32778,omitempty"`
+	TotalPipeCapacity      []TotalPipeCapacityResponse                  `json:"total-pipe-capacity" codec:"32785,omitempty"`
+	Baseline               []BaselineResponse                           `json:"baseline" codec:"32826,omitempty"`
+}
+
+type TelemetryConfigurationCurrentMinMaxResponse struct {
+	_struct       bool                           `codec:",uint"` //encode struct with "unsigned integer" keys
+	CurrentConfig TelemetryConfigurationResponse `json:"current-config" codec:"32827,omitempty"`
+	MaxConfig     TelemetryConfigurationResponse `json:"max-config-values" codec:"32828,omitempty"`
+	MinConfig     TelemetryConfigurationResponse `json:"min-config-values" codec:"32829,omitempty"`
+	SupportedUnit SupportedUnitResponse          `json:"supported-units" codec:"32830,omitempty"`
+}
+
+type TelemetryConfigurationResponse struct {
+	_struct                   bool                 `codec:",uint"` //encode struct with "unsigned integer" keys
+	MeasurementInterval       int                  `json:"measurement-interval" codec:"32835,omitempty"` // CBOR key temp
+	MeasurementSample         int                  `json:"measurement-sample" codec:"32836,omitempty"`   // CBOR key temp
+	LowPercentile             decimal.Decimal      `json:"low-percentile" codec:"32779,omitempty"`
+	MidPercentile             decimal.Decimal      `json:"mid-percentile" codec:"32780,omitempty"`
+	HighPercentile            decimal.Decimal      `json:"high-percentile" codec:"32781,omitempty"`
+	UnitConfigList            []UnitConfigResponse `json:"unit-config" codec:"32782,omitempty"`
+	ServerOriginatedTelemetry *bool                `json:"server-originated-telemetry" codec:"32831,omitempty"`
+	TelemetryNotifyInterval   *int                 `json:"telemetry-notify-interval" codec:"32832,omitempty"`
+}
+
+type SupportedUnitResponse struct {
+	_struct        bool                 `codec:",uint"` //encode struct with "unsigned integer" keys
+	UnitConfigList []UnitConfigResponse `json:"unit-config" codec:"32782,omitempty"`
+}
+
+type  UnitConfigResponse struct {
+	_struct    bool `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit       int  `json:"unit" codec:"32783,omitempty"`
+	UnitStatus bool `json:"unit-status" codec:"32784,omitempty"`
+}
+
+type TotalPipeCapacityResponse struct {
+	_struct  bool   `codec:",uint"`                           //encode struct with "unsigned integer" keys
+	LinkId   string `json:"link-id" codec:"32837,omitempty"`  // CBOR key temp
+	Capacity int    `json:"capacity" codec:"32838,omitempty"` // CBOR key temp
+	Unit     int    `json:"unit" codec:"32783,omitempty"`
+}
+
+type BaselineResponse struct {
+	_struct                    bool                              `codec:",uint"` //encode struct with "unsigned integer" keys
+	Id                         int                               `json:"id" codec:"32813,omitempty"`
+	TargetPrefix               []string                          `json:"target-prefix" codec:"6,omitempty"`
+	TargetPortRange            []PortRangeResponse               `json:"target-port-range" codec:"7,omitempty"`
+	TargetProtocol             []int                             `json:"target-protocol" codec:"10,omitempty"`
+	TargetFQDN                 []string                          `json:"target-fqdn" codec:"11,omitempty"`
+	TargetURI                  []string                          `json:"target-uri" codec:"12,omitempty"`
+	TotalTrafficNormalBaseline []TrafficResponse                 `json:"total-traffic-normal-baseline" codec:"32789,omitempty"`
+	TotalConnectionCapacity    []TotalConnectionCapacityResponse `json:"total-connection-capacity" codec:"32796,omitempty"`
+}
+
+type TrafficResponse struct {
+	_struct         bool `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit            int  `json:"unit" codec:"32783,omitempty"`
+	Protocol        int  `json:"protocol" codec:"10,omitempty"`
+	LowPercentileG  *int `json:"low-percentile-g" codec:"32790,omitempty"`
+	MidPercentileG  *int `json:"mid-percentile-g" codec:"32791,omitempty"`
+	HighPercentileG *int `json:"high-percentile-g" codec:"32792,omitempty"`
+	PeakG           *int `json:"peak-g" codec:"32793,omitempty"`
+}
+
+type TotalConnectionCapacityResponse struct {
+	_struct                bool `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol               int  `json:"protocol" codec:"10,omitempty"`
+	Connection             *int `json:"connection" codec:"32797,omitempty"`
+	ConnectionClient       *int `json:"connection-client" codec:"32798,omitempty"`
+	Embryonic              *int `json:"embryonic" codec:"32799,omitempty"`
+	EmbryonicClient        *int `json:"embryonic-client" codec:"32800,omitempty"`
+	ConnectionPs           *int `json:"connection-ps" codec:"32801,omitempty"`
+	ConnectionClientPs     *int `json:"connection-client-ps" codec:"32802,omitempty"`
+	RequestPs              *int `json:"request-ps" codec:"32803,omitempty"`
+	RequestClientPs        *int `json:"request-client-ps" codec:"32804,omitempty"`
+	PartialRequestPs       *int `json:"partial-request-ps" codec:"32805,omitempty"`
+	PartialRequestClientPs *int `json:"partial-request-client-ps" codec:"32806,omitempty"`
+}
+
+/*
+ * Convert TelemetrySetupConfigurationResponse to strings
+ */
+ func (ts *TelemetrySetupResponse) String() (result string) {
+	result = "\n \"ietf-dots-telemetry:telemetry-setup\":\n"
+	for key, t := range ts.TelemetrySetup.Telemetry {
+		result += fmt.Sprintf("   \"%s[%d]\":\n", "telemetry", key+1)
+		result += fmt.Sprintf("   \"%s\": %d\n", "tsid", t.Tsid)
+		if t.TelemetryConfiguration != nil {
+			result += "      \"current-config\":\n"
+			resultCurrentConfig := t.TelemetryConfiguration.CurrentConfig.String()
+			result += resultCurrentConfig
+			result += "      \"max-config-values\":\n"
+			resultMaxConfig := t.TelemetryConfiguration.MaxConfig.String()
+			result += resultMaxConfig
+			result += "      \"min-config-values\":\n"
+			resultMinConfig := t.TelemetryConfiguration.MinConfig.String()
+			result += resultMinConfig
+			result += "      \"supported-units\":\n"
+			for k, v := range t.TelemetryConfiguration.SupportedUnit.UnitConfigList {
+				result += fmt.Sprintf("         \"%s[%d]\":\n", "unit-config", k+1)
+				result += fmt.Sprintf("            \"%s\": %d\n", "unit", v.Unit)
+				result += fmt.Sprintf("            \"%s\": %t\n", "unit-status", v.UnitStatus)
+			}
+		}
+		for k, v := range t.TotalPipeCapacity {
+			result += fmt.Sprintf("      \"%s[%d]\":\n", "total-pipe-capacity", k+1)
+			result += fmt.Sprintf("         \"%s\": %s\n", "link-id", v.LinkId)
+			result += fmt.Sprintf("         \"%s\": %d\n", "capacity", v.Capacity)
+			result += fmt.Sprintf("         \"%s\": %d\n", "unit", v.Unit)
+		}
+		for k, v := range t.Baseline {
+			result += fmt.Sprintf("      \"%s[%d]\":\n", "baseline", k+1)
+			result += fmt.Sprintf("         \"%s\": %d\n", "id", v.Id)
+			resultTargets := ConvertTargetsResponseToStrings(v.TargetPrefix, v.TargetPortRange, v.TargetProtocol, v.TargetFQDN, v.TargetURI)
+			result += resultTargets
+			for kNormalBaseline, vNormalBaseLine := range v.TotalTrafficNormalBaseline {
+				result += fmt.Sprintf("         \"%s[%d]\":\n", "total-traffic-normal-baseline", kNormalBaseline+1)
+				resultTotalTrafficNormalBaseLine := vNormalBaseLine.String()
+				result += resultTotalTrafficNormalBaseLine
+
+			}
+			for kConnectionCapacity, vConnectionCapacity := range v.TotalConnectionCapacity {
+				result += fmt.Sprintf("         \"%s[%d]\":\n", "total-connection-capacity", kConnectionCapacity+1)
+				resultConnectionCapacity := vConnectionCapacity.String()
+				result += resultConnectionCapacity
+			}
+		}
+
+	}
+	return
+}
+
+// Convert TelemetryConfigurationResponse to string
+func (tConfig *TelemetryConfigurationResponse) String() (result string) {
+	result += fmt.Sprintf("         \"%s\": %d\n", "measurement-interval", tConfig.MeasurementInterval)
+	result += fmt.Sprintf("         \"%s\": %d\n", "measurement-sample", tConfig.MeasurementSample)
+	low, _ := tConfig.LowPercentile.Round(2).Float64()
+	result += fmt.Sprintf("         \"%s\": %f\n", "low-percentile", low)
+	mid, _ := tConfig.MidPercentile.Round(2).Float64()
+	result += fmt.Sprintf("         \"%s\": %f\n", "mid-percentile", mid)
+	high, _ := tConfig.HighPercentile.Round(2).Float64()
+	result += fmt.Sprintf("         \"%s\": %f\n", "high-percentile", high)
+	for k, v := range tConfig.UnitConfigList {
+		result += fmt.Sprintf("         \"%s[%d]\":\n", "unit-config", k+1)
+		result += fmt.Sprintf("            \"%s\": %d\n", "unit", v.Unit)
+		result += fmt.Sprintf("            \"%s\": %t\n", "unit-status", v.UnitStatus)
+	}
+	if tConfig.ServerOriginatedTelemetry != nil {
+		result += fmt.Sprintf("         \"%s\": %t\n", "server-initiated-telemetry", *tConfig.ServerOriginatedTelemetry)
+	}
+	if tConfig.TelemetryNotifyInterval != nil {
+		result += fmt.Sprintf("         \"%s\": %d\n", "telemetry-notify-interval", *tConfig.TelemetryNotifyInterval)
+	}
+	return
+}
+
+// Convert TargetsResponse to string
+func ConvertTargetsResponseToStrings(prefixs []string, portRanges []PortRangeResponse, protocols []int, fqdns []string, uris []string) (result string) {
+	for k, v := range prefixs {
+		result += fmt.Sprintf("         \"%s[%d]\": %s\n", "target-prefix", k+1, v)
+	}
+	for k, v := range portRanges {
+		result += fmt.Sprintf("         \"%s[%d]\":\n", "target-port-range", k+1)
+		result += fmt.Sprintf("            \"%s\": %d\n", "lower-port", v.LowerPort)
+		result += fmt.Sprintf("            \"%s\": %d\n", "upper-port", v.UpperPort)
+	}
+	for k, v := range protocols {
+		result += fmt.Sprintf("         \"%s[%d]\": %d\n", "target-protocol", k+1, v)
+	}
+	for k, v := range fqdns {
+		result += fmt.Sprintf("         \"%s[%d]\": %s\n", "target-fqdn", k+1, v)
+	}
+	for k, v := range uris {
+		result += fmt.Sprintf("         \"%s[%d]\": %s\n", "target-uri", k+1, v)
+	}
+	return
+}
+
+// Convert TrafficResponse to String
+func (traffic TrafficResponse) String() (result string) {
+	result += fmt.Sprintf("            \"%s\": %d\n", "unit", traffic.Unit)
+	result += fmt.Sprintf("            \"%s\": %d\n", "protocol", traffic.Protocol)
+	if traffic.LowPercentileG != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "low-percentile-g", *traffic.LowPercentileG)
+	}
+	if traffic.MidPercentileG != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "mid-percentile-g", *traffic.MidPercentileG)
+	}
+	if traffic.HighPercentileG != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "high-percentile-g", *traffic.HighPercentileG)
+	}
+	if traffic.PeakG != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "peak-g", *traffic.PeakG)
+	}
+	return
+}
+
+// Convert TotalConnectionCapacityResponse to String
+func (tcc TotalConnectionCapacityResponse) String() (result string) {
+	result += fmt.Sprintf("            \"%s\": %d\n", "protocol", tcc.Protocol)
+	if tcc.Connection != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "connection", *tcc.Connection)
+	}
+	if tcc.ConnectionClient != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "connection-client", *tcc.ConnectionClient)
+	}
+	if tcc.Embryonic != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "embryonic", *tcc.Embryonic)
+	}
+	if tcc.EmbryonicClient != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "embryonic-client", *tcc.EmbryonicClient)
+	}
+	if tcc.ConnectionPs != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "connection-ps", *tcc.ConnectionPs)
+	}
+	if tcc.ConnectionClientPs != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "connection-client-ps", *tcc.ConnectionClientPs)
+	}
+	if tcc.RequestPs != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "request-ps", *tcc.RequestPs)
+	}
+	if tcc.RequestClientPs != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "request-client-ps", *tcc.RequestClientPs)
+	}
+	if tcc.PartialRequestPs != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "partial-request-ps", *tcc.PartialRequestPs)
+	}
+	if tcc.PartialRequestClientPs != nil {
+		result += fmt.Sprintf("            \"%s\": %d\n", "partial-request-client-ps", *tcc.PartialRequestClientPs)
+	}
+	return
+}
+
+type TelemetrySetupResponseConflict struct {
+	_struct                bool                       `codec:",uint"`        //encode struct with "unsigned integer" keys
+	TelemetrySetupConflict TelemetrySetupRespConflict `json:"ietf-dots-telemetry:telemetry-setup" codec:"32788,omitempty"`
+}
+
+type TelemetrySetupRespConflict struct {
+	_struct                   bool                        `codec:",uint"` //encode struct with "unsigned integer" keys
+	TelemetryResponseConflict []TelemetryResponseConflict `json:"telemetry" codec:"32834,omitempty"` // CBOR key temp
+}
+
+type TelemetryResponseConflict struct {
+	_struct             bool                 `codec:",uint"` //encode struct with "unsigned integer" keys
+	Tsid                int                  `json:"tsid" codec:"32777,omitempty"`
+	ConflictInformation *ConflictInformation `json:"conflict-information" codec:"17,omitempty"`
+}
+
+// new telemetry setup configuration response conflict
+func NewTelemetrySetupConfigurationResponseConflict(tsid int, conflictInfo *ConflictInformation) TelemetrySetupResponseConflict {
+	res := TelemetrySetupResponseConflict{}
+	res.TelemetrySetupConflict.TelemetryResponseConflict = append(res.TelemetrySetupConflict.TelemetryResponseConflict, TelemetryResponseConflict{Tsid: tsid, ConflictInformation: conflictInfo})
+	return res
+}
+
+// Convert TelemetrySetupConfigurationResponseConflict to String
+ func (ts *TelemetrySetupResponseConflict) String() (result string) {
+	result = "\n \"ietf-dots-telemetry:telemetry-setup\":\n"
+	for key, t := range ts.TelemetrySetupConflict.TelemetryResponseConflict {
+		result += fmt.Sprintf("   \"%s[%d]\":\n", "telemetry", key+1)
+		result += fmt.Sprintf("       \"%s\": %d\n", "tsid", t.Tsid)
+		result += fmt.Sprintf("       \"%s\":\n", "conflict-information")
+		result += fmt.Sprintf("          \"%s\": %d\n", "conflict-status", t.ConflictInformation.ConflictStatus)
+		result += fmt.Sprintf("          \"%s\": %d\n", "conflict-cause", t.ConflictInformation.ConflictCause)
+		result += fmt.Sprintf("          \"%s\": %d\n", "retry-timer", t.ConflictInformation.RetryTimer)
+	}
+	return
+}
