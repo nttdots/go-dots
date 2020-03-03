@@ -24,6 +24,68 @@ system:
     ackTimeoutIdle: 2.0
     ackRandomFactorIdle: 1.5
 
+# Range min-max values of telemetry configuration
+  telemetryConfigurationParameter:
+    measurementInterval: 1-5
+    measurementSample: 1-8
+    lowPercentile: 0.0-10.0
+    midPercentile: 10.1-50.0
+    highPercentile: 50.1-90.0
+    serverOriginatedTelemetry: true
+    telemetryNotifyInterval: 1-3600
+    unit: 1
+    unitStatus: true
+
+# Default values of telemetry configuration
+  defaultTelemetryConfiguration:
+    measurementInterval: 1
+    measurementSample: 1
+    lowPercentile: 10.0
+    midPercentile: 50.0
+    highPercentile: 90.0
+    serverOriginatedTelemetry: false
+    telemetryNotifyInterval: 50
+    unit: 2
+    unitStatus: true
+
+# Default values of total pipe capacity
+  defaultTotalPipeCapacity:
+    linkId: link1
+    capacity: 100
+    unit: 1
+
+# Default value of target
+  defaultTarget:
+    targetPrefix: 1.1.2.0/24
+    tagetLowerPort: 80
+    targetUpperPort: 8080
+    targetProtocol: 6
+    targetFqdn:
+    targetUri:
+
+# Default value of total traffic normal baseline
+  defaultTotalTrafficNormalBaseline:
+    unit: 1
+    protocol: 6
+    lowPercentileG: 10
+    midPercentileG: 50
+    highPercentileG: 90
+    peakG: 100
+
+# Default values of total connection capacity
+  defaultTotalConnectionCapacity:
+    protocol: 6
+    connection: 80
+    connectionClient: 81
+    embryonic: 82
+    embryonicClient: 83
+    connectionPs: 84
+    connectionClientPs: 85
+    requestPs: 86
+    requestClientPs: 87
+    partialRequestPs: 88
+    partialRequestClientPs: 89
+
   secureFile:
     serverCertFile: ../certs/server-cert.pem
     serverKeyFile: ../certs/server-key.pem

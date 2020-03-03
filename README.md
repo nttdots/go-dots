@@ -368,6 +368,42 @@ when the DOTS client is under attacked by DDoS, the DOTS client sends the attack
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftCallHome.json
 
+##  Telemetry
+The telemetry aims to enrich DOTS signal channel protocol with various telemetry attributes allowing optimal DDoS attack mitigation. The telemetry specifies the normal traffic baseline and attack traffic telemetry attributes a DOTS client can convey to its DOTS server in the mitigation request, the mitigation status telemetry attributes a DOTS server can communicate to a DOTS client, and the mitigation efficacy telemetry attributes a DOTS client can communicate to a DOTS server. The telemetry contains `Telemetry Setup Configuration` and `Telemetry Pre-mitigation`
+
+
+### Client Controller [telemmetry_setup_request] (Telemetry Setup Configuration)
+Registering telemetry configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123\
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleTelemetryConfiguration.json
+
+Registering total pipe capacity
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123\
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleTotalPipeCapacity.json
+
+Registering baseline
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123\
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleBaseline.json
+
+Get one telemetry setup configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123
+
+Get all telemetry setup configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw
+
+Delete one telemetry setup configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123
+
+Delete all telemetry setup configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw
+
 ## DB
 
 To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)  

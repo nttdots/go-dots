@@ -38,6 +38,10 @@ func (p *SignalChannel)  forward(req Request, customer *models.Customer) (res Re
 			log.Debug("Call SessionConfig controller")
 			controller = &SessionConfiguration{}
 			break;	
+		} else if strings.HasPrefix(req.Uri[i], "tm-setup") {
+			log.Debug("Call TelemetrySetupRequest controller")
+			controller = &TelemetrySetupRequest{}
+			break;
 		}
 	}
 

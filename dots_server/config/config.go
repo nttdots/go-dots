@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"errors"
 	"io/ioutil"
 	"net"
@@ -58,6 +59,68 @@ type DefaultSignalConfigurationNode struct {
 	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
 }
 
+type TelemetryConfigurationParameterNode struct {
+	MeasurementInterval       string `yaml:"measurementInterval"`
+	MeasurementSample         string `yaml:"measurementSample"`
+	LowPercentile             string `yaml:"lowPercentile"`
+	MidPercentile             string `yaml:"midPercentile"`
+	HighPercentile            string `yaml:"highPercentile"`
+	ServerOriginatedTelemetry bool   `yaml:"serverOriginatedTelemetry"`
+	TelemetryNotifyInterval   string `yaml:"telemetryNotifyInterval"`
+	Unit                      string `yaml:"unit"`
+	UnitStatus                bool   `yaml:"unitStatus"`
+}
+
+type DefaultTelemetryConfigurationNode struct {
+	MeasurementInterval       string `yaml:"measurementInterval"`
+	MeasurementSample         string `yaml:"measurementSample"`
+	LowPercentile             string `yaml:"lowPercentile"`
+	MidPercentile             string `yaml:"midPercentile"`
+	HighPercentile            string `yaml:"highPercentile"`
+	ServerOriginatedTelemetry bool   `yaml:"serverOriginatedTelemetry"`
+	TelemetryNotifyInterval   string `yaml:"telemetryNotifyInterval"`
+	Unit                      string `yaml:"unit"`
+	UnitStatus                bool   `yaml:"unitStatus"`
+}
+
+type DefaultTotalPipeCapacityNode struct {
+	LinkId   string `yaml:"linkId"`
+	Capacity string `yaml:"capacity"`
+	Unit     string `yaml:"unit"`
+}
+
+type DefaultTargetNode struct {
+	TargetPrefix    string `yaml:"targetPrefix"`
+	TargetLowerPort string `yaml:"targetLowerPort"`
+	TargetUpperPort string `yaml:"targetUpperPort"`
+	TargetProtocol  string `yaml:"targetProtocol"`
+	TargetFqdn      string `yaml:"targetFqdn"`
+	TargetUri       string `yaml:"targetUri"`
+}
+
+type DefaultTotalTrafficNormalBaselineNode struct {
+	Unit             string `yaml:"unit"`
+	Protocol         string `yaml:"protocol"`
+	LowPercrentileG  string `yaml:"lowPercentileG"`
+	MidPercrentileG  string `yaml:"midPercentileG"`
+	HighPercrentileG string `yaml:"highPercentileG"`
+	PeakG            string `yaml:"peakG"`
+}
+
+type DefaultTotalConnectionCapacityNode struct {
+	Protocol               string `yaml:"protocol"`
+	Connection             string `yaml:"connection"`
+	ConnectionClient       string `yaml:"connectionClient"`
+	EmbryOnic              string `yaml:"embryonic"`
+	EmbryOnicClient        string `yaml:"embryonicClient"`
+	ConnectionPs           string `yaml:"connectionPs"`
+	ConnectionClientPs     string `yaml:"connectionClientPs"`
+	RequestPs              string `yaml:"requestPs"`
+	RequestClientPs        string `yaml:"requestClientPs"`
+	PartialRequestPs       string `yaml:"partialRequestPs"`
+	PartialRequestClientPs string `yaml:"partialRequestClientPs"`
+}
+
 type LifetimeConfigurationNode struct {
 	ActiveButTerminatingPeriod    string `yaml:"activeButTerminatingPeriod"`
 	MaxActiveButTerminatingPeriod string `yaml:"maxActiveButTerminatingPeriod"`
@@ -92,6 +155,133 @@ func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 		MaxRetransmitIdle:     parseIntegerValue(dscn.MaxRetransmitIdle),
 		AckTimeoutIdle:        parseFloatValue(dscn.AckTimeoutIdle),
 		AckRandomFactorIdle:   parseFloatValue(dscn.AckRandomFactorIdle),
+	}, nil
+}
+
+func (tcpn TelemetryConfigurationParameterNode) Convert() (interface{}, error) {
+	unit := parseIntegerValue(tcpn.Unit)
+	if unit < 1 || unit > 8 {
+		return nil, errors.New("'unit' MUST be between 1 and 8")
+	}
+	return &TelemetryConfigurationParameter{
+		MeasurementInterval:       parseIntegerParameterRange(tcpn.MeasurementInterval),
+		MeasurementSample:         parseIntegerParameterRange(tcpn.MeasurementSample),
+		LowPercentile:             parseFloatParameterRange(tcpn.LowPercentile),
+		MidPercentile:             parseFloatParameterRange(tcpn.MidPercentile),
+		HighPercentile:            parseFloatParameterRange(tcpn.HighPercentile),
+		ServerOriginatedTelemetry: tcpn.ServerOriginatedTelemetry,
+		TelemetryNotifyInterval:   parseIntegerParameterRange(tcpn.TelemetryNotifyInterval),
+		Unit:                      unit,
+		UnitStatus:                tcpn.UnitStatus,
+	}, nil
+}
+
+func (dtcn DefaultTelemetryConfigurationNode) Convert() (interface{}, error) {
+	telemetryNotifyInterval := parseIntegerValue(dtcn.TelemetryNotifyInterval)
+	unit := parseIntegerValue(dtcn.Unit)
+	if telemetryNotifyInterval < 1 || telemetryNotifyInterval > 3600 {
+		return nil, errors.New("'telemetryNotifyInterval' MUST be between 1 and 3600")
+	}
+	if unit < 1 || unit > 8 {
+		return nil, errors.New("'unit' MUST be between 1 and 8")
+	}
+	return &DefaultTelemetryConfiguration{
+		MeasurementInterval:       parseIntegerValue(dtcn.MeasurementInterval),
+		MeasurementSample:         parseIntegerValue(dtcn.MeasurementSample),
+		LowPercentile:             parseFloatValue(dtcn.LowPercentile),
+		MidPercentile:             parseFloatValue(dtcn.MidPercentile),
+		HighPercentile:            parseFloatValue(dtcn.HighPercentile),
+		ServerOriginatedTelemetry: dtcn.ServerOriginatedTelemetry,
+		TelemetryNotifyInterval:   telemetryNotifyInterval,
+		Unit:                      unit,
+		UnitStatus:                dtcn.UnitStatus,
+	}, nil
+}
+
+func (dtpcn DefaultTotalPipeCapacityNode) Convert() (interface{}, error) {
+	unit := parseIntegerValue(dtpcn.Unit)
+	if unit < 1 || unit > 8 {
+		return nil, errors.New("'unit' MUST be between 1 and 8")
+	}
+	return &DefaultTotalPipeCapacity{
+		LinkId:   dtpcn.LinkId,
+		Capacity: parseIntegerValue(dtpcn.Capacity),
+		Unit:     unit,
+	}, nil
+}
+
+func (dtn DefaultTargetNode) Convert() (interface{}, error) {
+	lowerport := parseIntegerValue(dtn.TargetLowerPort)
+	upperPort := parseIntegerValue(dtn.TargetUpperPort)
+	protocol  := parseIntegerValue(dtn.TargetProtocol)
+	if lowerport < 0 || 0xffff < lowerport || upperPort < 0 || 0xffff < upperPort {
+		errMsg := fmt.Sprintf("invalid port-range: lower-port: %+v, upper-port: %+v", lowerport, upperPort)
+		return nil, errors.New(errMsg)
+	} else if lowerport > upperPort {
+		return nil, errors.New("'lowerPort MUST be smaller than 'upperPort'")
+	}
+	if protocol < 0 || protocol > 255 {
+		return nil, errors.New("'targetProtocol' MUST be between 0 and 255")
+	}
+	return &DefaultTarget{
+		TargetPrefix:    dtn.TargetPrefix,
+		TargetLowerPort: lowerport,
+		TargetUpperPort: upperPort,
+		TargetProtocol:  protocol,
+		TargetFqdn:      dtn.TargetFqdn,
+		TargetUri:       dtn.TargetUri,
+	}, nil
+}
+
+func (dttnbn DefaultTotalTrafficNormalBaselineNode) Convert() (interface{}, error) {
+	unit            := parseIntegerValue(dttnbn.Unit)
+	protocol        := parseIntegerValue(dttnbn.Protocol)
+	lowPercentileG  := parseIntegerValue(dttnbn.LowPercrentileG)
+	midPercentileG  := parseIntegerValue(dttnbn.MidPercrentileG)
+	highPercentileG := parseIntegerValue(dttnbn.HighPercrentileG)
+	peakG           := parseIntegerValue(dttnbn.PeakG)
+	if unit < 0 || unit > 8 {
+		return nil, errors.New("unit MUST be between 1 and 8")
+	}
+	if protocol < 0 || protocol > 255 {
+		return nil, errors.New("'protocol' MUST be between 0 and 255")
+	}
+	if lowPercentileG > midPercentileG {
+		return nil, errors.New("'midPercentitleG' MUST be greater than or equal to the 'lowPercentitleG'")
+	}
+	if midPercentileG > highPercentileG {
+		return nil, errors.New("'highPercentitleG' MUST be greater than or equal to the 'midPercentitleG'")
+	}
+	if highPercentileG > peakG {
+		return nil, errors.New("'highercentitleG' MUST be greater than or equal to the 'peakG'")
+	}
+	return &DefaultTotalTrafficNormalBaseline{
+		Unit:            unit,
+		Protocol:        protocol,
+		LowPercentileG:  lowPercentileG,
+		MidPercentileG:  midPercentileG,
+		HighPercentileG: highPercentileG,
+		PeakG:           peakG,
+	}, nil
+}
+
+func (dtccn DefaultTotalConnectionCapacityNode) Convert() (interface{}, error) {
+	protocol := parseIntegerValue(dtccn.Protocol)
+	if protocol < 0 || protocol > 255 {
+		return nil, errors.New("'protocol' MUST be between 0 and 255")
+	}
+	return &DefaultTotalConnectionCapacity{
+		Protocol:               protocol,
+		Connection:             parseIntegerValue(dtccn.Connection),
+		ConnectionClient:       parseIntegerValue(dtccn.ConnectionClient),
+		EmbryOnic:              parseIntegerValue(dtccn.EmbryOnic),
+		EmbryOnicClient:        parseIntegerValue(dtccn.EmbryOnicClient),
+		ConnectionPs:           parseIntegerValue(dtccn.ConnectionPs),
+		ConnectionClientPs:     parseIntegerValue(dtccn.ConnectionClientPs),
+		RequestPs:              parseIntegerValue(dtccn.RequestPs),
+		RequestClientPs:        parseIntegerValue(dtccn.RequestClientPs),
+		PartialRequestPs:       parseIntegerValue(dtccn.PartialRequestPs),
+		PartialRequestClientPs: parseIntegerValue(dtccn.PartialRequestClientPs),
 	}, nil
 }
 
@@ -259,19 +449,31 @@ func (dc *Database) Store() {
 
 // System global configuration container
 type ServerSystemConfig struct {
-	SignalConfigurationParameter *SignalConfigurationParameter
-	DefaultSignalConfiguration   *DefaultSignalConfiguration
-	SecureFile                   *SecureFile
-	Network                      *Network
-	Database                     *Database
-	LifetimeConfiguration        *LifetimeConfiguration
-	MaxAgeOption                 uint
-	CacheInterval                int
+	SignalConfigurationParameter      *SignalConfigurationParameter
+	DefaultSignalConfiguration        *DefaultSignalConfiguration
+	TelemetryConfigurationParameter   *TelemetryConfigurationParameter
+	DefaultTelemetryConfiguration     *DefaultTelemetryConfiguration
+	DefaultTotalPipeCapacity          *DefaultTotalPipeCapacity
+	DefaultTarget                     *DefaultTarget
+	DefaultTotalTrafficNormalBaseline *DefaultTotalTrafficNormalBaseline
+	DefaultTotalConnectionCapacity    *DefaultTotalConnectionCapacity
+	SecureFile                        *SecureFile
+	Network                           *Network
+	Database                          *Database
+	LifetimeConfiguration             *LifetimeConfiguration
+	MaxAgeOption                      uint
+	CacheInterval                     int
 }
 
 func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setSignalConfigurationParameter(*sc.SignalConfigurationParameter)
 	GetServerSystemConfig().setDefaultSignalConfiguration(*sc.DefaultSignalConfiguration)
+	GetServerSystemConfig().setTelemetryConfigurationParameter(*sc.TelemetryConfigurationParameter)
+	GetServerSystemConfig().setDefaultTelemetryConfiguration(*sc.DefaultTelemetryConfiguration)
+	GetServerSystemConfig().setDefaultTotalPipeCapacity(*sc.DefaultTotalPipeCapacity)
+	GetServerSystemConfig().setDefaultTarget(*sc.DefaultTarget)
+	GetServerSystemConfig().setDefaultTotalTrafficNormalBaseline(*sc.DefaultTotalTrafficNormalBaseline)
+	GetServerSystemConfig().setDefaultTotalConnectionCapacity(*sc.DefaultTotalConnectionCapacity)
 	GetServerSystemConfig().setSecureFile(*sc.SecureFile)
 	GetServerSystemConfig().setNetwork(*sc.Network)
 	GetServerSystemConfig().setDatabase(*sc.Database)
@@ -281,14 +483,20 @@ func (sc *ServerSystemConfig) Store() {
 }
 
 type ServerSystemConfigNode struct {
-	SignalConfigurationParameter SignalConfigurationParameterNode `yaml:"signalConfigurationParameter"`
-	DefaultSignalConfiguration   DefaultSignalConfigurationNode   `yaml:"defaultSignalConfiguration"`
-	SecureFile                   SecureFileNode                   `yaml:"secureFile"`
-	Network                      NetworkNode                      `yaml:"network"`
-	Database                     DatabaseNode                     `yaml:"database"`
-	LifetimeConfiguration        LifetimeConfigurationNode        `yaml:"lifetimeConfiguration"`
-	MaxAgeOption                 string                           `yaml:"maxAgeOption"`
-	CacheInterval                string                           `yaml:"cacheInterval"`
+	SignalConfigurationParameter      SignalConfigurationParameterNode      `yaml:"signalConfigurationParameter"`
+	DefaultSignalConfiguration        DefaultSignalConfigurationNode        `yaml:"defaultSignalConfiguration"`
+	TelemetryConfigurationParameter   TelemetryConfigurationParameterNode   `yaml:"telemetryConfigurationParameter"`
+	DefaultTelemetryConfiguration     DefaultTelemetryConfigurationNode     `yaml:"defaultTelemetryConfiguration"`
+	DefaultTotalPipeCapacity          DefaultTotalPipeCapacityNode          `yaml:"defaultTotalPipeCapacity"`
+	DefaultTarget                     DefaultTargetNode                     `yaml:"defaultTarget"`
+	DefaultTotalTrafficNormalBaseline DefaultTotalTrafficNormalBaselineNode `yaml:"defaultTotalTrafficNormalBaseline"`
+	DefaultTotalConnectionCapacity    DefaultTotalConnectionCapacityNode    `yaml:"defaultTotalConnectionCapacity"`
+	SecureFile                        SecureFileNode                        `yaml:"secureFile"`
+	Network                           NetworkNode                           `yaml:"network"`
+	Database                          DatabaseNode                          `yaml:"database"`
+	LifetimeConfiguration             LifetimeConfigurationNode             `yaml:"lifetimeConfiguration"`
+	MaxAgeOption                      string                                `yaml:"maxAgeOption"`
+	CacheInterval                     string                                `yaml:"cacheInterval"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -298,6 +506,36 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 	}
 
 	defaultSignalConfiguration, err := scn.DefaultSignalConfiguration.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	telemetryConfigurationParameter, err := scn.TelemetryConfigurationParameter.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTelemetryConfiguration, err := scn.DefaultTelemetryConfiguration.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTotalPipeCapacity, err := scn.DefaultTotalPipeCapacity.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTarget, err := scn.DefaultTarget.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTotalTrafficNormalBaseline, err := scn.DefaultTotalTrafficNormalBaseline.Convert()
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTotalConnectionCapacity, err := scn.DefaultTotalConnectionCapacity.Convert()
 	if err != nil {
 		return nil, err
 	}
@@ -330,14 +568,20 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 	cacheInterval := parseIntegerValue(scn.CacheInterval)
 
 	return &ServerSystemConfig{
-		SignalConfigurationParameter: signalConfigurationParameter.(*SignalConfigurationParameter),
-		DefaultSignalConfiguration:   defaultSignalConfiguration.(*DefaultSignalConfiguration),
-		SecureFile:                   secureFilePath.(*SecureFile),
-		Network:                      network.(*Network),
-		Database:                     database.(*Database),
-		LifetimeConfiguration:        lifetimeConfiguration.(*LifetimeConfiguration),
-		MaxAgeOption:                 maxAgeOption,
-		CacheInterval:                cacheInterval,
+		SignalConfigurationParameter:      signalConfigurationParameter.(*SignalConfigurationParameter),
+		DefaultSignalConfiguration:        defaultSignalConfiguration.(*DefaultSignalConfiguration),
+		TelemetryConfigurationParameter:   telemetryConfigurationParameter.(*TelemetryConfigurationParameter),
+		DefaultTelemetryConfiguration:     defaultTelemetryConfiguration.(*DefaultTelemetryConfiguration),
+		DefaultTotalPipeCapacity:          defaultTotalPipeCapacity.(*DefaultTotalPipeCapacity),
+		DefaultTarget:                     defaultTarget.(*DefaultTarget),
+		DefaultTotalTrafficNormalBaseline: defaultTotalTrafficNormalBaseline.(*DefaultTotalTrafficNormalBaseline),
+		DefaultTotalConnectionCapacity:    defaultTotalConnectionCapacity.(*DefaultTotalConnectionCapacity),
+		SecureFile:                        secureFilePath.(*SecureFile),
+		Network:                           network.(*Network),
+		Database:                          database.(*Database),
+		LifetimeConfiguration:             lifetimeConfiguration.(*LifetimeConfiguration),
+		MaxAgeOption:                      maxAgeOption,
+		CacheInterval:                     cacheInterval,
 	}, nil
 }
 
@@ -347,6 +591,30 @@ func (sc *ServerSystemConfig) setSignalConfigurationParameter(parameter SignalCo
 
 func (sc *ServerSystemConfig) setDefaultSignalConfiguration(parameter DefaultSignalConfiguration) {
 	sc.DefaultSignalConfiguration = &parameter
+}
+
+func (sc *ServerSystemConfig) setTelemetryConfigurationParameter(parameter TelemetryConfigurationParameter) {
+	sc.TelemetryConfigurationParameter = &parameter
+}
+
+func (sc *ServerSystemConfig) setDefaultTelemetryConfiguration(parameter DefaultTelemetryConfiguration) {
+	sc.DefaultTelemetryConfiguration = &parameter
+}
+
+func (sc *ServerSystemConfig) setDefaultTotalPipeCapacity(parameter DefaultTotalPipeCapacity) {
+	sc.DefaultTotalPipeCapacity = &parameter
+}
+
+func (sc *ServerSystemConfig) setDefaultTarget(parameter DefaultTarget) {
+	sc.DefaultTarget = &parameter
+}
+
+func (sc *ServerSystemConfig) setDefaultTotalTrafficNormalBaseline(parameter DefaultTotalTrafficNormalBaseline) {
+	sc.DefaultTotalTrafficNormalBaseline = &parameter
+}
+
+func (sc *ServerSystemConfig) setDefaultTotalConnectionCapacity(parameter DefaultTotalConnectionCapacity) {
+	sc.DefaultTotalConnectionCapacity = &parameter
 }
 
 func (sc *ServerSystemConfig) setSecureFile(config SecureFile) {
@@ -648,6 +916,69 @@ type DefaultSignalConfiguration struct {
 	AckTimeoutIdle        float64
 	AckRandomFactorIdle   float64
 }
+
+type TelemetryConfigurationParameter struct {
+	MeasurementInterval       *IntegerParameterRange
+	MeasurementSample         *IntegerParameterRange
+	LowPercentile             *FloatParameterRange
+	MidPercentile             *FloatParameterRange
+	HighPercentile            *FloatParameterRange
+	ServerOriginatedTelemetry bool
+	TelemetryNotifyInterval   *IntegerParameterRange
+	Unit                      int
+	UnitStatus                bool
+}
+
+type DefaultTelemetryConfiguration struct {
+	MeasurementInterval       int
+	MeasurementSample         int
+	LowPercentile             float64
+	MidPercentile             float64
+	HighPercentile            float64
+	ServerOriginatedTelemetry bool
+	TelemetryNotifyInterval   int
+	Unit                      int
+	UnitStatus                bool
+}
+
+type DefaultTotalPipeCapacity struct {
+	LinkId   string
+	Capacity int
+	Unit     int
+}
+
+type DefaultTarget struct {
+	TargetPrefix    string
+	TargetLowerPort int
+	TargetUpperPort int
+	TargetProtocol  int
+	TargetFqdn      string
+	TargetUri       string
+}
+
+type DefaultTotalTrafficNormalBaseline struct {
+	Unit            int
+	Protocol        int
+	LowPercentileG  int
+	MidPercentileG  int
+	HighPercentileG int
+	PeakG           int
+}
+
+type DefaultTotalConnectionCapacity struct {
+	Protocol               int
+	Connection             int
+	ConnectionClient       int
+	EmbryOnic              int
+	EmbryOnicClient        int
+	ConnectionPs           int
+	ConnectionClientPs     int
+	RequestPs              int
+	RequestClientPs        int
+	PartialRequestPs       int
+	PartialRequestClientPs int
+}
+
 
 type LifetimeConfiguration struct {
 	ActiveButTerminatingPeriod     int

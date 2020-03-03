@@ -28,6 +28,7 @@ const (
 	CREATE_IDENTIFIERS
 	INSTALL_FILTERING_RULE
 	SIGNAL_CHANNEL
+	TELEMETRY_SETUP_REQUEST
 )
 
 /*
@@ -93,6 +94,36 @@ const (
 	JSON_HEART_BEAT_CLIENT = "jsonHeartBeatClient.json"
 )
 
+type Unit string
+const (
+	PACKETS_PER_SECOND      Unit = "PPS"
+	KILO_PACKETS_PER_SECOND Unit = "KILO_PPS"
+	BITS_PER_SECOND         Unit = "BPS"
+	KILOBYTES_PER_SECOND    Unit = "KILOBYTES_PS"
+	MEGABYTES_PER_SECOND    Unit = "MEGABYTES_PS"
+	GIGABYTES_PER_SECOND    Unit = "GIGABYTES_PS"
+)
+
+type Interval string
+const (
+	HOUR  Interval = "HOUR"
+	DAY   Interval = "DAY"
+	WEEK  Interval = "WEEK"
+	MONTH Interval = "MONTH"
+)
+
+type Sample string
+const (
+	SECOND          Sample = "SECOND"
+	FIVE_SECONDS    Sample = "5_SECONDS"
+	THIRTY_SECONDDS Sample = "30_SECONDS"
+	ONE_MINUTE      Sample = "ONE_MINUTE"
+	FIVE_MINUTES    Sample = "5_MINUTES"
+	TEN_MINUTES     Sample = "10_MINUTES"
+	THIRTY_MINUTES  Sample = "30_MINUTES"
+	ONE_HOUR        Sample = "ONE_HOUR"
+)
+
 /*
  * Dots message structure.
  */
@@ -128,6 +159,7 @@ func init() {
 	register(MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/mitigate", MitigationRequest{})
 	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/config", SignalConfigRequest{})
 	register(HEARTBEAT, REQUEST, libcoap.TypeNon, SIGNAL, "heartbeat", ".well-known/dots/hb", HeartBeatRequest{})
+	register(TELEMETRY_SETUP_REQUEST, REQUEST, libcoap.TypeCon, SIGNAL, "telemetry_setup_request", ".well-known/dots/tm-setup", TelemetrySetupRequest{})
 
 	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots", SignalChannelRequest{})
 }

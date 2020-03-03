@@ -14,9 +14,9 @@ import (
 	"path"
 	"strings"
 
+	"github.com/nttdots/go-dots/dots_common/messages"
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
-	"github.com/nttdots/go-dots/dots_common/messages"
 )
 
 var (
@@ -26,6 +26,7 @@ var (
 	cdid          string
 	mid           string
 	sid           string
+	tsid          string
 	jsonFilePath  string
 	socket        string
 	observe       string
@@ -46,6 +47,7 @@ func init() {
 	flag.StringVar(&cdid, "cdid", defaultValue, "Client Domain IDentifier on Uri-Path (only used in debug). optional in Put/Get/Delete")
 	flag.StringVar(&mid, "mid", defaultValue, "Identifier for the mitigation request on Uri-Path. mandatory in Put/Delete")
 	flag.StringVar(&sid, "sid", defaultValue, "Session Identifier is an identifier for the DOTS signal channel session configuration data represented as an integer.")
+	flag.StringVar(&tsid, "tsid", defaultValue, "Telemetry Setup Identifier is an identifier for the DOTS telemetry setup and configuration data represented as an integer.")
 	flag.StringVar(&jsonFilePath, "json", defaultValue, "Request Json file")
 	flag.StringVar(&socket, "socket", common.DEFAULT_CLIENT_SOCKET_FILE, "dots client socket")
 	flag.StringVar(&observe, "observe", defaultValue, "mitigation request observe")
@@ -140,6 +142,10 @@ func main() {
 		// add mid if exists
 		if mid != "" {
 			u.Path += "/mid=" + mid
+		}
+		// add tsid for telemetry setup request
+		if tsid != "" {
+			u.Path += "/tsid=" + tsid
 		}
 	} else if sid != "" {
 		// for session configuration
