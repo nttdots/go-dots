@@ -73,7 +73,7 @@ To use the go-dots server, the go-dots client, the mysql and go-bgp. Following a
 - Import data into mysql container
     ```
     $ cd ~/dots/config
-    $ kubectl exec -it deployment/server -c mysql -- mysql -uroot -proot dots < test_dump.mysql
+    $ kubectl exec -it deployment/server -c mysql -- mysql -uroot -proot dots < test_dump.sql
     ```
 
 - Get Pod to check ip address of the go-dots server
