@@ -99,7 +99,7 @@ To use the go-dots server, the go-dots client, the mysql and go-bgp. Following a
 - To get logs of go-dots server/client. Using kubectl command
     ```
     $ kubectl logs deployment/server -c go-dots-server
-    $ kubectl logs deployment/go-dots-lient
+    $ kubectl logs deployment/go-dots-client
     ```
 
 - After modify go-dots config, you restart deployment
