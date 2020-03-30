@@ -386,95 +386,95 @@ type ScopeControlFiltering struct {
 
 type TelemetrySetupResponse struct {
 	_struct        bool               `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetrySetup TelemetrySetupResp `json:"ietf-dots-telemetry:telemetry-setup" codec:"32788,omitempty"`
+	TelemetrySetup TelemetrySetupResp `json:"ietf-dots-telemetry:telemetry-setup" codec:"32868,omitempty"`
 }
 
 type TelemetrySetupResp struct {
 	_struct   bool                `codec:",uint"` //encode struct with "unsigned integer" keys
-	Telemetry []TelemetryResponse `json:"telemetry" codec:"32834,omitempty"` // CBOR key temp
+	Telemetry []TelemetryResponse `json:"telemetry" codec:"32905,omitempty"` // CBOR key temp
 }
 
 type TelemetryResponse struct {
 	_struct                bool                                         `codec:",uint"` //encode struct with "unsigned integer" keys
-	Tsid                   int                                          `json:"tsid" codec:"32777,omitempty"`
-	TelemetryConfiguration *TelemetryConfigurationCurrentMinMaxResponse `json:"telemetry-config" codec:"32778,omitempty"`
-	TotalPipeCapacity      []TotalPipeCapacityResponse                  `json:"total-pipe-capacity" codec:"32785,omitempty"`
-	Baseline               []BaselineResponse                           `json:"baseline" codec:"32826,omitempty"`
+	Tsid                   int                                          `json:"tsid" codec:"32801,omitempty"`
+	TelemetryConfiguration *TelemetryConfigurationCurrentMinMaxResponse `json:"telemetry-config" codec:"32802,omitempty"`
+	TotalPipeCapacity      []TotalPipeCapacityResponse                  `json:"total-pipe-capacity" codec:"32809,omitempty"`
+	Baseline               []BaselineResponse                           `json:"baseline" codec:"32849,omitempty"`
 }
 
 type TelemetryConfigurationCurrentMinMaxResponse struct {
 	_struct       bool                           `codec:",uint"` //encode struct with "unsigned integer" keys
-	CurrentConfig TelemetryConfigurationResponse `json:"current-config" codec:"32827,omitempty"`
-	MaxConfig     TelemetryConfigurationResponse `json:"max-config-values" codec:"32828,omitempty"`
-	MinConfig     TelemetryConfigurationResponse `json:"min-config-values" codec:"32829,omitempty"`
-	SupportedUnit SupportedUnitResponse          `json:"supported-units" codec:"32830,omitempty"`
+	CurrentConfig TelemetryConfigurationResponse `json:"current-config" codec:"32850,omitempty"`
+	MaxConfig     TelemetryConfigurationResponse `json:"max-config-values" codec:"32851,omitempty"`
+	MinConfig     TelemetryConfigurationResponse `json:"min-config-values" codec:"32852,omitempty"`
+	SupportedUnit SupportedUnitResponse          `json:"supported-units" codec:"32853,omitempty"`
 }
 
 type TelemetryConfigurationResponse struct {
 	_struct                   bool                 `codec:",uint"` //encode struct with "unsigned integer" keys
-	MeasurementInterval       int                  `json:"measurement-interval" codec:"32835,omitempty"` // CBOR key temp
-	MeasurementSample         int                  `json:"measurement-sample" codec:"32836,omitempty"`   // CBOR key temp
-	LowPercentile             decimal.Decimal      `json:"low-percentile" codec:"32779,omitempty"`
-	MidPercentile             decimal.Decimal      `json:"mid-percentile" codec:"32780,omitempty"`
-	HighPercentile            decimal.Decimal      `json:"high-percentile" codec:"32781,omitempty"`
-	UnitConfigList            []UnitConfigResponse `json:"unit-config" codec:"32782,omitempty"`
-	ServerOriginatedTelemetry *bool                `json:"server-originated-telemetry" codec:"32831,omitempty"`
-	TelemetryNotifyInterval   *int                 `json:"telemetry-notify-interval" codec:"32832,omitempty"`
+	MeasurementInterval       int                  `json:"measurement-interval" codec:"32857,omitempty"`
+	MeasurementSample         int                  `json:"measurement-sample" codec:"32858,omitempty"`
+	LowPercentile             decimal.Decimal      `json:"low-percentile" codec:"32803,omitempty"`
+	MidPercentile             decimal.Decimal      `json:"mid-percentile" codec:"32804,omitempty"`
+	HighPercentile            decimal.Decimal      `json:"high-percentile" codec:"32805,omitempty"`
+	UnitConfigList            []UnitConfigResponse `json:"unit-config" codec:"32806,omitempty"`
+	ServerOriginatedTelemetry *bool                `json:"server-originated-telemetry" codec:"32854,omitempty"`
+	TelemetryNotifyInterval   *int                 `json:"telemetry-notify-interval" codec:"32855,omitempty"`
 }
 
 type SupportedUnitResponse struct {
 	_struct        bool                 `codec:",uint"` //encode struct with "unsigned integer" keys
-	UnitConfigList []UnitConfigResponse `json:"unit-config" codec:"32782,omitempty"`
+	UnitConfigList []UnitConfigResponse `json:"unit-config" codec:"32806,omitempty"`
 }
 
 type  UnitConfigResponse struct {
 	_struct    bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit       int  `json:"unit" codec:"32783,omitempty"`
-	UnitStatus bool `json:"unit-status" codec:"32784,omitempty"`
+	Unit       int  `json:"unit" codec:"32807,omitempty"`
+	UnitStatus bool `json:"unit-status" codec:"32808,omitempty"`
 }
 
 type TotalPipeCapacityResponse struct {
 	_struct  bool   `codec:",uint"`                           //encode struct with "unsigned integer" keys
-	LinkId   string `json:"link-id" codec:"32837,omitempty"`  // CBOR key temp
-	Capacity int    `json:"capacity" codec:"32838,omitempty"` // CBOR key temp
-	Unit     int    `json:"unit" codec:"32783,omitempty"`
+	LinkId   string `json:"link-id" codec:"32906,omitempty"`  // CBOR key temp
+	Capacity int    `json:"capacity" codec:"32907,omitempty"` // CBOR key temp
+	Unit     int    `json:"unit" codec:"32807,omitempty"`
 }
 
 type BaselineResponse struct {
 	_struct                    bool                              `codec:",uint"` //encode struct with "unsigned integer" keys
-	Id                         int                               `json:"id" codec:"32813,omitempty"`
+	Id                         int                               `json:"id" codec:"32836,omitempty"`
 	TargetPrefix               []string                          `json:"target-prefix" codec:"6,omitempty"`
 	TargetPortRange            []PortRangeResponse               `json:"target-port-range" codec:"7,omitempty"`
 	TargetProtocol             []int                             `json:"target-protocol" codec:"10,omitempty"`
 	TargetFQDN                 []string                          `json:"target-fqdn" codec:"11,omitempty"`
 	TargetURI                  []string                          `json:"target-uri" codec:"12,omitempty"`
-	TotalTrafficNormalBaseline []TrafficResponse                 `json:"total-traffic-normal-baseline" codec:"32789,omitempty"`
-	TotalConnectionCapacity    []TotalConnectionCapacityResponse `json:"total-connection-capacity" codec:"32796,omitempty"`
+	TotalTrafficNormalBaseline []TrafficResponse                 `json:"total-traffic-normal-baseline" codec:"32812,omitempty"`
+	TotalConnectionCapacity    []TotalConnectionCapacityResponse `json:"total-connection-capacity" codec:"32819,omitempty"`
 }
 
 type TrafficResponse struct {
 	_struct         bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit            int  `json:"unit" codec:"32783,omitempty"`
+	Unit            int  `json:"unit" codec:"32807,omitempty"`
 	Protocol        int  `json:"protocol" codec:"10,omitempty"`
-	LowPercentileG  *int `json:"low-percentile-g" codec:"32790,omitempty"`
-	MidPercentileG  *int `json:"mid-percentile-g" codec:"32791,omitempty"`
-	HighPercentileG *int `json:"high-percentile-g" codec:"32792,omitempty"`
-	PeakG           *int `json:"peak-g" codec:"32793,omitempty"`
+	LowPercentileG  *int `json:"low-percentile-g" codec:"32813,omitempty"`
+	MidPercentileG  *int `json:"mid-percentile-g" codec:"32814,omitempty"`
+	HighPercentileG *int `json:"high-percentile-g" codec:"32815,omitempty"`
+	PeakG           *int `json:"peak-g" codec:"32816,omitempty"`
 }
 
 type TotalConnectionCapacityResponse struct {
 	_struct                bool `codec:",uint"` //encode struct with "unsigned integer" keys
 	Protocol               int  `json:"protocol" codec:"10,omitempty"`
-	Connection             *int `json:"connection" codec:"32797,omitempty"`
-	ConnectionClient       *int `json:"connection-client" codec:"32798,omitempty"`
-	Embryonic              *int `json:"embryonic" codec:"32799,omitempty"`
-	EmbryonicClient        *int `json:"embryonic-client" codec:"32800,omitempty"`
-	ConnectionPs           *int `json:"connection-ps" codec:"32801,omitempty"`
-	ConnectionClientPs     *int `json:"connection-client-ps" codec:"32802,omitempty"`
-	RequestPs              *int `json:"request-ps" codec:"32803,omitempty"`
-	RequestClientPs        *int `json:"request-client-ps" codec:"32804,omitempty"`
-	PartialRequestPs       *int `json:"partial-request-ps" codec:"32805,omitempty"`
-	PartialRequestClientPs *int `json:"partial-request-client-ps" codec:"32806,omitempty"`
+	Connection             *int `json:"connection" codec:"32820,omitempty"`
+	ConnectionClient       *int `json:"connection-client" codec:"32821,omitempty"`
+	Embryonic              *int `json:"embryonic" codec:"32822,omitempty"`
+	EmbryonicClient        *int `json:"embryonic-client" codec:"32823,omitempty"`
+	ConnectionPs           *int `json:"connection-ps" codec:"32824,omitempty"`
+	ConnectionClientPs     *int `json:"connection-client-ps" codec:"32825,omitempty"`
+	RequestPs              *int `json:"request-ps" codec:"32826,omitempty"`
+	RequestClientPs        *int `json:"request-client-ps" codec:"32827,omitempty"`
+	PartialRequestPs       *int `json:"partial-request-ps" codec:"32828,omitempty"`
+	PartialRequestClientPs *int `json:"partial-request-client-ps" codec:"32829,omitempty"`
 }
 
 /*
@@ -633,17 +633,17 @@ func (tcc TotalConnectionCapacityResponse) String() (result string) {
 
 type TelemetrySetupResponseConflict struct {
 	_struct                bool                       `codec:",uint"`        //encode struct with "unsigned integer" keys
-	TelemetrySetupConflict TelemetrySetupRespConflict `json:"ietf-dots-telemetry:telemetry-setup" codec:"32788,omitempty"`
+	TelemetrySetupConflict TelemetrySetupRespConflict `json:"ietf-dots-telemetry:telemetry-setup" codec:"32868,omitempty"`
 }
 
 type TelemetrySetupRespConflict struct {
 	_struct                   bool                        `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetryResponseConflict []TelemetryResponseConflict `json:"telemetry" codec:"32834,omitempty"` // CBOR key temp
+	TelemetryResponseConflict []TelemetryResponseConflict `json:"telemetry" codec:"32905,omitempty"` // CBOR key temp
 }
 
 type TelemetryResponseConflict struct {
 	_struct             bool                 `codec:",uint"` //encode struct with "unsigned integer" keys
-	Tsid                int                  `json:"tsid" codec:"32777,omitempty"`
+	Tsid                int                  `json:"tsid" codec:"32801,omitempty"`
 	ConflictInformation *ConflictInformation `json:"conflict-information" codec:"17,omitempty"`
 }
 
