@@ -5,7 +5,7 @@ services:
         container_name: dots_client
         build: ../../
         image: dots_base
-        working_dir: /go/src/github.com/nttdots/go-dots
+        working_dir: /root/go/src/github.com/nttdots/go-dots
         entrypoint: ./dots_client/entry_point.sh
         networks:
           - dots_client_net

@@ -7,9 +7,9 @@ ENV HOME /root
 RUN apt-get update && apt-get -y install wget curl git build-essential libtool autoconf pkgconf
 RUN apt-get install -q -y mysql-server libmysqld-dev
 
-# install go1.9.3
-RUN wget https://dl.google.com/go/go1.9.3.linux-amd64.tar.gz
-RUN tar -C /usr/local -xzf go1.9.3.linux-amd64.tar.gz
+# install go1.11.9
+RUN wget https://dl.google.com/go/go1.11.9.linux-amd64.tar.gz
+RUN tar -C /usr/local -xzf go1.11.9.linux-amd64.tar.gz
 
 RUN mkdir $HOME/go
 
@@ -30,7 +30,7 @@ RUN echo '/usr/local/lib' >> /etc/ld.so.conf
 WORKDIR $HOME
 RUN git clone https://github.com/obgm/libcoap.git
 WORKDIR $HOME/libcoap
-RUN git checkout 1365dea39a6129a9b7e8c579537e12ffef1558f6
+RUN git checkout 1eadd91366cab46767f26e4d10e005198246eac1
 RUN ./autogen.sh
 RUN ./configure --disable-documentation --with-openssl
 RUN make && make install

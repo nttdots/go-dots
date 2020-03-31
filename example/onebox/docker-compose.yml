@@ -10,7 +10,7 @@ services:
             ipv6_address: 2001:db8::8
         depends_on:
           - dots_server
-        working_dir: /go/src/github.com/nttdots/go-dots
+        working_dir: /root/go/src/github.com/nttdots/go-dots
         entrypoint: ./dots_client/entry_point.sh
         environment:
           - DOTS_SERVER=2001:db8::9
@@ -28,7 +28,7 @@ services:
           dots_net:
             ipv4_address: 172.16.238.11
             ipv6_address: 2001:db8::9
-        working_dir: /go/src/github.com/nttdots/go-dots/dots_server
+        working_dir: /root/go/src/github.com/nttdots/go-dots/dots_server
         command: dots_server -vv -config /etc/dots_server.yaml
         volumes:
           - ./config/dots_server.yaml:/etc/dots_server.yaml:ro
