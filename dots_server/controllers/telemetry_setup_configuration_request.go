@@ -106,6 +106,15 @@ func (t *TelemetrySetupRequest) HandlePut(request Request, customer *models.Cust
 	} else if len(telemetry.Baseline) > 0 {
 		// Handle Put baseline
 		res, err = handlePutBaseline(telemetry.Baseline, customer, cuid, cdid, *tsid)
+	} else {
+		// The body request doesn't contain telemetry setup data
+		errMsg = "The body request doesn't contain telemetry setup data"
+		log.Error(errMsg)
+		res = Response {
+			Type: common.Acknowledgement,
+			Code: common.BadRequest,
+			Body: errMsg,
+		}
 	}
 	return res, err
 }
