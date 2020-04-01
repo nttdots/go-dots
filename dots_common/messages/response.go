@@ -395,19 +395,14 @@ type TelemetrySetupResp struct {
 }
 
 type TelemetryResponse struct {
-	_struct                bool                                         `codec:",uint"` //encode struct with "unsigned integer" keys
-	Tsid                   int                                          `json:"tsid" codec:"32801,omitempty"`
-	TelemetryConfiguration *TelemetryConfigurationCurrentMinMaxResponse `json:"telemetry-config" codec:"32802,omitempty"`
-	TotalPipeCapacity      []TotalPipeCapacityResponse                  `json:"total-pipe-capacity" codec:"32809,omitempty"`
-	Baseline               []BaselineResponse                           `json:"baseline" codec:"32849,omitempty"`
-}
-
-type TelemetryConfigurationCurrentMinMaxResponse struct {
-	_struct       bool                           `codec:",uint"` //encode struct with "unsigned integer" keys
-	CurrentConfig TelemetryConfigurationResponse `json:"current-config" codec:"32850,omitempty"`
-	MaxConfig     TelemetryConfigurationResponse `json:"max-config-values" codec:"32851,omitempty"`
-	MinConfig     TelemetryConfigurationResponse `json:"min-config-values" codec:"32852,omitempty"`
-	SupportedUnit SupportedUnitResponse          `json:"supported-units" codec:"32853,omitempty"`
+	_struct                bool                            `codec:",uint"` //encode struct with "unsigned integer" keys
+	Tsid                   int                             `json:"tsid" codec:"32801,omitempty"`
+	CurrentConfig          *TelemetryConfigurationResponse `json:"current-config" codec:"32850,omitempty"`
+	MaxConfig              *TelemetryConfigurationResponse `json:"max-config-values" codec:"32851,omitempty"`
+	MinConfig              *TelemetryConfigurationResponse `json:"min-config-values" codec:"32852,omitempty"`
+	SupportedUnit          *SupportedUnitResponse          `json:"supported-units" codec:"32853,omitempty"`
+	TotalPipeCapacity      []TotalPipeCapacityResponse     `json:"total-pipe-capacity" codec:"32809,omitempty"`
+	Baseline               []BaselineResponse              `json:"baseline" codec:"32849,omitempty"`
 }
 
 type TelemetryConfigurationResponse struct {
@@ -485,18 +480,24 @@ type TotalConnectionCapacityResponse struct {
 	for key, t := range ts.TelemetrySetup.Telemetry {
 		result += fmt.Sprintf("   \"%s[%d]\":\n", "telemetry", key+1)
 		result += fmt.Sprintf("   \"%s\": %d\n", "tsid", t.Tsid)
-		if t.TelemetryConfiguration != nil {
+		if t.CurrentConfig != nil {
 			result += "      \"current-config\":\n"
-			resultCurrentConfig := t.TelemetryConfiguration.CurrentConfig.String()
+			resultCurrentConfig := t.CurrentConfig.String()
 			result += resultCurrentConfig
+		}
+		if t.MaxConfig != nil {
 			result += "      \"max-config-values\":\n"
-			resultMaxConfig := t.TelemetryConfiguration.MaxConfig.String()
+			resultMaxConfig := t.MaxConfig.String()
 			result += resultMaxConfig
+		}
+		if t.MinConfig != nil {
 			result += "      \"min-config-values\":\n"
-			resultMinConfig := t.TelemetryConfiguration.MinConfig.String()
+			resultMinConfig := t.MinConfig.String()
 			result += resultMinConfig
+		}
+		if t.SupportedUnit != nil {
 			result += "      \"supported-units\":\n"
-			for k, v := range t.TelemetryConfiguration.SupportedUnit.UnitConfigList {
+			for k, v := range t.SupportedUnit.UnitConfigList {
 				result += fmt.Sprintf("         \"%s[%d]\":\n", "unit-config", k+1)
 				result += fmt.Sprintf("            \"%s\": %d\n", "unit", v.Unit)
 				result += fmt.Sprintf("            \"%s\": %t\n", "unit-status", v.UnitStatus)

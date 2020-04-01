@@ -436,11 +436,14 @@ func handleGetAllTelemetrySetup(customerId int, cuid string) (res Response, err 
 		telemetry := messages.TelemetryResponse{}
 		telemetry.Tsid = models.DefaultTsid
 		// Get default value of telemetry configuration
-		telemetryConfig, err := getTelemetryConfiguration(0)
+		currentConfig, maxConfig, minConfig, supportedUnit, err := getTelemetryConfiguration(0)
 		if err != nil {
 			return Response{}, err
 		}
-		telemetry.TelemetryConfiguration = telemetryConfig
+		telemetry.CurrentConfig = currentConfig
+		telemetry.MaxConfig     = maxConfig
+		telemetry.MinConfig     = minConfig
+		telemetry.SupportedUnit = supportedUnit
 		// Get default value of total pipe capacity
 		pipeList, err := getTotalPipeCapacity(0)
 		if err != nil {
@@ -525,11 +528,14 @@ func handleDeleteOneTelemetrySetup(customerId int, cuid string, cdid string, tsi
 func getTelemetrySetup(customerId int, cuid string, dbTelemetrySetup db_models.TelemetrySetup,telemetry *messages.TelemetryResponse) (err error) {
 	// Get telemetry configuration
 	if dbTelemetrySetup.SetupType == string(models.TELEMETRY_CONFIGURATION) {
-		telemetryConfig, err := getTelemetryConfiguration(dbTelemetrySetup.Id)
+		currentConfig, maxConfig, minConfig, supportedUnit, err := getTelemetryConfiguration(dbTelemetrySetup.Id)
 		if err != nil {
 			return err
 		}
-		telemetry.TelemetryConfiguration = telemetryConfig
+		telemetry.CurrentConfig = currentConfig
+		telemetry.MaxConfig     = maxConfig
+		telemetry.MinConfig     = minConfig
+		telemetry.SupportedUnit = supportedUnit
 	} else if dbTelemetrySetup.SetupType == string(models.PIPE) {
 		// Get total pipe capapcity
 		pipeList, err := getTotalPipeCapacity(dbTelemetrySetup.Id)
@@ -549,35 +555,12 @@ func getTelemetrySetup(customerId int, cuid string, dbTelemetrySetup db_models.T
 }
 
 // Get telemetry configuration
-func getTelemetryConfiguration(dbTelemetrySetupId int64) (teleConfigCurrentMinMax *messages.TelemetryConfigurationCurrentMinMaxResponse, err error) {
-	teleConfigCurrentMinMax = &messages.TelemetryConfigurationCurrentMinMaxResponse{}
-	// Get config value from config file
-	config := dots_config.GetServerSystemConfig().TelemetryConfigurationParameter
-	if config != nil {
-		// Set Min of telemetry configuration from config value
-		teleConfigCurrentMinMax.MinConfig.MeasurementInterval     = config.MeasurementInterval.Start().(int)
-		teleConfigCurrentMinMax.MinConfig.MeasurementSample       = config.MeasurementSample.Start().(int)
-		teleConfigCurrentMinMax.MinConfig.LowPercentile           = decimal.NewFromFloat(config.LowPercentile.Start().(float64)).Round(2)
-		teleConfigCurrentMinMax.MinConfig.MidPercentile           = decimal.NewFromFloat(config.MidPercentile.Start().(float64)).Round(2)
-		teleConfigCurrentMinMax.MinConfig.HighPercentile          = decimal.NewFromFloat(config.HighPercentile.Start().(float64)).Round(2)
-		minTelemetryNotifyInterval                                := config.TelemetryNotifyInterval.Start().(int)
-		teleConfigCurrentMinMax.MinConfig.TelemetryNotifyInterval = &minTelemetryNotifyInterval
-
-		// Set Max of telemetry configuration from config value
-		teleConfigCurrentMinMax.MaxConfig.MeasurementInterval       = config.MeasurementInterval.End().(int)
-		teleConfigCurrentMinMax.MaxConfig.MeasurementSample         = config.MeasurementSample.End().(int)
-		teleConfigCurrentMinMax.MaxConfig.LowPercentile             = decimal.NewFromFloat(config.LowPercentile.End().(float64)).Round(2)
-		teleConfigCurrentMinMax.MaxConfig.MidPercentile             = decimal.NewFromFloat(config.MidPercentile.End().(float64)).Round(2)
-		teleConfigCurrentMinMax.MaxConfig.HighPercentile            = decimal.NewFromFloat(config.HighPercentile.End().(float64)).Round(2)
-		teleConfigCurrentMinMax.MaxConfig.ServerOriginatedTelemetry = &config.ServerOriginatedTelemetry
-		maxTelemetryNotifyInterval                                  := config.TelemetryNotifyInterval.End().(int)
-		teleConfigCurrentMinMax.MaxConfig.TelemetryNotifyInterval   = &maxTelemetryNotifyInterval
-
-		// Set UnitConfig of telemetry configuration from config value
-		unitConfig := messages.UnitConfigResponse{Unit: config.Unit, UnitStatus: config.UnitStatus}
-		teleConfigCurrentMinMax.SupportedUnit.UnitConfigList = append(teleConfigCurrentMinMax.SupportedUnit.UnitConfigList, unitConfig)
-	}
-
+func getTelemetryConfiguration(dbTelemetrySetupId int64) (currentConfig *messages.TelemetryConfigurationResponse, maxConfig *messages.TelemetryConfigurationResponse, 
+	                          minConfig *messages.TelemetryConfigurationResponse, supportedUnit *messages.SupportedUnitResponse, err error) {
+	currentConfig = &messages.TelemetryConfigurationResponse{}
+	maxConfig = &messages.TelemetryConfigurationResponse{}
+	minConfig = &messages.TelemetryConfigurationResponse{}
+	supportedUnit = &messages.SupportedUnitResponse{}
 	teleConfig := &models.TelemetryConfiguration{}
 	// If telemetry setup with setup_type is 'telemetry_configuration' doesn't exist in DB, DOTS server will set value of telemetry configuration is default value
 	// Else DOTS server will set value of telemetry configuration is value that is get from DB
@@ -588,27 +571,53 @@ func getTelemetryConfiguration(dbTelemetrySetupId int64) (teleConfigCurrentMinMa
 		// Get telemetry configuration
 		teleConfig, err = models.GetTelemetryConfiguration(dbTelemetrySetupId)
 		if err != nil {
-			return nil, err
+			return nil, nil, nil, nil, err
 		}
 	}
 	if teleConfig != nil {
-		teleConfigCurrentMinMax.CurrentConfig.MeasurementInterval = teleConfig.MeasurementInterval
-		teleConfigCurrentMinMax.CurrentConfig.MeasurementSample = teleConfig.MeasurementSample
-		teleConfigCurrentMinMax.CurrentConfig.LowPercentile = decimal.NewFromFloat(teleConfig.LowPercentile).Round(2)
-		teleConfigCurrentMinMax.CurrentConfig.MidPercentile = decimal.NewFromFloat(teleConfig.MidPercentile).Round(2)
-		teleConfigCurrentMinMax.CurrentConfig.HighPercentile = decimal.NewFromFloat(teleConfig.HighPercentile).Round(2)
+		currentConfig.MeasurementInterval = teleConfig.MeasurementInterval
+		currentConfig.MeasurementSample = teleConfig.MeasurementSample
+		currentConfig.LowPercentile = decimal.NewFromFloat(teleConfig.LowPercentile).Round(2)
+		currentConfig.MidPercentile = decimal.NewFromFloat(teleConfig.MidPercentile).Round(2)
+		currentConfig.HighPercentile = decimal.NewFromFloat(teleConfig.HighPercentile).Round(2)
 		unitConfigList := []messages.UnitConfigResponse{}
 		for _, v := range teleConfig.UnitConfigList {
 			unitConfig := messages.UnitConfigResponse{Unit: v.Unit, UnitStatus: v.UnitStatus}
 			unitConfigList = append(unitConfigList, unitConfig)
 		}
-		teleConfigCurrentMinMax.CurrentConfig.UnitConfigList = unitConfigList
-		teleConfigCurrentMinMax.CurrentConfig.ServerOriginatedTelemetry = &teleConfig.ServerOriginatedTelemetry
+		currentConfig.UnitConfigList = unitConfigList
+		currentConfig.ServerOriginatedTelemetry = &teleConfig.ServerOriginatedTelemetry
 		if teleConfig.TelemetryNotifyInterval >= 1 {
-			teleConfigCurrentMinMax.CurrentConfig.TelemetryNotifyInterval = &teleConfig.TelemetryNotifyInterval
+			currentConfig.TelemetryNotifyInterval = &teleConfig.TelemetryNotifyInterval
+		}
+		// Get config value from config file
+		config := dots_config.GetServerSystemConfig().TelemetryConfigurationParameter
+		if config != nil {
+			// Set Max of telemetry configuration from config value
+			maxConfig.MeasurementInterval       = config.MeasurementInterval.End().(int)
+			maxConfig.MeasurementSample         = config.MeasurementSample.End().(int)
+			maxConfig.LowPercentile             = decimal.NewFromFloat(config.LowPercentile.End().(float64)).Round(2)
+			maxConfig.MidPercentile             = decimal.NewFromFloat(config.MidPercentile.End().(float64)).Round(2)
+			maxConfig.HighPercentile            = decimal.NewFromFloat(config.HighPercentile.End().(float64)).Round(2)
+			maxConfig.ServerOriginatedTelemetry = &config.ServerOriginatedTelemetry
+			maxTelemetryNotifyInterval          := config.TelemetryNotifyInterval.End().(int)
+			maxConfig.TelemetryNotifyInterval   = &maxTelemetryNotifyInterval
+
+			// Set Min of telemetry configuration from config value
+			minConfig.MeasurementInterval     = config.MeasurementInterval.Start().(int)
+			minConfig.MeasurementSample       = config.MeasurementSample.Start().(int)
+			minConfig.LowPercentile           = decimal.NewFromFloat(config.LowPercentile.Start().(float64)).Round(2)
+			minConfig.MidPercentile           = decimal.NewFromFloat(config.MidPercentile.Start().(float64)).Round(2)
+			minConfig.HighPercentile          = decimal.NewFromFloat(config.HighPercentile.Start().(float64)).Round(2)
+			minTelemetryNotifyInterval        := config.TelemetryNotifyInterval.Start().(int)
+			minConfig.TelemetryNotifyInterval = &minTelemetryNotifyInterval
+
+			// Set UnitConfig of telemetry configuration from config value
+			unitConfig := messages.UnitConfigResponse{Unit: config.Unit, UnitStatus: config.UnitStatus}
+			supportedUnit.UnitConfigList = append(supportedUnit.UnitConfigList, unitConfig)
 		}
 	}
-	return teleConfigCurrentMinMax, nil
+	return currentConfig, maxConfig, minConfig, supportedUnit, nil
 }
 
 // Get total pipe capacity
