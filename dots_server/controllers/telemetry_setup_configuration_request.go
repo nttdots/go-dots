@@ -424,7 +424,7 @@ func handleGetOneTelemetrySetup(customerId int, cuid string, tsid int) (res Resp
 func handleGetAllTelemetrySetup(customerId int, cuid string) (res Response, err error) {
 	// Get telemetry setup configuration by 'cuid' from DB
 	// The telemetry setup configuration with setup_type is 'telemetry_configuration', 'pipe' and 'baseline'
-	dbTelemetrySetupList, err := models.GetTelemetrySetupByCuid(customerId, cuid)
+	dbTelemetrySetupList, err := models.GetTelemetrySetupByCuidAndTsidGreaterThanZero(customerId, cuid)
 	if err != nil {
 		log. Errorf("Get telemetry_setup by cuid err: %+v", err)
 		return Response{}, err

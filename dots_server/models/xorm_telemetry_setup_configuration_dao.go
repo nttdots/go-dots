@@ -896,6 +896,22 @@ func GetTelemetrySetupByCuid(customerId int, cuid string) (dbTelemetrySetupList 
 	return
 }
 
+// Get telemetry setup by cuid and tsid >= 0
+func GetTelemetrySetupByCuidAndTsidGreaterThanZero(customerId int, cuid string) (dbTelemetrySetupList []db_models.TelemetrySetup, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("Database connect error: %s", err)
+		return
+	}
+	dbTelemetrySetupList = []db_models.TelemetrySetup{}
+	err = engine.Where("customer_id = ? AND cuid = ? AND tsid >= ?", customerId, cuid, 0).Find(&dbTelemetrySetupList)
+	if err != nil {
+		return
+	}
+	return
+}
+
 // Get telemetry setup by customerId and setup type (telemetry_configuration, pipe, baseline)
 func GetTelemetrySetupByCustomerIdAndSetupType(customerId int, setupType string) (dbTelemetrySetupList []db_models.TelemetrySetup, err error) {
 	// database connection create
