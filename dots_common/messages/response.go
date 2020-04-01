@@ -391,7 +391,7 @@ type TelemetrySetupResponse struct {
 
 type TelemetrySetupResp struct {
 	_struct   bool                `codec:",uint"` //encode struct with "unsigned integer" keys
-	Telemetry []TelemetryResponse `json:"telemetry" codec:"32905,omitempty"` // CBOR key temp
+	Telemetry []TelemetryResponse `json:"telemetry" codec:"32802,omitempty"` // CBOR key temp
 }
 
 type TelemetryResponse struct {
@@ -430,8 +430,8 @@ type  UnitConfigResponse struct {
 
 type TotalPipeCapacityResponse struct {
 	_struct  bool   `codec:",uint"`                           //encode struct with "unsigned integer" keys
-	LinkId   string `json:"link-id" codec:"32906,omitempty"`  // CBOR key temp
-	Capacity int    `json:"capacity" codec:"32907,omitempty"` // CBOR key temp
+	LinkId   string `json:"link-id" codec:"32810,omitempty"`
+	Capacity int    `json:"capacity" codec:"32867,omitempty"`
 	Unit     int    `json:"unit" codec:"32807,omitempty"`
 }
 
