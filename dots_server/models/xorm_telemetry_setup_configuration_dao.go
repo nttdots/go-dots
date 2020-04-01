@@ -897,7 +897,7 @@ func GetTelemetrySetupByCuid(customerId int, cuid string) (dbTelemetrySetupList 
 }
 
 // Get telemetry setup by cuid and tsid >= 0
-func GetTelemetrySetupByCuidAndTsidGreaterThanZero(customerId int, cuid string) (dbTelemetrySetupList []db_models.TelemetrySetup, err error) {
+func GetTelemetrySetupByCuidAndNonNegativeTsid(customerId int, cuid string) (dbTelemetrySetupList []db_models.TelemetrySetup, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
