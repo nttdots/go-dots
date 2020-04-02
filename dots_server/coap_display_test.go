@@ -64,7 +64,7 @@ func TestCoapHeaderDisplay(t *testing.T) {
 	c.SetOption(libcoap.OptionLocationPath, "test_location_path")
 	c.SetOption(libcoap.OptionLocationQuery, "test_location_query")
 	c.SetOption(libcoap.OptionObserve, 10)
-	c.SetOption(libcoap.OptionContentFormat, libcoap.AppCbor)
+	c.SetOption(libcoap.OptionContentFormat, libcoap.AppDotsCbor)
 	c.SetOption(libcoap.OptionIfMatch, "test_if_match")
 	c.SetOption(libcoap.OptionIfNoneMatch, "test_if_none_match")
 	c.SetOption(libcoap.OptionProxyUri, "test_proxy_uri")
@@ -90,7 +90,7 @@ func TestGetContentFormatValue(t *testing.T) {
 	impValues[3] = libcoap.AppLinkFormat
 	impValues[4] = libcoap.AppOctets
 	impValues[5] = libcoap.AppXML
-	impValues[6] = libcoap.AppCbor
+	impValues[6] = libcoap.AppDotsCbor
 	impValues[7] = libcoap.TypeAck
 
 	// return expected value

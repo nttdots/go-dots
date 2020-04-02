@@ -219,8 +219,8 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             // add content text/plain for error case
             response.SetOption(libcoap.OptionContentFormat, uint16(libcoap.TextPlain))
         } else if response.Type != libcoap.TypeNon || response.Code != libcoap.ResponseContent {
-            // add content type cbor
-            response.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppCbor))
+            // add content type dots+cbor
+            response.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppDotsCbor))
         }
 
         // add initial observe for response that is not type non-confirmable

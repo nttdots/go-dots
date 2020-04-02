@@ -192,6 +192,8 @@ func GetContentFormatValue(v interface{}) string {
 		return "app/xml"
 	case libcoap.AppCbor:
 		return "app/cbor"
+	case libcoap.AppDotsCbor:
+		return "app/dots+cbor"
 	default:
 		return ""
 	}
