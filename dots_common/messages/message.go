@@ -29,6 +29,7 @@ const (
 	INSTALL_FILTERING_RULE
 	SIGNAL_CHANNEL
 	TELEMETRY_SETUP_REQUEST
+	TELEMETRY_PRE_MITIGATION_REQUEST
 )
 
 /*
@@ -124,6 +125,13 @@ const (
 	ONE_HOUR        Sample = "ONE_HOUR"
 )
 
+type AttackSeverity string
+const (
+	EMERGENCY AttackSeverity = "EMERGENCY"
+	CRITICAL  AttackSeverity = "CRITICAL"
+	ALERT     AttackSeverity = "ALERT"
+)
+
 /*
  * Dots message structure.
  */
@@ -160,6 +168,7 @@ func init() {
 	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/config", SignalConfigRequest{})
 	register(HEARTBEAT, REQUEST, libcoap.TypeNon, SIGNAL, "heartbeat", ".well-known/dots/hb", HeartBeatRequest{})
 	register(TELEMETRY_SETUP_REQUEST, REQUEST, libcoap.TypeCon, SIGNAL, "telemetry_setup_request", ".well-known/dots/tm-setup", TelemetrySetupRequest{})
+	register(TELEMETRY_PRE_MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "telemetry_pre_mitigation_request", ".well-known/dots/tm", TelemetryPreMitigationRequest{})
 
 	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots", SignalChannelRequest{})
 }

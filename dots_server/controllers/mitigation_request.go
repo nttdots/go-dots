@@ -138,6 +138,19 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			aclList := messages.ACL{AclName: item.ACLName, ActivationType: item.ActivationType}
 			scopeStates.AclList = append(scopeStates.AclList, aclList)
 		}
+		// Set telemetry attributes to response
+		scopeStates.TotalTraffic = convertToTelemetryTrafficResponse(mp.mitigation.TelemetryTotalTraffic)
+		scopeStates.TotalAttackTraffic = convertToTelemetryTrafficResponse(mp.mitigation.TelemetryTotalAttackTraffic)
+		if !reflect.DeepEqual(models.GetModelsTelemetryTotalAttackConnection(&mp.mitigation.TelemetryTotalAttackConnection), models.GetModelsTelemetryTotalAttackConnection(nil)) {
+			scopeStates.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(mp.mitigation.TelemetryTotalAttackConnection)
+		} else {
+			scopeStates.TotalAttackConnection = nil
+		}
+		if !reflect.DeepEqual(models.GetModelsTelemetryAttackDetail(&mp.mitigation.TelemetryAttackDetail), models.GetModelsTelemetryAttackDetail(nil)) {
+			scopeStates.AttackDetail = convertToTelemetryAttackDetailResponse(mp.mitigation.TelemetryAttackDetail)
+		} else {
+			scopeStates.AttackDetail = nil
+		}
 		scopes = append(scopes, scopeStates)
 	}
 
@@ -414,10 +427,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			return res, nil
 		} else {
 			log.Warnf("Not found any mitigation request (cuid=%+v, mid=%+v) for efficacy update", cuid, *mid)
-			res = Response{
-				Type: common.NonConfirmable,
-			}
-            return res, nil
+			goto ResponseNG
 		}
 		
 	ResponseConflict:
@@ -488,7 +498,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		mitigationScope.Lifetime = config.ActiveButTerminatingPeriod
 		mitigationScope.Status = models.ActiveButTerminating
 
-		err = models.UpdateMitigationScope(*mitigationScope, *customer)
+		err = models.UpdateMitigationScope(*mitigationScope, *customer, false)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope update error.")
 			return Response{}, err
@@ -509,7 +519,7 @@ Response:
 /*
  * Create MitigationScope objects based on the mitigationRequest request messages.
  */
-func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier string, clientDomainIdentifier string) (m *models.MitigationScope, err error) {
+func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier string, clientDomainIdentifier string, isIfMatchOption bool) (m *models.MitigationScope, err error) {
 	log.Debugf("newMitigationScope req=%+v, c=%+v, clientIdentifier=%+v, clientDomainIdentifier=%+v", req, c, clientIdentifier, clientDomainIdentifier)
 	m = models.NewMitigationScope(c, clientIdentifier)
 	m.MitigationId = *req.MitigationId
@@ -553,7 +563,16 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 		return
 	}
 	m.ControlFilteringList = newControlFiltering(req.AclList)
-
+	m.TelemetryTotalAttackTraffic, err = models.NewTelemetryTotalAttackTraffic(req.TotalAttackTraffic)
+	if err != nil {
+		return
+	}
+	if isIfMatchOption && req.AttackDetail != nil {
+		m.TelemetryAttackDetail, err = models.NewTelemetryAttackDetail(req.AttackDetail)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
@@ -596,7 +615,7 @@ func newPortRange(targetPortRange []messages.PortRange) (portRanges []models.Por
 /*
  * Parse the 'source-icmp-type-range' field in a mitigationScope and return a list of ICMPTypeRange objects.
  */
- func newICMPTypeRange(icmpTypeRange []messages.SourceICMPTypeRange) (icmpTypeRanges []models.ICMPTypeRange, err error) {
+ func newICMPTypeRange(icmpTypeRange []messages.ICMPTypeRange) (icmpTypeRanges []models.ICMPTypeRange, err error) {
 	icmpTypeRanges = make([]models.ICMPTypeRange, len(icmpTypeRange))
 	for i, r := range icmpTypeRange {
 		// Check the lower-type is mandatory
@@ -803,7 +822,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer, mitigatio
 	// retrieve scope objects from the request, then validate it.
 	// obtain an appropriate blocker from the blocker selection service if the validation succeeded.
 	for _, messageScope := range data.MitigationScope.Scopes {
-		scope, err := newMitigationScope(messageScope, c, data.EffectiveClientIdentifier(), data.EffectiveClientDomainIdentifier())
+		scope, err := newMitigationScope(messageScope, c, data.EffectiveClientIdentifier(), data.EffectiveClientDomainIdentifier(), false)
 		if err != nil {
 			return err
 		}
@@ -974,7 +993,7 @@ func ManageExpiredMitigation(lifetimeInterval int) {
 func CreateMitigation(body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope, isIfMatchOption bool) (*models.ConflictInformation, error) {
 
 	// Create new mitigation scope from body request
-	requestScope, err := newMitigationScope(body.MitigationScope.Scopes[0], customer, body.EffectiveClientIdentifier(), body.EffectiveClientDomainIdentifier())
+	requestScope, err := newMitigationScope(body.MitigationScope.Scopes[0], customer, body.EffectiveClientIdentifier(), body.EffectiveClientDomainIdentifier(), isIfMatchOption)
 	if err != nil {
 		return nil, err
 	}
@@ -1264,7 +1283,8 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 		return false, errMessage
 	}
 
-	attackStatus := body.MitigationScope.Scopes[0].AttackStatus
+	bodyData := body.MitigationScope.Scopes[0]
+	attackStatus := bodyData.AttackStatus
 	if attackStatus == nil {
 		errMessage = "attack-status is mandatory field."
 		log.Error(errMessage)
@@ -1900,7 +1920,7 @@ func RecheckIpRangeForMitigations(customer *models.Customer) error {
 			return err
 		}
 
-		// Re-check ip-address range by validating target prefix, fadn, uri of mitigation scope
+		// Re-check ip-address range by validating target prefix, fqdn, uri of mitigation scope
 		validator := models.GetMitigationScopeValidator(blockerConfig.BlockerType)
 		if validator == nil { return errors.New("Unknown blocker type: " + blockerConfig.BlockerType)}
 		prefixErrMsg := validator.ValidatePrefix(customer, mitigation)

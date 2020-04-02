@@ -186,6 +186,12 @@ A DOTS client can convey the 'If-Match' option with empty value in the PUT reque
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftEfficacyUpdate.json
 
+DOTS client to DOTS server mitigation efficacy DOTS telemetry attributes
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationEfficacyTelemetryAttributes.json
+
 ### Client Controller [session_configuration_request]
 
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Put \
@@ -369,7 +375,7 @@ when the DOTS client is under attacked by DDoS, the DOTS client sends the attack
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftCallHome.json
 
 ##  Telemetry
-The telemetry aims to enrich DOTS signal channel protocol with various telemetry attributes allowing optimal DDoS attack mitigation. The telemetry specifies the normal traffic baseline and attack traffic telemetry attributes a DOTS client can convey to its DOTS server in the mitigation request, the mitigation status telemetry attributes a DOTS server can communicate to a DOTS client, and the mitigation efficacy telemetry attributes a DOTS client can communicate to a DOTS server. The telemetry contains `Telemetry Setup Configuration` and `Telemetry Pre-mitigation`
+The telemetry aims to enrich DOTS signal channel protocol with various telemetry attributes allowing optimal DDoS attack mitigation. The telemetry specifies the normal traffic baseline and attack traffic telemetry attributes a DOTS client can convey to its DOTS server in the mitigation request, the mitigation status telemetry attributes a DOTS server can communicate to a DOTS client, and the mitigation efficacy telemetry attributes a DOTS client can communicate to a DOTS server. The telemetry contains `Telemetry Setup Configuration` and `Telemetry Pre-or-ongoing-mitigation`
 
 
 ### Client Controller [telemmetry_setup_request] (Telemetry Setup Configuration)
@@ -403,6 +409,28 @@ Delete one telemetry setup configuration
 Delete all telemetry setup configuration
 
     $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw
+
+### Client Controller [telemmetry_pre_mitigation_request] (Telemetry Pre-Or-Ongoing-Mitigation)
+Registering telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123\
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleTelemetryPreMitigation.json
+
+Get one telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123
+
+Get all telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw
+
+Delete one telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123
+
+Delete all telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw
 
 ## DB
 

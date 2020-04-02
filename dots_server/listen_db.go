@@ -22,10 +22,12 @@ import (
 
 type TableName string
 const (
-	MITIGATION_SCOPE      TableName = "mitigation_scope"
-	SESSION_CONFIGURATION TableName = "signal_session_configuration"
-	PREFIX_ADDRESS_RANGE  TableName = "prefix"
-	DATA_ACLS             TableName = "data_acls"
+	MITIGATION_SCOPE        TableName = "mitigation_scope"
+	SESSION_CONFIGURATION   TableName = "signal_session_configuration"
+	PREFIX_ADDRESS_RANGE    TableName = "prefix"
+	DATA_ACLS               TableName = "data_acls"
+	ATTACK_DETAIL	        TableName = "attack_detail"
+	TELEMETRY_ATTACK_DETAIL TableName = "telemetry_attack_detail"
 )
 
 /*
@@ -96,56 +98,7 @@ ILOOP:
 					log.Errorf("[MySQL-Notification]:Failed to parse string to integer")
 					return
 				}
-				uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
-				var query string
-				if cdid == "" {
-					query = uriPath + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
-				} else {
-					query = uriPath + "/cdid="+ cdid + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
-				}
-
-				// Check duplicate mitigation when PUT a new mitigation before delete an expired mitigation
-				mids, err := models.GetMitigationIds(cid, cuid)
-				if err != nil {
-					log.Errorf("[MySQL-Notification]: Error: %+v", err)
-					return
-				}
-				dup := isDuplicateMitigation(mids, mid)
-
-				// Check observer resource and handle expired mitigation
-				if dup && status == models.Terminated {
-					// Skip notify, just delete the expired mitigation
-					log.Debugf("[MySQL-Notification]: Skip Notification for this mitigation (mid=%+v, id=%+v) due to duplicate with another existing active mitigation", mid, id)
-					controllers.DeleteMitigation(cid, cuid, mid, id)
-				} else {
-					// Notify status changed to those clients who are observing this mitigation request
-					log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-					resource := context.EnableResourceDirty(query)
-
-					// If mitigation status was changed to Terminated and resource is not being observed => set resource status to removable
-					var isObserved bool
-					if resource != nil {
-						isObserved = resource.IsObserved()
-					} else {
-						log.Warnf("[MySQL-Notification]: Not found any resource with query: %+v", query)
-					}
-
-					if status == models.Terminated && !isObserved {
-						controllers.DeleteMitigation(cid, cuid, mid, id)
-						// Keep resource when there is a duplication
-						if !dup && resource != nil {
-							resource.ToRemovableResource()
-						}
-						// If the last mitigation is expired, the server will remove the resource all
-						if len(mids) == 1 && mids[0] == mid && resource != nil {
-							uriPathSplit := strings.Split(resource.UriPath(), "/mid")
-							resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
-							if resourceAll != nil {
-								resourceAll.ToRemovableResource()
-							}
-						}
-					}
-				}
+				handleNotifyMitigation(id, cid, cuid, cdid, mid, status, context, false)
 			} else if mapData["table_trigger"].(string) == string(SESSION_CONFIGURATION) {
 
 				// Notify session configuration changed to those clients who are observing this mitigation request
@@ -185,6 +138,21 @@ ILOOP:
 				}
 			} else if mapData["table_trigger"].(string) == string(DATA_ACLS) {
 				handleNotifyACL(mapData["aclId"].(string), context)
+			} else if mapData["table_trigger"].(string) == string(ATTACK_DETAIL) {
+				handleNotifyTelemetryPreMitigation(mapData, context)
+			} else if mapData["table_trigger"].(string) == string(TELEMETRY_ATTACK_DETAIL) {
+				mitigationScopeId, err := strconv.Atoi(mapData["mitigation_scope_id"].(string))
+				if err != nil {
+					log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+					return
+				}
+				mitigationScope, err := models.GetMitigationScopeById(int64(mitigationScopeId))
+				if err != nil {
+					log.Errorf("[MySQL-Notification]: Failed to get mitigation scope")
+					return
+				}
+				handleNotifyMitigation(int64(mitigationScopeId), mitigationScope.CustomerId, mitigationScope.ClientIdentifier, 
+					                mitigationScope.ClientDomainIdentifier, mitigationScope.MitigationId, mitigationScope.Status, context, true)
 			}
 		default:
 			log.Errorf("[MySQL-Notification]: Failed to receive data:%+v", err)
@@ -215,6 +183,75 @@ func isDuplicateMitigation(mids []int, mid int) bool {
 		return true
 	} else {
 		return false
+	}
+}
+
+// Hanlde notify mitigation
+func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int, status int, context *libcoap.Context, isNotifyTelemetryAttributes bool) {
+	uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
+	var query string
+	if cdid == "" {
+		query = uriPath + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
+	} else {
+		query = uriPath + "/cdid="+ cdid + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
+	}
+
+	// Check duplicate mitigation when PUT a new mitigation before delete an expired mitigation
+	mids, err := models.GetMitigationIds(cid, cuid)
+	if err != nil {
+		log.Errorf("[MySQL-Notification]: Error: %+v", err)
+		return
+	}
+	dup := isDuplicateMitigation(mids, mid)
+
+	// Check observer resource and handle expired mitigation
+	if dup && status == models.Terminated {
+		// Skip notify, just delete the expired mitigation
+		log.Debugf("[MySQL-Notification]: Skip Notification for this mitigation (mid=%+v, id=%+v) due to duplicate with another existing active mitigation", mid, id)
+		controllers.DeleteMitigation(cid, cuid, mid, id)
+	} else {
+		// Set mitigation map for notification mitigation telemetry attributes
+		if isNotifyTelemetryAttributes {
+			libcoap.SetMitigationMap(query, isNotifyTelemetryAttributes)
+			isServerOriginatedTelemetry, err := getServerOriginatedTelemetry(cid, cuid)
+			if err != nil {
+				log.Error("[MySQL-Notification]: Failed to get server-originated-telemetry")
+				return
+			}
+			// If the 'server-originated-telemetry' set to false, DOTS server will not notify
+			if !isServerOriginatedTelemetry {
+				log.Debug("[MySQL-Notification]: DOTS server will not notify to DOST client due to 'server-originated-telemetry' set to false")
+				libcoap.DeleteMitigationMapByKey(query)
+				return
+			}
+		}
+		// Notify status changed to those clients who are observing this mitigation request
+		log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
+		resource := context.EnableResourceDirty(query)
+
+		// If mitigation status was changed to Terminated and resource is not being observed => set resource status to removable
+		var isObserved bool
+		if resource != nil {
+			isObserved = resource.IsObserved()
+		} else {
+			log.Warnf("[MySQL-Notification]: Not found any resource with query: %+v", query)
+		}
+
+		if status == models.Terminated && !isObserved {
+			controllers.DeleteMitigation(cid, cuid, mid, id)
+			// Keep resource when there is a duplication
+			if !dup && resource != nil {
+				resource.ToRemovableResource()
+			}
+			// If the last mitigation is expired, the server will remove the resource all
+			if len(mids) == 1 && mids[0] == mid && resource != nil {
+				uriPathSplit := strings.Split(resource.UriPath(), "/mid")
+				resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
+				if resourceAll != nil {
+					resourceAll.ToRemovableResource()
+				}
+			}
+		}
 	}
 }
 
@@ -278,4 +315,62 @@ func handleNotifyACL(aclIDString string, context *libcoap.Context) {
 			}
 		}
 	}
+}
+
+// Handle notify telemetry pre-mitigation
+func handleNotifyTelemetryPreMitigation(mapData map[string]interface{}, context *libcoap.Context) {
+	telePreMitigationId, err := strconv.Atoi(mapData["tele_pre_mitigation_id"].(string))
+	if err != nil {
+		log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+		return
+	}
+	// Get telemetry pre-mitigation
+	preMitigation, err := models.GetTelemetryPreMitigationById(int64(telePreMitigationId))
+	if err != nil {
+		log.Errorf("[MySQL-Notification]: Failed to Get telemetry pre-mitigation. Error: %+v", err)
+		return
+	}
+	isServerOriginatedTelemetry, err := getServerOriginatedTelemetry(preMitigation.CustomerId, preMitigation.Cuid)
+	if err != nil {
+		log.Error("[MySQL-Notification]: Failed to get server-originated-telemetry")
+		return
+	}
+	// If the 'server-originated-telemetry' set to false, DOTS server will not notify
+	if !isServerOriginatedTelemetry {
+		log.Debug("[MySQL-Notification]: DOTS server will not notify to DOST client due to 'server-originated-telemetry' set to false")
+		return
+	}
+	uriPath := messages.MessageTypes[messages.TELEMETRY_PRE_MITIGATION_REQUEST].Path
+	var query string
+	if preMitigation.Cdid == "" {
+		query = uriPath + "/cuid=" + preMitigation.Cuid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
+	} else {
+		query = uriPath + "/cuid=" + preMitigation.Cuid + "cdid=" + preMitigation.Cdid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
+	}
+	log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
+	context.EnableResourceDirty(query)
+}
+
+// Get server originated telemetry from telemetry configuration
+func getServerOriginatedTelemetry(customerId int, cuid string) (bool, error) {
+	isServerOriginatedTelemetry := false
+	// Get telemetry setup
+	teleSetupList, err := models.GetTelemetrySetupByCuidAndSetupType(customerId, cuid, string(models.TELEMETRY_CONFIGURATION))
+	if err != nil {
+		log.Errorf("[MySQL-Notification]: Failed to Get telemetry setup configuration. Error: %+v", err)
+		return isServerOriginatedTelemetry, err
+	}
+	// Get telemetry configuration
+	if len(teleSetupList) > 0 {
+		teleConfig, err := models.GetTelemetryConfiguration(teleSetupList[0].Id)
+		if err != nil {
+			log.Errorf("[MySQL-Notification]: Failed to Get telemetry configuration. Error: %+v", err)
+			return isServerOriginatedTelemetry, err
+		}
+		isServerOriginatedTelemetry = teleConfig.ServerOriginatedTelemetry
+	} else {
+		defaultValue := dots_config.GetServerSystemConfig().DefaultTelemetryConfiguration
+		isServerOriginatedTelemetry = defaultValue.ServerOriginatedTelemetry
+	}
+	return isServerOriginatedTelemetry, nil
 }

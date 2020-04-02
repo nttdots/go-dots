@@ -14,7 +14,7 @@ type Baseline struct {
 // Get baseline by teleSetupId
 func GetBaselineByTeleSetupId(engine *xorm.Engine, teleSetupId int64) (baselineList []Baseline, err error) {
 	baselineList = []Baseline{}
-	err = engine.Where("tele_setup_id = ?", teleSetupId).Find(&baselineList)
+	err = engine.Where("tele_setup_id = ?", teleSetupId).OrderBy("id ASC").Find(&baselineList)
 	return
 }
 

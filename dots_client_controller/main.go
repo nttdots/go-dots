@@ -27,6 +27,7 @@ var (
 	mid           string
 	sid           string
 	tsid          string
+	tmid          string
 	jsonFilePath  string
 	socket        string
 	observe       string
@@ -48,6 +49,7 @@ func init() {
 	flag.StringVar(&mid, "mid", defaultValue, "Identifier for the mitigation request on Uri-Path. mandatory in Put/Delete")
 	flag.StringVar(&sid, "sid", defaultValue, "Session Identifier is an identifier for the DOTS signal channel session configuration data represented as an integer.")
 	flag.StringVar(&tsid, "tsid", defaultValue, "Telemetry Setup Identifier is an identifier for the DOTS telemetry setup and configuration data represented as an integer.")
+	flag.StringVar(&tmid, "tmid", defaultValue, "Telemetry Identifier is an identifier for the DOTS pre-mitigation telemetry data represented as an integer.")
 	flag.StringVar(&jsonFilePath, "json", defaultValue, "Request Json file")
 	flag.StringVar(&socket, "socket", common.DEFAULT_CLIENT_SOCKET_FILE, "dots client socket")
 	flag.StringVar(&observe, "observe", defaultValue, "mitigation request observe")
@@ -146,6 +148,9 @@ func main() {
 		// add tsid for telemetry setup request
 		if tsid != "" {
 			u.Path += "/tsid=" + tsid
+		} else if tmid != "" {
+			// add tmid for telemetry pre-mitigation request
+			u.Path += "/tmid=" + tmid
 		}
 	} else if sid != "" {
 		// for session configuration

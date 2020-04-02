@@ -6,6 +6,7 @@ import (
 	"github.com/go-xorm/xorm"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_common/types/data"
@@ -48,7 +49,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer, i
 			// If existing mitigation is still 'alive', update on it.
 			// Otherwise, leave it for lifetime thread to handle, just create new one
 			mitigationScope.MitigationScopeId = dbMitigationScope.Id
-			err = UpdateMitigationScope(mitigationScope, customer)
+			err = UpdateMitigationScope(mitigationScope, customer, isIfMatchOption)
 			return
 		}
 	}
@@ -186,7 +187,7 @@ func UpdateMitigationScopeStatus(mitigationScopeId int64, status int) (err error
  * return:
  *  err error
  */
-func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (err error) {
+func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer, isIfMatchOption bool) (err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -306,6 +307,19 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer) (
 		err = createControlFiltering(session, mitigationScope, dbMitigationScope.Id)
 		if err != nil {
 			return
+		}
+		// Update telemetry attributes when DOTS client sent efficacy update request
+		if isIfMatchOption {
+			err = UpdateTelemetryTotalAttackTraffic(engine, session, mitigationScope.MitigationScopeId, mitigationScope.TelemetryTotalAttackTraffic)
+			if err != nil {
+				session.Rollback()
+				return
+			}
+			err = UpdateTelemetryAttackDetail(engine, session, mitigationScope.MitigationScopeId, mitigationScope.TelemetryAttackDetail)
+			if err != nil {
+				session.Rollback()
+				return
+			}
 		}
 	}
 
@@ -503,6 +517,23 @@ func GetMitigationIds(customerId int, clientIdentifier string) (mitigationIds []
 		return
 	}
 
+	return
+}
+
+// Get mitigation by customerId and cuid
+func GetMitigationByCustomerIdAndCuid(customerId int, cuid string) (mitigationList []db_models.MitigationScope, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+	// Get customer table data
+	err = engine.Table("mitigation_scope").Where("customer_id = ? AND client_identifier = ?", customerId, cuid).Find(&mitigationList)
+	if err != nil {
+		log.Printf("find list mitigation error: %s\n", err)
+		return
+	}
 	return
 }
 
@@ -777,9 +808,53 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 		return
 	}
 	mitigationScope.ControlFilteringList = controlFilteringList
-
+	// Handle get telemetry attributes when 'attack-detail' is change
+	uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
+	var mitigationMapKey string
+	if mitigationScope.ClientDomainIdentifier == "" {
+		mitigationMapKey = uriPath + "/cuid=" + mitigationScope.ClientIdentifier + "/mid=" + strconv.Itoa(mitigationScope.MitigationId)
+	} else {
+		mitigationMapKey = uriPath + "/cdid="+ mitigationScope.ClientDomainIdentifier + "/cuid=" + mitigationScope.ClientIdentifier + "/mid=" + strconv.Itoa(mitigationScope.MitigationId)
+	}
+	isNotifyTelemetryAttributes := false
+	isNotifyTelemetryAttributes = libcoap.GetMitigationMapByKey(mitigationMapKey)
+	if isNotifyTelemetryAttributes {
+		libcoap.DeleteMitigationMapByKey(mitigationMapKey)
+		// Get telemetry total-traffic
+		mitigationScope.TelemetryTotalTraffic, err = GetTelemetryTraffic(engine, string(TARGET_PREFIX), dbMitigationScope.Id, string(TOTAL_TRAFFIC))
+		if err != nil {
+			return
+		}
+		// Get telemetry total-attack-traffic
+		mitigationScope.TelemetryTotalAttackTraffic, err = GetTelemetryTraffic(engine, string(TARGET_PREFIX), dbMitigationScope.Id, string(TOTAL_ATTACK_TRAFFIC))
+		if err != nil {
+			return
+		}
+		// Get telemetry total-attack-connection
+		mitigationScope.TelemetryTotalAttackConnection, err = GetTelemetryTotalAttackConnection(engine, string(TARGET_PREFIX), dbMitigationScope.Id)
+		if err != nil {
+			return
+		}
+		// Get telemetry attack-detail
+		mitigationScope.TelemetryAttackDetail, err = GetTelemetryAttackDetail(engine, dbMitigationScope.Id)
+		if err != nil {
+			return
+		}
+	}
 	return
+}
 
+// Get mitigation scope by id
+func GetMitigationScopeById(id int64) (*db_models.MitigationScope, error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return nil, err
+	}
+	dbMitigationScope := db_models.MitigationScope{}
+	_, err = engine.Where("id = ?", id).Get(&dbMitigationScope)
+	return &dbMitigationScope, nil
 }
 
 /*
@@ -943,7 +1018,27 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 		log.Errorf("delete mitigationScope error: %s", err)
 		return
 	}
-
+	// Delete telemetry total attack-traffic
+	err = db_models.DeleteTelemetryTraffic(session, string(TARGET_PREFIX), dbMitigationScope.Id, string(TOTAL_ATTACK_TRAFFIC))
+	if err != nil {
+		session.Rollback()
+		log.Errorf("Failed to delete total-attack-traffic. Error: %+v", err)
+		return
+	}
+	dbAttackDetail, err := db_models.GetTelemetryAttackDetailByMitigationScopeId(engine, dbMitigationScope.Id)
+	if err != nil {
+		log.Errorf("Failed to get attack-detail. Error: %+v", err)
+		session.Rollback()
+		return
+	}
+	if dbAttackDetail.Id > 0 {
+		// Delete telemetry attack-detail
+		err = DeleteTelemetryAttackDetail(engine, session, dbMitigationScope.Id, nil, *dbAttackDetail)
+		if err != nil {
+			session.Rollback()
+			return
+		}
+	}
 	session.Commit()
 
 	// Remove Active Mitigation from ManageList

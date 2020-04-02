@@ -7,7 +7,7 @@ type TelemetryParameterValue struct {
 	Id            int64     `xorm:"'id' pk autoincr"`
 	Type          string    `xorm:"'type' enum('TELEMETRY','TELEMETRY_SETUP') not null"`
 	TypeId        int64     `xorm:"'type_id' not null"`
-	ParameterType string    `xorm:"'parameter_type' enum('TARGET_PROTOCOL','FQDN','URI') not null"`
+	ParameterType string    `xorm:"'parameter_type' enum('TARGET_PROTOCOL','FQDN','URI','ALIAS_NAME') not null"`
 	StringValue   string    `xorm:"'string_value'"`
 	IntValue      int       `xorm:"'int_value'"`
 	Created       time.Time `xorm:"created"`
@@ -17,7 +17,7 @@ type TelemetryParameterValue struct {
 // Get telemetry parameter value
 func GetTelemetryParameterValue(engine *xorm.Engine, tType string, typeId int64, parameterType string) (parameterList []TelemetryParameterValue, err error) {
 	parameterList = []TelemetryParameterValue{}
-	err = engine.Where("type = ? AND type_id = ? AND parameter_type = ?", tType, typeId, parameterType).Find(&parameterList)
+	err = engine.Where("type = ? AND type_id = ? AND parameter_type = ?", tType, typeId, parameterType).OrderBy("id ASC").Find(&parameterList)
 	return
 }
 

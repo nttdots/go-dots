@@ -195,6 +195,8 @@ func NewTelemetryConfiguration(telemetryConfig *messages.TelemetryConfigurationC
 	}
 	if telemetryConfig.TelemetryNotifyInterval != nil {
 		t.TelemetryNotifyInterval = *telemetryConfig.TelemetryNotifyInterval
+	} else {
+		t.TelemetryNotifyInterval = defaultValue.TelemetryNotifyInterval
 	}
 	return
 }
@@ -223,23 +225,13 @@ func NewBaselineList(baselines []messages.Baseline) (baselineList []Baseline, er
 		if err != nil {
 			return
 		}
-		for _, prefix := range baseline.TargetPrefix {
-			baseline.TargetList = append(baseline.TargetList, Target{TargetType: IP_PREFIX, TargetPrefix: prefix, TargetValue: prefix.Addr + "/" + strconv.Itoa(prefix.PrefixLen)})
-		}
-		baseline.TargetPortRange, err = NewTargetPortRange(v.TargetPortRange)
-		if err != nil {
-			return
-		}
-		var protocols []int
-		for _, value := range v.TargetProtocol {
-			protocols = append(protocols, int(value))
-		}
-		baseline.TargetProtocol.AddList(protocols)
+		baseline.TargetPortRange = NewTargetPortRange(v.TargetPortRange)
+		baseline.TargetProtocol.AddList(v.TargetProtocol)
 		baseline.FQDN.AddList(v.TargetFQDN)
 		baseline.URI.AddList(v.TargetURI)
-		baseline.TotalTrafficNormalBaseLine = NewTotalTrafficNormalBaseLine(v.TotalTrafficNormalBaseline)
+		baseline.TotalTrafficNormalBaseLine = NewTraffic(v.TotalTrafficNormalBaseline)
 		baseline.TotalConnectionCapacity    = NewTotalConnectionCapacity(v.TotalConnectionCapacity)
-		baseline.TargetList, err            = GetTelemetryTargetList(baseline)
+		baseline.TargetList, err            = GetTelemetryTargetList(baseline.TargetPrefix, baseline.FQDN, baseline.URI)
 		if err != nil {
 			return
 		}
@@ -254,8 +246,8 @@ func NewTelemetryPrefix(prefixes []string) (prefixList []Prefix, err error) {
 	for k, v := range prefixes {
 		prefix, err := NewPrefix(v)
 		if err != nil {
-			log.Error("%+v", err)
 			errMsg := fmt.Sprintf("%+v: %+v", ValidationError, err)
+			log.Error("%+v", errMsg)
 			return nil, errors.New(errMsg)
 		}
 		prefixList[k] = prefix
@@ -264,7 +256,7 @@ func NewTelemetryPrefix(prefixes []string) (prefixList []Prefix, err error) {
 }
 
 // New target port range
-func NewTargetPortRange(portRanges []messages.PortRange) (portRangeList []PortRange, err error) {
+func NewTargetPortRange(portRanges []messages.PortRange) (portRangeList []PortRange) {
 	portRangeList = make([]PortRange, len(portRanges))
 	for k, v := range portRanges {
 		if v.UpperPort == nil {
@@ -275,9 +267,10 @@ func NewTargetPortRange(portRanges []messages.PortRange) (portRangeList []PortRa
 	return
 }
 
-// New total traffic normal baseline
-func NewTotalTrafficNormalBaseLine(traffics []messages.Traffic) (trafficList []Traffic) {
+// New traffic
+func NewTraffic(traffics []messages.Traffic) (trafficList []Traffic) {
 	trafficList = make([]Traffic, len(traffics))
+	defaultNotExistProtocolValue := -1
 	for k, v := range traffics {
 		traffic := Traffic{}
 		if v.Unit != nil {
@@ -285,6 +278,8 @@ func NewTotalTrafficNormalBaseLine(traffics []messages.Traffic) (trafficList []T
 		}
 		if v.Protocol != nil {
 			traffic.Protocol = int(*v.Protocol)
+		} else {
+			traffic.Protocol = defaultNotExistProtocolValue
 		}
 		if v.LowPercentileG != nil {
 			traffic.LowPercentileG = int(*v.LowPercentileG)
@@ -347,13 +342,13 @@ func NewTotalConnectionCapacity(totalConnectionCapacities []messages.TotalConnec
 }
 
 // Get telemetry target list
-func GetTelemetryTargetList(baseline *Baseline) (targetList []Target, err error) {
-	targetPrefixs := GetTelemetryPrefixAsTarget(baseline.TargetPrefix)
-	targetFqdns, err := GetTelemetryFqdnAsTarget(baseline.FQDN)
+func GetTelemetryTargetList(prefixs []Prefix, fqdns SetString, uris SetString) (targetList []Target, err error) {
+	targetPrefixs := GetTelemetryPrefixAsTarget(prefixs)
+	targetFqdns, err := GetTelemetryFqdnAsTarget(fqdns)
 	if err != nil {
 		return nil, err
 	}
-	targetUris, err := GetTelemetryUriAsTarget(baseline.URI)
+	targetUris, err := GetTelemetryUriAsTarget(uris)
 	if err != nil {
 		return nil, err
 	}

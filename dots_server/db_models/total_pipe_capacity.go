@@ -16,7 +16,7 @@ type TotalPipeCapacity struct {
 // Get total pipe capacity by teleSetupId
 func GetTotalPipeCapacityByTeleSetupId(engine *xorm.Engine, teleSetupId int64) (pipeList []TotalPipeCapacity, err error) {
 	pipeList = []TotalPipeCapacity{}
-	err = engine.Where("tele_setup_id = ?", teleSetupId).Find(&pipeList)
+	err = engine.Where("tele_setup_id = ?", teleSetupId).OrderBy("id ASC").Find(&pipeList)
 	return
 }
 

@@ -34,6 +34,7 @@ const (
 	TARGET_PROTOCOL ParameterType = "TARGET_PROTOCOL"
 	TARGET_FQDN     ParameterType = "FQDN"
 	TARGET_URI      ParameterType = "URI"
+	ALIAS_NAME      ParameterType = "ALIAS_NAME"
 )
 
 type trafficType string
@@ -353,7 +354,7 @@ func CreateBaseline(customerId int, cuid string, cdid string, tsid int, baseline
 				if (isOverlap && currentSetup.Cuid == cuid && currentSetup.Tsid < tsid) || currentSetup.Tsid == DefaultTsid {
 					// Delete baseline
 					log.Debugf("DOTS server will delete baseline id = %+v", currentBaseline.Id)
-					err = DeleteBaseline(session, customerId, cuid, currentBaseline.Id)
+					err = DeleteBaseline(session, currentBaseline.Id)
 					if err != nil {
 						session.Rollback()
 						return isConflict, err
@@ -419,13 +420,13 @@ func UpdateBaseline(session *xorm.Session, customerId int, cuid string, cdid str
 	// If existed baseline in DB, DOTS server will delete current baseline and create new baseline
 	for _, currentBaseline := range currentBaselineList {
 		// Delete baseline
-		err = DeleteBaseline(session, customerId, cuid, currentBaseline.Id)
+		err = DeleteBaseline(session, currentBaseline.Id)
 		if err != nil {
 			return err
 		}
 	}
 	// Create baseline
-	err = createBaseline(session, customerId, cuid, currentSetup.Id, baselineList)
+	err = createBaseline(session, currentSetup.Id, baselineList)
 	if err != nil {
 		return err
 	}
@@ -470,7 +471,7 @@ func CreateTelemetrySetupBaseline(session *xorm.Session, customerId int, cuid st
 		return err
 	}
 	// Create baseline (targets, total_traffic_normal_basline, 'total_connection_capacity')
-	err = createBaseline(session, customerId, cuid, newTelemetrySetup.Id, baselineList)
+	err = createBaseline(session, newTelemetrySetup.Id, baselineList)
 	if err != nil {
 		return err
 	}
@@ -493,7 +494,7 @@ func createTelemetryConfiguration(session *xorm.Session, teleSetupId int64, tele
 }
 
 // Create baseline
-func createBaseline(session *xorm.Session, customerId int, cuid string, teleSetupId int64, baselines []Baseline)  error {
+func createBaseline(session *xorm.Session, teleSetupId int64, baselines []Baseline)  error {
 	for _, baseline := range baselines {
 		// Registered baseline
 		newBaseline, err := RegisterBaseline(session, teleSetupId, baseline)
@@ -506,17 +507,17 @@ func createBaseline(session *xorm.Session, customerId int, cuid string, teleSetu
 			return err
 		}
 		// Registered telemetry port range
-		err = RegisterTelemetryPortRange(session, string(TELEMETRY_SETUP), newBaseline.Id, baseline.TargetPortRange)
+		err = RegisterTelemetryPortRange(session, string(TELEMETRY_SETUP), newBaseline.Id, string(TARGET_PREFIX), baseline.TargetPortRange)
 		if err != nil {
 			return err
 		}
-		// Registered telemetry parameter value
-		err = RegisterTelemetryParameterValue(session, string(TELEMETRY_SETUP), newBaseline.Id, baseline.TargetProtocol, baseline.FQDN, baseline.URI)
+		// Create telemetry parameter value
+		err = CreateTelemetryParameterValue(session, string(TELEMETRY_SETUP), newBaseline.Id, baseline.TargetProtocol, baseline.FQDN, baseline.URI, nil)
 		if err != nil {
 			return err
 		}
 		// Registered total traffic normal baseline
-		err = RegisterTraffic(session, customerId, cuid, string(TELEMETRY_SETUP), newBaseline.Id, string(TOTAL_TRAFFIC_NORMAL_BASELINE), baseline.TotalTrafficNormalBaseLine)
+		err = RegisterTraffic(session, string(TELEMETRY_SETUP), "", newBaseline.Id, string(TOTAL_TRAFFIC_NORMAL_BASELINE), baseline.TotalTrafficNormalBaseLine)
 		if err != nil {
 			return err
 		}
@@ -654,14 +655,15 @@ func RegisterTelemetryPrefix(session *xorm.Session, tType string, typeId int64, 
 }
 
 // Registed telemetry port range to DB
-func RegisterTelemetryPortRange(session *xorm.Session, tType string, typeId int64, portRanges []PortRange) error {
+func RegisterTelemetryPortRange(session *xorm.Session, tType string, typeId int64, prefixType string, portRanges []PortRange) error {
 	newTelemetryPortRangeList := []db_models.TelemetryPortRange{}
 	for _, portRange := range portRanges {
 		newTelemetryPortRange := db_models.TelemetryPortRange{
-			Type:      tType,
-			TypeId:    typeId,
-			LowerPort: portRange.LowerPort,
-			UpperPort: portRange.UpperPort,
+			Type:       tType,
+			TypeId:     typeId,
+			PrefixType: prefixType,
+			LowerPort:  portRange.LowerPort,
+			UpperPort:  portRange.UpperPort,
 		}
 		newTelemetryPortRangeList = append(newTelemetryPortRangeList, newTelemetryPortRange)
 	}
@@ -676,78 +678,83 @@ func RegisterTelemetryPortRange(session *xorm.Session, tType string, typeId int6
 }
 
 // Registed telemetry parameter value (target-protocol, target-fqdn, target-uri) to DB
-func RegisterTelemetryParameterValue(session *xorm.Session, tType string, typeId int64, protocols SetInt, fqdns SetString, uris SetString) error {
+func CreateTelemetryParameterValue(session *xorm.Session, tType string, typeId int64, protocols SetInt, fqdns SetString, uris SetString, aliasNames SetString) error {
 	// Registered protocol to DB
-	newTelemetryProtocolList := []db_models.TelemetryParameterValue{}
-	for _, protocol := range protocols.List() {
-		newTelemetryProtocol := db_models.TelemetryParameterValue{
-			Type:          tType,
-			TypeId:        typeId,
-			ParameterType: string(TARGET_PROTOCOL),
-			IntValue:      protocol,
-		}
-		newTelemetryProtocolList = append(newTelemetryProtocolList, newTelemetryProtocol)
-	}
-	if len(newTelemetryProtocolList) > 0 {
-		_, err := session.Insert(&newTelemetryProtocolList)
-		if err != nil {
-			log.Errorf("telemetry parameter value with parameter type is 'protocol' insert err: %s", err)
-			return err
-		}
+	err := RegisterTelemetryParameterIntValue(session, tType, typeId, string(TARGET_PROTOCOL), protocols)
+	if err != nil {
+		return err
 	}
 	// Registered fqdn to DB
-	newTelemetryFqdnList := []db_models.TelemetryParameterValue{}
-	for _, fqdn := range fqdns.List() {
-		if fqdn == "" {
+	err = RegisterTelemetryParameterStringValue(session, tType, typeId, string(TARGET_FQDN), fqdns)
+	if err != nil {
+		return err
+	}
+	// Registered uri to DB
+	err = RegisterTelemetryParameterStringValue(session, tType, typeId, string(TARGET_URI), uris)
+	if err != nil {
+		return err
+	}
+	// Registered alias-name to DB
+	err = RegisterTelemetryParameterStringValue(session, tType, typeId, string(ALIAS_NAME), aliasNames)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Registered telemetry parameter string value
+func RegisterTelemetryParameterStringValue(session *xorm.Session, tType string, typeId int64, parameterType string, stringValues SetString) error {
+	newTeleParameterList := []db_models.TelemetryParameterValue{}
+	for _, stringValue := range stringValues.List() {
+		if stringValue == "" {
 			continue
 		}
-		newTelemetryFqdn := db_models.TelemetryParameterValue{
+		newTeleParameter := db_models.TelemetryParameterValue{
 			Type:          tType,
 			TypeId:        typeId,
-			ParameterType: string(TARGET_FQDN),
-			StringValue:   fqdn,
+			ParameterType: parameterType,
+			StringValue:   stringValue,
 		}
-		newTelemetryFqdnList = append(newTelemetryFqdnList, newTelemetryFqdn)
+		newTeleParameterList = append(newTeleParameterList, newTeleParameter)
 	}
-	if len(newTelemetryFqdnList) > 0 {
-		_, err := session.Insert(&newTelemetryFqdnList)
+	if len(newTeleParameterList) > 0 {
+		_, err := session.Insert(&newTeleParameterList)
 		if err != nil {
-			log.Errorf("telemetry parameter value with parameter type is 'fqdn' insert err: %s", err)
+			log.Errorf("telemetry parameter value insert err: %s", err)
 			return err
 		}
 	}
-	// Registered uri to DB
-	newTelemetryUriList := []db_models.TelemetryParameterValue{}
-	for _, uri := range uris.List() {
-		if uri == "" {
-			continue
-		}
-		newTelemetryUri := db_models.TelemetryParameterValue{
+	return nil
+}
+// Registered telemetry parameter int value
+func RegisterTelemetryParameterIntValue(session *xorm.Session, tType string, typeId int64, parameterType string, intValues SetInt) error {
+	newTeleParameterList := []db_models.TelemetryParameterValue{}
+	for _, intValue := range intValues.List() {
+		newTeleParameter := db_models.TelemetryParameterValue{
 			Type:          tType,
 			TypeId:        typeId,
-			ParameterType: string(TARGET_URI),
-			StringValue:   uri,
+			ParameterType: parameterType,
+			IntValue:      intValue,
 		}
-		newTelemetryUriList = append(newTelemetryUriList, newTelemetryUri)
+		newTeleParameterList = append(newTeleParameterList, newTeleParameter)
 	}
-	if len(newTelemetryUriList) > 0 {
-		_, err := session.Insert(&newTelemetryUriList)
+	if len(newTeleParameterList) > 0 {
+		_, err := session.Insert(&newTeleParameterList)
 		if err != nil {
-			log.Errorf("telemetry parameter value with parameter type is 'uri' insert err: %s", err)
+			log.Errorf("telemetry parameter value insert err: %s", err)
 			return err
 		}
 	}
 	return nil
 }
 
-// Registerd traffic to DB
-func RegisterTraffic(session *xorm.Session, customerId int, cuid string, tType string, typeId int64, trafficType string, traffics []Traffic) error {
+// Registered traffic to DB
+func RegisterTraffic(session *xorm.Session, tType string, prefixType string, typeId int64, trafficType string, traffics []Traffic) error {
 	newTrafficList := []db_models.Traffic{}
 	for _, vTraffic := range traffics {
 		newTraffic := db_models.Traffic{
-			CustomerId:      customerId,
-			Cuid:            cuid,
 			Type:            tType,
+			PrefixType:      prefixType,
 			TypeId:          typeId,
 			TrafficType:     trafficType,
 			Unit:            ConvertUnitToString(vTraffic.Unit),
@@ -769,7 +776,7 @@ func RegisterTraffic(session *xorm.Session, customerId int, cuid string, tType s
 	return nil
 }
 
-// Registed total connection capacity to DB
+// Registered total connection capacity to DB
 func RegisterTotalConnectionCapacity(session *xorm.Session, teleBaselineId int64, tccs []TotalConnectionCapacity) error {
 	newTccList := []db_models.TotalConnectionCapacity{}
 	for _, vTcc := range tccs {
@@ -986,7 +993,7 @@ func GetBaselineByTeleSetupId(customerId int, cuid string, setupId int64) (basel
 		}
 		baseline.TargetPrefix = prefixList
 		// Get telemetry port range
-		portRangeList, err := GetTelemetryPortRange(engine, string(TELEMETRY_SETUP), vBaseline.Id)
+		portRangeList, err := GetTelemetryPortRange(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(TARGET_PREFIX))
 		if err != nil {
 			return nil, err
 		}
@@ -1010,7 +1017,7 @@ func GetBaselineByTeleSetupId(customerId int, cuid string, setupId int64) (basel
 		}
 		baseline.URI = uriList
 		// Get total traffic normal baseline
-		trafficList, err := GetTraffic(engine, customerId, cuid, string(TELEMETRY_SETUP), vBaseline.Id, string(TOTAL_TRAFFIC_NORMAL_BASELINE))
+		trafficList, err := GetTraffic(engine, string(TELEMETRY_SETUP), vBaseline.Id, "", string(TOTAL_TRAFFIC_NORMAL_BASELINE))
 		if err != nil {
 			return nil, err
 		}
@@ -1022,7 +1029,7 @@ func GetBaselineByTeleSetupId(customerId int, cuid string, setupId int64) (basel
 		}
 		baseline.TotalConnectionCapacity = tccList
 		// Get telemetry target list
-		targetList, err := GetTelemetryTargetList(&baseline)
+		targetList, err := GetTelemetryTargetList(baseline.TargetPrefix, baseline.FQDN, baseline.URI)
 		if err != nil {
 			return nil, err
 		}
@@ -1034,7 +1041,7 @@ func GetBaselineByTeleSetupId(customerId int, cuid string, setupId int64) (basel
 }
 
 // Delete baseline
-func DeleteBaseline(session *xorm.Session, customerId int, cuid string, id int64) (err error) {
+func DeleteBaseline(session *xorm.Session, id int64) (err error) {
 	// Delete telemetry prefix
 	err = db_models.DeleteTelemetryPrefix(session, string(TELEMETRY_SETUP), id, string(TARGET_PREFIX))
 	if err != nil {
@@ -1042,7 +1049,7 @@ func DeleteBaseline(session *xorm.Session, customerId int, cuid string, id int64
 		return
 	}
 	// Delete telemetry port range
-	err = db_models.DeleteTelemetryPortRange(session, string(TELEMETRY_SETUP), id)
+	err = db_models.DeleteTelemetryPortRange(session, string(TELEMETRY_SETUP), id, string(TARGET_PREFIX))
 	if err != nil {
 		log.Errorf("Delete telemetry port range err: %+v", err)
 		return
@@ -1054,7 +1061,7 @@ func DeleteBaseline(session *xorm.Session, customerId int, cuid string, id int64
 		return
 	}
 	// Delete total traffic normal baseline
-	err = db_models.DeleteTraffic(session, customerId, cuid, string(TELEMETRY_SETUP), id, string(TOTAL_TRAFFIC_NORMAL_BASELINE))
+	err = db_models.DeleteTraffic(session, string(TELEMETRY_SETUP), id, "", string(TOTAL_TRAFFIC_NORMAL_BASELINE))
 	if err != nil {
 		log.Errorf("Delete telemetry traffic err: %+v", err)
 		return
@@ -1094,8 +1101,8 @@ func GetTelemetryPrefix(engine *xorm.Engine, tType string, typeId int64, prefixT
 }
 
 // Get telemetry port range
-func GetTelemetryPortRange(engine *xorm.Engine, tType string, typeId int64) (portRangeList []PortRange, err error) {
-	portRanges, err := db_models.GetTelemetryPortRange(engine, tType, typeId)
+func GetTelemetryPortRange(engine *xorm.Engine, tType string, typeId int64, prefixType string) (portRangeList []PortRange, err error) {
+	portRanges, err := db_models.GetTelemetryPortRange(engine, tType, typeId, prefixType)
 	if err != nil {
 		log.Errorf("Get telemetry port range err: %+v", err)
 		return nil, err
@@ -1153,8 +1160,8 @@ func GetTelemetryParameterWithParameterTypeIsUri(engine *xorm.Engine, tType stri
 }
 
 // Get traffic
-func GetTraffic(engine *xorm.Engine, customerId int, cuid string, tType string, typeId int64, traffcType string) (trafficList []Traffic, err error) {
-	traffics, err := db_models.GetTraffic(engine, customerId, cuid, tType, typeId, traffcType)
+func GetTraffic(engine *xorm.Engine, tType string, typeId int64, prefixType string, trafficType string) (trafficList []Traffic, err error) {
+	traffics, err := db_models.GetTraffic(engine, tType, typeId, prefixType, trafficType)
 	if err != nil {
 		log.Errorf("Get traffic with traffic type is 'total_traffic_normal_baseline' err: %+v", err)
 		return nil, err
@@ -1424,7 +1431,7 @@ func DeleteTelemetrySetupBaseline(engine *xorm.Engine, session *xorm.Session, cu
 	}
 	// Delete baseline
 	for _, dbBaseline := range dbBaselineList {
-		err = DeleteBaseline(session, customerId, cuid, dbBaseline.Id)
+		err = DeleteBaseline(session, dbBaseline.Id)
 		if err != nil {
 			session.Rollback()
 			return err

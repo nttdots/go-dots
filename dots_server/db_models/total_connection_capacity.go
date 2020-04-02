@@ -25,7 +25,7 @@ type TotalConnectionCapacity struct {
 // Get total connection capacity by teleBaselineId
 func GetTotalConnectionCapacityByTeleBaselineId(engine *xorm.Engine, teleBaselineId int64) (tccList []TotalConnectionCapacity, err error) {
 	tccList = []TotalConnectionCapacity{}
-	err = engine.Where("tele_baseline_id = ?", teleBaselineId).Find(&tccList)
+	err = engine.Where("tele_baseline_id = ?", teleBaselineId).OrderBy("id ASC").Find(&tccList)
 	return
 }
 

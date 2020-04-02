@@ -8,8 +8,7 @@ import (
     "strings"
     "strconv"
     "fmt"
-
-    log "github.com/sirupsen/logrus"
+    "time"
 
     "github.com/nttdots/go-dots/dots_common"
     "github.com/nttdots/go-dots/dots_common/messages"
@@ -17,6 +16,8 @@ import (
     "github.com/nttdots/go-dots/dots_server/models"
     "github.com/nttdots/go-dots/libcoap"
     "github.com/nttdots/go-dots/dots_server/task"
+    log "github.com/sirupsen/logrus"
+    dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
 
 func createResource(ctx *libcoap.Context, path string, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) *libcoap.Resource {
@@ -56,9 +57,9 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             log.Warnf("Observer: %+v", err)
         } else {
             if observe == int(messages.Register) {
-                log.Debugf("Register Mitigation or Session Configuration Observe.")
+                log.Debugf("Register Mitigation or Session Configuration or Telemetry Pre-Mitigation Observe.")
             } else if observe == int(messages.Deregister) {
-                log.Debugf("Deregister Mitigation or Session Configuration Observe.")
+                log.Debugf("Deregister Mitigation or Session Configuration or Telemetry Pre-Mitigation Observe.")
             }
         }
 
@@ -105,6 +106,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         var body interface{}
         var resourcePath string
         isHeartBeatMechanism := false
+        isTelemetryRequest   := false
         if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
             uri := request.Path()
             for i := range uri {
@@ -123,6 +125,23 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                 } else if strings.HasPrefix(uri[i], "tm-setup") {
                     log.Debug("Request path includes 'tm-setup'. Cbor decode with type TelemetrySetupRequest")
                     body, resourcePath, err = registerResourceTelemetrySetup(request, typ, controller, session, context, is_unknown)
+                    break;
+                } else if strings.HasPrefix(uri[i], "tm") {
+                    log.Debug("Request path includes 'tm'. Cbor decode with type TelemetryPreMitigationRequest")
+                    badReqMsg, err := handlePreMitigationMessageInterval(session, customer, request.Path())
+                    if badReqMsg != "" {
+                        response.Code = libcoap.ResponseBadRequest
+                        response.Type = responseType(request.Type)
+                        response.Data = []byte(badReqMsg)
+                        return
+                    } else if err != nil {
+                        response.Code = libcoap.ResponseUnauthorized
+                        response.Type = responseType(request.Type)
+                        response.Data = []byte(fmt.Sprint(err))
+                        return
+                    }
+                    body, resourcePath, err = registerResourceTelemetryPreMitigation(request, typ, controller, session, context, is_unknown)
+                    isTelemetryRequest = true
                     break;
                 }
             }
@@ -212,7 +231,6 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         response.Data = payload
         response.Type = CoAPType(res.Type)
         response.Options = res.Options
-
         log.Debugf("response.Data=\n%s", hex.Dump(payload))
         if response.Code != libcoap.ResponseCreated && response.Code != libcoap.ResponseChanged && response.Code != libcoap.ResponseContent &&
            response.Code != libcoap.ResponseConflict {
@@ -228,10 +246,16 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             response.SetOption(libcoap.OptionObserve, uint16(messages.Register))
         }
 
-        // Register observer for resources of all mitigation
         if request.Code == libcoap.RequestGet && response.Type == libcoap.TypeNon && response.Code == libcoap.ResponseContent {
-            responses := res.Body.(messages.MitigationResponse).MitigationScope.Scopes
-            registerResourceAllMitigation(responses, request, context, observe, session, token, block2Value, resource.UriPath())
+            if isTelemetryRequest {
+                // Register observer for resources of telemetry pre-mitigation
+                responses := res.Body.(messages.TelemetryPreMitigationResponse).TelemetryPreMitigation.PreOrOngoingMitigation
+                registerResourceAllTelemetryPreMitigation(responses, request, context, observe, session, token, block2Value, resource.UriPath())
+            } else {
+                // Register observer for resources of all mitigation
+                responses := res.Body.(messages.MitigationResponse).MitigationScope.Scopes
+                registerResourceAllMitigation(responses, request, context, observe, session, token, block2Value, resource.UriPath())
+            }
         }
 
         // Set resource status to removable and delete the mitigation when it is terminated
@@ -474,6 +498,25 @@ func registerResourceAllMitigation(responses []messages.ScopeStatus, request *li
 }
 
 /*
+ * Register resource for all telemetry pre-mitigation
+ * Get all telemetry pre-mitigation
+ *     observe = 0, add observe resource for each telemetry pre-mitigation with token of resource all
+ *     observe = 1, delete observe resource for each telemetry pre-mitigation  with token of resource all
+ */
+func registerResourceAllTelemetryPreMitigation(responses []messages.PreOrOngoingMitigationResponse, request *libcoap.Pdu, context *libcoap.Context, observe int,
+                                   session *libcoap.Session, token *[]byte, block2Value int, uriPathResource string) {
+    if len(responses) >= 1 {
+        for _, res := range responses {
+            query := request.PathString() + "/tmid=" + strconv.Itoa(res.Tmid)
+            resourceOne := context.GetResourceByQuery(&query)
+            if resourceOne != nil {
+                AddOrDeleteObserve(resourceOne, session, &query, *token, observe, nil)
+            }
+        }
+    }
+}
+
+/*
  * Add or Delete observe resource
  * If observe = 0, add observer in resource
  * If observe = 1, delete observe in resource
@@ -518,4 +561,103 @@ func registerResourceTelemetrySetup(request *libcoap.Pdu, typ reflect.Type, cont
         }
     }
     return body, resourcePath, nil
+}
+
+/*
+ * Register resource for telemetry pre-mitigation
+ */
+func registerResourceTelemetryPreMitigation(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
+                                 context  *libcoap.Context, is_unknown bool) (interface{}, string, error) {
+
+    body, err := messages.UnmarshalCbor(request, reflect.TypeOf(messages.TelemetryPreMitigationRequest{}))
+    if err != nil {
+        return nil, "", err
+    }
+
+    var resourcePath string
+
+    // Create sub resource to handle observation on behalf of Unknown resource in case of telemetry pre-mitigation PUT
+    if is_unknown && request.Code == libcoap.RequestPut {
+        p := request.PathString()
+        resourcePath = p
+        r := libcoap.ResourceInit(&p, 0)
+        r.TurnOnResourceObservable()
+        r.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
+        r.RegisterHandler(libcoap.RequestPut,    toMethodHandler(controller.HandlePut, typ, controller, !is_unknown))
+        r.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost, typ, controller, !is_unknown))
+        r.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete, typ, controller, !is_unknown))
+        context.AddResource(r)
+        log.Debugf("Create sub resource to handle observation later : uri-path=%+v", p)
+        // Create sub resource for handle get all with observe option
+        pa := strings.Split(p, "/tmid")
+        if len(pa) > 1 {
+            resourceAll := context.GetResourceByQuery(&pa[0])
+            if resourceAll == nil {
+                ra := libcoap.ResourceInit(&pa[0], 0)
+                ra.TurnOnResourceObservable()
+                ra.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
+                context.AddResource(ra)
+                log.Debugf("Create observer in sub-resource with query: %+v", pa[0])
+            } else if resourceAll.IsObserved() {
+                resourceOne := context.GetResourceByQuery(&p)
+                log.Debugf("Create observer in sub-resource with query: %+v", p)
+                tokenAll := resourceAll.GetTokenFromSubscribers()
+                resourceOne.AddObserver(session, &p, tokenAll, nil)
+            }
+        }
+    }
+    return body, resourcePath, nil
+}
+
+// Handle telemetry pre-mitigation message interval
+func handlePreMitigationMessageInterval(session *libcoap.Session, customer *models.Customer, path []string) (string, error) {
+    // DOTS agents MUST NOT sent pre-mitigation telemetry messages to the same peer more frequently than once every 'telemetry-notify-interval'
+    if (!session.GetIsNotification() && session.GetIsReceivedPreMitigation()) ||
+       (session.GetIsNotification() && session.GetIsSentNotification()) {
+        errMessage := fmt.Sprint("DOTS agents MUST NOT sent pre-mitigation telemetry messages to the same peer more frequently than once every 'telemetry-notify-interval'")
+        log.Error(errMessage)
+        return errMessage, nil
+    }
+    var cuid string
+    var interval int
+    for _, v := range path {
+        if(strings.HasPrefix(v, "cuid=")){
+            cuid = v[strings.Index(v, "cuid=")+5:]
+        }
+    }
+    setupList, err := models.GetTelemetrySetupByCuidAndSetupType(customer.Id, cuid, string(models.TELEMETRY_CONFIGURATION))
+    if err != nil {
+        return "", err
+    }
+    // Get telemetry_notify_interval from telemetry configuration
+    // If telemetry_notify_interval doesn't exist, it will be set to default value
+    if len(setupList) > 0 {
+        teleConfig, err := models.GetTelemetryConfiguration(setupList[0].Id)
+        if err != nil {
+            return "", err
+        }
+        interval = teleConfig.TelemetryNotifyInterval
+    } else {
+        defaultValue := dots_config.GetServerSystemConfig().DefaultTelemetryConfiguration
+        interval = defaultValue.TelemetryNotifyInterval
+    }
+    if session.GetIsNotification() {
+        // handle telemetry-notify-interval when DOTS server notify to DOTS client
+        session.SetIsNotification(false)
+        go func() {
+            session.SetIsSentNotification(true)
+            time.Sleep(time.Duration(interval) * time.Second)
+            session.SetIsSentNotification(false)
+            return
+        }()
+    } else {
+        // handle telemetry-notify-interval when DOTS server receive request from DOTS client
+        go func() {
+            session.SetIsReceivedPreMitigation(true)
+            time.Sleep(time.Duration(interval) * time.Second)
+            session.SetIsReceivedPreMitigation(false)
+            return
+        }()
+    }
+    return "", nil
 }

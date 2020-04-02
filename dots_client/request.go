@@ -438,6 +438,15 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			data, err = json.Marshal(v)
 			logStr = v.String()
 		}
+	case "telemetry_pre_mitigation_request":
+		switch r.method {
+		case "GET":
+			var v messages.TelemetryPreMitigationResponse
+			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
+			logStr = v.String()
+		}
 	}
 	if err != nil {
 		log.WithError(err).Warn("Parse object to JSON failed.")
@@ -639,7 +648,12 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
 		if sessionTask != nil {
 			RefreshSessionConfig(pdu, env, sessionTask.MessageTask())
 		}
-    } else {
+	} else if strings.Contains(hex, string(libcoap.IETF_TELEMETRY_PRE_MITIGATION)) {
+        var v messages.TelemetryPreMitigationResponse
+        err = dec.Decode(&v)
+        logStr = v.String()
+        log.Debug("Receive telemetry pre-mitigation notification.")
+    }else {
         log.Warnf("Unknown notification is received.")
     }
 

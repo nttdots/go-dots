@@ -31,10 +31,12 @@ enum TRIGGER_TYPE {
 };
 
 #define PORT 9999
-#define MITIGATION_SCOPE      "mitigation_scope"
-#define SESSION_CONFIGURATION "signal_session_configuration"
-#define PREFIX_ADDRESS_RANGE  "prefix"
-#define DATA_ACLS             "data_acls"
+#define MITIGATION_SCOPE        "mitigation_scope"
+#define SESSION_CONFIGURATION   "signal_session_configuration"
+#define PREFIX_ADDRESS_RANGE    "prefix"
+#define DATA_ACLS               "data_acls"
+#define	ATTACK_DETAIL	        "attack_detail"
+#define	TELEMETRY_ATTACK_DETAIL "telemetry_attack_detail"
 
 my_bool MySQLNotification_init(UDF_INIT *initid, 
                                           UDF_ARGS *args,
@@ -92,6 +94,26 @@ my_bool MySQLNotification_init(UDF_INIT *initid,
 
         if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT || args->arg_type[2] != INT_RESULT) {
             strcpy(message, "MySQLNotification() requires two integers, and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], ATTACK_DETAIL) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], TELEMETRY_ATTACK_DETAIL) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
             return 1;
         }
     } else {
@@ -159,6 +181,16 @@ longlong MySQLNotification(UDF_INIT *initid, UDF_ARGS *args,
 
         // format a message containing id of row and type of change
         sprintf(packet, "{\"table_trigger\":\"%s\", \"aclId\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], ATTACK_DETAIL) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_pre_mitigation_id\":\"%lld\"}", 
+        ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], TELEMETRY_ATTACK_DETAIL) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"mitigation_scope_id\":\"%lld\"}", 
+        ((char*)args->args[0]), *((longlong*)args->args[1]));
     }
 
     send(_server, packet, strlen(packet), 0);

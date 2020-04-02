@@ -695,24 +695,7 @@ func getBaseline(customerId int, cuid string, teleSetupId int64) (baselineList [
 			baseline.TargetURI = append(baseline.TargetURI, vUri)
 		}
 		// total traffic normal baseline
-		for _, vTraffic := range v.TotalTrafficNormalBaseLine {
-			traffic := messages.TrafficResponse{}
-			traffic.Unit = vTraffic.Unit
-			traffic.Protocol = vTraffic.Protocol
-			if vTraffic.LowPercentileG > 0 {
-				traffic.LowPercentileG = &vTraffic.LowPercentileG
-			}
-			if vTraffic.MidPercentileG > 0 {
-				traffic.MidPercentileG = &vTraffic.MidPercentileG
-			}
-			if vTraffic.HighPercentileG > 0 {
-				traffic.HighPercentileG = &vTraffic.HighPercentileG
-			}
-			if vTraffic.PeakG > 0 {
-				traffic.PeakG = &vTraffic.PeakG
-			}
-			baseline.TotalTrafficNormalBaseline = append(baseline.TotalTrafficNormalBaseline, traffic)
-		}
+		baseline.TotalTrafficNormalBaseline = convertToTrafficResponse(v.TotalTrafficNormalBaseLine)
 		// total connection capacity
 		for _, vTcc := range v.TotalConnectionCapacity {
 			tcc := messages.TotalConnectionCapacityResponse{}

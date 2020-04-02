@@ -42,6 +42,10 @@ func (p *SignalChannel)  forward(req Request, customer *models.Customer) (res Re
 			log.Debug("Call TelemetrySetupRequest controller")
 			controller = &TelemetrySetupRequest{}
 			break;
+		} else if strings.HasPrefix(req.Uri[i], "tm") {
+			log.Debug("Call TelemetryPreMitigationRequest controller")
+			controller = &TelemetryPreMitigationRequest{}
+			break;
 		}
 	}
 

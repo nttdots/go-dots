@@ -67,10 +67,10 @@ system:
   defaultTotalTrafficNormalBaseline:
     unit: 1
     protocol: 6
-    lowPercentileG: 10
-    midPercentileG: 50
-    highPercentileG: 90
-    peakG: 100
+    lowPercentileG: 100
+    midPercentileG: 500
+    highPercentileG: 900
+    peakG: 1000
 
 # Default values of total connection capacity
   defaultTotalConnectionCapacity:

@@ -21,7 +21,7 @@ type TelemetryPrefix struct {
 // Get telemetry prefix
 func GetTelemetryPrefix(engine *xorm.Engine, tType string, typeId int64, prefixType string) (prefixList []TelemetryPrefix, err error) {
 	prefixList = []TelemetryPrefix{}
-	err = engine.Where("type = ? AND type_id = ? AND prefix_type = ?", tType, typeId, prefixType).Find(&prefixList)
+	err = engine.Where("type = ? AND type_id = ? AND prefix_type = ?", tType, typeId, prefixType).OrderBy("id ASC").Find(&prefixList)
 	return
 }
 
