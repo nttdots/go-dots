@@ -59,7 +59,7 @@ type ScopeStatus struct {
 type TelemetryTrafficResponse struct {
 	_struct         bool `codec:",uint"` //encode struct with "unsigned integer" keys
 	Unit            int  `json:"ietf-dots-telemetry:unit" codec:"32870,omitempty"`
-	Protocol        *int `json:"ietf-dots-telemetry:protocol" codec:"10,omitempty"`
+	Protocol        *int `json:"ietf-dots-telemetry:protocol" codec:"32905,omitempty"`
 	LowPercentileG  *int `json:"ietf-dots-telemetry:low-percentile-g" codec:"32871,omitempty"`
 	MidPercentileG  *int `json:"ietf-dots-telemetry:mid-percentile-g" codec:"32872,omitempty"`
 	HighPercentileG *int `json:"ietf-dots-telemetry:high-percentile-g" codec:"32873,omitempty"`
@@ -487,7 +487,7 @@ type TelemetrySetupResponse struct {
 
 type TelemetrySetupResp struct {
 	_struct   bool                `codec:",uint"` //encode struct with "unsigned integer" keys
-	Telemetry []TelemetryResponse `json:"telemetry" codec:"32802,omitempty"` // CBOR key temp
+	Telemetry []TelemetryResponse `json:"telemetry" codec:"32802,omitempty"`
 }
 
 type TelemetryResponse struct {
@@ -546,7 +546,7 @@ type BaselineResponse struct {
 type TrafficResponse struct {
 	_struct         bool `codec:",uint"` //encode struct with "unsigned integer" keys
 	Unit            int  `json:"unit" codec:"32807,omitempty"`
-	Protocol        *int `json:"protocol" codec:"10,omitempty"`
+	Protocol        *int `json:"protocol" codec:"32905,omitempty"`
 	LowPercentileG  *int `json:"low-percentile-g" codec:"32813,omitempty"`
 	MidPercentileG  *int `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *int `json:"high-percentile-g" codec:"32815,omitempty"`
@@ -555,7 +555,7 @@ type TrafficResponse struct {
 
 type TotalConnectionCapacityResponse struct {
 	_struct                bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol               int  `json:"protocol" codec:"10,omitempty"`
+	Protocol               int  `json:"protocol" codec:"32905,omitempty"`
 	Connection             *int `json:"connection" codec:"32820,omitempty"`
 	ConnectionClient       *int `json:"connection-client" codec:"32821,omitempty"`
 	Embryonic              *int `json:"embryonic" codec:"32822,omitempty"`
@@ -740,7 +740,7 @@ type TelemetrySetupResponseConflict struct {
 
 type TelemetrySetupRespConflict struct {
 	_struct                   bool                        `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetryResponseConflict []TelemetryResponseConflict `json:"telemetry" codec:"32905,omitempty"` // CBOR key temp
+	TelemetryResponseConflict []TelemetryResponseConflict `json:"telemetry" codec:"32802,omitempty"`
 }
 
 type TelemetryResponseConflict struct {
@@ -761,18 +761,20 @@ func NewTelemetrySetupConfigurationResponseConflict(tsid int, conflictInfo *Conf
 	result = "\n \"ietf-dots-telemetry:telemetry-setup\":\n"
 	for key, t := range ts.TelemetrySetupConflict.TelemetryResponseConflict {
 		result += fmt.Sprintf("   \"%s[%d]\":\n", "telemetry", key+1)
-		result += fmt.Sprintf("       \"%s\": %d\n", "tsid", t.Tsid)
-		result += fmt.Sprintf("       \"%s\":\n", "conflict-information")
-		result += fmt.Sprintf("          \"%s\": %d\n", "conflict-status", t.ConflictInformation.ConflictStatus)
-		result += fmt.Sprintf("          \"%s\": %d\n", "conflict-cause", t.ConflictInformation.ConflictCause)
-		result += fmt.Sprintf("          \"%s\": %d\n", "retry-timer", t.ConflictInformation.RetryTimer)
+		if t.ConflictInformation != nil {
+			result += fmt.Sprintf("       \"%s\": %d\n", "tsid", t.Tsid)
+			result += fmt.Sprintf("       \"%s\":\n", "conflict-information")
+			result += fmt.Sprintf("          \"%s\": %d\n", "conflict-status", t.ConflictInformation.ConflictStatus)
+			result += fmt.Sprintf("          \"%s\": %d\n", "conflict-cause", t.ConflictInformation.ConflictCause)
+			result += fmt.Sprintf("          \"%s\": %d\n", "retry-timer", t.ConflictInformation.RetryTimer)
+		}
 	}
 	return
 }
 
 type TelemetryPreMitigationResponse struct {
 	_struct                bool                       `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetryPreMitigation *TelemetryPreMitigationResp `json:"ietf-dots-telemetry:telemetry" codec:"32867,omitempty"`
+	TelemetryPreMitigation *TelemetryPreMitigationResp `json:"ietf-dots-telemetry:telemetry" codec:"32904,omitempty"`
 }
 
 type TelemetryPreMitigationResp struct {
@@ -822,7 +824,7 @@ type AttackDetailResponse struct {
 
 type ConnectionProtocolPercentileResponse struct {
 	_struct          bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol         int  `json:"protocol" codec:"10,omitempty"`
+	Protocol         int  `json:"protocol" codec:"32905,omitempty"`
 	Connection       *int `json:"connection" codec:"32820,omitempty"`
 	Embryonic        *int `json:"embryonic" codec:"32822,omitempty"`
 	ConnectionPs     *int `json:"connection-ps" codec:"32824,omitempty"`

@@ -74,7 +74,7 @@ type MitigationRequest struct {
 type TelemetryTraffic struct {
 	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
 	Unit            *int    `json:"ietf-dots-telemetry:unit" codec:"32870,omitempty"`
-	Protocol        *uint8  `json:"ietf-dots-telemetry:protocol" codec:"10,omitempty"`
+	Protocol        *uint8  `json:"ietf-dots-telemetry:protocol" codec:"32905,omitempty"`
 	LowPercentileG  *uint64 `json:"ietf-dots-telemetry:low-percentile-g" codec:"32871,omitempty"`
 	MidPercentileG  *uint64 `json:"ietf-dots-telemetry:mid-percentile-g" codec:"32872,omitempty"`
 	HighPercentileG *uint64 `json:"ietf-dots-telemetry:high-percentile-g" codec:"32873,omitempty"`
@@ -470,7 +470,7 @@ type Baseline struct {
 type Traffic struct {
 	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
 	Unit            *int    `json:"unit" codec:"32807,omitempty"`
-	Protocol        *uint8  `json:"protocol" codec:"10,omitempty"`
+	Protocol        *uint8  `json:"protocol" codec:"32905,omitempty"`
 	LowPercentileG  *uint64 `json:"low-percentile-g" codec:"32813,omitempty"`
 	MidPercentileG  *uint64 `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *uint64 `json:"high-percentile-g" codec:"32815,omitempty"`
@@ -478,7 +478,7 @@ type Traffic struct {
 }
 type TotalConnectionCapacity struct {
 	_struct                bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol               *uint8  `json:"protocol" codec:"10,omitempty"`
+	Protocol               *uint8  `json:"protocol" codec:"32905,omitempty"`
 	Connection             *uint64 `json:"connection" codec:"32820,omitempty"`
 	ConnectionClient       *uint64 `json:"connection-client" codec:"32821,omitempty"`
 	Embryonic              *uint64 `json:"embryonic" codec:"32822,omitempty"`
@@ -662,7 +662,7 @@ func (tcc TotalConnectionCapacity) String() (result string) {
 
 type TelemetryPreMitigationRequest struct {
 	_struct                bool                    `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetryPreMitigation *TelemetryPreMitigation `json:"ietf-dots-telemetry:telemetry" codec:"32867,omitempty"`
+	TelemetryPreMitigation *TelemetryPreMitigation `json:"ietf-dots-telemetry:telemetry" codec:"32904,omitempty"`
 }
 
 type TelemetryPreMitigation struct {
@@ -711,7 +711,7 @@ type AttackDetail struct {
 
 type ConnectionProtocolPercentile struct {
 	_struct          bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol         *uint8  `json:"protocol" codec:"10,omitempty"`
+	Protocol         *uint8  `json:"protocol" codec:"32905,omitempty"`
 	Connection       *uint64 `json:"connection" codec:"32820,omitempty"`
 	Embryonic        *uint64 `json:"embryonic" codec:"32822,omitempty"`
 	ConnectionPs     *uint64 `json:"connection-ps" codec:"32824,omitempty"`
