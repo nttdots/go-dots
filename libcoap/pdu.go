@@ -103,13 +103,13 @@ const (
 type MediaType uint16
 // Content types.
 const (
-	TextPlain     MediaType = 0  // text/plain;charset=utf-8
-	AppLinkFormat MediaType = 40 // application/link-format
-	AppXML        MediaType = 41 // application/xml
-	AppOctets     MediaType = 42 // application/octet-stream
-	AppExi        MediaType = 47 // application/exi
-	AppJSON       MediaType = 50 // application/json
-	AppCbor       MediaType = 60 // application/cbor https://tools.ietf.org/html/rfc7049#page-37
+    TextPlain     MediaType = 0   // text/plain;charset=utf-8
+    AppLinkFormat MediaType = 40  // application/link-format
+    AppXML        MediaType = 41  // application/xml
+    AppOctets     MediaType = 42  // application/octet-stream
+    AppExi        MediaType = 47  // application/exi
+    AppJSON       MediaType = 50  // application/json
+    AppDotsCbor   MediaType = 271 // application/dots+cbor
 )
 
 type Pdu struct {

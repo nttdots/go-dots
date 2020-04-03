@@ -66,7 +66,7 @@ func NewHeartBeatMessage(session libcoap.Session,jsonFileName string, hbValue bo
     pdu.Data = data
     pdu.Token = dots_common.RandStringBytes(8)
 	pdu.MessageID = session.NewMessageID()
-	pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppCbor))
+	pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppDotsCbor))
     pdu.SetPathString(hbRequestPath)
     return pdu, nil
 }

@@ -198,7 +198,7 @@ SKIP_OBSERVE:
 
 	if r.Message != nil {
 		r.pdu.Data = r.dumpCbor()
-		r.pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppCbor))
+		r.pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppDotsCbor))
 		log.Debugf("hex dump cbor request:\n%s", hex.Dump(r.pdu.Data))
 	}
 	tmpPathWithQuery := r.RequestCode.PathString() + "/" + strings.Join(r.queryParams, "/")
