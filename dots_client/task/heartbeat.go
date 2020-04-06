@@ -63,6 +63,11 @@ func (e *HeartBeatEvent) Handle(env *Env) {
     hbTask := e.task.(*HeartBeatTask)
     currentTask := env.requests[hbTask.current_hb_id]
 
+    if env.GetIsServerStopped() {
+        log.Warn("Stopped heartbeat task.")
+        env.StopHeartBeat()
+        return
+    }
     if currentTask != nil {
         log.Debugf("Waiting for current heartbeat message to be completed...")
         return

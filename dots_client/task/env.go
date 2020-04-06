@@ -31,6 +31,8 @@ type Env struct {
 
     // The new connected session that will replace the current
     replacingSession *libcoap.Session
+
+    isServerStopped bool
 }
 
 type RequestQuery struct {
@@ -55,6 +57,7 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         nil,
         nil,
         nil,
+        false,
     }
 }
 
@@ -194,6 +197,15 @@ func (env *Env) GetCurrentMissingHb() int {
 func (env *Env) SetCurrentMissingHb(currentMissingHb int) {
     env.current_missing_hb = currentMissingHb
 }
+
+func (env *Env) GetIsServerStopped() bool {
+    return env.isServerStopped
+}
+
+func (env *Env) SetIsServerStopped(isServerStopped bool) {
+    env.isServerStopped = isServerStopped
+}
+
 
 func (env *Env) AddRequestQuery(token string, requestQuery *RequestQuery) {
     env.requestQueries[token] = requestQuery
