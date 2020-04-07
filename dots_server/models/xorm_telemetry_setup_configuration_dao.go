@@ -517,7 +517,7 @@ func createBaseline(session *xorm.Session, teleSetupId int64, baselines []Baseli
 			return err
 		}
 		// Registered total traffic normal baseline
-		err = RegisterTraffic(session, string(TELEMETRY_SETUP), "", newBaseline.Id, string(TOTAL_TRAFFIC_NORMAL_BASELINE), baseline.TotalTrafficNormalBaseLine)
+		err = RegisterTraffic(session, string(TELEMETRY_SETUP), string(TARGET_PREFIX), newBaseline.Id, string(TOTAL_TRAFFIC_NORMAL_BASELINE), baseline.TotalTrafficNormalBaseLine)
 		if err != nil {
 			return err
 		}
