@@ -83,11 +83,20 @@ type Unit int
 
 const (
 	PacketsPerSecond Unit = iota + 1
-	KiloPacketsPerSecond
 	BitsPerSecond
-	KilobytesPerSecond
-	MegabytesPerSecond
-	GigabytesPerSecond
+	BytesPerSecond
+	KiloPacketsPerSecond
+	KiloBitsPerSecond
+	KiloBytesPerSecond
+	MegaPacketsPerSecond
+	MegaBitsPerSecond
+	MegaBytesPerSecond
+	GigaPacketsPerSecond
+	GigaBitsPerSecond
+	GigaBytesPerSecond
+	TeraPacketsPerSecond
+	TeraBitsPerSecond
+	TeraBytesPerSecond
 )
 
 type Interval int

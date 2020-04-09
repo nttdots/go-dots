@@ -559,7 +559,7 @@ DROP TABLE IF EXISTS `unit_configuration`;
 CREATE TABLE `unit_configuration` (
   `id`             bigint(20) NOT NULL AUTO_INCREMENT,
   `tele_config_id` bigint(20) NOT NULL,
-  `unit`           enum('PPS','KILO_PPS','BPS','KILOBYTES_PS','MEGABYTES_PS','GIGABYTES_PS') NOT NULL,
+  `unit`           enum('PACKETS_PS','BITS_PS','BYTES_PS') NOT NULL,
   `unit_status`    tinyint(1) DEFAULT NULL,
   `created`        datetime   DEFAULT NULL,
   `updated`        datetime   DEFAULT NULL,
@@ -576,7 +576,7 @@ CREATE TABLE `total_pipe_capacity` (
   `tele_setup_id` bigint(20)   NOT NULL,
   `link_id`       varchar(255) DEFAULT NULL,
   `capacity`      int(11)      DEFAULT NULL,
-  `unit`          enum('PPS','KILO_PPS','BPS','KILOBYTES_PS','MEGABYTES_PS','GIGABYTES_PS') NOT NULL,
+  `unit`          enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
   `created`       datetime     DEFAULT NULL,
   `updated`       datetime     DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -658,7 +658,7 @@ CREATE TABLE `traffic` (
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `type_id`           bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL_BASELINE','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PPS','KILO_PPS','BPS','KILOBYTES_PS','MEGABYTES_PS','GIGABYTES_PS') NOT NULL,
+  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
   `protocol`          int(11)     NOT NULL,
   `low_percentile_g`  int(11)     DEFAULT NULL,
   `mid_percentile_g`  int(11)     DEFAULT NULL,
@@ -818,7 +818,7 @@ CREATE TABLE `telemetry_traffic` (
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `prefix_type_id`    bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PPS','KILO_PPS','BPS','KILOBYTES_PS','MEGABYTES_PS','GIGABYTES_PS') NOT NULL,
+  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
   `protocol`          int(11)     NOT NULL,
   `low_percentile_g`  int(11)     DEFAULT NULL,
   `mid_percentile_g`  int(11)     DEFAULT NULL,
@@ -831,7 +831,7 @@ CREATE TABLE `telemetry_traffic` (
 
 INSERT INTO `telemetry_traffic` (`id`, `prefix_type`, `prefix_type_id`, `traffic_type`, `unit`, `protocol`, `low_percentile_g`, `mid_percentile_g`, `high_percentile_g`, `peak_g`, `created`, `updated`)
 VALUES
-  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'PPS', 6, 0, 100, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'PACKETS_PS', 6, 0, 100, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 # telemetry_total_attack_connection
 # ------------------------------------------------------------

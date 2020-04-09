@@ -1017,7 +1017,7 @@ func GetBaselineByTeleSetupId(customerId int, cuid string, setupId int64) (basel
 		}
 		baseline.URI = uriList
 		// Get total traffic normal baseline
-		trafficList, err := GetTraffic(engine, string(TELEMETRY_SETUP), vBaseline.Id, "", string(TOTAL_TRAFFIC_NORMAL_BASELINE))
+		trafficList, err := GetTraffic(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(TARGET_PREFIX), string(TOTAL_TRAFFIC_NORMAL_BASELINE))
 		if err != nil {
 			return nil, err
 		}
@@ -1595,12 +1595,21 @@ func ConvertMesurementSampleToString(measurementSample int) (measurementSampleSt
 // Convert unit from int to string
 func ConvertUnitToString(unit int) (unitStr string) {
 	switch unit {
-	case int(PacketsPerSecond):    unitStr = string(messages.PACKETS_PER_SECOND)
-	case int(KiloPacketsPerSecond):unitStr = string(messages.KILO_PACKETS_PER_SECOND)
-	case int(BitsPerSecond):       unitStr = string(messages.BITS_PER_SECOND)
-	case int(KilobytesPerSecond):  unitStr = string(messages.KILOBYTES_PER_SECOND)
-	case int(MegabytesPerSecond):  unitStr = string(messages.MEGABYTES_PER_SECOND)
-	case int(GigabytesPerSecond):  unitStr = string(messages.GIGABYTES_PER_SECOND)
+	case int(PacketsPerSecond):     unitStr = string(messages.PACKETS_PER_SECOND)
+	case int(BitsPerSecond):        unitStr = string(messages.BITS_PER_SECOND)
+	case int(BytesPerSecond):       unitStr = string(messages.BYTES_PER_SECOND)
+	case int(KiloPacketsPerSecond): unitStr = string(messages.KILOPACKETS_PER_SECOND)
+	case int(KiloBitsPerSecond):    unitStr = string(messages.KILOBITS_PER_SECOND)
+	case int(KiloBytesPerSecond):   unitStr = string(messages.KILOBYTES_PER_SECOND)
+	case int(MegaPacketsPerSecond): unitStr = string(messages.MEGAPACKETS_PER_SECOND)
+	case int(MegaBitsPerSecond):    unitStr = string(messages.MEGABITS_PER_SECOND)
+	case int(MegaBytesPerSecond):   unitStr = string(messages.MEGABYTES_PER_SECOND)
+	case int(GigaPacketsPerSecond): unitStr = string(messages.GIGAPACKETS_PER_SECOND)
+	case int(GigaBitsPerSecond):    unitStr = string(messages.GIGABITS_PER_SECOND)
+	case int(GigaBytesPerSecond):   unitStr = string(messages.GIGABYTES_PER_SECOND)
+	case int(TeraPacketsPerSecond): unitStr = string(messages.TERAPACKETS_PER_SECOND)
+	case int(TeraBitsPerSecond):    unitStr = string(messages.TERABITS_PER_SECOND)
+	case int(TeraBytesPerSecond):   unitStr = string(messages.TERABYTES_PER_SECOND)
 	}
 	return
 }
@@ -1635,11 +1644,20 @@ func ConvertMesurementSampleToInt(measurementSample string) (measurementSampleIn
 func ConvertUnitToInt(unit string) (unitInt int) {
 	switch unit {
 	case string(messages.PACKETS_PER_SECOND):     unitInt = int(PacketsPerSecond)
-	case string(messages.KILO_PACKETS_PER_SECOND):unitInt = int(KiloPacketsPerSecond)
 	case string(messages.BITS_PER_SECOND):        unitInt = int(BitsPerSecond)
-	case string(messages.KILOBYTES_PER_SECOND):   unitInt = int(KilobytesPerSecond)
-	case string(messages.MEGABYTES_PER_SECOND):   unitInt = int(MegabytesPerSecond)
-	case string(messages.GIGABYTES_PER_SECOND):   unitInt = int(GigabytesPerSecond)
+	case string(messages.BYTES_PER_SECOND):       unitInt = int(BytesPerSecond)
+	case string(messages.KILOPACKETS_PER_SECOND): unitInt = int(KiloPacketsPerSecond)
+	case string(messages.KILOBITS_PER_SECOND):    unitInt = int(KiloBitsPerSecond)
+	case string(messages.KILOBYTES_PER_SECOND):   unitInt = int(KiloBytesPerSecond)
+	case string(messages.MEGAPACKETS_PER_SECOND): unitInt = int(MegaPacketsPerSecond)
+	case string(messages.MEGABITS_PER_SECOND):    unitInt = int(MegaBitsPerSecond)
+	case string(messages.MEGABYTES_PER_SECOND):   unitInt = int(MegaBytesPerSecond)
+	case string(messages.GIGAPACKETS_PER_SECOND): unitInt = int(GigaPacketsPerSecond)
+	case string(messages.GIGABITS_PER_SECOND):    unitInt = int(GigaBitsPerSecond)
+	case string(messages.GIGABYTES_PER_SECOND):   unitInt = int(GigaBytesPerSecond)
+	case string(messages.TERAPACKETS_PER_SECOND): unitInt = int(TeraPacketsPerSecond)
+	case string(messages.TERABITS_PER_SECOND):    unitInt = int(TeraBitsPerSecond)
+	case string(messages.TERABYTES_PER_SECOND):   unitInt = int(TeraBytesPerSecond)
 	}
 	return
 }

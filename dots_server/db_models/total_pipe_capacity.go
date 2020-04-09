@@ -8,7 +8,7 @@ type TotalPipeCapacity struct {
 	TeleSetupId int64     `xorm:"'tele_setup_id' not null"`
 	LinkId      string    `xorm:"'link_id' not null"`
 	Capacity    int       `xorm:"'capacity'"`
-	Unit        string    `xorm:"'unit' enum('PPS','KILO_PPS','BPS','KILOBYTES_PS','MEGABYTES_PS','GIGABYTES_PS') not null"`
+	Unit        string    `xorm:"'unit' enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') not null"`
 	Created     time.Time `xorm:"created"`
 	Updated     time.Time `xorm:"updated"`
 }

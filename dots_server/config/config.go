@@ -129,17 +129,57 @@ type LifetimeConfigurationNode struct {
 }
 
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
+	heartbeatInterval, err := parseIntegerParameterRange(scpn.HeartbeatInterval)
+	if err != nil {
+		return nil, err
+	}
+	missingHbAllowed, err := parseIntegerParameterRange(scpn.MissingHbAllowed)
+	if err != nil {
+		return nil, err
+	}
+	maxRetransmit, err := parseIntegerParameterRange(scpn.MaxRetransmit)
+	if err != nil {
+		return nil, err
+	}
+	ackTimeout, err := parseFloatParameterRange(scpn.AckTimeout)
+	if err != nil {
+		return nil, err
+	}
+	ackRandomFactor, err := parseFloatParameterRange(scpn.AckRandomFactor)
+	if err != nil {
+		return nil, err
+	}
+	heartbeatIntervalIdle, err := parseIntegerParameterRange(scpn.HeartbeatIntervalIdle)
+	if err != nil {
+		return nil, err
+	}
+	missingHbAllowedIdle, err := parseIntegerParameterRange(scpn.MissingHbAllowedIdle)
+	if err != nil {
+		return nil, err
+	}
+	maxRetransmitIdle, err := parseIntegerParameterRange(scpn.MaxRetransmitIdle)
+	if err != nil {
+		return nil, err
+	}
+	ackTimeoutIdle, err := parseFloatParameterRange(scpn.AckTimeoutIdle)
+	if err != nil {
+		return nil, err
+	}
+	ackRandomFactorIdle, err := parseFloatParameterRange(scpn.AckRandomFactorIdle)
+	if err != nil {
+		return nil, err
+	}
 	return &SignalConfigurationParameter{
-		HeartbeatInterval: parseIntegerParameterRange(scpn.HeartbeatInterval),
-		MissingHbAllowed:  parseIntegerParameterRange(scpn.MissingHbAllowed),
-		MaxRetransmit:     parseIntegerParameterRange(scpn.MaxRetransmit),
-		AckTimeout:        parseFloatParameterRange(scpn.AckTimeout),
-		AckRandomFactor:   parseFloatParameterRange(scpn.AckRandomFactor),
-		HeartbeatIntervalIdle: parseIntegerParameterRange(scpn.HeartbeatIntervalIdle),
-		MissingHbAllowedIdle:  parseIntegerParameterRange(scpn.MissingHbAllowedIdle),
-		MaxRetransmitIdle:     parseIntegerParameterRange(scpn.MaxRetransmitIdle),
-		AckTimeoutIdle:        parseFloatParameterRange(scpn.AckTimeoutIdle),
-		AckRandomFactorIdle:   parseFloatParameterRange(scpn.AckRandomFactorIdle),
+		HeartbeatInterval: heartbeatInterval,
+		MissingHbAllowed:  missingHbAllowed,
+		MaxRetransmit:     maxRetransmit,
+		AckTimeout:        ackTimeout,
+		AckRandomFactor:   ackRandomFactor,
+		HeartbeatIntervalIdle: heartbeatIntervalIdle,
+		MissingHbAllowedIdle:  missingHbAllowedIdle,
+		MaxRetransmitIdle:     maxRetransmitIdle,
+		AckTimeoutIdle:        ackTimeoutIdle,
+		AckRandomFactorIdle:   ackRandomFactorIdle,
 	}, nil
 }
 
@@ -160,17 +200,41 @@ func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 
 func (tcpn TelemetryConfigurationParameterNode) Convert() (interface{}, error) {
 	unit := parseIntegerValue(tcpn.Unit)
-	if unit < 1 || unit > 8 {
-		return nil, errors.New("'unit' MUST be between 1 and 8")
+	if unit < 1 || unit > 3 {
+		return nil, errors.New("'unit' MUST be between 1 and 3")
+	}
+	measurementInterval, err := parseIntegerParameterRange(tcpn.MeasurementInterval)
+	if err != nil {
+		return nil, err
+	}
+	measurementSample, err := parseIntegerParameterRange(tcpn.MeasurementSample)
+	if err != nil {
+		return nil, err
+	}
+	lowPercentile, err := parseFloatParameterRange(tcpn.LowPercentile)
+	if err != nil {
+		return nil, err
+	}
+	midPercentile, err :=  parseFloatParameterRange(tcpn.MidPercentile)
+	if err != nil {
+		return nil, err
+	}
+	highPercentile, err := parseFloatParameterRange(tcpn.HighPercentile)
+	if err != nil {
+		return nil, err
+	}
+	telemetryNotifyInterval, err := parseIntegerParameterRange(tcpn.TelemetryNotifyInterval)
+	if err != nil {
+		return nil, err
 	}
 	return &TelemetryConfigurationParameter{
-		MeasurementInterval:       parseIntegerParameterRange(tcpn.MeasurementInterval),
-		MeasurementSample:         parseIntegerParameterRange(tcpn.MeasurementSample),
-		LowPercentile:             parseFloatParameterRange(tcpn.LowPercentile),
-		MidPercentile:             parseFloatParameterRange(tcpn.MidPercentile),
-		HighPercentile:            parseFloatParameterRange(tcpn.HighPercentile),
+		MeasurementInterval:       measurementInterval,
+		MeasurementSample:         measurementSample,
+		LowPercentile:             lowPercentile,
+		MidPercentile:             midPercentile,
+		HighPercentile:            highPercentile,
 		ServerOriginatedTelemetry: tcpn.ServerOriginatedTelemetry,
-		TelemetryNotifyInterval:   parseIntegerParameterRange(tcpn.TelemetryNotifyInterval),
+		TelemetryNotifyInterval:   telemetryNotifyInterval,
 		Unit:                      unit,
 		UnitStatus:                tcpn.UnitStatus,
 	}, nil
@@ -182,8 +246,8 @@ func (dtcn DefaultTelemetryConfigurationNode) Convert() (interface{}, error) {
 	if telemetryNotifyInterval < 1 || telemetryNotifyInterval > 3600 {
 		return nil, errors.New("'telemetryNotifyInterval' MUST be between 1 and 3600")
 	}
-	if unit < 1 || unit > 8 {
-		return nil, errors.New("'unit' MUST be between 1 and 8")
+	if unit < 1 || unit > 3 {
+		return nil, errors.New("'unit' MUST be between 1 and 3")
 	}
 	return &DefaultTelemetryConfiguration{
 		MeasurementInterval:       parseIntegerValue(dtcn.MeasurementInterval),
@@ -200,8 +264,8 @@ func (dtcn DefaultTelemetryConfigurationNode) Convert() (interface{}, error) {
 
 func (dtpcn DefaultTotalPipeCapacityNode) Convert() (interface{}, error) {
 	unit := parseIntegerValue(dtpcn.Unit)
-	if unit < 1 || unit > 8 {
-		return nil, errors.New("'unit' MUST be between 1 and 8")
+	if unit < 1 || unit > 15 {
+		return nil, errors.New("'unit' MUST be between 1 and 15")
 	}
 	return &DefaultTotalPipeCapacity{
 		LinkId:   dtpcn.LinkId,
@@ -240,8 +304,8 @@ func (dttnbn DefaultTotalTrafficNormalBaselineNode) Convert() (interface{}, erro
 	midPercentileG  := parseIntegerValue(dttnbn.MidPercrentileG)
 	highPercentileG := parseIntegerValue(dttnbn.HighPercrentileG)
 	peakG           := parseIntegerValue(dttnbn.PeakG)
-	if unit < 0 || unit > 8 {
-		return nil, errors.New("unit MUST be between 1 and 8")
+	if unit < 1 || unit > 15 {
+		return nil, errors.New("'unit' MUST be between 1 and 15")
 	}
 	if protocol < 0 || protocol > 255 {
 		return nil, errors.New("'protocol' MUST be between 0 and 255")
@@ -788,75 +852,79 @@ func (pm *FloatParameterRange) Includes(i interface{}) bool {
 // input format examples: "5", "100-120"
 // error input examples: "-5", "120-100", "0.5-90.0"
 // return nil on the parseServerConfig failures
-func parseIntegerParameterRange(input string) *IntegerParameterRange {
+func parseIntegerParameterRange(input string) (*IntegerParameterRange, error) {
 	var start, end int
 
 	var err error
 	if strings.Index(input, "-") >= 0 {
 		array := strings.Split(input, "-")
 		if len(array) != 2 {
-			return nil
+			err = errors.New("Failed to split the string type")
+			return nil, err
 		}
 
 		if start, err = strconv.Atoi(array[0]); err != nil {
 			// negative values must be dropped here
-			return nil
+			return nil, err
 		}
 		if end, err = strconv.Atoi(array[1]); err != nil {
-			return nil
+			return nil, err
 		}
 	} else {
 		if start, err = strconv.Atoi(input); err != nil {
-			return nil
+			return nil, err
 		}
 		end = start
 	}
 
 	if start > end {
-		return nil
+		err = errors.New("The 'max-config-values' attributes MUST be greater or equal to their counterpart in 'min-config-values' attributes.")
+		return nil, err
 	}
 
 	return &IntegerParameterRange{
 		start: start,
 		end:   end,
-	}
+	}, nil
 }
 
 // input format examples: "5.0", "100.0-120.0"
 // error input examples: "-5.0", "120.0-100.0"
 // return nil on the parseServerConfig failures
-func parseFloatParameterRange(input string) *FloatParameterRange {
+func parseFloatParameterRange(input string) (*FloatParameterRange, error) {
 	var start, end float64
 
 	var err error
 	if strings.Index(input, "-") >= 0 {
 		array := strings.Split(input, "-")
 		if len(array) != 2 {
-			return nil
+			err = errors.New("Failed to split the string type")
+			return nil, err
 		}
 
 		if start, err = strconv.ParseFloat(array[0], 64); err != nil {
 			// negative values must be dropped here
-			return nil
+			return nil, err
 		}
 		if end, err = strconv.ParseFloat(array[1], 64); err != nil {
-			return nil
+			return nil, err
 		}
 	} else {
 		if start, err = strconv.ParseFloat(input, 64); err != nil {
-			return nil
+			return nil, err
 		}
 		end = start
 	}
 
 	if start > end {
-		return nil
+		err = errors.New("The 'max-config-values' attributes MUST be greater or equal to their counterpart in 'min-config-values' attributes.")
+		return nil, err
 	}
 
 	return &FloatParameterRange{
 		start: start,
 		end:   end,
-	}
+	}, nil
 }
 
 // input format examples: "1"

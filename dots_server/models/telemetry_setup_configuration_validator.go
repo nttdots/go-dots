@@ -121,9 +121,8 @@ func ValidateTelemetryConfiguration(customerID int, cuid string, tsid int, data 
 			isUnprocessableEntity = true
 			return
 		}
-		if *config.Unit != int(PacketsPerSecond) && *config.Unit != int(KiloPacketsPerSecond) && *config.Unit != int(BitsPerSecond) &&
-		   *config.Unit != int(KilobytesPerSecond) && *config.Unit != int(MegabytesPerSecond) && *config.Unit != int(GigabytesPerSecond) {
-			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:pps, 2:kilo-ps, 3:bps, 4:kilobytes-ps, 5:megabytes-ps, 6:gigabytes-ps", *config.Unit)
+		if *config.Unit != int(PacketsPerSecond) && *config.Unit != int(BitsPerSecond) && *config.Unit != int(BytesPerSecond) {
+			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps", *config.Unit)
 			log.Error(errMsg)
 			isUnprocessableEntity = true
 			return
@@ -186,9 +185,12 @@ func ValidateTotalPipeCapacity(customerID int, cuid string, tsid int, data []mes
 			isUnprocessableEntity = true
 			return
 		}
-		if *v.Unit != int(PacketsPerSecond) && *v.Unit != int(KiloPacketsPerSecond) && *v.Unit != int(BitsPerSecond) &&
-			*v.Unit != int(KilobytesPerSecond) && *v.Unit != int(MegabytesPerSecond) && *v.Unit != int(GigabytesPerSecond) {
-			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:pps, 2:kilo-ps, 3:bps, 4:kilobytes-ps, 5:megabytes-ps, 6:gigabytes-ps", *v.Unit)
+		if *v.Unit != int(PacketsPerSecond) && *v.Unit != int(BitsPerSecond) && *v.Unit != int(BytesPerSecond) &&
+			*v.Unit != int(KiloPacketsPerSecond) && *v.Unit != int(KiloBitsPerSecond) && *v.Unit != int(KiloBytesPerSecond) &&
+			*v.Unit != int(MegaPacketsPerSecond) && *v.Unit != int(MegaBitsPerSecond) && *v.Unit != int(MegaBytesPerSecond) &&
+			*v.Unit != int(GigaPacketsPerSecond) && *v.Unit != int(GigaBitsPerSecond) && *v.Unit != int(GigaBytesPerSecond) &&
+			*v.Unit != int(TeraPacketsPerSecond) && *v.Unit != int(TeraBitsPerSecond) && *v.Unit != int(TeraBytesPerSecond) {
+			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps, 4:kilopackets-ps, 5:kilobits-ps, 6:kilobytes-ps, 7:megapackets-ps, 8:megabits-ps, 9:megabytes-ps, 10:gigapackets-ps, 11:gigabits-ps, 12:gigabyte-ps, 13:terapackets-ps, 14:terabits-ps, 15:terabytes-ps", *v.Unit)
 			log.Error(errMsg)
 			isUnprocessableEntity = true
 			return
@@ -357,9 +359,12 @@ func ValidateTraffic(trafficList []messages.Traffic, isProtocol bool) (isUnproce
 			errMsg = "Missing required 'unit' attribute"
 			return
 		}
-		if *v.Unit != int(PacketsPerSecond) && *v.Unit != int(KiloPacketsPerSecond) && *v.Unit != int(BitsPerSecond) &&
-			*v.Unit != int(KilobytesPerSecond) && *v.Unit != int(MegabytesPerSecond) && *v.Unit != int(GigabytesPerSecond) {
-			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:pps, 2:kilo-ps, 3:bps, 4:kilobytes-ps, 5:megabytes-ps, 6:gigabytes-ps", *v.Unit)
+		if *v.Unit != int(PacketsPerSecond) && *v.Unit != int(BitsPerSecond) && *v.Unit != int(BytesPerSecond) &&
+			*v.Unit != int(KiloPacketsPerSecond) && *v.Unit != int(KiloBitsPerSecond) && *v.Unit != int(KiloBytesPerSecond) &&
+			*v.Unit != int(MegaPacketsPerSecond) && *v.Unit != int(MegaBitsPerSecond) && *v.Unit != int(MegaBytesPerSecond) &&
+			*v.Unit != int(GigaPacketsPerSecond) && *v.Unit != int(GigaBitsPerSecond) && *v.Unit != int(GigaBytesPerSecond) &&
+			*v.Unit != int(TeraPacketsPerSecond) && *v.Unit != int(TeraBitsPerSecond) && *v.Unit != int(TeraBytesPerSecond) {
+			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps, 4:kilopackets-ps, 5:kilobits-ps, 6:kilobytes-ps, 7:megapackets-ps, 8:megabits-ps, 9:megabytes-ps, 10:gigapackets-ps, 11:gigabits-ps, 12:gigabyte-ps, 13:terapackets-ps, 14:terabits-ps, 15:terabytes-ps", *v.Unit)
 			isUnprocessableEntity = true
 			return
 		}

@@ -61,9 +61,9 @@ type Scope struct {
 	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
 	TriggerMitigation *bool `json:"trigger-mitigation" codec:"45,omitempty"`
 	// telemetry total attack traffic
-	TotalAttackTraffic []TelemetryTraffic `json:"ietf-dots-telemetry:total-attack-traffic" codec:"32875,omitempty"`
+	TotalAttackTraffic []TelemetryTraffic `json:"ietf-dots-telemetry:total-attack-traffic" codec:"32885,omitempty"`
 	// telemetry attack detail
-	AttackDetail *TelemetryAttackDetail `json:"ietf-dots-telemetry:attack-detail" codec:"32886,omitempty"`
+	AttackDetail *TelemetryAttackDetail `json:"ietf-dots-telemetry:attack-detail" codec:"32896,omitempty"`
 }
 
 type MitigationRequest struct {
@@ -73,76 +73,76 @@ type MitigationRequest struct {
 
 type TelemetryTraffic struct {
 	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit            *int    `json:"ietf-dots-telemetry:unit" codec:"32870,omitempty"`
-	Protocol        *uint8  `json:"ietf-dots-telemetry:protocol" codec:"32905,omitempty"`
-	LowPercentileG  *uint64 `json:"ietf-dots-telemetry:low-percentile-g" codec:"32871,omitempty"`
-	MidPercentileG  *uint64 `json:"ietf-dots-telemetry:mid-percentile-g" codec:"32872,omitempty"`
-	HighPercentileG *uint64 `json:"ietf-dots-telemetry:high-percentile-g" codec:"32873,omitempty"`
-	PeakG           *uint64 `json:"ietf-dots-telemetry:peak-g" codec:"32874,omitempty"`
+	Unit            *int    `json:"ietf-dots-telemetry:unit" codec:"32880,omitempty"`
+	Protocol        *uint8  `json:"ietf-dots-telemetry:protocol" codec:"32868,omitempty"`
+	LowPercentileG  *uint64 `json:"ietf-dots-telemetry:low-percentile-g" codec:"32881,omitempty"`
+	MidPercentileG  *uint64 `json:"ietf-dots-telemetry:mid-percentile-g" codec:"32882,omitempty"`
+	HighPercentileG *uint64 `json:"ietf-dots-telemetry:high-percentile-g" codec:"32883,omitempty"`
+	PeakG           *uint64 `json:"ietf-dots-telemetry:peak-g" codec:"32884,omitempty"`
 }
 
 type TelemetryAttackDetail struct {
 	_struct        bool                  `codec:",uint"` //encode struct with "unsigned integer" keys
-	Id             *uint32               `json:"ietf-dots-telemetry:id" codec:"32887,omitempty"`
-	AttackId       *string               `json:"ietf-dots-telemetry:attack-id" codec:"32888,omitempty"`
-	AttackName     *string               `json:"ietf-dots-telemetry:attack-name" codec:"32889,omitempty"`
-	AttackSeverity *int                  `json:"ietf-dots-telemetry:attack-severity" codec:"32890,omitempty"`
-	StartTime      *uint64               `json:"ietf-dots-telemetry:start-time" codec:"32891,omitempty"`
-	EndTime        *uint64               `json:"ietf-dots-telemetry:end-time" codec:"32892,omitempty"`
-	SourceCount    *TelemetrySourceCount `json:"ietf-dots-telemetry:source-count" codec:"32893,omitempty"`
-	TopTalKer      *TelemetryTopTalker   `json:"ietf-dots-telemetry:top-talker" codec:"32894,omitempty"`
+	Id             *uint32               `json:"ietf-dots-telemetry:id" codec:"32897,omitempty"`
+	AttackId       *string               `json:"ietf-dots-telemetry:attack-id" codec:"32898,omitempty"`
+	AttackName     *string               `json:"ietf-dots-telemetry:attack-name" codec:"32899,omitempty"`
+	AttackSeverity *int                  `json:"ietf-dots-telemetry:attack-severity" codec:"32900,omitempty"`
+	StartTime      *uint64               `json:"ietf-dots-telemetry:start-time" codec:"32901,omitempty"`
+	EndTime        *uint64               `json:"ietf-dots-telemetry:end-time" codec:"32902,omitempty"`
+	SourceCount    *TelemetrySourceCount `json:"ietf-dots-telemetry:source-count" codec:"32903,omitempty"`
+	TopTalKer      *TelemetryTopTalker   `json:"ietf-dots-telemetry:top-talker" codec:"32904,omitempty"`
 }
 
 type TelemetrySourceCount struct{
 	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowPercentileG  *uint64 `json:"ietf-dots-telemetry:low-percentile-g" codec:"32871,omitempty"`
-	MidPercentileG  *uint64 `json:"ietf-dots-telemetry:mid-percentile-g" codec:"32872,omitempty"`
-	HighPercentileG *uint64 `json:"ietf-dots-telemetry:high-percentile-g" codec:"32873,omitempty"`
-	PeakG           *uint64 `json:"ietf-dots-telemetry:peak-g" codec:"32874,omitempty"`
+	LowPercentileG  *uint64 `json:"ietf-dots-telemetry:low-percentile-g" codec:"32881,omitempty"`
+	MidPercentileG  *uint64 `json:"ietf-dots-telemetry:mid-percentile-g" codec:"32882,omitempty"`
+	HighPercentileG *uint64 `json:"ietf-dots-telemetry:high-percentile-g" codec:"32883,omitempty"`
+	PeakG           *uint64 `json:"ietf-dots-telemetry:peak-g" codec:"32884,omitempty"`
 }
 
 type TelemetryTopTalker struct {
 	_struct bool              `codec:",uint"` //encode struct with "unsigned integer" keys
-	Talker  []TelemetryTalker `json:"ietf-dots-telemetry:talker" codec:"32896,omitempty"`
+	Talker  []TelemetryTalker `json:"ietf-dots-telemetry:talker" codec:"32906,omitempty"`
 }
 
 type TelemetryTalker struct {
 	_struct               bool                            `codec:",uint"` //encode struct with "unsigned integer" keys
-	SpoofedStatus         *bool                           `json:"ietf-dots-telemetry:spoofed-status" codec:"32895,omitempty"`
-	SourcePrefix          *string                         `json:"ietf-dots-telemetry:source-prefix" codec:"32897,omitempty"`
-	SourcePortRange       []TelemetrySourcePortRange      `json:"ietf-dots-telemetry:source-port-range" codec:"32898,omitempty"`
-	SourceIcmpTypeRange   []TelemetrySourceICMPTypeRange  `json:"ietf-dots-telemetry:source-icmp-type-range" codec:"32901,omitempty"`
-	TotalAttackTraffic    []TelemetryTraffic              `json:"ietf-dots-telemetry:total-attack-traffic" codec:"32875,omitempty"`
-	TotalAttackConnection *TelemetryTotalAttackConnection `json:"ietf-dots-telemetry:total-attack-connection" codec:"32876,omitempty"`
+	SpoofedStatus         *bool                           `json:"ietf-dots-telemetry:spoofed-status" codec:"32905,omitempty"`
+	SourcePrefix          *string                         `json:"ietf-dots-telemetry:source-prefix" codec:"32907,omitempty"`
+	SourcePortRange       []TelemetrySourcePortRange      `json:"ietf-dots-telemetry:source-port-range" codec:"32908,omitempty"`
+	SourceIcmpTypeRange   []TelemetrySourceICMPTypeRange  `json:"ietf-dots-telemetry:source-icmp-type-range" codec:"32911,omitempty"`
+	TotalAttackTraffic    []TelemetryTraffic              `json:"ietf-dots-telemetry:total-attack-traffic" codec:"32885,omitempty"`
+	TotalAttackConnection *TelemetryTotalAttackConnection `json:"ietf-dots-telemetry:total-attack-connection" codec:"32886,omitempty"`
 }
 
 type TelemetryTotalAttackConnection struct {
 	_struct         bool                           `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowPercentileC  *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:low-percentile-c" codec:"32877,omitempty"`
-	MidPercentileC  *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:mid-percentile-c" codec:"32878,omitempty"`
-	HighPercentileC *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:high-percentile-c" codec:"32879,omitempty"`
-	PeakC           *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:peak-c" codec:"32880,omitempty"`
+	LowPercentileC  *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:low-percentile-c" codec:"32887,omitempty"`
+	MidPercentileC  *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:mid-percentile-c" codec:"32888,omitempty"`
+	HighPercentileC *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:high-percentile-c" codec:"32889,omitempty"`
+	PeakC           *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:peak-c" codec:"32890,omitempty"`
 }
 
 type TelemetryConnectionPercentile struct {
 	_struct          bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Connection       *uint64 `json:"ietf-dots-telemetry:connection" codec:"32881,omitempty"`
-	Embryonic        *uint64 `json:"ietf-dots-telemetry:embryonic" codec:"32882,omitempty"`
-	ConnectionPs     *uint64 `json:"ietf-dots-telemetry:connection-ps" codec:"32883,omitempty"`
-	RequestPs        *uint64 `json:"ietf-dots-telemetry:request-ps" codec:"32884,omitempty"`
-	PartialRequestPs *uint64 `json:"ietf-dots-telemetry:partial-request-ps" codec:"32885,omitempty"`
+	Connection       *uint64 `json:"ietf-dots-telemetry:connection" codec:"32891,omitempty"`
+	Embryonic        *uint64 `json:"ietf-dots-telemetry:embryonic" codec:"32892,omitempty"`
+	ConnectionPs     *uint64 `json:"ietf-dots-telemetry:connection-ps" codec:"32893,omitempty"`
+	RequestPs        *uint64 `json:"ietf-dots-telemetry:request-ps" codec:"32894,omitempty"`
+	PartialRequestPs *uint64 `json:"ietf-dots-telemetry:partial-request-ps" codec:"32895,omitempty"`
 }
 
 type TelemetrySourcePortRange struct {
 	_struct   bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowerPort *int `json:"ietf-dots-telemetry:lower-port" codec:"32899,omitempty"`
-	UpperPort *int `json:"ietf-dots-telemetry:upper-port" codec:"32900,omitempty"`
+	LowerPort *int `json:"ietf-dots-telemetry:lower-port" codec:"32909,omitempty"`
+	UpperPort *int `json:"ietf-dots-telemetry:upper-port" codec:"32910,omitempty"`
 }
 
 type TelemetrySourceICMPTypeRange struct {
 	_struct   bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowerType *int `json:"ietf-dots-telemetry:lower-type" codec:"32901,omitempty"`
-	UpperType *int `json:"ietf-dots-telemetry:upper-type" codec:"32902,omitempty"`
+	LowerType *int `json:"ietf-dots-telemetry:lower-type" codec:"32912,omitempty"`
+	UpperType *int `json:"ietf-dots-telemetry:upper-type" codec:"32913,omitempty"`
 }
 
 /*
@@ -416,7 +416,7 @@ func (hb *HeartBeatRequest) String() (result string) {
 
 type TelemetrySetupRequest struct {
 	_struct        bool           `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetrySetup TelemetrySetup `json:"ietf-dots-telemetry:telemetry-setup" codec:"32868,omitempty"`
+	TelemetrySetup TelemetrySetup `json:"ietf-dots-telemetry:telemetry-setup" codec:"32878,omitempty"`
 }
 
 type TelemetrySetup struct {
@@ -470,7 +470,7 @@ type Baseline struct {
 type Traffic struct {
 	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
 	Unit            *int    `json:"unit" codec:"32807,omitempty"`
-	Protocol        *uint8  `json:"protocol" codec:"32905,omitempty"`
+	Protocol        *uint8  `json:"protocol" codec:"32868,omitempty"`
 	LowPercentileG  *uint64 `json:"low-percentile-g" codec:"32813,omitempty"`
 	MidPercentileG  *uint64 `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *uint64 `json:"high-percentile-g" codec:"32815,omitempty"`
@@ -478,7 +478,7 @@ type Traffic struct {
 }
 type TotalConnectionCapacity struct {
 	_struct                bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol               *uint8  `json:"protocol" codec:"32905,omitempty"`
+	Protocol               *uint8  `json:"protocol" codec:"32868,omitempty"`
 	Connection             *uint64 `json:"connection" codec:"32820,omitempty"`
 	ConnectionClient       *uint64 `json:"connection-client" codec:"32821,omitempty"`
 	Embryonic              *uint64 `json:"embryonic" codec:"32822,omitempty"`
@@ -662,7 +662,7 @@ func (tcc TotalConnectionCapacity) String() (result string) {
 
 type TelemetryPreMitigationRequest struct {
 	_struct                bool                    `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetryPreMitigation *TelemetryPreMitigation `json:"ietf-dots-telemetry:telemetry" codec:"32904,omitempty"`
+	TelemetryPreMitigation *TelemetryPreMitigation `json:"ietf-dots-telemetry:telemetry" codec:"32914,omitempty"`
 }
 
 type TelemetryPreMitigation struct {
@@ -711,7 +711,7 @@ type AttackDetail struct {
 
 type ConnectionProtocolPercentile struct {
 	_struct          bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol         *uint8  `json:"protocol" codec:"32905,omitempty"`
+	Protocol         *uint8  `json:"protocol" codec:"32868,omitempty"`
 	Connection       *uint64 `json:"connection" codec:"32820,omitempty"`
 	Embryonic        *uint64 `json:"embryonic" codec:"32822,omitempty"`
 	ConnectionPs     *uint64 `json:"connection-ps" codec:"32824,omitempty"`

@@ -8,7 +8,7 @@ type TelemetryTraffic struct {
 	PrefixType      string    `xorm:"'prefix_type' enum('TARGET_PREFIX','SOURCE_PREFIX') not null"`
 	PrefixTypeId    int64     `xorm:"'prefix_type_id' not null"`
 	TrafficType     string    `xorm:"'traffic_type' enum('TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') not null"`
-	Unit            string    `xorm:"'unit' enum('PPS','KILO_PPS','BPS','KILOBYTES_PS','MEGABYTES_PS','GIGABYTES_PS') not null"`
+	Unit            string    `xorm:"'unit' enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') not null"`
 	Protocol        int       `xorm:"'protocol' not null"`
 	LowPercentileG  int       `xorm:"'low_percentile_g'"`
 	MidPercentileG  int       `xorm:"'mid_percentile_g'"`
