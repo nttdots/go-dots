@@ -197,7 +197,7 @@ func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int
 	}
 
 	// Check duplicate mitigation when PUT a new mitigation before delete an expired mitigation
-	mids, err := models.GetMitigationIds(cid, cuid)
+	mids, err := models.GetMitigationIds(cid, cuid, nil)
 	if err != nil {
 		log.Errorf("[MySQL-Notification]: Error: %+v", err)
 		return
@@ -235,6 +235,9 @@ func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int
 			isObserved = resource.IsObserved()
 		} else {
 			log.Warnf("[MySQL-Notification]: Not found any resource with query: %+v", query)
+		}
+		if isNotifyTelemetryAttributes && !isObserved {
+			libcoap.DeleteMitigationMapByKey(query)
 		}
 
 		if status == models.Terminated && !isObserved {

@@ -19,6 +19,20 @@ import (
 	common "github.com/nttdots/go-dots/dots_common"
 )
 
+type arrayFlags []string
+func (i *arrayFlags) String() string {
+    return "my string representation"
+}
+func (i *arrayFlags) Set(value string) error {
+	for _, v := range *i {
+		if v == value {
+			return nil
+		}
+	}
+    *i = append(*i, strings.TrimSpace(value))
+    return nil
+}
+
 var (
 	requestName   string
 	requestMethod string
@@ -32,6 +46,13 @@ var (
 	socket        string
 	observe       string
 	ifMatch       string
+	targetPrefix   arrayFlags
+	lowerPort      arrayFlags
+	upperPort      arrayFlags
+	targetProtocol arrayFlags
+	targetFqdn     arrayFlags
+	targetUri      arrayFlags
+	aliasName      arrayFlags
 )
 
 /*
@@ -54,6 +75,13 @@ func init() {
 	flag.StringVar(&socket, "socket", common.DEFAULT_CLIENT_SOCKET_FILE, "dots client socket")
 	flag.StringVar(&observe, "observe", defaultValue, "mitigation request observe")
 	flag.StringVar(&ifMatch, "ifMatch", defaultIfMatchValue, "If-Match option")
+	flag.Var(&targetPrefix, "targetPrefix", "target-prefix parameter")
+	flag.Var(&lowerPort, "lowerPort", "lower-port parameter")
+	flag.Var(&upperPort, "upperPort", "upper-port parameter")
+	flag.Var(&targetProtocol, "targetProtocol", "target-protocol parameter")
+	flag.Var(&targetFqdn, "targetFqdn", "target-fqdn parameter")
+	flag.Var(&targetUri, "targetUri", "target-uri parameter")
+	flag.Var(&aliasName, "aliasName", "alias-name parameter")
 }
 
 /*
@@ -151,6 +179,27 @@ func main() {
 		} else if tmid != "" {
 			// add tmid for telemetry pre-mitigation request
 			u.Path += "/tmid=" + tmid
+		}
+		for _, v := range targetPrefix{
+			u.Path += "/target-prefix="+v
+		}
+		for _, v := range lowerPort {
+			u.Path += "/lower-port="+v
+		}
+		for _, v := range upperPort {
+			u.Path += "/upper-port="+v
+		}
+		for _, v := range targetProtocol {
+			u.Path += "/target-protocol="+v
+		}
+		for _, v := range targetFqdn {
+			u.Path += "/target-fqdn="+v
+		}
+		for _, v := range targetUri {
+			u.Path += "/target-uri="+v
+		}
+		for _, v := range aliasName {
+			u.Path += "/alias-name="+v
 		}
 	} else if sid != "" {
 		// for session configuration

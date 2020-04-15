@@ -96,7 +96,7 @@ type HexCBOR string
 const (
     IETF_MITIGATION_SCOPE_HEX      HexCBOR = "a1 01"       // "ietf-dots-signal-channel:mitigation-scope"
     IETF_SESSION_CONFIGURATION_HEX HexCBOR = "a1 18 1e"    // "ietf-dots-signal-channel:signal-config"
-    IETF_TELEMETRY_PRE_MITIGATION  HexCBOR = "a1 19 80 63" // "ietf-dots-telemetry:telemetry"
+    IETF_TELEMETRY_PRE_MITIGATION  HexCBOR = "a1 19 80 92" // "ietf-dots-telemetry:telemetry"
 )
 
 // MediaType specifies the content type of a message.
@@ -110,6 +110,17 @@ const (
     AppExi        MediaType = 47  // application/exi
     AppJSON       MediaType = 50  // application/json
     AppDotsCbor   MediaType = 271 // application/dots+cbor
+)
+
+type UriQuery string
+const (
+    TargetPrefix   UriQuery = "target-prefix"
+    LowerPort      UriQuery = "lower-port"
+    UpperPort      UriQuery = "upper-port"
+    TargetProtocol UriQuery = "target-protocol"
+    TargetFqdn     UriQuery = "target-fqdn"
+    TargetUri      UriQuery = "target-uri"
+    AliasName      UriQuery = "alias-name"
 )
 
 type Pdu struct {
@@ -284,7 +295,18 @@ func (pdu *Pdu) SetPath(path []string) {
     }
     for _, s := range path {
         if 0 < len(s) {
-            opts = append(opts, OptionUriPath.String(s))
+            if strings.Contains(s,string(TargetPrefix)) {
+                sSplit := strings.Split(s, ":")
+                if len(sSplit) > 1 {
+                    uriQueryPrefix := sSplit[0] + "/" + sSplit[1]
+                    opts = append(opts, OptionUriQuery.String(uriQueryPrefix))
+                }
+            } else if strings.Contains(s,string(LowerPort)) || strings.Contains(s,string(UpperPort)) || strings.Contains(s,string(TargetProtocol)) ||
+               strings.Contains(s,string(TargetFqdn)) || strings.Contains(s,string(TargetUri)) || strings.Contains(s,string(AliasName)){
+                opts = append(opts, OptionUriQuery.String(s))
+            } else {
+                opts = append(opts, OptionUriPath.String(s))
+            }
         }
     }
     pdu.Options = opts

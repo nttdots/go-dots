@@ -7,6 +7,7 @@ import (
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
+	types "github.com/nttdots/go-dots/dots_common/types/data"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 )
 
@@ -42,19 +43,32 @@ type TotalPipeCapacity struct {
 }
 
 type Baseline struct {
-	Id                         int64
-	BaselineId                 int
-	TargetPrefix               []Prefix
-	TargetPortRange            []PortRange
-	TargetProtocol             SetInt
-	FQDN                       SetString
-	URI                        SetString
-	TotalTrafficNormalBaseLine []Traffic
-	TotalConnectionCapacity    []TotalConnectionCapacity
-	TargetList                 []Target
+	Id                             int64
+	BaselineId                     int
+	TargetPrefix                   []Prefix
+	TargetPortRange                []PortRange
+	TargetProtocol                 SetInt
+	FQDN                           SetString
+	URI                            SetString
+	AliasName                      SetString
+	TotalTrafficNormal             []Traffic
+	TotalTrafficNormalPerProtocol  []TrafficPerProtocol
+	TotalTrafficNormalPerPort      []TrafficPerPort
+	TotalConnectionCapacity        []TotalConnectionCapacity
+	TotalConnectionCapacityPerPort []TotalConnectionCapacityPerPort
+	TargetList                     []Target
 }
 
 type Traffic struct {
+	TrafficId       int64
+	Unit            int
+	LowPercentileG  int
+	MidPercentileG  int
+	HighPercentileG int
+	PeakG           int
+}
+
+type TrafficPerProtocol struct {
 	TrafficId       int64
 	Unit            int
 	Protocol        int
@@ -64,9 +78,34 @@ type Traffic struct {
 	PeakG           int
 }
 
+type TrafficPerPort struct {
+	TrafficId       int64
+	Unit            int
+	Port            int
+	LowPercentileG  int
+	MidPercentileG  int
+	HighPercentileG int
+	PeakG           int
+}
 type TotalConnectionCapacity struct {
 	TotalConnectionCapacityId int64
 	Protocol               int
+	Connection             int
+	ConnectionClient       int
+	Embryonic              int
+	EmbryonicClient        int
+	ConnectionPs           int
+	ConnectionClientPs     int
+	RequestPs              int
+	RequestClientPs        int
+	PartialRequestPs       int
+	PartialRequestClientPs int
+}
+
+type TotalConnectionCapacityPerPort struct {
+	TotalConnectionCapacityId int64
+	Protocol               int
+	Port                   int
 	Connection             int
 	ConnectionClient       int
 	Embryonic              int
@@ -139,8 +178,12 @@ func NewBaseline() (baseline *Baseline) {
 		NewSetInt(),
 		NewSetString(),
 		NewSetString(),
+		NewSetString(),
 		make([]Traffic, 0),
+		make([]TrafficPerProtocol, 0),
+		make([]TrafficPerPort, 0),
 		make([]TotalConnectionCapacity, 0),
+		make([]TotalConnectionCapacityPerPort, 0),
 		make([]Target, 0),
 	}
 	return
@@ -225,7 +268,7 @@ func NewTotalPipeCapacity(pipes []messages.TotalPipeCapacity) (pipeList []TotalP
 }
 
 // New baseline
-func NewBaselineList(baselines []messages.Baseline) (baselineList []Baseline, err error) {
+func NewBaselineList(baselines []messages.Baseline, aliases types.Aliases) (baselineList []Baseline, err error) {
 	baselineList = make([]Baseline, len(baselines))
 	for k, v := range baselines {
 		baseline := NewBaseline()
@@ -238,12 +281,22 @@ func NewBaselineList(baselines []messages.Baseline) (baselineList []Baseline, er
 		baseline.TargetProtocol.AddList(v.TargetProtocol)
 		baseline.FQDN.AddList(v.TargetFQDN)
 		baseline.URI.AddList(v.TargetURI)
-		baseline.TotalTrafficNormalBaseLine = NewTraffic(v.TotalTrafficNormalBaseline)
-		baseline.TotalConnectionCapacity    = NewTotalConnectionCapacity(v.TotalConnectionCapacity)
-		baseline.TargetList, err            = GetTelemetryTargetList(baseline.TargetPrefix, baseline.FQDN, baseline.URI)
+		baseline.AliasName.AddList(v.AliasName)
+		baseline.TotalTrafficNormal             = NewTraffic(v.TotalTrafficNormal)
+		baseline.TotalTrafficNormalPerProtocol  = NewTrafficPerProtocol(v.TotalTrafficNormalPerProtocol)
+		baseline.TotalTrafficNormalPerPort      = NewTrafficPerPort(v.TotalTrafficNormalPerPort)
+		baseline.TotalConnectionCapacity        = NewTotalConnectionCapacity(v.TotalConnectionCapacity)
+		baseline.TotalConnectionCapacityPerPort = NewTotalConnectionCapacityPerPort(v.TotalConnectionCapacityPerPort)
+		baseline.TargetList, err                = GetTelemetryTargetList(baseline.TargetPrefix, baseline.FQDN, baseline.URI)
 		if err != nil {
 			return
 		}
+		aliasTargetList, err := GetAliasDataAsTargetList(aliases)
+		if err != nil {
+			log.Errorf ("Failed to get alias data as target list. Error: %+v", err)
+			return nil, err
+		}
+		baseline.TargetList = append(baseline.TargetList, aliasTargetList...)
 		baselineList[k] = *baseline
 	}
 	return
@@ -279,16 +332,66 @@ func NewTargetPortRange(portRanges []messages.PortRange) (portRangeList []PortRa
 // New traffic
 func NewTraffic(traffics []messages.Traffic) (trafficList []Traffic) {
 	trafficList = make([]Traffic, len(traffics))
-	defaultNotExistProtocolValue := -1
 	for k, v := range traffics {
 		traffic := Traffic{}
 		if v.Unit != nil {
 			traffic.Unit = *v.Unit
 		}
+		if v.LowPercentileG != nil {
+			traffic.LowPercentileG = int(*v.LowPercentileG)
+		}
+		if v.MidPercentileG != nil {
+			traffic.MidPercentileG = int(*v.MidPercentileG)
+		}
+		if v.HighPercentileG != nil {
+			traffic.HighPercentileG = int(*v.HighPercentileG)
+		}
+		if v.PeakG != nil {
+			traffic.PeakG = int(*v.PeakG)
+		}
+		trafficList[k] = traffic
+	}
+	return
+}
+
+// New traffic per protocol
+func NewTrafficPerProtocol(traffics []messages.TrafficPerProtocol) (trafficList []TrafficPerProtocol) {
+	trafficList = make([]TrafficPerProtocol, len(traffics))
+	for k, v := range traffics {
+		traffic := TrafficPerProtocol{}
+		if v.Unit != nil {
+			traffic.Unit = *v.Unit
+		}
 		if v.Protocol != nil {
 			traffic.Protocol = int(*v.Protocol)
-		} else {
-			traffic.Protocol = defaultNotExistProtocolValue
+		}
+		if v.LowPercentileG != nil {
+			traffic.LowPercentileG = int(*v.LowPercentileG)
+		}
+		if v.MidPercentileG != nil {
+			traffic.MidPercentileG = int(*v.MidPercentileG)
+		}
+		if v.HighPercentileG != nil {
+			traffic.HighPercentileG = int(*v.HighPercentileG)
+		}
+		if v.PeakG != nil {
+			traffic.PeakG = int(*v.PeakG)
+		}
+		trafficList[k] = traffic
+	}
+	return
+}
+
+// New traffic per port
+func NewTrafficPerPort(traffics []messages.TrafficPerPort) (trafficList []TrafficPerPort) {
+	trafficList = make([]TrafficPerPort, len(traffics))
+	for k, v := range traffics {
+		traffic := TrafficPerPort{}
+		if v.Unit != nil {
+			traffic.Unit = *v.Unit
+		}
+		if v.Port != nil {
+			traffic.Port = *v.Port
 		}
 		if v.LowPercentileG != nil {
 			traffic.LowPercentileG = int(*v.LowPercentileG)
@@ -314,6 +417,52 @@ func NewTotalConnectionCapacity(totalConnectionCapacities []messages.TotalConnec
 		connectionCapacity := TotalConnectionCapacity{}
 		if v.Protocol != nil {
 			connectionCapacity.Protocol = int(*v.Protocol)
+		}
+		if v.Connection != nil {
+			connectionCapacity.Connection = int(*v.Connection)
+		}
+		if v.ConnectionClient != nil {
+			connectionCapacity.ConnectionClient = int(*v.ConnectionClient)
+		}
+		if v.Embryonic != nil {
+			connectionCapacity.Embryonic = int(*v.Embryonic)
+		}
+		if v.EmbryonicClient != nil {
+			connectionCapacity.EmbryonicClient = int(*v.EmbryonicClient)
+		}
+		if v.ConnectionPs != nil {
+			connectionCapacity.ConnectionPs = int(*v.ConnectionPs)
+		}
+		if v.ConnectionClientPs != nil {
+			connectionCapacity.ConnectionClientPs = int(*v.ConnectionClientPs)
+		}
+		if v.RequestPs != nil {
+			connectionCapacity.RequestPs = int(*v.RequestPs)
+		}
+		if v.RequestClientPs != nil {
+			connectionCapacity.RequestClientPs = int(*v.RequestClientPs)
+		}
+		if v.PartialRequestPs != nil {
+			connectionCapacity.PartialRequestPs = int(*v.PartialRequestPs)
+		}
+		if v.PartialRequestClientPs != nil {
+			connectionCapacity.PartialRequestClientPs = int(*v.PartialRequestClientPs)
+		}
+		totalConnectionCapacityList[k] = connectionCapacity
+	}
+	return
+}
+
+// New total connection capacity per port
+func NewTotalConnectionCapacityPerPort(totalConnectionCapacities []messages.TotalConnectionCapacityPerPort) (totalConnectionCapacityList []TotalConnectionCapacityPerPort) {
+	totalConnectionCapacityList = make([]TotalConnectionCapacityPerPort, len(totalConnectionCapacities))
+	for k, v := range totalConnectionCapacities {
+		connectionCapacity := TotalConnectionCapacityPerPort{}
+		if v.Protocol != nil {
+			connectionCapacity.Protocol = int(*v.Protocol)
+		}
+		if v.Port != nil {
+			connectionCapacity.Port = *v.Port
 		}
 		if v.Connection != nil {
 			connectionCapacity.Connection = int(*v.Connection)

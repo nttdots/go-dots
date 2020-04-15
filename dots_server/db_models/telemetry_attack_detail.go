@@ -7,7 +7,7 @@ type TelemetryAttackDetail struct {
 	Id                  int64     `xorm:"'id' pk autoincr"`
 	MitigationScopeId   int64     `xorm:"'mitigation_scope_id' not null"`
 	AttackDetailId      int       `xorm:"attack_detail_id"`
-	AttackId            string    `xorm:"attack_id"`
+	AttackId            string    `xorm:"'attack_id' not null"`
 	AttackName          string    `xorm:"attack_name"`
 	AttackSeverity      string    `xorm:"'attack_severity' enum('EMERGENCY','CRITICAL','ALERT') not null"`
 	StartTime           int       `xorm:"start_time"`
@@ -17,10 +17,10 @@ type TelemetryAttackDetail struct {
 }
 
 // Get telemetry attack-detail by MitigationScopeId
-func GetTelemetryAttackDetailByMitigationScopeId(engine *xorm.Engine, mitigationScopeId int64) (*TelemetryAttackDetail, error) {
-	attackDetail := TelemetryAttackDetail{}
-	_, err := engine.Where("mitigation_scope_id = ?", mitigationScopeId).Get(&attackDetail)
-	return &attackDetail, err
+func GetTelemetryAttackDetailByMitigationScopeId(engine *xorm.Engine, mitigationScopeId int64) ([]TelemetryAttackDetail, error) {
+	attackDetailList := []TelemetryAttackDetail{}
+	err := engine.Where("mitigation_scope_id = ?", mitigationScopeId).Find(&attackDetailList)
+	return attackDetailList, err
 }
 
 // Delete telemetry attack-detail by Id

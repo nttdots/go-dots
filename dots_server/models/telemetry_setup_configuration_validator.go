@@ -251,21 +251,39 @@ func ValidateBaseline(customer *Customer, cuid string, tsid int, data []messages
 			log.Error(errMsg)
 			return
 		}
-		// Validate protocol
-		errMsg = ValidateProtocol(v.TargetProtocol)
+		// Validate protocol list
+		errMsg = ValidateProtocolList(v.TargetProtocol)
 		if errMsg != "" {
 			log.Error(errMsg)
 			isUnprocessableEntity = true
 			return
 		}
 		// Validate traffic normal baseline
-		isUnprocessableEntity, errMsg = ValidateTraffic(v.TotalTrafficNormalBaseline, true)
+		isUnprocessableEntity, errMsg = ValidateTraffic(v.TotalTrafficNormal)
 		if errMsg != "" {
 			log.Error(errMsg)
 			return
 		}
-		// Validate Total Connection Capacity
+		// Validate traffic normal per protocol
+		isUnprocessableEntity, errMsg = ValidateTrafficPerProtocol(v.TotalTrafficNormalPerProtocol)
+		if errMsg != "" {
+			log.Error(errMsg)
+			return
+		}
+		// Validate traffic normal per port
+		isUnprocessableEntity, errMsg = ValidateTrafficPerPort(v.TotalTrafficNormalPerPort)
+		if errMsg != "" {
+			log.Error(errMsg)
+			return
+		}
+		// Validate total connection capacity
 		isUnprocessableEntity, errMsg = ValidateTotalConnectionCapacity(v.TotalConnectionCapacity)
+		if errMsg != "" {
+			log.Error(errMsg)
+			return
+		}
+		// Validate total connection capacity per port
+		isUnprocessableEntity, errMsg = ValidateTotalConnectionCapacityPerPort(v.TotalConnectionCapacityPerPort)
 		if errMsg != "" {
 			log.Error(errMsg)
 			return
@@ -341,7 +359,7 @@ func ValidatePortRange(targetPortRanges []messages.PortRange) (isUnprocessableEn
 }
 
 // Validate protocol
-func ValidateProtocol(protocolList []int) (errMsg string) {
+func ValidateProtocolList(protocolList []int) (errMsg string) {
 	for _, protocol := range protocolList {
 		if protocol < 0 || protocol > 255 {
 			errMsg = fmt.Sprintf("invalid protocol: %+v", protocol)
@@ -351,33 +369,94 @@ func ValidateProtocol(protocolList []int) (errMsg string) {
 	return
 }
 
+// Validate unit
+func ValidateUnit(unit *int) (isUnprocessableEntity bool, errMsg string) {
+	isUnprocessableEntity = false
+	if unit == nil {
+		errMsg = "Missing required 'unit' attribute"
+		return
+	}
+	if *unit != int(PacketsPerSecond) && *unit != int(BitsPerSecond) && *unit != int(BytesPerSecond) &&
+		*unit != int(KiloPacketsPerSecond) && *unit != int(KiloBitsPerSecond) && *unit != int(KiloBytesPerSecond) &&
+		*unit != int(MegaPacketsPerSecond) && *unit != int(MegaBitsPerSecond) && *unit != int(MegaBytesPerSecond) &&
+		*unit != int(GigaPacketsPerSecond) && *unit != int(GigaBitsPerSecond) && *unit != int(GigaBytesPerSecond) &&
+		*unit != int(TeraPacketsPerSecond) && *unit != int(TeraBitsPerSecond) && *unit != int(TeraBytesPerSecond) {
+		errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps, 4:kilopackets-ps, 5:kilobits-ps, 6:kilobytes-ps, 7:megapackets-ps, 8:megabits-ps, 9:megabytes-ps, 10:gigapackets-ps, 11:gigabits-ps, 12:gigabyte-ps, 13:terapackets-ps, 14:terabits-ps, 15:terabytes-ps", *unit)
+		isUnprocessableEntity = true
+		return
+	}
+	return
+}
+
+// Validate protocol
+func ValidateProtocol(protocol *uint8) (isUnprocessableEntity bool, errMsg string) {
+	isUnprocessableEntity = false
+	if protocol == nil {
+		errMsg = "Missing required 'protocol' attribute"
+		return
+	}
+	if *protocol < 0 || *protocol > 255 {
+		errMsg = fmt.Sprintf("invalid protocol: %+v. 'protocol' attribute MUST in range 0...255", *protocol)
+		isUnprocessableEntity = true
+		return
+	}
+	return
+}
+
+// Validate port
+func ValidatePort(port *int) (isUnprocessableEntity bool, errMsg string) {
+	isUnprocessableEntity = false
+	if port == nil {
+		errMsg = "Missing required 'port' attribute"
+		return
+	}
+	if *port < 0 || *port > 0xffff {
+		errMsg = fmt.Sprintf("invalid port: %+v", *port)
+		isUnprocessableEntity = true
+		return
+	}
+	return
+}
+
 // Validate traffic
-func ValidateTraffic(trafficList []messages.Traffic, isProtocol bool) (isUnprocessableEntity bool, errMsg string) {
+func ValidateTraffic(trafficList []messages.Traffic) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
 	for _, v := range trafficList {
-		if v.Unit == nil {
-			errMsg = "Missing required 'unit' attribute"
+		isUnprocessableEntity, errMsg = ValidateUnit(v.Unit)
+		if errMsg != "" {
 			return
 		}
-		if *v.Unit != int(PacketsPerSecond) && *v.Unit != int(BitsPerSecond) && *v.Unit != int(BytesPerSecond) &&
-			*v.Unit != int(KiloPacketsPerSecond) && *v.Unit != int(KiloBitsPerSecond) && *v.Unit != int(KiloBytesPerSecond) &&
-			*v.Unit != int(MegaPacketsPerSecond) && *v.Unit != int(MegaBitsPerSecond) && *v.Unit != int(MegaBytesPerSecond) &&
-			*v.Unit != int(GigaPacketsPerSecond) && *v.Unit != int(GigaBitsPerSecond) && *v.Unit != int(GigaBytesPerSecond) &&
-			*v.Unit != int(TeraPacketsPerSecond) && *v.Unit != int(TeraBitsPerSecond) && *v.Unit != int(TeraBytesPerSecond) {
-			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps, 4:kilopackets-ps, 5:kilobits-ps, 6:kilobytes-ps, 7:megapackets-ps, 8:megabits-ps, 9:megabytes-ps, 10:gigapackets-ps, 11:gigabits-ps, 12:gigabyte-ps, 13:terapackets-ps, 14:terabits-ps, 15:terabytes-ps", *v.Unit)
-			isUnprocessableEntity = true
+	}
+	return
+}
+
+// Validate traffic per protocol
+func ValidateTrafficPerProtocol(trafficList []messages.TrafficPerProtocol) (isUnprocessableEntity bool, errMsg string) {
+	isUnprocessableEntity = false
+	for _, v := range trafficList {
+		isUnprocessableEntity, errMsg = ValidateUnit(v.Unit)
+		if errMsg != "" {
 			return
 		}
-		if isProtocol {
-			if v.Protocol == nil {
-				errMsg = "Missing required 'protocol' attribute"
-				return
-			}
-			if *v.Protocol < 0 || *v.Protocol > 255 {
-				errMsg = fmt.Sprintf("invalid protocol: %+v", *v.Protocol)
-				isUnprocessableEntity = true
-				return
-			}
+		isUnprocessableEntity, errMsg = ValidateProtocol(v.Protocol)
+		if errMsg != "" {
+			return
+		}
+	}
+	return
+}
+
+// Validate traffic per port
+func ValidateTrafficPerPort(trafficList []messages.TrafficPerPort) (isUnprocessableEntity bool, errMsg string) {
+	isUnprocessableEntity = false
+	for _, v := range trafficList {
+		isUnprocessableEntity, errMsg = ValidateUnit(v.Unit)
+		if errMsg != "" {
+			return
+		}
+		isUnprocessableEntity, errMsg = ValidatePort(v.Port)
+		if errMsg != "" {
+			return
 		}
 	}
 	return
@@ -387,13 +466,24 @@ func ValidateTraffic(trafficList []messages.Traffic, isProtocol bool) (isUnproce
 func ValidateTotalConnectionCapacity(tccList []messages.TotalConnectionCapacity) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
 	for _, v := range tccList {
-		if v.Protocol == nil {
-			errMsg = "Missing required 'protocol' attribute of total-connection-capacity"
+		isUnprocessableEntity, errMsg = ValidateProtocol(v.Protocol)
+		if errMsg != "" {
 			return
 		}
-		if *v.Protocol < 0 || *v.Protocol > 255 {
-			errMsg = fmt.Sprintf("invalid protocol: %+v", *v.Protocol)
-			isUnprocessableEntity = true
+	}
+	return
+}
+
+// Validate total connection capacity per port
+func ValidateTotalConnectionCapacityPerPort(tccList []messages.TotalConnectionCapacityPerPort) (isUnprocessableEntity bool, errMsg string) {
+	isUnprocessableEntity = false
+	for _, v := range tccList {
+		isUnprocessableEntity, errMsg = ValidateProtocol(v.Protocol)
+		if errMsg != "" {
+			return
+		}
+		isUnprocessableEntity, errMsg = ValidatePort(v.Port)
+		if errMsg != "" {
 			return
 		}
 	}

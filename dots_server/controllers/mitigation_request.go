@@ -62,7 +62,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	}
 
 	var mpp []mpPair
-	mpp, err = loadMitigations(customer, cuid, mid)
+	mpp, err = loadMitigations(customer, cuid, mid, request.Queries)
 	if err != nil {
 		log.WithError(err).Error("loadMitigation failed.")
 		return
@@ -146,23 +146,26 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		} else {
 			scopeStates.TotalAttackConnection = nil
 		}
-		if !reflect.DeepEqual(models.GetModelsTelemetryAttackDetail(&mp.mitigation.TelemetryAttackDetail), models.GetModelsTelemetryAttackDetail(nil)) {
-			scopeStates.AttackDetail = convertToTelemetryAttackDetailResponse(mp.mitigation.TelemetryAttackDetail)
-		} else {
-			scopeStates.AttackDetail = nil
-		}
+		scopeStates.AttackDetail = convertToTelemetryAttackDetailResponse(mp.mitigation.TelemetryAttackDetail)
 		scopes = append(scopes, scopeStates)
 	}
 
 	// Return error when there is no Mitigation matched
 	if len(scopes) == 0 {
 		if mid != nil {
-			errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s, mid: %v", cuid, *mid)
-			log.Infof(errMessage)
+			if len(request.Queries) > 0 {
+				errMessage = fmt.Sprintf("Not found any mitigation with cuid: %s, mid: %v, queries: %+v", cuid, *mid, request.Queries)
+			} else {
+				errMessage = fmt.Sprintf("Not found any mitigation with cuid: %s, mid: %v", cuid, *mid)
+			}
 		} else {
-			errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s", cuid)
-			log.Infof(errMessage)
+			if len(request.Queries) > 0 {
+				errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s, queries: %+v", cuid, request.Queries)
+			} else {
+				errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s", cuid)
+			}
 		}
+		log.Warnf(errMessage)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.NotFound,
@@ -238,7 +241,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	} else {
 		// If mid = 0, load all current available mitigation requests for validatation
 		if *mid == 0 {
-			mitigations, err := loadMitigations(customer, cuid, nil)
+			mitigations, err := loadMitigations(customer, cuid, nil, nil)
 			if err != nil {
 				log.WithError(err).Error("Mitigations load error.")
 				return Response{}, err
@@ -563,11 +566,12 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 		return
 	}
 	m.ControlFilteringList = newControlFiltering(req.AclList)
-	m.TelemetryTotalAttackTraffic, err = models.NewTelemetryTotalAttackTraffic(req.TotalAttackTraffic)
-	if err != nil {
-		return
-	}
-	if isIfMatchOption && req.AttackDetail != nil {
+
+	if isIfMatchOption {
+		m.TelemetryTotalAttackTraffic, err = models.NewTelemetryTotalAttackTraffic(req.TotalAttackTraffic)
+		if err != nil {
+			return
+		}
 		m.TelemetryAttackDetail, err = models.NewTelemetryAttackDetail(req.AttackDetail)
 		if err != nil {
 			return
@@ -663,14 +667,14 @@ func filterDuplicate(input []int) (res []int) {
 /*
  * load mitigation and protection
  */
-func loadMitigations(customer *models.Customer, clientIdentifier string, mitigationId *int) ([]mpPair, error) {
+func loadMitigations(customer *models.Customer, clientIdentifier string, mitigationId *int, queries []string) ([]mpPair, error) {
 
 	r := make([]mpPair, 0)
 	var mitigationIds []int
 
 	// if Uri-Path mid is empty, get all DOTS mitigation request
 	if mitigationId == nil {
-		mids, err := models.GetMitigationIds(customer.Id, clientIdentifier)
+		mids, err := models.GetMitigationIds(customer.Id, clientIdentifier, queries)
 		if err != nil {
 			return nil, err
 		}
@@ -680,7 +684,6 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 			log.WithField("list of mitigation id", mids).Info("found mitigation ids.")
 			mitigationIds = filterDuplicate(mids)
 		}
-		
 	} else {
 		mitigationIds = append(mitigationIds, *mitigationId)
 	}
@@ -693,18 +696,6 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 		if s == nil {
 			log.WithField("mitigation_id", mid).Warn("mitigation_scope not found.")
 			continue
-		}
-
-		// Get alias data from data channel
-		aliases, err := data_controllers.GetDataAliasesByName(customer, clientIdentifier, s.AliasName.List())
-		if err != nil {
-			return nil, err
-		}
-
-		// Append alias data to new mitigation scope
-		err = appendAliasesDataToMitigationScope(aliases, s)
-		if err != nil {
-			return nil, err
 		}
 
 		// If mitigation request's status is active (1,2,3,4,5), get its active protection

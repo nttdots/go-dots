@@ -155,6 +155,16 @@ In order to handle out-of-order delivery of mitigation requests, 'mid' values MU
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
+### Client Controller [mitigation_retrieve_all_query]
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -targetProtocol=17 -aliasName=https1
+
+### Client Controller [mitigation_retrieve_one_query]
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -targetPrefix=1.2.0.10:32
+
 ### Client Controller [mitigation_withdraw]
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
@@ -423,6 +433,14 @@ Get one telemetry pre-or-ongoing-mitigation
 Get all telemetry pre-or-ongoing-mitigation
 
     $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw
+
+Get one telemetry pre-or-ongoing-mitigation with query
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123 -targetProtocol=17
+
+Get all telemetry pre-or-ongoing-mitigation with query
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -targetProtocol=17
 
 Delete one telemetry pre-or-ongoing-mitigation
 

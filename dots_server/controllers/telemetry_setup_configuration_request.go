@@ -11,7 +11,9 @@ import (
 	"github.com/nttdots/go-dots/dots_server/models"
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
+	types "github.com/nttdots/go-dots/dots_common/types/data"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
+	data_controllers "github.com/nttdots/go-dots/dots_server/controllers/data"
 )
 
 /*
@@ -351,7 +353,25 @@ func handlePutBaseline(bodyRequest []messages.Baseline, customer *models.Custome
 		}
 		return res, nil
 	}
-	baselineList, err := models.NewBaselineList(bodyRequest)
+	// Get data alias from data channel
+	var aliases types.Aliases
+	if bodyRequest[0].AliasName != nil {
+		aliases, err = data_controllers.GetDataAliasesByName(customer, cuid, bodyRequest[0].AliasName)
+		if err != nil {
+			log.Errorf("Get data alias error: %+v", err)
+			return Response{}, err
+		}
+		if len(aliases.Alias) <= 0 {
+			errMsg = "'alias-name' doesn't exist in DB"
+			res = Response {
+				Type: common.NonConfirmable,
+				Code: common.NotFound,
+				Body: errMsg,
+			}
+			return res, nil
+		}
+	}
+	baselineList, err := models.NewBaselineList(bodyRequest, aliases)
 	if err != nil {
 		return Response{}, err
 	}
@@ -412,12 +432,6 @@ func handleGetOneTelemetrySetup(customerId int, cuid string, tsid int) (res Resp
 		return res, nil
 	}
 	telemetrySetupResp := messages.TelemetrySetupResponse{}
-	// Get min-max config values
-	maxConfig, minConfig, supportedUnit := getMinMaxConfigValues()
-	telemetrySetupResp.TelemetrySetup.MaxConfig     = maxConfig
-	telemetrySetupResp.TelemetrySetup.MinConfig     = minConfig
-	telemetrySetupResp.TelemetrySetup.SupportedUnit = supportedUnit
-
 	// Get telemetry setup
 	telemetry := messages.TelemetryResponse{}
 	telemetry.Tsid = tsid
@@ -439,6 +453,41 @@ func handleGetOneTelemetrySetup(customerId int, cuid string, tsid int) (res Resp
 // Handle Get all telemetry configuration
 func handleGetAllTelemetrySetup(customerId int, cuid string) (res Response, err error) {
 	telemetrySetupResp := messages.TelemetrySetupResponse{}
+	// Get telemetry setup configuration by 'cuid' from DB
+	// The telemetry setup configuration with setup_type is 'telemetry_configuration', 'pipe' and 'baseline'
+	dbTelemetrySetupList, err := models.GetTelemetrySetupByCuidAndNonNegativeTsid(customerId, cuid)
+	if err != nil {
+		log. Errorf("Get telemetry_setup by cuid err: %+v", err)
+		return Response{}, err
+	}
+	if len(dbTelemetrySetupList) > 0 {
+		telemetrySetupList := messages.TelemetrySetupResp{}
+		for _, vDbTelemetrySetup := range dbTelemetrySetupList {
+			if vDbTelemetrySetup.Tsid > 0 {
+				telemetry := messages.TelemetryResponse{}
+				telemetry.Tsid = vDbTelemetrySetup.Tsid
+				for k, vTelemetrySetup := range telemetrySetupList.Telemetry {
+					// If 'tsid' same with 'tsid' of TelemetrySetupResponse in TelemetrySetupResponseList, DOTS server will handle as below:
+					// - Set new TelemetrySetupResponse is this TelemetrySetupResponse
+					// - Removed this TelemetrySetupResponse in TelemetrySetupResponseList
+					// - Set value of telemetry configuration, total pipe capacity or baseline with 'tsid' into new TelemetrySetupResponse
+					// DOTS server will remove  telemetry setup in telemetry setup list
+					if vDbTelemetrySetup.Tsid == vTelemetrySetup.Tsid {
+						telemetry = vTelemetrySetup
+						telemetrySetupList.Telemetry = append(telemetrySetupList.Telemetry[:k], telemetrySetupList.Telemetry[k+1:]...)
+					}
+				}
+				// Get telemetry_configuration, total_pipe_capacity or baseline with 'cuid'
+				err = getTelemetrySetup(customerId, cuid, vDbTelemetrySetup, &telemetry)
+				if err != nil {
+					return Response{}, err
+				}
+				telemetrySetupList.Telemetry = append(telemetrySetupList.Telemetry, telemetry)
+			}
+		}
+		telemetrySetupResp.TelemetrySetup = telemetrySetupList
+	}
+	// Get min-max config values
 	maxConfig, minConfig, supportedUnit := getMinMaxConfigValues()
 	telemetrySetupResp.TelemetrySetup.MaxConfig     = maxConfig
 	telemetrySetupResp.TelemetrySetup.MinConfig     = minConfig
@@ -646,44 +695,16 @@ func getBaseline(customerId int, cuid string, teleSetupId int64) (baselineList [
 		for _, vUri := range v.URI.List() {
 			baseline.TargetURI = append(baseline.TargetURI, vUri)
 		}
-		// total traffic normal baseline
-		baseline.TotalTrafficNormalBaseline = convertToTrafficResponse(v.TotalTrafficNormalBaseLine)
+		// total traffic normal
+		baseline.TotalTrafficNormal = convertToTrafficResponse(v.TotalTrafficNormal)
+		// total traffic normal per protocol
+		baseline.TotalTrafficNormalPerProtocol = convertToTrafficPerProtocolResponse(v.TotalTrafficNormalPerProtocol)
+		// total traffic normal per port
+		baseline.TotalTrafficNormalPerPort = convertToTrafficPerPortResponse(v.TotalTrafficNormalPerPort)
 		// total connection capacity
-		for _, vTcc := range v.TotalConnectionCapacity {
-			tcc := messages.TotalConnectionCapacityResponse{}
-			tcc.Protocol = vTcc.Protocol
-			if vTcc.Connection > 0 {
-				tcc.Connection = &vTcc.Connection
-			}
-			if vTcc.ConnectionClient > 0 {
-				tcc.ConnectionClient = &vTcc.ConnectionClient
-			}
-			if vTcc.Embryonic > 0 {
-				tcc.Embryonic = &vTcc.Embryonic
-			}
-			if vTcc.EmbryonicClient > 0 {
-				tcc.EmbryonicClient = &vTcc.EmbryonicClient
-			}
-			if vTcc.ConnectionPs > 0 {
-				tcc.ConnectionPs = &vTcc.ConnectionPs
-			}
-			if vTcc.ConnectionClientPs > 0 {
-				tcc.ConnectionClientPs = &vTcc.ConnectionClientPs
-			}
-			if vTcc.RequestPs > 0 {
-				tcc.RequestPs = &vTcc.RequestPs
-			}
-			if vTcc.RequestClientPs > 0 {
-				tcc.RequestClientPs = &vTcc.RequestClientPs
-			}
-			if vTcc.PartialRequestPs > 0 {
-				tcc.PartialRequestPs = &vTcc.PartialRequestPs
-			}
-			if vTcc.PartialRequestClientPs > 0 {
-				tcc.PartialRequestClientPs = &vTcc.PartialRequestClientPs
-			}
-			baseline.TotalConnectionCapacity = append(baseline.TotalConnectionCapacity, tcc)
-		}
+		baseline.TotalConnectionCapacity = convertToTotalConnectionCapacityResponse(v.TotalConnectionCapacity)
+		// total connection capacity per port
+		baseline.TotalConnectionCapacityPerPort = convertToTotalConnectionCapacityPerPortResponse(v.TotalConnectionCapacityPerPort)
 		baselineList = append(baselineList, baseline)
 	}
 	return baselineList, nil

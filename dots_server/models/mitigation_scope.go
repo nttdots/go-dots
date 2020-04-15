@@ -162,7 +162,7 @@ type MitigationScope struct {
 	TelemetryTotalTraffic          []Traffic
 	TelemetryTotalAttackTraffic    []Traffic
 	TelemetryTotalAttackConnection TelemetryTotalAttackConnection
-	TelemetryAttackDetail          TelemetryAttackDetail
+	TelemetryAttackDetail          []TelemetryAttackDetail
 }
 
 // Conflict Scope constructor
@@ -209,7 +209,7 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 		make([]Traffic, 0),
 		make([]Traffic, 0),
 		TelemetryTotalAttackConnection{},
-		TelemetryAttackDetail{},
+		make([]TelemetryAttackDetail, 0),
 	}
 	return
 }

@@ -9,12 +9,12 @@
                 },
                 "total-attack-traffic":[
                     {
-                        "protocol":16,
                         "unit":1,
                         "mid-percentile-g":900
                     }
                 ],
                 "attack-detail":{
+                    "attack-id": "attack-id-1",
                     "start-time":1957811234,
                     "attack-severity":2
                 }

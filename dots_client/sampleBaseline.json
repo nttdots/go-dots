@@ -8,10 +8,9 @@
               "target-prefix":[
                 "1.1.2.10/32"
               ],
-              "total-traffic-normal-baseline":[
+              "total-traffic-normal":[
                 {
                   "unit":2,
-                  "protocol":6,
                   "peak-g":50
                 }
               ]

@@ -502,21 +502,30 @@ func createMitigationScopePortRange(session *xorm.Session, mitigationScope Mitig
  *  mitigationIds list of mitigation id
  *  error error
  */
-func GetMitigationIds(customerId int, clientIdentifier string) (mitigationIds []int, err error) {
+func GetMitigationIds(customerId int, clientIdentifier string, queries []string) (mitigationIds []int, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
 		log.Printf("database connect error: %s", err)
 		return
 	}
-
-	// Get customer table data
-	err = engine.Table("mitigation_scope").Where("customer_id = ? AND client_identifier = ?", customerId, clientIdentifier).Cols("mitigation_id").Find(&mitigationIds)
+	mitigationList := []db_models.MitigationScope{}
+	// Get mitigation scope list
+	err = engine.Table("mitigation_scope").Where("customer_id = ? AND client_identifier = ?", customerId, clientIdentifier).Find(&mitigationList)
 	if err != nil {
 		log.Printf("find mitigation ids error: %s\n", err)
 		return
 	}
-
+	for _, v := range mitigationList {
+		// Check targets queries match or mot match with targets of mitigation
+		isFound, err := IsFoundTargetQueries(engine, v.Id, queries, false)
+		if err != nil {
+			return nil, err
+		}
+		if isFound {
+			mitigationIds = append(mitigationIds, v.MitigationId)
+		}
+	}
 	return
 }
 
@@ -1025,19 +1034,11 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 		log.Errorf("Failed to delete total-attack-traffic. Error: %+v", err)
 		return
 	}
-	dbAttackDetail, err := db_models.GetTelemetryAttackDetailByMitigationScopeId(engine, dbMitigationScope.Id)
+	// Delete telemetry attack-detail
+	err = DeleteTelemetryAttackDetail(engine, session, dbMitigationScope.Id, nil)
 	if err != nil {
-		log.Errorf("Failed to get attack-detail. Error: %+v", err)
 		session.Rollback()
 		return
-	}
-	if dbAttackDetail.Id > 0 {
-		// Delete telemetry attack-detail
-		err = DeleteTelemetryAttackDetail(engine, session, dbMitigationScope.Id, nil, *dbAttackDetail)
-		if err != nil {
-			session.Rollback()
-			return
-		}
 	}
 	session.Commit()
 
@@ -1258,5 +1259,70 @@ func createMitigationScopeCallHome(session *xorm.Session, mitigationScope Mitiga
 		}
 	}
 
+	return
+}
+
+// Get target mitigation
+func GetTargetMitigation(engine *xorm.Engine, mitigationId int64) (targetPrefixs []string, lowerPorts []string, upperPorts []string, targetProtocols []string, targetFqdns []string, targetUris []string, aliasNames []string, err error) {
+	// Get TargetPrefix data
+	dbPrefixTargetPrefixList := []db_models.Prefix{}
+	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.PrefixTypeTargetPrefix).OrderBy("id ASC").Find(&dbPrefixTargetPrefixList)
+	if err != nil {
+		return
+	}
+	for _, v := range dbPrefixTargetPrefixList {
+		targetPrefixs = append(targetPrefixs, v.Addr+"/"+strconv.Itoa(v.PrefixLen))
+	}
+
+	// Get TargetPortRange data
+	dbPrefixTargetPortRangeList := []db_models.PortRange{}
+	err = engine.Where("mitigation_scope_id = ? AND type=?", mitigationId, db_models.PortRangeTypeTargetPort).OrderBy("id ASC").Find(&dbPrefixTargetPortRangeList)
+	if err != nil {
+		return
+	}
+	for _, v := range dbPrefixTargetPortRangeList {
+		lowerPorts = append(lowerPorts, strconv.Itoa(v.LowerPort))
+		upperPorts = append(upperPorts, strconv.Itoa(v.UpperPort))
+	}
+
+	// Get TargetProtocol data
+	dbParameterValueTargetProtocolList := []db_models.ParameterValue{}
+	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.ParameterValueTypeTargetProtocol).OrderBy("id ASC").Find(&dbParameterValueTargetProtocolList)
+	if err != nil {
+		return
+	}
+	for _, v := range dbParameterValueTargetProtocolList {
+		targetProtocols = append(targetProtocols, strconv.Itoa(v.IntValue))
+	}
+
+	// Get FQDN data
+	dbParameterValueFqdnList := []db_models.ParameterValue{}
+	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.ParameterValueTypeFqdn).OrderBy("id ASC").Find(&dbParameterValueFqdnList)
+	if err != nil {
+		return
+	}
+	for _, v := range dbParameterValueFqdnList {
+		targetFqdns = append(targetFqdns, v.StringValue)
+	}
+
+	// Get URI data
+	dbParameterValueUriList := []db_models.ParameterValue{}
+	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.ParameterValueTypeUri).OrderBy("id ASC").Find(&dbParameterValueUriList)
+	if err != nil {
+		return
+	}
+	for _, v := range dbParameterValueUriList {
+		targetUris = append(targetUris, v.StringValue)
+	}
+
+	// Get AliasName data
+	dbParameterValueAliasNameList := []db_models.ParameterValue{}
+	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.ParameterValueTypeAliasName).OrderBy("id ASC").Find(&dbParameterValueAliasNameList)
+	if err != nil {
+		return
+	}
+	for _, v := range dbParameterValueAliasNameList {
+		aliasNames = append(aliasNames, v.StringValue)
+	}
 	return
 }

@@ -7,7 +7,7 @@ type AttackDetail struct {
 	Id                  int64     `xorm:"'id' pk autoincr"`
 	TelePreMitigationId int64     `xorm:"tele_pre_mitigation_id"`
 	AttackDetailId      int       `xorm:"attack_detail_id"`
-	AttackId            string    `xorm:"attack_id"`
+	AttackId            string    `xorm:"'attack_id' not null"`
 	AttackName          string    `xorm:"attack_name"`
 	AttackSeverity      string    `xorm:"'attack_severity' enum('EMERGENCY','CRITICAL','ALERT') not null"`
 	StartTime           int       `xorm:"start_time"`
@@ -17,10 +17,10 @@ type AttackDetail struct {
 }
 
 // Get attack-detail by TelePreMitigationId
-func GetAttackDetailByTelePreMitigationId(engine *xorm.Engine, telePreMitigationId int64) (*AttackDetail, error) {
-	attackDetail := AttackDetail{}
-	_, err := engine.Where("tele_pre_mitigation_id = ?", telePreMitigationId).Get(&attackDetail)
-	return &attackDetail, err
+func GetAttackDetailByTelePreMitigationId(engine *xorm.Engine, telePreMitigationId int64) ([]AttackDetail, error) {
+	attackDetailList := []AttackDetail{}
+	err := engine.Where("tele_pre_mitigation_id = ?", telePreMitigationId).Find(&attackDetailList)
+	return attackDetailList, err
 }
 
 // Delete attack-detail by Id

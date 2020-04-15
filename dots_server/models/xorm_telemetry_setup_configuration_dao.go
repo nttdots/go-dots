@@ -39,9 +39,9 @@ const (
 
 type trafficType string
 const (
-	TOTAL_TRAFFIC_NORMAL_BASELINE trafficType = "TOTAL_TRAFFIC_NORMAL_BASELINE"
-	TOTAL_ATTACK_TRAFFIC          trafficType = "TOTAL_ATTACK_TRAFFIC"
-	TOTAL_TRAFFIC                 trafficType = "TOTAL_TRAFFIC"
+	TOTAL_TRAFFIC_NORMAL trafficType = "TOTAL_TRAFFIC_NORMAL"
+	TOTAL_ATTACK_TRAFFIC trafficType = "TOTAL_ATTACK_TRAFFIC"
+	TOTAL_TRAFFIC        trafficType = "TOTAL_TRAFFIC"
 )
 
 // Create telemetry configuration
@@ -470,7 +470,7 @@ func CreateTelemetrySetupBaseline(session *xorm.Session, customerId int, cuid st
 	if err != nil {
 		return err
 	}
-	// Create baseline (targets, total_traffic_normal_basline, 'total_connection_capacity')
+	// Create baseline (targets, total_traffic_normal, total_traffic_normal_per_protocol, total_traffic_normal_per_port, total_connection_capacity, total_connection_capacity_per_port)
 	err = createBaseline(session, newTelemetrySetup.Id, baselineList)
 	if err != nil {
 		return err
@@ -512,17 +512,32 @@ func createBaseline(session *xorm.Session, teleSetupId int64, baselines []Baseli
 			return err
 		}
 		// Create telemetry parameter value
-		err = CreateTelemetryParameterValue(session, string(TELEMETRY_SETUP), newBaseline.Id, baseline.TargetProtocol, baseline.FQDN, baseline.URI, nil)
+		err = CreateTelemetryParameterValue(session, string(TELEMETRY_SETUP), newBaseline.Id, baseline.TargetProtocol, baseline.FQDN, baseline.URI, baseline.AliasName)
 		if err != nil {
 			return err
 		}
-		// Registered total traffic normal baseline
-		err = RegisterTraffic(session, string(TELEMETRY_SETUP), string(TARGET_PREFIX), newBaseline.Id, string(TOTAL_TRAFFIC_NORMAL_BASELINE), baseline.TotalTrafficNormalBaseLine)
+		// Registered total traffic normal
+		err = RegisterTraffic(session, string(TELEMETRY_SETUP), string(TARGET_PREFIX), newBaseline.Id, string(TOTAL_TRAFFIC_NORMAL), baseline.TotalTrafficNormal)
+		if err != nil {
+			return err
+		}
+		// Registered total traffic normal per protocol
+		err = RegisterTrafficPerProtocol(session, string(TELEMETRY_SETUP), newBaseline.Id, string(TOTAL_TRAFFIC_NORMAL), baseline.TotalTrafficNormalPerProtocol)
+		if err != nil {
+			return err
+		}
+		// Registered total traffic normal per port
+		err = RegisterTrafficPerPort(session, string(TELEMETRY_SETUP), newBaseline.Id, string(TOTAL_TRAFFIC_NORMAL), baseline.TotalTrafficNormalPerPort)
 		if err != nil {
 			return err
 		}
 		// Registered total connection capacity
 		err = RegisterTotalConnectionCapacity(session, newBaseline.Id, baseline.TotalConnectionCapacity)
+		if err != nil {
+			return err
+		}
+		// Registered total connection capacity per port
+		err = RegisterTotalConnectionCapacityPerPort(session, newBaseline.Id, baseline.TotalConnectionCapacityPerPort)
 		if err != nil {
 			return err
 		}
@@ -758,7 +773,6 @@ func RegisterTraffic(session *xorm.Session, tType string, prefixType string, typ
 			TypeId:          typeId,
 			TrafficType:     trafficType,
 			Unit:            ConvertUnitToString(vTraffic.Unit),
-			Protocol:        vTraffic.Protocol,
 			LowPercentileG:  vTraffic.LowPercentileG,
 			MidPercentileG:  vTraffic.MidPercentileG,
 			HighPercentileG: vTraffic.HighPercentileG,
@@ -770,6 +784,60 @@ func RegisterTraffic(session *xorm.Session, tType string, prefixType string, typ
 		_, err := session.Insert(&newTrafficList)
 		if err != nil {
 			log.Errorf("traffic insert err: %s", err)
+			return err
+		}
+	}
+	return nil
+}
+
+// Registered traffic per procol to DB
+func RegisterTrafficPerProtocol(session *xorm.Session, tType string, typeId int64, trafficType string, traffics []TrafficPerProtocol) error {
+	newTrafficList := []db_models.TrafficPerProtocol{}
+	for _, vTraffic := range traffics {
+		newTraffic := db_models.TrafficPerProtocol{
+			Type:            tType,
+			TypeId:          typeId,
+			TrafficType:     trafficType,
+			Unit:            ConvertUnitToString(vTraffic.Unit),
+			Protocol:        vTraffic.Protocol,
+			LowPercentileG:  vTraffic.LowPercentileG,
+			MidPercentileG:  vTraffic.MidPercentileG,
+			HighPercentileG: vTraffic.HighPercentileG,
+			PeakG:           vTraffic.PeakG,
+		}
+		newTrafficList = append(newTrafficList, newTraffic)
+	}
+	if len(newTrafficList) > 0 {
+		_, err := session.Insert(&newTrafficList)
+		if err != nil {
+			log.Errorf("traffic per protocol insert err: %s", err)
+			return err
+		}
+	}
+	return nil
+}
+
+// Registered traffic per port to DB
+func RegisterTrafficPerPort(session *xorm.Session, tType string, typeId int64, trafficType string, traffics []TrafficPerPort) error {
+	newTrafficList := []db_models.TrafficPerPort{}
+	for _, vTraffic := range traffics {
+		newTraffic := db_models.TrafficPerPort{
+			Type:            tType,
+			TypeId:          typeId,
+			TrafficType:     trafficType,
+			Unit:            ConvertUnitToString(vTraffic.Unit),
+			Port:            vTraffic.Port,
+			LowPercentileG:  vTraffic.LowPercentileG,
+			MidPercentileG:  vTraffic.MidPercentileG,
+			HighPercentileG: vTraffic.HighPercentileG,
+			PeakG:           vTraffic.PeakG,
+		}
+		newTrafficList = append(newTrafficList, newTraffic)
+	}
+	if len(newTrafficList) > 0 {
+		_, err := session.Insert(&newTrafficList)
+		if err != nil {
+			log.Errorf("traffic per port insert err: %s", err)
 			return err
 		}
 	}
@@ -800,6 +868,37 @@ func RegisterTotalConnectionCapacity(session *xorm.Session, teleBaselineId int64
 		_, err := session.Insert(&newTccList)
 		if err != nil {
 			log.Errorf("total connection capacity insert err: %s", err)
+			return err
+		}
+	}
+	return nil
+}
+
+// Registered total connection capacity per port to DB
+func RegisterTotalConnectionCapacityPerPort(session *xorm.Session, teleBaselineId int64, tccs []TotalConnectionCapacityPerPort) error {
+	newTccList := []db_models.TotalConnectionCapacityPerPort{}
+	for _, vTcc := range tccs {
+		newTcc  := db_models.TotalConnectionCapacityPerPort {
+			TeleBaselineId:         teleBaselineId,
+			Protocol:               vTcc.Protocol,
+			Port:                   vTcc.Port,
+			Connection:             vTcc.Connection,
+			ConnectionClient:       vTcc.ConnectionClient,
+			Embryonic:              vTcc.Embryonic,
+			EmbryonicClient:        vTcc.EmbryonicClient,
+			ConnectionPs:           vTcc.ConnectionPs,
+			ConnectionClientPs:     vTcc.ConnectionClientPs,
+			RequestPs:              vTcc.RequestPs,
+			RequestClientPs:        vTcc.RequestClientPs,
+			PartialRequestPs:       vTcc.PartialRequestPs,
+			PartialRequestClientPs: vTcc.PartialRequestClientPs,
+		}
+		newTccList = append(newTccList, newTcc)
+	}
+	if len(newTccList) > 0 {
+		_, err := session.Insert(&newTccList)
+		if err != nil {
+			log.Errorf("total connection capacity per port insert err: %s", err)
 			return err
 		}
 	}
@@ -1016,18 +1115,36 @@ func GetBaselineByTeleSetupId(customerId int, cuid string, setupId int64) (basel
 			return nil, err
 		}
 		baseline.URI = uriList
-		// Get total traffic normal baseline
-		trafficList, err := GetTraffic(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(TARGET_PREFIX), string(TOTAL_TRAFFIC_NORMAL_BASELINE))
+		// Get total traffic normal
+		trafficList, err := GetTraffic(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(TARGET_PREFIX), string(TOTAL_TRAFFIC_NORMAL))
 		if err != nil {
 			return nil, err
 		}
-		baseline.TotalTrafficNormalBaseLine = trafficList
+		baseline.TotalTrafficNormal = trafficList
+		// Get total traffic normal per protocol
+		trafficPerProtocolList, err := GetTrafficPerProtocol(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(TOTAL_TRAFFIC_NORMAL))
+		if err != nil {
+			return nil, err
+		}
+		baseline.TotalTrafficNormalPerProtocol = trafficPerProtocolList
+		// Get total traffic normal per port
+		trafficPerPortList, err := GetTrafficPerPort(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(TOTAL_TRAFFIC_NORMAL))
+		if err != nil {
+			return nil, err
+		}
+		baseline.TotalTrafficNormalPerPort = trafficPerPortList
 		// Get total connection capacity
 		tccList, err := GetTotalConnectionCapacity(engine, vBaseline.Id)
 		if err != nil {
 			return nil, err
 		}
 		baseline.TotalConnectionCapacity = tccList
+		// Get total connection capacity per port
+		tccPerPortList, err := GetTotalConnectionCapacityPerPort(engine, vBaseline.Id)
+		if err != nil {
+			return nil, err
+		}
+		baseline.TotalConnectionCapacityPerPort = tccPerPortList
 		// Get telemetry target list
 		targetList, err := GetTelemetryTargetList(baseline.TargetPrefix, baseline.FQDN, baseline.URI)
 		if err != nil {
@@ -1054,22 +1171,40 @@ func DeleteBaseline(session *xorm.Session, id int64) (err error) {
 		log.Errorf("Delete telemetry port range err: %+v", err)
 		return
 	}
-	// Delete telemetry parameter values (protocol, fqdn, uri)
+	// Delete telemetry parameter values (protocol, fqdn, uri, alias-name)
 	err = db_models.DeleteTelemetryParameterValue(session, string(TELEMETRY_SETUP), id)
 	if err != nil {
 		log.Errorf("Delete telemetry parameter value err: %+v", err)
 		return
 	}
-	// Delete total traffic normal baseline
-	err = db_models.DeleteTraffic(session, string(TELEMETRY_SETUP), id, "", string(TOTAL_TRAFFIC_NORMAL_BASELINE))
+	// Delete total traffic normal
+	err = db_models.DeleteTraffic(session, string(TELEMETRY_SETUP), id, string(TARGET_PREFIX))
 	if err != nil {
 		log.Errorf("Delete telemetry traffic err: %+v", err)
+		return
+	}
+	// Delete total traffic normal per protocol
+	err = db_models.DeleteTrafficPerProtocol(session, string(TELEMETRY_SETUP), id)
+	if err != nil {
+		log.Errorf("Delete telemetry traffic per protocol err: %+v", err)
+		return
+	}
+	// Delete total traffic normal per port
+	err = db_models.DeleteTrafficPerPort(session, string(TELEMETRY_SETUP), id)
+	if err != nil {
+		log.Errorf("Delete telemetry traffic per port err: %+v", err)
 		return
 	}
 	// Delete total connection capacity
 	err = db_models.DeleteTotalConnectionCapacityByTeleBaselineId(session, id)
 	if err != nil {
 		log.Errorf("Delete total connection capacity err: %+v", err)
+		return
+	}
+	// Delete total connection capacity per port
+	err = db_models.DeleteTotalConnectionCapacityPerPortByTeleBaselineId(session, id)
+	if err != nil {
+		log.Errorf("Delete total connection capacity per port err: %+v", err)
 		return
 	}
 	// Delete baseline
@@ -1163,14 +1298,55 @@ func GetTelemetryParameterWithParameterTypeIsUri(engine *xorm.Engine, tType stri
 func GetTraffic(engine *xorm.Engine, tType string, typeId int64, prefixType string, trafficType string) (trafficList []Traffic, err error) {
 	traffics, err := db_models.GetTraffic(engine, tType, typeId, prefixType, trafficType)
 	if err != nil {
-		log.Errorf("Get traffic with traffic type is 'total_traffic_normal_baseline' err: %+v", err)
+		log.Errorf("Get traffic err: %+v", err)
 		return nil, err
 	}
 	trafficList = []Traffic{}
 	for _, vTraffic := range traffics {
 		traffic := Traffic{}
 		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
+		traffic.LowPercentileG  = vTraffic.LowPercentileG
+		traffic.MidPercentileG  = vTraffic.MidPercentileG
+		traffic.HighPercentileG = vTraffic.HighPercentileG
+		traffic.PeakG           = vTraffic.PeakG
+		trafficList             = append(trafficList, traffic)
+	}
+	return trafficList, nil
+}
+
+// Get traffic per protocol
+func GetTrafficPerProtocol(engine *xorm.Engine, tType string, typeId int64, trafficType string) (trafficList []TrafficPerProtocol, err error) {
+	traffics, err := db_models.GetTrafficPerProtocol(engine, tType, typeId, trafficType)
+	if err != nil {
+		log.Errorf("Get traffic per protocol err: %+v", err)
+		return nil, err
+	}
+	trafficList = []TrafficPerProtocol{}
+	for _, vTraffic := range traffics {
+		traffic := TrafficPerProtocol{}
+		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
 		traffic.Protocol        = vTraffic.Protocol
+		traffic.LowPercentileG  = vTraffic.LowPercentileG
+		traffic.MidPercentileG  = vTraffic.MidPercentileG
+		traffic.HighPercentileG = vTraffic.HighPercentileG
+		traffic.PeakG           = vTraffic.PeakG
+		trafficList             = append(trafficList, traffic)
+	}
+	return trafficList, nil
+}
+
+// Get traffic per port
+func GetTrafficPerPort(engine *xorm.Engine, tType string, typeId int64, trafficType string) (trafficList []TrafficPerPort, err error) {
+	traffics, err := db_models.GetTrafficPerPort(engine, tType, typeId, trafficType)
+	if err != nil {
+		log.Errorf("Get traffic per port err: %+v", err)
+		return nil, err
+	}
+	trafficList = []TrafficPerPort{}
+	for _, vTraffic := range traffics {
+		traffic := TrafficPerPort{}
+		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
+		traffic.Port            = vTraffic.Port
 		traffic.LowPercentileG  = vTraffic.LowPercentileG
 		traffic.MidPercentileG  = vTraffic.MidPercentileG
 		traffic.HighPercentileG = vTraffic.HighPercentileG
@@ -1191,6 +1367,33 @@ func GetTotalConnectionCapacity(engine *xorm.Engine, teleBaselineId int64) (tccL
 	for _, vTcc := range tccs {
 		tcc := TotalConnectionCapacity{}
 		tcc.Protocol               = vTcc.Protocol
+		tcc.Connection             = vTcc.Connection
+		tcc.ConnectionClient       = vTcc.ConnectionClient
+		tcc.Embryonic              = vTcc.Embryonic
+		tcc.EmbryonicClient        = vTcc.EmbryonicClient
+		tcc.ConnectionPs           = vTcc.ConnectionPs
+		tcc.ConnectionClientPs     = vTcc.ConnectionClientPs
+		tcc.RequestPs              = vTcc.RequestPs
+		tcc.RequestClientPs        = vTcc.RequestClientPs
+		tcc.PartialRequestPs       = vTcc.PartialRequestPs
+		tcc.PartialRequestClientPs = vTcc.PartialRequestClientPs
+		tccList                    = append(tccList, tcc)
+	}
+	return tccList, nil
+}
+
+// Get total connection capacity per port
+func GetTotalConnectionCapacityPerPort(engine *xorm.Engine, teleBaselineId int64) (tccList []TotalConnectionCapacityPerPort, err error) {
+	tccs, err := db_models.GetTotalConnectionCapacityPerPortByTeleBaselineId(engine, teleBaselineId)
+	if err != nil {
+		log.Errorf("Get total connection capacity per port err: %+v", err)
+		return nil, err
+	}
+	tccList = []TotalConnectionCapacityPerPort{}
+	for _, vTcc := range tccs {
+		tcc := TotalConnectionCapacityPerPort{}
+		tcc.Protocol               = vTcc.Protocol
+		tcc.Port                   = vTcc.Port
 		tcc.Connection             = vTcc.Connection
 		tcc.ConnectionClient       = vTcc.ConnectionClient
 		tcc.Embryonic              = vTcc.Embryonic
@@ -1538,15 +1741,14 @@ func DefaultBaseline() (baselineList []Baseline, err error) {
 	baseline.FQDN.Append(defaultTargetValue.TargetFqdn)
 	baseline.URI.Append(defaultTargetValue.TargetUri)
 
-	// total_traffic_normal_baseline
+	// total_traffic_normal
 	traffic := Traffic{}
 	traffic.Unit            = defaultTtnbValue.Unit
-	traffic.Protocol        = defaultTtnbValue.Protocol
 	traffic.LowPercentileG  = defaultTtnbValue.LowPercentileG
 	traffic.MidPercentileG  = defaultTtnbValue.MidPercentileG
 	traffic.HighPercentileG = defaultTtnbValue.HighPercentileG
 	traffic.PeakG           = defaultTtnbValue.PeakG
-	baseline.TotalTrafficNormalBaseLine = append(baseline.TotalTrafficNormalBaseLine, traffic)
+	baseline.TotalTrafficNormal = append(baseline.TotalTrafficNormal, traffic)
 
 	// total_connection_capacity
 	tcc := TotalConnectionCapacity{}

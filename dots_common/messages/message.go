@@ -322,3 +322,37 @@ func ParseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err err
 	}
 	return
 }
+
+/*
+ *  Get cuid, tmid, cdid value from URI-Path
+ */
+ func ParseTelemetryPreMitigationUriPath(uriPath []string) (cuid string, tmid *int, cdid string, err error){
+	log.Debugf("Parsing URI-Path : %+v", uriPath)
+	// Get cuid, cdid, tmid from Uri-Path
+	for _, uriPath := range uriPath{
+		if(strings.HasPrefix(uriPath, "cuid=")){
+			cuid = uriPath[strings.Index(uriPath, "cuid=")+5:]
+		} else if(strings.HasPrefix(uriPath, "cdid=")){
+			cuid = uriPath[strings.Index(uriPath, "cdid=")+5:]
+		} else if(strings.HasPrefix(uriPath, "tmid=")){
+			tmidStr := uriPath[strings.Index(uriPath, "tmid=")+5:]
+			tmidValue, err := strconv.Atoi(tmidStr)
+			if err != nil {
+				log.Error("Tmid is not integer type.")
+				return cuid, tmid, cdid, err
+			}
+			if tmidStr == "" {
+			    tmid = nil
+			} else {
+			    tmid = &tmidValue
+			}
+		}
+	}
+	// Log nil if tmid does not exist in path. Otherwise, log tmid's value
+	if tmid == nil {
+	    log.Debugf("Parsing URI-Path result : cuid=%+v, tmid=%+v", cuid, nil)
+	} else {
+        log.Debugf("Parsing URI-Path result : cuid=%+v, tmid=%+v", cuid, *tmid)
+	}
+	return
+}

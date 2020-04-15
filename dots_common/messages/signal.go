@@ -63,7 +63,7 @@ type Scope struct {
 	// telemetry total attack traffic
 	TotalAttackTraffic []TelemetryTraffic `json:"ietf-dots-telemetry:total-attack-traffic" codec:"32885,omitempty"`
 	// telemetry attack detail
-	AttackDetail *TelemetryAttackDetail `json:"ietf-dots-telemetry:attack-detail" codec:"32896,omitempty"`
+	AttackDetail []TelemetryAttackDetail `json:"ietf-dots-telemetry:attack-detail" codec:"32896,omitempty"`
 }
 
 type MitigationRequest struct {
@@ -191,101 +191,103 @@ func (m *MitigationRequest) UpdateMitigationId(mid *int) {
  * Convert MitigationRequests to strings
  */
 func (m *MitigationRequest) String() (result string) {
+	spaces3 := "   "
+	spaces6 := spaces3 + spaces3
+	spaces9 := spaces6 + spaces3
 	result = "\n \"ietf-dots-signal-channel:mitigation-scope\":\n"
 	for key, scope := range m.MitigationScope.Scopes {
-		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces3, "scope", key+1)
 		if scope.MitigationId != nil {
-			result += fmt.Sprintf("     \"%s\": %d\n", "mid", *scope.MitigationId)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "mid", *scope.MitigationId)
 		}
 		if scope.TargetPrefix != nil {
 			for k, v := range scope.TargetPrefix {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-prefix", k+1, v)
+				result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spaces6, "target-prefix", k+1, v)
 			}
 		}
 		if scope.TargetPortRange != nil {
 			for k, v := range scope.TargetPortRange {
-				result += fmt.Sprintf("     \"%s[%d]\":\n", "target-port-range", k+1)
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "target-port-range", k+1)
 				if v.LowerPort != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", *v.LowerPort)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "lower-port", *v.LowerPort)
 				}
 				if v.UpperPort != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", *v.UpperPort)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-port", *v.UpperPort)
 				}
 			}
 		}
 		if scope.TargetProtocol != nil {
 			for k, v := range scope.TargetProtocol {
-				result += fmt.Sprintf("     \"%s[%d]\": %d\n", "target-protocol", k+1, v)
+				result += fmt.Sprintf("%s\"%s[%d]\": %d\n", spaces6, "target-protocol", k+1, v)
 			}
 		}
 		if scope.FQDN != nil {
 			for k, v := range scope.FQDN {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-fqdn", k+1, v)
+				result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spaces6, "target-fqdn", k+1, v)
 			}
 		}
 		if scope.URI != nil {
 			for k, v := range scope.URI {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "target-uri", k+1, v)
+				result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spaces6, "target-uri", k+1, v)
 			}
 		}
 		if scope.AliasName != nil {
 			for k, v := range scope.AliasName {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "alias-name", k+1, v)
+				result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spaces6, "alias-name", k+1, v)
 			}
 		}
 		if scope.SourcePrefix != nil {
 			for k, v := range scope.SourcePrefix {
-				result += fmt.Sprintf("     \"%s[%d]\": %s\n", "ietf-dots-call-home:source-prefix", k+1, v)
+				result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spaces6, "ietf-dots-call-home:source-prefix", k+1, v)
 			}
 		}
 		if scope.SourcePortRange != nil {
 			for k, v := range scope.SourcePortRange {
-				result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-call-home:source-port-range", k+1)
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-call-home:source-port-range", k+1)
 				if v.LowerPort != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "lower-port", *v.LowerPort)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "lower-port", *v.LowerPort)
 				}
 				if v.UpperPort != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "upper-port", *v.UpperPort)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-port", *v.UpperPort)
 				}
 			}
 		}
 		if scope.SourceICMPTypeRange != nil {
 			for k, v := range scope.SourceICMPTypeRange {
-				result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-call-home:source-icmp-type-range", k+1)
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-call-home:source-icmp-type-range", k+1)
 				if v.LowerType != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "lower-type", *v.LowerType)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "lower-type", *v.LowerType)
 				}
 				if v.UpperType != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "upper-type", *v.UpperType)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-type", *v.UpperType)
 				}
 			}
 		}
 		if scope.AclList != nil {
 			for k, v := range scope.AclList {
-				result += fmt.Sprintf("     \"%s[%d]\":\n", "ietf-dots-signal-control:acl-list", k+1)
-				result += fmt.Sprintf("       \"%s\": %s\n", "ietf-dots-signal-control:acl-name", v.AclName)
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-signal-control:acl-list", k+1)
+				result += fmt.Sprintf("%s\"%s\": %s\n", spaces9, "ietf-dots-signal-control:acl-name", v.AclName)
 				if v.ActivationType != nil {
-					result += fmt.Sprintf("       \"%s\": %d\n", "ietf-dots-signal-control:activation-type", *v.ActivationType)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "ietf-dots-signal-control:activation-type", *v.ActivationType)
 				}
 			}
 		}
 		if scope.Lifetime != nil {
-			result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", *scope.Lifetime)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "lifetime", *scope.Lifetime)
 		}
 		if scope.AttackStatus != nil {
-			result += fmt.Sprintf("     \"%s\": %d\n", "attack-status", *scope.AttackStatus)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "attack-status", *scope.AttackStatus)
 		}
 		if scope.TriggerMitigation != nil {
-			result += fmt.Sprintf("     \"%s\": %t\n", "trigger-mitigation", *scope.TriggerMitigation)
+			result += fmt.Sprintf("%s\"%s\": %t\n", spaces6, "trigger-mitigation", *scope.TriggerMitigation)
 		}
-		if scope.TotalAttackTraffic != nil {
-			for k, v := range scope.TotalAttackTraffic {
-				result += fmt.Sprintf("      \"%s[%d]\":\n", "ietf-dots-telemetry:total-attack-traffic", k+1)
-				result += v.String()
-			}
+		for k, v := range scope.TotalAttackTraffic {
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-telemetry:total-attack-traffic", k+1)
+			result += v.String(spaces6)
 		}
-		if scope.AttackDetail != nil {
-			result += scope.AttackDetail.String()
+		for k, v := range scope.AttackDetail {
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-telemetry:attack-detail", k+1)
+			result += v.String(spaces6)
 		}
 	}
 	return
@@ -456,21 +458,44 @@ type TotalPipeCapacity struct {
 }
 
 type Baseline struct {
-	_struct                    bool                      `codec:",uint"` //encode struct with "unsigned integer" keys
-	Id                         *int                      `json:"id" codec:"32836,omitempty"`
-	TargetPrefix               []string                  `json:"target-prefix" codec:"6,omitempty"`
-	TargetPortRange            []PortRange               `json:"target-port-range" codec:"7,omitempty"`
-	TargetProtocol             []int                     `json:"target-protocol" codec:"10,omitempty"`
-	TargetFQDN                 []string                  `json:"target-fqdn" codec:"11,omitempty"`
-	TargetURI                  []string                  `json:"target-uri" codec:"12,omitempty"`
-	TotalTrafficNormalBaseline []Traffic                 `json:"total-traffic-normal-baseline" codec:"32812,omitempty"`
-	TotalConnectionCapacity    []TotalConnectionCapacity `json:"total-connection-capacity" codec:"32819,omitempty"`
+	_struct                        bool                             `codec:",uint"` //encode struct with "unsigned integer" keys
+	Id                             *int                             `json:"id" codec:"32836,omitempty"`
+	TargetPrefix                   []string                         `json:"target-prefix" codec:"6,omitempty"`
+	TargetPortRange                []PortRange                      `json:"target-port-range" codec:"7,omitempty"`
+	TargetProtocol                 []int                            `json:"target-protocol" codec:"10,omitempty"`
+	TargetFQDN                     []string                         `json:"target-fqdn" codec:"11,omitempty"`
+	TargetURI                      []string                         `json:"target-uri" codec:"12,omitempty"`
+	AliasName                      []string                         `json:"alias-name" codec:"13,omitempty"`
+	TotalTrafficNormal             []Traffic                        `json:"total-traffic-normal" codec:"32812,omitempty"`
+	TotalTrafficNormalPerProtocol  []TrafficPerProtocol             `json:"total-traffic-normal-per-protocol" codec:"32869,omitempty"`
+	TotalTrafficNormalPerPort      []TrafficPerPort                 `json:"total-traffic-normal-per-port" codec:"32870,omitempty"`
+	TotalConnectionCapacity        []TotalConnectionCapacity        `json:"total-connection-capacity" codec:"32819,omitempty"`
+	TotalConnectionCapacityPerPort []TotalConnectionCapacityPerPort `json:"total-connection-capacity-per-port" codec:"32871,omitempty"`
 }
 
 type Traffic struct {
 	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
 	Unit            *int    `json:"unit" codec:"32807,omitempty"`
+	LowPercentileG  *uint64 `json:"low-percentile-g" codec:"32813,omitempty"`
+	MidPercentileG  *uint64 `json:"mid-percentile-g" codec:"32814,omitempty"`
+	HighPercentileG *uint64 `json:"high-percentile-g" codec:"32815,omitempty"`
+	PeakG           *uint64 `json:"peak-g" codec:"32816,omitempty"`
+}
+
+type TrafficPerProtocol struct {
+	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit            *int    `json:"unit" codec:"32807,omitempty"`
 	Protocol        *uint8  `json:"protocol" codec:"32868,omitempty"`
+	LowPercentileG  *uint64 `json:"low-percentile-g" codec:"32813,omitempty"`
+	MidPercentileG  *uint64 `json:"mid-percentile-g" codec:"32814,omitempty"`
+	HighPercentileG *uint64 `json:"high-percentile-g" codec:"32815,omitempty"`
+	PeakG           *uint64 `json:"peak-g" codec:"32816,omitempty"`
+}
+
+type TrafficPerPort struct {
+	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit            *int    `json:"unit" codec:"32807,omitempty"`
+	Port            *int    `json:"port" codec:"32877,omitempty"`
 	LowPercentileG  *uint64 `json:"low-percentile-g" codec:"32813,omitempty"`
 	MidPercentileG  *uint64 `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *uint64 `json:"high-percentile-g" codec:"32815,omitempty"`
@@ -491,79 +516,108 @@ type TotalConnectionCapacity struct {
 	PartialRequestClientPs *uint64 `json:"partial-request-client-ps" codec:"32829,omitempty"`
 }
 
+type TotalConnectionCapacityPerPort struct {
+	_struct                bool    `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol               *uint8  `json:"protocol" codec:"32868,omitempty"`
+	Port                   *int    `json:"port" codec:"32877,omitempty"`
+	Connection             *uint64 `json:"connection" codec:"32820,omitempty"`
+	ConnectionClient       *uint64 `json:"connection-client" codec:"32821,omitempty"`
+	Embryonic              *uint64 `json:"embryonic" codec:"32822,omitempty"`
+	EmbryonicClient        *uint64 `json:"embryonic-client" codec:"32823,omitempty"`
+	ConnectionPs           *uint64 `json:"connection-ps" codec:"32824,omitempty"`
+	ConnectionClientPs     *uint64 `json:"connection-client-ps" codec:"32825,omitempty"`
+	RequestPs              *uint64 `json:"request-ps" codec:"32826,omitempty"`
+	RequestClientPs        *uint64 `json:"request-client-ps" codec:"32827,omitempty"`
+	PartialRequestPs       *uint64 `json:"partial-request-ps" codec:"32828,omitempty"`
+	PartialRequestClientPs *uint64 `json:"partial-request-client-ps" codec:"32829,omitempty"`
+}
+
 /*
  * Convert TelemetrySetupConfigurationRequest to strings
  */
-func (ts *TelemetrySetupRequest) String() (result string) {
+ func (ts *TelemetrySetupRequest) String() (result string) {
+	spaces3  := "   "
+	spaces6  := spaces3 + spaces3
+	spaces9  := spaces6 + spaces3
+	spaces12 := spaces9 + spaces3
 	result = "\n \"ietf-dots-telemetry:telemetry-setup\":\n"
 	for key, t := range ts.TelemetrySetup.Telemetry {
-		result += fmt.Sprintf("   \"%s[%d]\":\n", "telemetry", key+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces3, "telemetry", key+1)
 		if t.TelemetryConfigurationCurrent != nil {
-			result += "      \"current-config\":\n"
+			result += fmt.Sprintf("%s\"%s\":\n", spaces6, "current-config")
 			tConfig := t.TelemetryConfigurationCurrent
 			if tConfig.MeasurementInterval != nil {
-				result += fmt.Sprintf("         \"%s\": %d\n", "measurement-interval", *tConfig.MeasurementInterval)
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "measurement-interval", *tConfig.MeasurementInterval)
 			}
 			if tConfig.MeasurementSample != nil {
-				result += fmt.Sprintf("         \"%s\": %d\n", "measurement-sample", *tConfig.MeasurementSample)
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "measurement-sample", *tConfig.MeasurementSample)
 			}
 			if tConfig.LowPercentile != nil {
 				low, _ := tConfig.LowPercentile.Round(2).Float64()
-				result += fmt.Sprintf("         \"%s\": %f\n", "low-percentile", low)
+				result += fmt.Sprintf("%s\"%s\": %f\n", spaces9, "low-percentile", low)
 			}
 			if tConfig.MidPercentile != nil {
 				mid, _ := tConfig.MidPercentile.Round(2).Float64()
-				result += fmt.Sprintf("         \"%s\": %f\n", "mid-percentile", mid)
+				result += fmt.Sprintf("%s\"%s\": %f\n", spaces9, "mid-percentile", mid)
 			}
 			if tConfig.HighPercentile != nil {
 				high, _ := tConfig.HighPercentile.Round(2).Float64()
-				result += fmt.Sprintf("         \"%s\": %f\n", "high-percentile", high)
+				result += fmt.Sprintf("%s\"%s\": %f\n", spaces9, "high-percentile", high)
 			}
 			for k, v := range tConfig.UnitConfigList {
-				result += fmt.Sprintf("         \"%s[%d]\":\n", "unit-config", k+1)
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces9, "unit-config", k+1)
 				if v.Unit != nil {
-					result += fmt.Sprintf("            \"%s\": %d\n", "unit", *v.Unit)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces12, "unit", *v.Unit)
 				}
 				if v.UnitStatus != nil {
-					result += fmt.Sprintf("            \"%s\": %t\n", "unit-status", *v.UnitStatus)
+					result += fmt.Sprintf("%s\"%s\": %t\n", spaces12, "unit-status", *v.UnitStatus)
 				}
 			}
 			if tConfig.ServerOriginatedTelemetry != nil {
-				result += fmt.Sprintf("         \"%s\": %t\n", "server-initiated-telemetry", *tConfig.ServerOriginatedTelemetry)
+				result += fmt.Sprintf("%s\"%s\": %t\n", spaces9, "server-initiated-telemetry", *tConfig.ServerOriginatedTelemetry)
 			}
 			if tConfig.TelemetryNotifyInterval != nil {
-				result += fmt.Sprintf("         \"%s\": %d\n", "telemetry-notify-interval", *tConfig.TelemetryNotifyInterval)
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "telemetry-notify-interval", *tConfig.TelemetryNotifyInterval)
 			}
 		}
 		for k, v := range t.TotalPipeCapacity {
-			result += fmt.Sprintf("      \"%s[%d]\":\n", "total-pipe-capacity", k+1)
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-pipe-capacity", k+1)
 			if v.LinkId != nil {
-				result += fmt.Sprintf("         \"%s\": %s\n", "link-id", *v.LinkId)
+				result += fmt.Sprintf("%s\"%s\": %s\n", spaces9, "link-id", *v.LinkId)
 			}
 			if v.Capacity != nil {
-				result += fmt.Sprintf("         \"%s\": %d\n", "capacity", *v.Capacity)
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "capacity", *v.Capacity)
 			}
 			if v.Unit != nil {
-				result += fmt.Sprintf("         \"%s\": %d\n", "unit", *v.Unit)
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "unit", *v.Unit)
 			}
 		}
 		for k, v := range t.Baseline {
-			result += fmt.Sprintf("      \"%s[%d]\":\n", "baseline", k+1)
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "baseline", k+1)
 			if v.Id != nil {
-				result += fmt.Sprintf("         \"%s\": %d\n", "id", *v.Id)
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "id", *v.Id)
 			}
-			resultTargets := ConvertTargetsRequestToStrings(v.TargetPrefix, v.TargetPortRange, v.TargetProtocol, v.TargetFQDN, v.TargetURI, nil)
+			resultTargets := ConvertTargetsRequestToStrings(v.TargetPrefix, v.TargetPortRange, v.TargetProtocol, v.TargetFQDN, v.TargetURI, v.AliasName, spaces9)
 			result += resultTargets
-			for kNormalBaseline, vNormalBaseLine := range v.TotalTrafficNormalBaseline {
-				result += fmt.Sprintf("         \"%s[%d]\":\n", "total-traffic-normal-baseline", kNormalBaseline+1)
-				resultTotalTrafficNormalBaseLine := vNormalBaseLine.String()
-				result += resultTotalTrafficNormalBaseLine
-
+			for kNormal, vNormal := range v.TotalTrafficNormal {
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces9, "total-traffic-normal", kNormal+1)
+				result += vNormal.String(spaces9)
+			}
+			for kNormalPerProtocol, vNormalPerProtocol := range v.TotalTrafficNormalPerProtocol {
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces9, "total-traffic-normal-per-protocol", kNormalPerProtocol+1)
+				result += vNormalPerProtocol.String(spaces9)
+			}
+			for kNormalPerPort, vNormalPerPort:= range v.TotalTrafficNormalPerPort {
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces9, "total-traffic-normal-per-port", kNormalPerPort+1)
+				result += vNormalPerPort.String(spaces9)
 			}
 			for kConnectionCapacity, vConnectionCapacity := range v.TotalConnectionCapacity {
-				result += fmt.Sprintf("         \"%s[%d]\":\n", "total-connection-capacity", kConnectionCapacity+1)
-				resultConnectionCapacity := vConnectionCapacity.String()
-				result += resultConnectionCapacity
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces9, "total-connection-capacity", kConnectionCapacity+1)
+				result += vConnectionCapacity.String(spaces9)
+			}
+			for kConnectionCapacityPerPort, vConnectionCapacityPerPort := range v.TotalConnectionCapacityPerPort {
+				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces9, "total-connection-capacity-per-port", kConnectionCapacityPerPort+1)
+				result += vConnectionCapacityPerPort.String(spaces9)
 			}
 		}
 	}
@@ -571,91 +625,187 @@ func (ts *TelemetrySetupRequest) String() (result string) {
 }
 
 // Convert TagetsRequest to string
-func ConvertTargetsRequestToStrings(prefixs []string, portRanges []PortRange, protocols []int, fqdns []string, uris []string,  aliases []string) (result string) {
+func ConvertTargetsRequestToStrings(prefixs []string, portRanges []PortRange, protocols []int, fqdns []string, uris []string,  aliases []string, spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
 	for k, v := range prefixs {
-		result += fmt.Sprintf("         \"%s[%d]\": %s\n", "target-prefix", k+1, v)
+		result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spacesn, "target-prefix", k+1, v)
 	}
 	for k, v := range portRanges {
-		result += fmt.Sprintf("         \"%s[%d]\":\n", "target-port-range", k+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn, "target-port-range", k+1)
 		if v.LowerPort != nil {
-			result += fmt.Sprintf("            \"%s\": %d\n", "lower-port", *v.LowerPort)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "lower-port", *v.LowerPort)
 		}
 		if v.UpperPort != nil {
-			result += fmt.Sprintf("            \"%s\": %d\n", "upper-port", *v.UpperPort)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "upper-port", *v.UpperPort)
 		}
 	}
 	for k, v := range protocols {
-		result += fmt.Sprintf("         \"%s[%d]\": %d\n", "target-protocol", k+1, v)
+		result += fmt.Sprintf("%s\"%s[%d]\": %d\n", spacesn, "target-protocol", k+1, v)
 	}
 	for k, v := range fqdns {
-		result += fmt.Sprintf("         \"%s[%d]\": %s\n", "target-fqdn", k+1, v)
+		result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spacesn, "target-fqdn", k+1, v)
 	}
 	for k, v := range uris {
-		result += fmt.Sprintf("         \"%s[%d]\": %s\n", "target-uri", k+1, v)
+		result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spacesn, "target-uri", k+1, v)
 	}
 	for k, v := range aliases {
-		result += fmt.Sprintf("         \"%s[%d]\": %s\n", "alias-name", k+1, v)
+		result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spacesn, "alias-name", k+1, v)
 	}
 	return
 }
 
 // Convert Traffic to string
-func (traffic Traffic) String() (result string) {
+func (traffic Traffic) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
 	if traffic.Unit != nil {
-		result += fmt.Sprintf("                  \"%s\": %d\n", "unit", *traffic.Unit)
-	}
-	if traffic.Protocol != nil {
-		result += fmt.Sprintf("                  \"%s\": %d\n", "protocol", *traffic.Protocol)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "unit", *traffic.Unit)
 	}
 	if traffic.LowPercentileG != nil {
-		result += fmt.Sprintf("                  \"%s\": %d\n", "low-percentile-g", *traffic.LowPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "low-percentile-g", *traffic.LowPercentileG)
 	}
 	if traffic.MidPercentileG != nil {
-		result += fmt.Sprintf("                  \"%s\": %d\n", "mid-percentile-g", *traffic.MidPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "mid-percentile-g", *traffic.MidPercentileG)
 	}
 	if traffic.HighPercentileG != nil {
-		result += fmt.Sprintf("                  \"%s\": %d\n", "high-percentile-g", *traffic.HighPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "high-percentile-g", *traffic.HighPercentileG)
 	}
 	if traffic.PeakG != nil {
-		result += fmt.Sprintf("                  \"%s\": %d\n", "peak-g", *traffic.PeakG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
+	}
+	return
+}
+
+// Convert TrafficPerProtocol to string
+func (traffic TrafficPerProtocol) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	if traffic.Unit != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "unit", *traffic.Unit)
+	}
+	if traffic.Protocol != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "protocol", *traffic.Protocol)
+	}
+	if traffic.LowPercentileG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "low-percentile-g", *traffic.LowPercentileG)
+	}
+	if traffic.MidPercentileG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "mid-percentile-g", *traffic.MidPercentileG)
+	}
+	if traffic.HighPercentileG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "high-percentile-g", *traffic.HighPercentileG)
+	}
+	if traffic.PeakG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
+	}
+	return
+}
+
+// Convert TrafficPerPort to string
+func (traffic TrafficPerPort) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	if traffic.Unit != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "unit", *traffic.Unit)
+	}
+	if traffic.Port != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "port", *traffic.Port)
+	}
+	if traffic.LowPercentileG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "low-percentile-g", *traffic.LowPercentileG)
+	}
+	if traffic.MidPercentileG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "mid-percentile-g", *traffic.MidPercentileG)
+	}
+	if traffic.HighPercentileG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "high-percentile-g", *traffic.HighPercentileG)
+	}
+	if traffic.PeakG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
 	}
 	return
 }
 
 // Convert TotalConnectionCapacity to string
-func (tcc TotalConnectionCapacity) String() (result string) {
+func (tcc TotalConnectionCapacity) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
 	if tcc.Protocol != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "protocol", *tcc.Protocol)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "protocol", *tcc.Protocol)
 	}
 	if tcc.Connection != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "connection", *tcc.Connection)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection", *tcc.Connection)
 	}
 	if tcc.ConnectionClient != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "connection-client", *tcc.ConnectionClient)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-client", *tcc.ConnectionClient)
 	}
 	if tcc.Embryonic != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "embryonic", *tcc.Embryonic)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "embryonic", *tcc.Embryonic)
 	}
 	if tcc.EmbryonicClient != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "embryonic-client", *tcc.EmbryonicClient)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "embryonic-client", *tcc.EmbryonicClient)
 	}
 	if tcc.ConnectionPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "connection-ps", *tcc.ConnectionPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-ps", *tcc.ConnectionPs)
 	}
 	if tcc.ConnectionClientPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "connection-client-ps", *tcc.ConnectionClientPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-client-ps", *tcc.ConnectionClientPs)
 	}
 	if tcc.RequestPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "request-ps", *tcc.RequestPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-ps", *tcc.RequestPs)
 	}
 	if tcc.RequestClientPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "request-client-ps", *tcc.RequestClientPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-client-ps", *tcc.RequestClientPs)
 	}
 	if tcc.PartialRequestPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "partial-request-ps", *tcc.PartialRequestPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-ps", *tcc.PartialRequestPs)
 	}
 	if tcc.PartialRequestClientPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "partial-request-client-ps", *tcc.PartialRequestClientPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-client-ps", *tcc.PartialRequestClientPs)
+	}
+	return
+}
+
+// Convert TotalConnectionCapacityPerPort to string
+func (tcc TotalConnectionCapacityPerPort) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	if tcc.Protocol != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "protocol", *tcc.Protocol)
+	}
+	if tcc.Port != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "port", *tcc.Port)
+	}
+	if tcc.Connection != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection", *tcc.Connection)
+	}
+	if tcc.ConnectionClient != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-client", *tcc.ConnectionClient)
+	}
+	if tcc.Embryonic != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "embryonic", *tcc.Embryonic)
+	}
+	if tcc.EmbryonicClient != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "embryonic-client", *tcc.EmbryonicClient)
+	}
+	if tcc.ConnectionPs != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-ps", *tcc.ConnectionPs)
+	}
+	if tcc.ConnectionClientPs != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-client-ps", *tcc.ConnectionClientPs)
+	}
+	if tcc.RequestPs != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-ps", *tcc.RequestPs)
+	}
+	if tcc.RequestClientPs != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-client-ps", *tcc.RequestClientPs)
+	}
+	if tcc.PartialRequestPs != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-ps", *tcc.PartialRequestPs)
+	}
+	if tcc.PartialRequestClientPs != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-client-ps", *tcc.PartialRequestClientPs)
 	}
 	return
 }
@@ -671,12 +821,17 @@ type TelemetryPreMitigation struct {
 }
 
 type PreOrOngoingMitigation struct {
-	_struct               bool                   `codec:",uint"` //encode struct with "unsigned integer" keys
-	Target                *Target                `json:"target" codec:"32866,omitempty"`
-	TotalTraffic          []Traffic              `json:"total-traffic" codec:"32818,omitempty"`
-	TotalAttackTraffic    []Traffic              `json:"total-attack-traffic" codec:"32817,omitempty"`
-	TotalAttackConnection *TotalAttackConnection `json:"total-attack-connection" codec:"32830,omitempty"`
-	AttackDetail          *AttackDetail          `json:"attack-detail" codec:"32835,omitempty"`
+	_struct                    bool                       `codec:",uint"` //encode struct with "unsigned integer" keys
+	Target                     *Target                    `json:"target" codec:"32866,omitempty"`
+	TotalTraffic               []Traffic                  `json:"total-traffic" codec:"32818,omitempty"`
+	TotalTrafficProtocol       []TrafficPerProtocol       `json:"total-traffic-protocol" codec:"32872,omitempty"`
+	TotalTrafficPort           []TrafficPerPort           `json:"total-traffic-port" codec:"32873,omitempty"`
+	TotalAttackTraffic         []Traffic                  `json:"total-attack-traffic" codec:"32817,omitempty"`
+	TotalAttackTrafficProtocol []TrafficPerProtocol       `json:"total-attack-traffic-protocol" codec:"32874,omitempty"`
+	TotalAttackTrafficPort     []TrafficPerPort           `json:"total-attack-traffic-port" codec:"32875,omitempty"`
+	TotalAttackConnection      *TotalAttackConnection     `json:"total-attack-connection" codec:"32830,omitempty"`
+	TotalAttackConnectionPort  *TotalAttackConnectionPort `json:"total-attack-connection-port" codec:"32876,omitempty"`
+	AttackDetail               []AttackDetail             `json:"attack-detail" codec:"32835,omitempty"`
 }
 
 type Target struct {
@@ -697,6 +852,14 @@ type TotalAttackConnection struct {
 	PeakL           []ConnectionProtocolPercentile `json:"peak-l" codec:"32834,omitempty"`
 }
 
+type TotalAttackConnectionPort struct {
+	_struct         bool                               `codec:",uint"` //encode struct with "unsigned integer" keys
+	LowPercentileL  []ConnectionProtocolPortPercentile `json:"low-percentile-l" codec:"32831,omitempty"`
+	MidPercentileL  []ConnectionProtocolPortPercentile `json:"mid-percentile-l" codec:"32832,omitempty"`
+	HighPercentileL []ConnectionProtocolPortPercentile `json:"high-percentile-l" codec:"32833,omitempty"`
+	PeakL           []ConnectionProtocolPortPercentile `json:"peak-l" codec:"32834,omitempty"`
+}
+
 type AttackDetail struct {
 	_struct        bool         `codec:",uint"` //encode struct with "unsigned integer" keys
 	Id             *uint32      `json:"id" codec:"32836,omitempty"`
@@ -712,6 +875,17 @@ type AttackDetail struct {
 type ConnectionProtocolPercentile struct {
 	_struct          bool    `codec:",uint"` //encode struct with "unsigned integer" keys
 	Protocol         *uint8  `json:"protocol" codec:"32868,omitempty"`
+	Connection       *uint64 `json:"connection" codec:"32820,omitempty"`
+	Embryonic        *uint64 `json:"embryonic" codec:"32822,omitempty"`
+	ConnectionPs     *uint64 `json:"connection-ps" codec:"32824,omitempty"`
+	RequestPs        *uint64 `json:"request-ps" codec:"32826,omitempty"`
+	PartialRequestPs *uint64 `json:"partial-request-ps" codec:"32828,omitempty"`
+}
+
+type ConnectionProtocolPortPercentile struct {
+	_struct          bool    `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol         *uint8  `json:"protocol" codec:"32868,omitempty"`
+	Port             *int    `json:"port" codec:"32877,omitempty"`
 	Connection       *uint64 `json:"connection" codec:"32820,omitempty"`
 	Embryonic        *uint64 `json:"embryonic" codec:"32822,omitempty"`
 	ConnectionPs     *uint64 `json:"connection-ps" codec:"32824,omitempty"`
@@ -752,311 +926,388 @@ type SourceICMPTypeRange struct {
  * Convert TelemetryPreMitigationRequest to strings
  */
  func (tpm *TelemetryPreMitigationRequest) String() (result string) {
+	spaces3 := "   "
+	spaces6 := spaces3 + spaces3
+	spaces9 := spaces6 + spaces3
 	result = "\n \"ietf-dots-telemetry:telemetry\":\n"
 	for key, t := range tpm.TelemetryPreMitigation.PreOrOngoingMitigation {
-		result += fmt.Sprintf("   \"%s[%d]\":\n", "pre-or-ongoing-mitigation", key+1)
-		result += "      \"target\":\n"
-		result += ConvertTargetsRequestToStrings(t.Target.TargetPrefix, t.Target.TargetPortRange, t.Target.TargetProtocol, t.Target.FQDN, t.Target.URI, t.Target.AliasName)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces3, "pre-or-ongoing-mitigation", key+1)
+		result += fmt.Sprintf("%s\"%s\":\n", spaces6, "target")
+		result += ConvertTargetsRequestToStrings(t.Target.TargetPrefix, t.Target.TargetPortRange, t.Target.TargetProtocol, t.Target.FQDN, t.Target.URI, t.Target.AliasName, spaces9)
 		for k, v := range t.TotalTraffic {
-			result += fmt.Sprintf("      \"%s[%d]\":\n", "total-traffic", k+1)
-			result += v.String()
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-traffic", k+1)
+			result += v.String(spaces6)
+		}
+		for k, v := range t.TotalTrafficProtocol {
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-traffic-protocol", k+1)
+			result += v.String(spaces6)
+		}
+		for k, v := range t.TotalTrafficPort {
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-traffic-port", k+1)
+			result += v.String(spaces6)
 		}
 		for k, v := range t.TotalAttackTraffic {
-			result += fmt.Sprintf("      \"%s[%d]\":\n", "total-attack-traffic", k+1)
-			result += v.String()
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-attack-traffic", k+1)
+			result += v.String(spaces6)
+		}
+		for k, v := range t.TotalAttackTrafficProtocol {
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-attack-traffic-protocol", k+1)
+			result += v.String(spaces6)
+		}
+		for k, v := range t.TotalAttackTrafficPort {
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-attack-traffic-port", k+1)
+			result += v.String(spaces6)
 		}
 		if t.TotalAttackConnection != nil {
-			result += t.TotalAttackConnection.String()
+			result += t.TotalAttackConnection.String(spaces6)
 		}
-		if t.AttackDetail != nil {
-			result += t.AttackDetail.String()
+		if t.TotalAttackConnectionPort != nil {
+			result += t.TotalAttackConnectionPort.String(spaces6)
+		}
+		for k, v := range t.AttackDetail {
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "attack-detail", k+1)
+			result += v.String(spaces6)
 		}
 	}
 	return
 }
 
 // Convert TotalAttackConnection to String
-func (tac *TotalAttackConnection) String() (result string) {
-	result = "      \"total-attack-connection\":\n"
+func (tac *TotalAttackConnection) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	result += fmt.Sprintf("%s\"%s\":\n", spacesn, "total-attack-connection")
 	for k, v := range tac.LowPercentileL {
-		result += fmt.Sprintf("         \"%s[%d]\":\n", "low-percentile-l", k+1)
-		result += v.String()
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "low-percentile-l", k+1)
+		result += v.String(spacesn3)
 	}
 	for k, v := range tac.MidPercentileL {
-		result += fmt.Sprintf("         \"%s[%d]\":\n", "mid-percentile-l", k+1)
-		result += v.String()
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "mid-percentile-l", k+1)
+		result += v.String(spacesn3)
 	}
 	for k, v := range tac.HighPercentileL {
-		result += fmt.Sprintf("         \"%s[%d]\":\n", "high-percentile-l", k+1)
-		result += v.String()
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "high-percentile-l", k+1)
+		result += v.String(spacesn3)
 	}
 	for k, v := range tac.PeakL {
-		result += fmt.Sprintf("         \"%s[%d]\":\n", "peak-l", k+1)
-		result += v.String()
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "peak-l", k+1)
+		result += v.String(spacesn3)
+	}
+	return
+}
+
+// Convert TotalAttackConnectionPort to String
+func (tac *TotalAttackConnectionPort) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	result += fmt.Sprintf("%s\"%s\":\n", spacesn, "total-attack-connection-port")
+	for k, v := range tac.LowPercentileL {
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "low-percentile-l", k+1)
+		result += v.String(spacesn3)
+	}
+	for k, v := range tac.MidPercentileL {
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "mid-percentile-l", k+1)
+		result += v.String(spacesn3)
+	}
+	for k, v := range tac.HighPercentileL {
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "high-percentile-l", k+1)
+		result += v.String(spacesn3)
+	}
+	for k, v := range tac.PeakL {
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "peak-l", k+1)
+		result += v.String(spacesn3)
 	}
 	return
 }
 
 // Convert ConnectionProtocolPercentile to String
-func (pl ConnectionProtocolPercentile) String() (result string) {
+func (pl ConnectionProtocolPercentile) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
 	if pl.Protocol != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "protocol", *pl.Protocol)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "protocol", *pl.Protocol)
 	}
 	if pl.Connection != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "connection", *pl.Connection)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection", *pl.Connection)
 	}
 	if pl.Embryonic != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "embryonic", *pl.Embryonic)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "embryonic", *pl.Embryonic)
 	}
 	if pl.ConnectionPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "connection-ps", *pl.ConnectionPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-ps", *pl.ConnectionPs)
 	}
 	if pl.RequestPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "request-ps", *pl.RequestPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-ps", *pl.RequestPs)
 	}
 	if pl.PartialRequestPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "partial-request-ps", *pl.PartialRequestPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-ps", *pl.PartialRequestPs)
 	}
 	return
 }
+
+// Convert ConnectionProtocolPortPercentile to String
+func (pl ConnectionProtocolPortPercentile) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	if pl.Protocol != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "protocol", *pl.Protocol)
+	}
+	if pl.Port != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "port", *pl.Port)
+	}
+	if pl.Connection != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection", *pl.Connection)
+	}
+	if pl.Embryonic != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "embryonic", *pl.Embryonic)
+	}
+	if pl.ConnectionPs != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-ps", *pl.ConnectionPs)
+	}
+	if pl.RequestPs != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-ps", *pl.RequestPs)
+	}
+	if pl.PartialRequestPs != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-ps", *pl.PartialRequestPs)
+	}
+	return
+}
+
 
 // Convert AttackDetail to String
-func (ad AttackDetail) String() (result string) {
-	result = "      \"attack-detail\":\n"
+func (ad AttackDetail) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	spacesn6 := spacesn3 + spaces3
 	if ad.Id != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "id", *ad.Id)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "id", *ad.Id)
 	}
 	if ad.AttackId != nil {
-		result += fmt.Sprintf("         \"%s\": %s\n", "attack-id", *ad.AttackId)
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-id", *ad.AttackId)
 	}
 	if ad.AttackName != nil {
-		result += fmt.Sprintf("         \"%s\": %s\n", "attack-name", *ad.AttackName)
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-name", *ad.AttackName)
 	}
 	if ad.AttackSeverity != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "attack-severity", *ad.AttackSeverity)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "attack-severity", *ad.AttackSeverity)
 	}
 	if ad.StartTime != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "start-time", *ad.StartTime)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "start-time", *ad.StartTime)
 	}
 	if ad.EndTime != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "end-time", *ad.EndTime)
-	}
-	if ad.SourceCount != nil {
-		result += "         \"source-count\":\n"
-		result += ad.SourceCount.String()
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "end-time", *ad.EndTime)
 	}
 	if ad.TopTalKer != nil {
-		result += "         \"top-talker\":\n"
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "top-talker")
 		for k, v := range ad.TopTalKer.Talker {
-			result += fmt.Sprintf("            \"%s[%d]\":\n", "talker", k+1)
-			result += v.String()
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn6, "talker", k+1)
+			result += v.String(spacesn6)
 		}
-	}
-	return
-}
-
-// Convert SourceCount to String
-func (sc SourceCount) String() (result string) {
-	if sc.LowPercentileG != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "low-percentile-g", *sc.LowPercentileG)
-	}
-	if sc.MidPercentileG != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "mid-percentile-g", *sc.MidPercentileG)
-	}
-	if sc.HighPercentileG != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "high-percentile-g", *sc.HighPercentileG)
-	}
-	if sc.PeakG != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "peak-g", *sc.PeakG)
 	}
 	return
 }
 
 // Convert Talker to String
-func (t Talker) String() (result string) {
+func (t Talker) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	spacesn6 := spacesn3 + spaces3
 	if t.SpoofedStatus != nil {
-		result += fmt.Sprintf("               \"%s\": %t\n", "spoofed-status", *t.SpoofedStatus)
+		result += fmt.Sprintf("%s\"%s\": %t\n", spacesn3, "spoofed-status", *t.SpoofedStatus)
 	}
 	if t.SourcePrefix != nil {
-		result += fmt.Sprintf("               \"%s\": %s\n", "source-prefix", *t.SourcePrefix)
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "source-prefix", *t.SourcePrefix)
 	}
 	for k, v := range t.SourcePortRange {
-		result += fmt.Sprintf("               \"%s[%d]\":\n", "source-port-range", k+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "source-port-range", k+1)
 		if v.LowerPort != nil {
-			result += fmt.Sprintf("                  \"%s\": %d\n", "lower-port", *v.LowerPort)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "lower-port", *v.LowerPort)
 		}
 		if v.UpperPort != nil {
-			result += fmt.Sprintf("                   \"%s\": %d\n", "upper-port", *v.UpperPort)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-port", *v.UpperPort)
 		}
 	}
 	for k, v := range t.SourceIcmpTypeRange {
-		result += fmt.Sprintf("               \"%s[%d]\":\n", "source-icmp-type-range", k+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "source-icmp-type-range", k+1)
 		if v.LowerType != nil {
-			result += fmt.Sprintf("                 \"%s\": %d\n", "lower-type", *v.LowerType)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "lower-type", *v.LowerType)
 		}
 		if v.UpperType != nil {
-			result += fmt.Sprintf("                 \"%s\": %d\n", "upper-type", *v.UpperType)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-type", *v.UpperType)
 		}
 	}
 	for k, v := range t.TotalAttackTraffic {
-		result += fmt.Sprintf("               \"%s[%d]\":\n", "total-attack-traffic", k+1)
-		result += v.String()
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "total-attack-traffic", k+1)
+		result += v.String(spacesn3)
 	}
 	if t.TotalAttackConnection != nil {
-		result += t.TotalAttackConnection.String()
+		result += t.TotalAttackConnection.String(spacesn3)
 	}
 	return
 }
 
 // Convert TelemetryTraffic to String
-func (traffic TelemetryTraffic) String() (result string) {
+func (traffic TelemetryTraffic) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
 	if traffic.Unit != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:unit", *traffic.Unit)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:unit", *traffic.Unit)
 	}
 	if traffic.Protocol != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:protocol", *traffic.Protocol)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:protocol", *traffic.Protocol)
 	}
 	if traffic.LowPercentileG != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:low-percentile-g", *traffic.LowPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:low-percentile-g", *traffic.LowPercentileG)
 	}
 	if traffic.MidPercentileG != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:mid-percentile-g", *traffic.MidPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:mid-percentile-g", *traffic.MidPercentileG)
 	}
 	if traffic.HighPercentileG != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:high-percentile-g", *traffic.HighPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:high-percentile-g", *traffic.HighPercentileG)
 	}
 	if traffic.PeakG != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:peak-g", *traffic.PeakG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:peak-g", *traffic.PeakG)
 	}
 	return
 }
 
 // Convert TelemetryAttackDetail to String
-func (ad TelemetryAttackDetail) String() (result string) {
-	result = "      \"attack-detail\":\n"
+func (ad TelemetryAttackDetail) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	spacesn6 := spacesn3 + spaces3
 	if ad.Id != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:id", *ad.Id)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:id", *ad.Id)
 	}
 	if ad.AttackId != nil {
-		result += fmt.Sprintf("         \"%s\": %s\n", "ietf-dots-telemetry:attack-id", *ad.AttackId)
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "ietf-dots-telemetry:attack-id", *ad.AttackId)
 	}
 	if ad.AttackName != nil {
-		result += fmt.Sprintf("         \"%s\": %s\n", "ietf-dots-telemetry:attack-name", *ad.AttackName)
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "ietf-dots-telemetry:attack-name", *ad.AttackName)
 	}
 	if ad.AttackSeverity != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:attack-severity", *ad.AttackSeverity)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:attack-severity", *ad.AttackSeverity)
 	}
 	if ad.StartTime != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:start-time", *ad.StartTime)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:start-time", *ad.StartTime)
 	}
 	if ad.EndTime != nil {
-		result += fmt.Sprintf("         \"%s\": %d\n", "ietf-dots-telemetry:end-time", *ad.EndTime)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:end-time", *ad.EndTime)
 	}
 	if ad.SourceCount != nil {
-		result += "         \"ietf-dots-telemetry:source-count\":\n"
-		result += ad.SourceCount.String()
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:source-count")
+		result += ad.SourceCount.String(spacesn3)
 	}
 	if ad.TopTalKer != nil {
-		result += "         \"ietf-dots-telemetry:top-talker\":\n"
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:top-talker")
 		for k, v := range ad.TopTalKer.Talker {
-			result += fmt.Sprintf("            \"%s[%d]\":\n", "ietf-dots-telemetry:talker", k+1)
-			result += v.String()
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn6, "ietf-dots-telemetry:talker", k+1)
+			result += v.String(spacesn6)
 		}
 	}
 	return
 }
 
 // Convert TelemetrySourceCount to String
-func (sc TelemetrySourceCount) String() (result string) {
+func (sc TelemetrySourceCount) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
 	if sc.LowPercentileG != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "ietf-dots-telemetry:low-percentile-g", *sc.LowPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:low-percentile-g", *sc.LowPercentileG)
 	}
 	if sc.MidPercentileG != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "ietf-dots-telemetry:mid-percentile-g", *sc.MidPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:mid-percentile-g", *sc.MidPercentileG)
 	}
 	if sc.HighPercentileG != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "ietf-dots-telemetry:high-percentile-g", *sc.HighPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:high-percentile-g", *sc.HighPercentileG)
 	}
 	if sc.PeakG != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "ietf-dots-telemetry:peak-g", *sc.PeakG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:peak-g", *sc.PeakG)
 	}
 	return
 }
 
 // Convert TelemetryTalker to String
-func (t TelemetryTalker) String() (result string) {
+func (t TelemetryTalker) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	spacesn6 := spacesn3 + spaces3
 	if t.SpoofedStatus != nil {
-		result += fmt.Sprintf("               \"%s\": %t\n", "ietf-dots-telemetry:spoofed-status", *t.SpoofedStatus)
+		result += fmt.Sprintf("%s\"%s\": %t\n", spacesn3, "ietf-dots-telemetry:spoofed-status", *t.SpoofedStatus)
 	}
 	if t.SourcePrefix != nil {
-		result += fmt.Sprintf("               \"%s\": %s\n", "ietf-dots-telemetry:source-prefix", *t.SourcePrefix)
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "ietf-dots-telemetry:source-prefix", *t.SourcePrefix)
 	}
 	for k, v := range t.SourcePortRange {
-		result += fmt.Sprintf("               \"%s[%d]\":\n", "ietf-dots-telemetry:source-port-range", k+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "ietf-dots-telemetry:source-port-range", k+1)
 		if v.LowerPort != nil {
-			result += fmt.Sprintf("                  \"%s\": %d\n", "ietf-dots-telemetry:lower-port", *v.LowerPort)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "ietf-dots-telemetry:lower-port", *v.LowerPort)
 		}
 		if v.UpperPort != nil {
-			result += fmt.Sprintf("                   \"%s\": %d\n", "ietf-dots-telemetry:upper-port", *v.UpperPort)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "ietf-dots-telemetry:upper-port", *v.UpperPort)
 		}
 	}
 	for k, v := range t.SourceIcmpTypeRange {
-		result += fmt.Sprintf("               \"%s[%d]\":\n", "ietf-dots-telemetry:source-icmp-type-range", k+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "ietf-dots-telemetry:source-icmp-type-range", k+1)
 		if v.LowerType != nil {
-			result += fmt.Sprintf("                 \"%s\": %d\n", "ietf-dots-telemetry:lower-type", *v.LowerType)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "ietf-dots-telemetry:lower-type", *v.LowerType)
 		}
 		if v.UpperType != nil {
-			result += fmt.Sprintf("                 \"%s\": %d\n", "ietf-dots-telemetry:upper-type", *v.UpperType)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "ietf-dots-telemetry:upper-type", *v.UpperType)
 		}
 	}
 	for k, v := range t.TotalAttackTraffic {
-		result += fmt.Sprintf("               \"%s[%d]\":\n", "ietf-dots-telemetry:total-attack-traffic", k+1)
-		result += v.String()
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "ietf-dots-telemetry:total-attack-traffic", k+1)
+		result += v.String(spacesn3)
 	}
 	if t.TotalAttackConnection != nil {
-		result += t.TotalAttackConnection.String()
+		result += t.TotalAttackConnection.String(spacesn3)
 	}
 	return
 }
 
 // Convert TelemetryTotalAttackConnection to String
-func (tac *TelemetryTotalAttackConnection) String() (result string) {
-	result = "      \"ietf-dots-telemetry:total-attack-connection\":\n"
+func (tac *TelemetryTotalAttackConnection) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
+	result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:total-attack-connection")
 	if tac.LowPercentileC != nil {
-		result += "         \"ietf-dots-telemetry:low-percentile-c\":\n"
-		result += tac.LowPercentileC.String()
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:low-percentile-c")
+		result += tac.LowPercentileC.String(spacesn3)
 	}
 	if tac.MidPercentileC != nil {
-		result += "         \"ietf-dots-telemetry:mid-percentile-c\":\n"
-		result += tac.MidPercentileC.String()
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:mid-percentile-c")
+		result += tac.MidPercentileC.String(spacesn3)
 	}
 	if tac.HighPercentileC != nil {
-		result += "         \"ietf-dots-telemetry:high-percentile-c\":\n"
-		result += tac.HighPercentileC.String()
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:high-percentile-c")
+		result += tac.HighPercentileC.String(spacesn3)
 	}
 	if tac.PeakC != nil {
-		result += "         \"ietf-dots-telemetry:peak-c\":\n"
-		result += tac.PeakC.String()
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:peak-c")
+		result += tac.PeakC.String(spacesn3)
 	}
 	return
 }
 
 // Convert TelemetryConnectionProtocolPercentile to String
-func (pl TelemetryConnectionPercentile) String() (result string) {
+func (pl TelemetryConnectionPercentile) String(spacesn string) (result string) {
+	spaces3 := "   "
+	spacesn3 := spacesn + spaces3
 	if pl.Connection != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "ietf-dots-telemetry:connection", *pl.Connection)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:connection", *pl.Connection)
 	}
 	if pl.Embryonic != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "ietf-dots-telemetry:embryonic", *pl.Embryonic)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:embryonic", *pl.Embryonic)
 	}
 	if pl.ConnectionPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "ietf-dots-telemetry:connection-ps", *pl.ConnectionPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:connection-ps", *pl.ConnectionPs)
 	}
 	if pl.RequestPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "ietf-dots-telemetry:request-ps", *pl.RequestPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:request-ps", *pl.RequestPs)
 	}
 	if pl.PartialRequestPs != nil {
-		result += fmt.Sprintf("            \"%s\": %d\n", "ietf-dots-telemetry:partial-request-ps", *pl.PartialRequestPs)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:partial-request-ps", *pl.PartialRequestPs)
 	}
 	return
 }
