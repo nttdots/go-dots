@@ -546,6 +546,34 @@ func GetMitigationByCustomerIdAndCuid(customerId int, cuid string) (mitigationLi
 	return
 }
 
+// Get mitigationId by customerId, cuid, mid, queries
+func GetMitigationId(customerId int, cuid string, mid int, queries []string) (mitigationId *int, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return nil, err
+	}
+	mitigation := db_models.MitigationScope{}
+	// Get mitigation data
+	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id=?", customerId, cuid, mid).Get(&mitigation)
+	if err != nil {
+		log.Printf("find mitigation error: %s\n", err)
+		return nil, err
+	}
+	// Check targets queries match or mot match with targets of mitigation
+	isFound, err := IsFoundTargetQueries(engine, mitigation.Id, queries, false)
+	if err != nil {
+		return nil, err
+	}
+	if isFound {
+		mitigationId = &mitigation.MitigationId
+	} else {
+		mitigationId = nil
+	}
+	return mitigationId, nil
+}
+
 /*
  * Find cuid by a customerId.
  *

@@ -165,7 +165,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 				errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s", cuid)
 			}
 		}
-		log.Warnf(errMessage)
+		log.Error(errMessage)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.NotFound,
@@ -678,14 +678,18 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 		if err != nil {
 			return nil, err
 		}
-		if mids == nil {
-			log.WithField("ClientIdentifiers", clientIdentifier).Warn("mitigation id not found for this client identifiers.")		
-		} else {
+		if mids != nil {
 			log.WithField("list of mitigation id", mids).Info("found mitigation ids.")
 			mitigationIds = filterDuplicate(mids)
 		}
 	} else {
-		mitigationIds = append(mitigationIds, *mitigationId)
+		mid, err := models.GetMitigationId(customer.Id, clientIdentifier, *mitigationId, queries)
+		if err != nil {
+			return nil, err
+		}
+		if mid != nil {
+			mitigationIds = append(mitigationIds, *mid)
+		}
 	}
 
 	for _, mid := range mitigationIds {

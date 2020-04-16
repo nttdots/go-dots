@@ -516,6 +516,7 @@ func RegisterTotalAttackConnectionPort(session *xorm.Session, telePreMitigationI
 			TelePreMitigationId: telePreMitigationId,
 			PercentileType:      percentileType,
 			Protocol:            v.Protocol,
+			Port:                v.Port,
 			Connection:          v.Connection,
 			Embryonic:           v.Embryonic,
 			ConnectionPs:        v.ConnectionPs,

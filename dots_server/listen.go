@@ -692,7 +692,15 @@ func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *l
     resource := context.GetResourceByQuery(&query)
     if resource != nil {
         resource.ToRemovableResource()
-        if len(uriPathSplit) <= 1 {
+        if len(uriPathSplit) > 1 {
+            // Delete resource all
+            queryAll := uriPathSplit[0]
+            resourceAll := context.GetResourceByQuery(&queryAll)
+            if resourceAll != nil {
+                resourceAll.ToRemovableResource()
+            }
+        } else {
+            // Delete resource one
             for _, v := range telemetryPreMitigationList {
                 queryOne := resource.UriPath()+"/tmid="+strconv.Itoa(v.Tmid)
                 resourceOne := context.GetResourceByQuery(&queryOne)
