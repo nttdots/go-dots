@@ -218,8 +218,6 @@ func NewTelemetryConfiguration(telemetryConfig *messages.TelemetryConfigurationC
 		}
 		if config.UnitStatus != nil {
 			unitConfig.UnitStatus = *config.UnitStatus
-		} else {
-			unitConfig.UnitStatus = true
 		}
 		unitConfigList = append(unitConfigList, unitConfig)
 	}

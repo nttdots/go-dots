@@ -70,7 +70,6 @@ func ValidateTelemetryConfiguration(customerID int, cuid string, tsid int, data 
 		data.MeasurementInterval == nil && data.MeasurementSample == nil && data.ServerOriginatedTelemetry == nil && data.TelemetryNotifyInterval == nil {
 		errMsg = "At least one configurable attribute MUST be present in the PUT request"
 		log.Error(errMsg)
-		isUnprocessableEntity = true
 		return
 	}
 	var lowPercentile float64
@@ -118,13 +117,17 @@ func ValidateTelemetryConfiguration(customerID int, cuid string, tsid int, data 
 		if config.Unit == nil {
 			errMsg = "Missing required 'unit' attribute"
 			log.Error(errMsg)
-			isUnprocessableEntity = true
 			return
 		}
 		if *config.Unit != int(PacketsPerSecond) && *config.Unit != int(BitsPerSecond) && *config.Unit != int(BytesPerSecond) {
 			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps", *config.Unit)
 			log.Error(errMsg)
 			isUnprocessableEntity = true
+			return
+		}
+		if config.UnitStatus == nil {
+			errMsg = "Missing required 'unit-status' attribute"
+			log.Error(errMsg)
 			return
 		}
 	}
