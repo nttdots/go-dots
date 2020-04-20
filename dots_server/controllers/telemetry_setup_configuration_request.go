@@ -209,18 +209,21 @@ func (t *TelemetrySetupRequest) HandleGet(request Request, customer *models.Cust
 	}
 	if tsid != nil {
 		log.Debug("Delete one telemetry setup configuration")
-		res, err = handleDeleteOneTelemetrySetup(customer.Id, cuid, cdid, *tsid)
+		err = handleDeleteOneTelemetrySetup(customer.Id, cuid, cdid, *tsid)
+		if err != nil {
+			return Response{}, err
+		}
 	} else {
 		log.Debug("Delete all telemetry setup configuration")
 		err = models.DeleteAllTelemetrySetup(customer.Id, cuid, cdid)
 		if err != nil {
 			return Response{}, err
 		}
-		res = Response{
-			Type: common.Acknowledgement,
-			Code: common.Deleted,
-			Body: "Deleted",
-		}
+	}
+	res = Response{
+		Type: common.Acknowledgement,
+		Code: common.Deleted,
+		Body: "Deleted",
 	}
 	return res, err
 }
@@ -501,35 +504,21 @@ func handleGetAllTelemetrySetup(customerId int, cuid string) (res Response, err 
 }
 
 // Handle delete one telemetry configuration
-func handleDeleteOneTelemetrySetup(customerId int, cuid string, cdid string, tsid int) (res Response, err error) {
+func handleDeleteOneTelemetrySetup(customerId int, cuid string, cdid string, tsid int) (err error) {
 	// Get telemetry setup configuration by 'tsid' from DB
 	dbTelemetrySetupList, err := models.GetTelemetrySetupByTsid(customerId, cuid, tsid)
 	if err != nil {
 		log. Errorf("Get telemetry_setup err: %+v", err)
-		return Response{}, err
+		return err
 	}
-	// If 'tsid' doesn't exist in DB, DOTS server will response 4.04 NotFound
-	// Else delete telemetry setup configuration with 'tsid'
-	if len(dbTelemetrySetupList) < 1 {
-		errMsg := fmt.Sprintf("Not found telemetry setup with tsid = %+v", tsid)
-		log.Error(errMsg)
-		res = Response{
-			Type: common.Acknowledgement,
-			Code: common.NotFound,
-			Body: errMsg,
+	// If 'tsid' exist/doesn't exist in DB, DOTS server will response 2.02 Deleted
+	if len(dbTelemetrySetupList) > 0 {
+		err = models.DeleteOneTelemetrySetup(customerId, cuid, cdid, tsid, dbTelemetrySetupList)
+		if err != nil {
+			return err
 		}
-		return res, nil
 	}
-	err = models.DeleteOneTelemetrySetup(customerId, cuid, cdid, tsid, dbTelemetrySetupList)
-	if err != nil {
-		return Response{}, err
-	}
-	res = Response{
-		Type: common.Acknowledgement,
-		Code: common.Deleted,
-		Body: "Deleted",
-	}
-	return res, nil
+	return nil
 }
 
 // Get telemetry setup configuration contains setup_type 'telemetry_configuration', 'total_pipe_capacity' or 'baseline'
