@@ -1115,6 +1115,12 @@ func GetBaselineByTeleSetupId(customerId int, cuid string, setupId int64) (basel
 			return nil, err
 		}
 		baseline.URI = uriList
+		// Get telemetry parameter value with parameter type is 'alias-name'
+		aliasNameList, err := GetTelemetryParameterWithParameterTypeIsAlias(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(ALIAS_NAME))
+		if err != nil {
+			return nil, err
+		}
+		baseline.AliasName = aliasNameList
 		// Get total traffic normal
 		trafficList, err := GetTraffic(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(TARGET_PREFIX), string(TOTAL_TRAFFIC_NORMAL))
 		if err != nil {

@@ -695,6 +695,9 @@ func getBaseline(customerId int, cuid string, teleSetupId int64) (baselineList [
 		for _, vUri := range v.URI.List() {
 			baseline.TargetURI = append(baseline.TargetURI, vUri)
 		}
+		for _, vAliasName := range v.AliasName.List() {
+			baseline.AliasName = append(baseline.AliasName, vAliasName)
+		}
 		// total traffic normal
 		baseline.TotalTrafficNormal = convertToTrafficResponse(v.TotalTrafficNormal)
 		// total traffic normal per protocol
