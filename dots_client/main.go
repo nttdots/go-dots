@@ -498,7 +498,11 @@ func main() {
 		os.Exit(1)
 	}
 	config = dots_config.GetSystemConfig()
-	log.Debugf("dots client starting with config: %# v", config)
+	if config == nil {
+		log.Warnf("The config is nil -> Stopped dots client")
+		return
+	}
+	log.Debugf("dots client starting with config: %+v", config.String())
 
 	serverIPs, err := net.LookupIP(server)
 	if err != nil {
