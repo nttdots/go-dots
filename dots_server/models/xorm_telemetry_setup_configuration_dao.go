@@ -1,11 +1,15 @@
 package models
 
 import (
+	"time"
+	"encoding/json"
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
+	types "github.com/nttdots/go-dots/dots_common/types/data"
+	db_models_data "github.com/nttdots/go-dots/dots_server/db_models/data"
 )
 
 var DefaultTsid = -1
@@ -1110,7 +1114,7 @@ func GetBaselineByTeleSetupId(customerId int, cuid string, setupId int64) (basel
 		}
 		baseline.FQDN = fqdnList
 		// Get telemetry parameter value with parameter type is 'uri'
-		uriList, err := GetTelemetryParameterWithParameterTypeIsFqdn(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(TARGET_URI))
+		uriList, err := GetTelemetryParameterWithParameterTypeIsUri(engine, string(TELEMETRY_SETUP), vBaseline.Id, string(TARGET_URI))
 		if err != nil {
 			return nil, err
 		}
@@ -1157,6 +1161,22 @@ func GetBaselineByTeleSetupId(customerId int, cuid string, setupId int64) (basel
 			return nil, err
 		}
 		baseline.TargetList = targetList
+		// Get alias data by alias name
+		if len(baseline.AliasName) > 0 {
+			aliasList, err := GetAliasByName(engine, customerId, cuid, baseline.AliasName.List())
+			if err != nil {
+				return nil, err
+			}
+			if len(aliasList.Alias) > 0 {
+				aliasTargetList, err := GetAliasDataAsTargetList(aliasList)
+				if err != nil {
+					log.Errorf ("Failed to get alias data as target list. Error: %+v", err)
+					return nil, err
+				}
+				// Append alias into target list
+				baseline.TargetList = append(baseline.TargetList, aliasTargetList...)
+			}
+		}
 		// Append baseline into baselineList
 		baselineList = append(baselineList, baseline)
 	}
@@ -1772,6 +1792,53 @@ func DefaultBaseline() (baselineList []Baseline, err error) {
 	baseline.TotalConnectionCapacity = append(baseline.TotalConnectionCapacity, tcc)
 	baselineList = append(baselineList, baseline)
 	return baselineList, nil
+}
+
+// Get alias by name list (the name list from baseline/pre-mitigation)
+func GetAliasByName(engine *xorm.Engine, customerId int, cuid string, aliasNames []string) (aliases types.Aliases, err error) {
+	now := time.Now()
+	aliases = types.Aliases{}
+	client := db_models_data.Client{}
+	// Get data client
+	hasClient, err := engine.Where("customer_id=? AND cuid=?", customerId, cuid).Get(&client)
+	if err != nil {
+		log.Errorf("Failed to get client by cuid=%+v", cuid)
+		return aliases, err
+	}
+	if !hasClient {
+		log.Warnf("Not found data client by cuid=%+v", cuid)
+		return aliases, nil
+	}
+	for _, name := range aliasNames {
+		// Get data alias
+		alias := db_models_data.Alias{}
+		hasAlias, err := engine.Where("data_client_id = ? AND name = ?", client.Id, name).Get(&alias)
+		if err != nil {
+			log.Errorf("Failed to get alias by name=%+v", name)
+			return aliases, err
+		}
+		if !hasAlias {
+			log.Warnf("Alias with name: %+v has not been created by client: %+v", name, cuid)
+			return aliases, nil
+		} else if now.After(alias.ValidThrough) {
+			continue
+		}
+		// Convert data alias to data types alias
+		buf, err := json.Marshal(&alias.Alias)
+		if err != nil {
+			log.WithError(err).Error("ToTypesAlias - json.Marshal() failed.")
+			return aliases, err
+		}
+
+		aliasTmp := types.Alias{}
+		err = json.Unmarshal(buf, &aliasTmp)
+		if err != nil {
+			log.WithError(err).Error("ToTypesAlias - json.Unmarshal() failed.")
+			return aliases, err
+		}
+		aliases.Alias = append(aliases.Alias, aliasTmp)
+	}
+	return aliases, nil
 }
 
 // Convert measurement_interval from int to string

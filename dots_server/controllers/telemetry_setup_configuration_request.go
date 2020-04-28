@@ -367,7 +367,7 @@ func handlePutBaseline(bodyRequest []messages.Baseline, customer *models.Custome
 		if len(aliases.Alias) <= 0 {
 			errMsg = "'alias-name' doesn't exist in DB"
 			res = Response {
-				Type: common.NonConfirmable,
+				Type: common.Acknowledgement,
 				Code: common.NotFound,
 				Body: errMsg,
 			}

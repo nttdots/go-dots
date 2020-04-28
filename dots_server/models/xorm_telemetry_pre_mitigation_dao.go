@@ -51,7 +51,7 @@ func CreateTelemetryPreMitigation(customer *Customer, cuid string, cdid string, 
 	}
 	for _, currentPreMitigation := range currentPreMitgations {
 		// Get targets by telemetry pre-mitigation id
-		targets, err := GetTelemetryTargets(engine, currentPreMitigation.Id)
+		targets, err := GetTelemetryTargets(engine, customer.Id, cuid, currentPreMitigation.Id)
 		if err != nil {
 			return err
 		}
@@ -788,7 +788,7 @@ func GetTelemetryPreMitigationAttributes(customerId int, cuid string, telePremit
 		return
 	}
 	// Get targets
-	preMitigation.Targets, err = GetTelemetryTargets(engine, telePremitigationId)
+	preMitigation.Targets, err = GetTelemetryTargets(engine, customerId, cuid, telePremitigationId)
 	if err != nil {
 		return
 	}
@@ -1068,7 +1068,7 @@ func GetTelemetryPreMitigationById(id int64) (dbPreMitigation db_models.Telemetr
 }
 
 // Get telemetry target (telemetry_prefix, telemetry_port_range, telemetry_parameter_value)
-func GetTelemetryTargets(engine *xorm.Engine, telePreMitigationId int64) (target Targets, err error) {
+func GetTelemetryTargets(engine *xorm.Engine, customerId int, cuid string, telePreMitigationId int64) (target Targets, err error) {
 	target = Targets{}
 	// Get telemetry prefix
 	target.TargetPrefix, err = GetTelemetryPrefix(engine, string(TELEMETRY), telePreMitigationId, string(TARGET_PREFIX))
@@ -1091,7 +1091,7 @@ func GetTelemetryTargets(engine *xorm.Engine, telePreMitigationId int64) (target
 		return
 	}
 	// Get telemetry parameter value with parameter type is 'uri'
-	target.URI, err = GetTelemetryParameterWithParameterTypeIsFqdn(engine, string(TELEMETRY), telePreMitigationId, string(TARGET_URI))
+	target.URI, err = GetTelemetryParameterWithParameterTypeIsUri(engine, string(TELEMETRY), telePreMitigationId, string(TARGET_URI))
 	if err != nil {
 		return
 	}
@@ -1104,6 +1104,22 @@ func GetTelemetryTargets(engine *xorm.Engine, telePreMitigationId int64) (target
 	target.TargetList, err = GetTelemetryTargetList(target.TargetPrefix, target.FQDN, target.URI)
 	if err != nil {
 		return
+	}
+	// Get alias data by alias name
+	if len(target.AliasName) > 0 {
+		aliasList, err := GetAliasByName(engine, customerId, cuid, target.AliasName.List())
+		if err != nil {
+			return target, err
+		}
+		if len(aliasList.Alias) > 0 {
+			aliasTargetList, err := GetAliasDataAsTargetList(aliasList)
+			if err != nil {
+				log.Errorf ("Failed to get alias data as target list. Error: %+v", err)
+				return target, err
+			}
+			// Append alias into target list
+			target.TargetList = append(target.TargetList, aliasTargetList...)
+		}
 	}
 	return
 }
