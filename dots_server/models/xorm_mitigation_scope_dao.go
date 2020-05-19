@@ -1291,7 +1291,7 @@ func createMitigationScopeCallHome(session *xorm.Session, mitigationScope Mitiga
 }
 
 // Get target mitigation
-func GetTargetMitigation(engine *xorm.Engine, mitigationId int64) (targetPrefixs []string, lowerPorts []string, upperPorts []string, targetProtocols []string, targetFqdns []string, targetUris []string, aliasNames []string, err error) {
+func GetTargetMitigation(engine *xorm.Engine, mitigationId int64) (targetPrefixs []string, targetPorts []PortRange, targetProtocols []int, targetFqdns []string, targetUris []string, aliasNames []string, err error) {
 	// Get TargetPrefix data
 	dbPrefixTargetPrefixList := []db_models.Prefix{}
 	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.PrefixTypeTargetPrefix).OrderBy("id ASC").Find(&dbPrefixTargetPrefixList)
@@ -1309,8 +1309,7 @@ func GetTargetMitigation(engine *xorm.Engine, mitigationId int64) (targetPrefixs
 		return
 	}
 	for _, v := range dbPrefixTargetPortRangeList {
-		lowerPorts = append(lowerPorts, strconv.Itoa(v.LowerPort))
-		upperPorts = append(upperPorts, strconv.Itoa(v.UpperPort))
+		targetPorts = append(targetPorts, PortRange{v.LowerPort, v.UpperPort})
 	}
 
 	// Get TargetProtocol data
@@ -1320,7 +1319,7 @@ func GetTargetMitigation(engine *xorm.Engine, mitigationId int64) (targetPrefixs
 		return
 	}
 	for _, v := range dbParameterValueTargetProtocolList {
-		targetProtocols = append(targetProtocols, strconv.Itoa(v.IntValue))
+		targetProtocols = append(targetProtocols, v.IntValue)
 	}
 
 	// Get FQDN data

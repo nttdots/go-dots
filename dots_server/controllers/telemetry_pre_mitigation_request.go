@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"strings"
 	"reflect"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/models"
@@ -112,7 +113,7 @@ func (t *TelemetryPreMitigationRequest) HandlePut(request Request, customer *mod
 	}
 	// Get data alias from data channel
 	var aliases types.Aliases
-	if preMitigation.Target.AliasName != nil {
+	if len(preMitigation.Target.AliasName) > 0 {
 		aliases, err = data_controllers.GetDataAliasesByName(customer, cuid, preMitigation.Target.AliasName)
 		if err != nil {
 			log.Errorf("Get data alias error: %+v", err)
@@ -120,6 +121,7 @@ func (t *TelemetryPreMitigationRequest) HandlePut(request Request, customer *mod
 		}
 		if len(aliases.Alias) <= 0 {
 			errMsg = "'alias-name' doesn't exist in DB"
+			log.Errorf(errMsg)
 			res = Response {
 				Type: common.NonConfirmable,
 				Code: common.NotFound,
@@ -187,71 +189,14 @@ func (t *TelemetryPreMitigationRequest) HandleGet(request Request, customer *mod
 		}
 		return res, nil
 	}
-	telePreMitigationResp := messages.TelemetryPreMitigationResponse{}
 	if tmid != nil {
 		log.Debug("Handle get one telemetry pre-mitigation")
-		telePreMitigation, err := models.GetTelemetryPreMitigationByTmid(customer.Id, cuid, *tmid, request.Queries)
-		if err != nil {
-			return Response{}, err
-		}
-		if telePreMitigation == nil || (telePreMitigation != nil && telePreMitigation.Id <= 0) {
-			if len(request.Queries) > 0 {
-				errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v, tmid: %+v, queries: %+v", cuid, *tmid, request.Queries)
-			} else {
-				errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v, tmid: %+v", cuid, *tmid)
-			}
-			log.Error(errMsg)
-			res = Response{
-				Type: common.NonConfirmable,
-				Code: common.NotFound,
-				Body: errMsg,
-			}
-			return res, nil
-		}
-		preMitigationResp, err := convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, telePreMitigation.Id)
-		if err != nil {
-			return Response{}, err
-		}
-		preMitigation := messages.TelemetryPreMitigationResp{}
-		preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
-		telePreMitigationResp.TelemetryPreMitigation = &preMitigation
-	} else {
-		log.Debug("Handle get all telemetry pre-mitigation")
-		telePreMitigationList, err := models.GetTelemetryPreMitigationByCustomerIdAndCuid(customer.Id, cuid, request.Queries)
-		if err != nil {
-			return Response{}, err
-		}
-		if len(telePreMitigationList) <= 0 {
-			if len(request.Queries) > 0 {
-				errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v, queries: %+v", cuid, request.Queries)
-			} else {
-				errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v", cuid)
-			}
-			log.Error(errMsg)
-			res = Response{
-				Type: common.NonConfirmable,
-				Code: common.NotFound,
-				Body: errMsg,
-			}
-			return res, nil
-		}
-		preMitigation := messages.TelemetryPreMitigationResp{}
-		for _, telePreMitigation := range telePreMitigationList{
-			log.Debugf("Get telemetry pre-mitigation with id = %+v", telePreMitigation.Id)
-			preMitigationResp, err := convertToTelemetryPreMitigationRespone(customer.Id, cuid, telePreMitigation.Tmid, telePreMitigation.Id)
-			if err != nil {
-				return Response{}, err
-			}
-			preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
-		}
-		telePreMitigationResp.TelemetryPreMitigation = &preMitigation
+		res, err = handleGetOneTelemetryPreMitigation(customer, cuid, tmid, request.Queries)
+		return
 	}
-	res = Response{
-		Type: common.NonConfirmable,
-		Code: common.Content,
-		Body: telePreMitigationResp,
-	}
-	return res, nil
+	log.Debug("Handle get all telemetry pre-mitigation")
+	res, err = handleGetAllTelemetryPreMitigation(customer, cuid, request.Queries)
+	return
 }
 
 /*
@@ -294,11 +239,15 @@ func (t *TelemetryPreMitigationRequest) HandleDelete(request Request, customer *
 	}
 	if tmid != nil {
 		log.Debug("Delete one telemetry pre-mitigation")
-		telePreMitigation, err := models.GetTelemetryPreMitigationByTmid(customer.Id, cuid, *tmid, nil)
+		telePreMitigation, err := models.GetTelemetryPreMitigationByTmid(customer.Id, cuid, *tmid)
 		if err != nil {
 			return Response{}, err
 		}
-		if telePreMitigation.Id <= 0 {
+		uriFilterPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, tmid, nil)
+		if err != nil {
+			return Response{}, err
+		}
+		if telePreMitigation.Id <= 0 && len(uriFilterPreMitigation) < 1{
 			errMsg := fmt.Sprintf("Not found telemetry pre-mitigation with tmid = %+v", *tmid)
 			log.Error(errMsg)
 			res = Response{
@@ -308,7 +257,7 @@ func (t *TelemetryPreMitigationRequest) HandleDelete(request Request, customer *
 			}
 			return res, nil
 		}
-		err = models.DeleteOneTelemetryPreMitigation(customer.Id, cuid, telePreMitigation.Id)
+		err = models.DeleteOneTelemetryPreMitigation(customer.Id, cuid, *tmid, telePreMitigation.Id)
 		if err != nil {
 			return Response{}, err
 		}
@@ -326,14 +275,154 @@ func (t *TelemetryPreMitigationRequest) HandleDelete(request Request, customer *
 	}
 	return res, nil
 }
+// Handle get one telemetry pre-mitigation
+func handleGetOneTelemetryPreMitigation(customer *models.Customer, cuid string, tmid *int, queries []string) (res Response, err error) {
+	var errMsg string
+	telePreMitigation, err := models.GetTelemetryPreMitigationByTmid(customer.Id, cuid, *tmid)
+	if err != nil {
+		return Response{}, err
+	}
+	telePreMitigationResp := messages.TelemetryPreMitigationResponse{}
+	preMitigationResp := messages.PreOrOngoingMitigationResponse{}
+	if telePreMitigation.Id > 0 {
+		// Handle Get 7.2
+		log.Debugf("Get telemetry pre-mitigation aggregated by client")
+		if len(queries) > 0 {
+			errMsg = "The telemetry pre-mitigation aggregated by client MUST NOT support Uri-Query"
+			log.Error(errMsg)
+			res = Response {
+				Type: common.NonConfirmable,
+				Code: common.BadRequest,
+				Body: errMsg,
+			}
+			return res, nil
+		}
+		preMitigation, err := models.GetTelemetryPreMitigationAttributes(customer.Id, cuid, telePreMitigation.Id)
+		if err != nil {
+			return Response{}, err
+		}
+		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigation)
+		if err != nil {
+			return Response{}, err
+		}
+	} else {
+		// Handle Get 7.3
+		log.Debugf("Get telemetry pre-mitigation aggregated by server")
+		errMsg = validateQueryParameter(queries)
+		if errMsg != "" {
+			log.Error(errMsg)
+			res = Response {
+				Type: common.NonConfirmable,
+				Code: common.BadRequest,
+				Body: errMsg,
+			}
+			return res, nil
+		}
+		ufPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, tmid, queries)
+		if err != nil {
+			return Response{}, err
+		}
+		if len(ufPreMitigation) < 1 {
+			errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v, tmid: %+v, query: %+v", cuid, *tmid, queries)
+			log.Error(errMsg)
+			res = Response{
+				Type: common.NonConfirmable,
+				Code: common.NotFound,
+				Body: errMsg,
+			}
+			return res, nil
+		}
+
+		preMitigationList, err := models.GetUriFilteringTelemetryPreMitigationAttributes(customer.Id, cuid, ufPreMitigation)
+		if err != nil {
+			return Response{}, err
+		}
+		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigationList[0])
+		if err != nil {
+			return Response{}, err
+		}
+	}
+	preMitigation := messages.TelemetryPreMitigationResp{}
+	preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
+	telePreMitigationResp.TelemetryPreMitigation = &preMitigation
+	res = Response{
+		Type: common.NonConfirmable,
+		Code: common.Content,
+		Body: telePreMitigationResp,
+	}
+	return res, nil
+}
+
+// Handle get all telemetry pre-mitigation
+func handleGetAllTelemetryPreMitigation(customer *models.Customer, cuid string, queries []string) (res Response, err error) {
+	var errMsg string
+	telePreMitigationResp := messages.TelemetryPreMitigationResponse{}
+	preMitigationResp := messages.PreOrOngoingMitigationResponse{}
+	preMitigation := messages.TelemetryPreMitigationResp{}
+	if len(queries) < 1 {
+		// Handle get 7.2 and 7.3 when get all without uri-query
+		telePreMitigationList, err := models.GetTelemetryPreMitigationByCustomerIdAndCuid(customer.Id, cuid)
+		if err != nil {
+			return Response{}, err
+		}
+		ufPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, nil, nil)
+		if err != nil {
+			return Response{}, err
+		}
+		if len(telePreMitigationList) < 1 && len(ufPreMitigation) < 1 {
+			errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v", cuid)
+			log.Error(errMsg)
+			res = Response{
+				Type: common.NonConfirmable,
+				Code: common.NotFound,
+				Body: errMsg,
+			}
+			return res, nil
+		}
+		if len(telePreMitigationList) >= 1 {
+			log.Debugf("Get telemetry pre-mitigation aggregated by client")
+			for _, telePreMitigation := range telePreMitigationList {
+				log.Debugf("Get telemetry pre-mitigation with id = %+v", telePreMitigation.Id)
+				tmpPreMitigation, err := models.GetTelemetryPreMitigationAttributes(customer.Id, cuid, telePreMitigation.Id)
+				if err != nil {
+					return Response{}, err
+				}
+				preMitigationResp, err := convertToTelemetryPreMitigationRespone(customer.Id, cuid, telePreMitigation.Tmid, tmpPreMitigation)
+				if err != nil {
+					return Response{}, err
+				}
+				preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
+			}
+		}
+		if len(ufPreMitigation) >= 1 {
+			log.Debugf("Get telemetry pre-mitigation aggregated by server")
+			preMitigationList, err := models.GetUriFilteringTelemetryPreMitigationAttributes(customer.Id, cuid, ufPreMitigation)
+			if err != nil {
+				return Response{}, err
+			}
+			for _, v := range preMitigationList {
+				preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, v.Tmid, v)
+				if err != nil {
+					return Response{}, err
+				}
+				preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
+			}
+		}
+	} else {
+		log.Warnf("In the current, Dots server doesn't support the Get all with uri-query")
+	}
+	telePreMitigationResp.TelemetryPreMitigation = &preMitigation
+	res = Response{
+		Type: common.NonConfirmable,
+		Code: common.Content,
+		Body: telePreMitigationResp,
+	}
+	return res, nil
+}
 
 // Covert telemetryPreMitigation to PreMitigationResponse
-func convertToTelemetryPreMitigationRespone(customerId int, cuid string, tmid int, telePreMitigationId int64) (preMitigationResp messages.PreOrOngoingMitigationResponse, err error) {
+func convertToTelemetryPreMitigationRespone(customerId int, cuid string, tmid int, preMitigation models.TelemetryPreMitigation) (preMitigationResp messages.PreOrOngoingMitigationResponse, err error) {
 	preMitigationResp = messages.PreOrOngoingMitigationResponse{}
-	preMitigation, err := models.GetTelemetryPreMitigationAttributes(customerId, cuid, telePreMitigationId)
-	if err != nil {
-		return preMitigationResp, err
-	}
 	preMitigationResp.Tmid = tmid
 	// targets response
 	preMitigationResp.Target = convertToTargetResponse(preMitigation.Targets)
@@ -807,6 +896,58 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 		}
 		attackDetailResp.TopTalKer = topTalker
 		attackDetailRespList = append(attackDetailRespList, attackDetailResp)
+	}
+	return
+}
+
+// Validate query parameter
+func validateQueryParameter(queries []string) (errMsg string) {
+	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, errMsg := models.GetQueriesFromUriQuery(queries)
+	if errMsg != "" {
+		return
+	}
+	// target-prefix
+	if strings.Contains(targetPrefix, "-") {
+		errMsg = "The 'target-prefix' query MUST NOT contain range values"
+		return
+	}
+	if strings.Contains(targetPrefix, "*") {
+		errMsg = "The 'target-prefix' query MUST NOT contain wildcard names"
+		return
+	}
+	// target-port
+	if strings.Contains(targetPort, "*") {
+		errMsg = "The 'target-port' query MUST NOT contain wildcard names"
+		return
+	}
+	// target-protocol
+	if strings.Contains(targetProtocol, "*") {
+		errMsg = "The 'target-protocol' query MUST NOT contain wildcard names"
+		return
+	}
+	// target-fqdn
+	if strings.Contains(targetFqdn, "-") {
+		errMsg = "The 'target-fqdn' query MUST NOT contain range values"
+		return
+	}
+	tmpFqdns := strings.Split(targetFqdn, "*")
+	if len(tmpFqdns) > 1 && tmpFqdns[0] != "" {
+		errMsg = fmt.Sprintf("Invalid the 'target-fqdn' query: %+v", targetFqdn)
+		return
+	}
+	// target-uri
+	if targetUri != "" {
+		errMsg = "The 'target-uri' query unsupported by go-dots"
+		return
+	}
+	// alias-name
+	if strings.Contains(aliasName, "-") {
+		errMsg = "The 'alias-name' query MUST NOT contain range values"
+		return
+	}
+	if strings.Contains(aliasName, "*") {
+		errMsg = "The 'alias-name' query MUST NOT contain wildcard names"
+		return
 	}
 	return
 }

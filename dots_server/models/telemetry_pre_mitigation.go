@@ -24,6 +24,13 @@ type TelemetryPreMitigation struct {
 	AttackDetail               []AttackDetail
 }
 
+type UriFilteringTelemetryPreMitigation struct {
+	Cuid       string
+	Cdid       string
+	Tmid       int
+	TargetList []Target
+}
+
 type Targets struct {
 	TargetPrefix    []Prefix
 	TargetPortRange []PortRange

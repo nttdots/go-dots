@@ -15,6 +15,7 @@ import (
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/controllers"
 	"github.com/nttdots/go-dots/dots_common/types/data"
+	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	data_controllers "github.com/nttdots/go-dots/dots_server/controllers/data"
@@ -22,12 +23,24 @@ import (
 
 type TableName string
 const (
-	MITIGATION_SCOPE        TableName = "mitigation_scope"
-	SESSION_CONFIGURATION   TableName = "signal_session_configuration"
-	PREFIX_ADDRESS_RANGE    TableName = "prefix"
-	DATA_ACLS               TableName = "data_acls"
-	ATTACK_DETAIL	        TableName = "attack_detail"
-	TELEMETRY_ATTACK_DETAIL TableName = "telemetry_attack_detail"
+	MITIGATION_SCOPE         TableName = "mitigation_scope"
+	SESSION_CONFIGURATION    TableName = "signal_session_configuration"
+	PREFIX_ADDRESS_RANGE     TableName = "prefix"
+	DATA_ACLS                TableName = "data_acls"
+	TELEMETRY_PRE_MITIGATION TableName = "telemetry_pre_mitigation"
+	TELEMETRY_ATTACK_DETAIL  TableName = "telemetry_attack_detail"
+
+	URI_FILTERING_TRAFFIC                      TableName = "uri_filtering_traffic"
+	URI_FILTERING_TRAFFIC_PROTOCOL             TableName = "uri_filtering_traffic_per_protocol"
+	URI_FILTERING_TRAFFIC_PORT                 TableName = "uri_filtering_traffic_per_port"
+	URI_FILTERING_TOTAL_ATTACK_CONNECTION      TableName = "uri_filtering_total_attack_connection"
+	URI_FILTERING_TOTAL_ATTACK_CONNECTION_PORT TableName = "uri_filtering_total_attack_connection_port"
+	URI_FILTERING_ATTACK_DETAIL                TableName = "uri_filtering_attack_detail"
+	URI_FILTERING_SOURCE_COUNT                 TableName = "uri_filtering_source_count"
+	URI_FILTERING_TOP_TALKER                   TableName = "uri_filtering_top_talker"
+	URI_FILTERING_SOURCE_PREFIX                TableName = "uri_filtering_source_prefix"
+	URI_FILTERING_SOURCE_PORT_RANGE            TableName = "uri_filtering_source_port_range"
+	URI_FILTERING_ICMP_TYPE_RANGE              TableName = "uri_filtering_icmp_type_range"
 )
 
 /*
@@ -138,7 +151,7 @@ ILOOP:
 				}
 			} else if mapData["table_trigger"].(string) == string(DATA_ACLS) {
 				handleNotifyACL(mapData["aclId"].(string), context)
-			} else if mapData["table_trigger"].(string) == string(ATTACK_DETAIL) {
+			} else if mapData["table_trigger"].(string) == string(TELEMETRY_PRE_MITIGATION) {
 				handleNotifyTelemetryPreMitigation(mapData, context)
 			} else if mapData["table_trigger"].(string) == string(TELEMETRY_ATTACK_DETAIL) {
 				mitigationScopeId, err := strconv.Atoi(mapData["mitigation_scope_id"].(string))
@@ -153,6 +166,14 @@ ILOOP:
 				}
 				handleNotifyMitigation(int64(mitigationScopeId), mitigationScope.CustomerId, mitigationScope.ClientIdentifier, 
 					                mitigationScope.ClientDomainIdentifier, mitigationScope.MitigationId, mitigationScope.Status, context, true)
+			} else if mapData["table_trigger"].(string) == string(URI_FILTERING_TRAFFIC) || mapData["table_trigger"].(string) == string(URI_FILTERING_TRAFFIC_PROTOCOL) ||
+				mapData["table_trigger"].(string) == string(URI_FILTERING_TRAFFIC_PORT) || mapData["table_trigger"].(string) == string(URI_FILTERING_TOTAL_ATTACK_CONNECTION) ||
+				mapData["table_trigger"].(string) == string(URI_FILTERING_TOTAL_ATTACK_CONNECTION_PORT) || mapData["table_trigger"].(string) == string(URI_FILTERING_ATTACK_DETAIL) ||
+				mapData["table_trigger"].(string) == string(URI_FILTERING_SOURCE_COUNT) || mapData["table_trigger"].(string) == string(URI_FILTERING_TOP_TALKER) ||
+				mapData["table_trigger"].(string) == string(URI_FILTERING_SOURCE_PREFIX) || mapData["table_trigger"].(string) == string(URI_FILTERING_SOURCE_PORT_RANGE) ||
+				mapData["table_trigger"].(string) == string(URI_FILTERING_ICMP_TYPE_RANGE) {
+				// Handle notification telemetry pre-mitigation aggregated by server
+				handleNotifyUriFilteringTelemetryPreMitigation(mapData, context)
 			}
 		default:
 			log.Errorf("[MySQL-Notification]: Failed to receive data:%+v", err)
@@ -322,13 +343,13 @@ func handleNotifyACL(aclIDString string, context *libcoap.Context) {
 
 // Handle notify telemetry pre-mitigation
 func handleNotifyTelemetryPreMitigation(mapData map[string]interface{}, context *libcoap.Context) {
-	telePreMitigationId, err := strconv.Atoi(mapData["tele_pre_mitigation_id"].(string))
+	id, err := strconv.Atoi(mapData["id"].(string))
 	if err != nil {
 		log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
 		return
 	}
 	// Get telemetry pre-mitigation
-	preMitigation, err := models.GetTelemetryPreMitigationById(int64(telePreMitigationId))
+	preMitigation, err := models.GetTelemetryPreMitigationById(int64(id))
 	if err != nil {
 		log.Errorf("[MySQL-Notification]: Failed to Get telemetry pre-mitigation. Error: %+v", err)
 		return
@@ -354,6 +375,95 @@ func handleNotifyTelemetryPreMitigation(mapData map[string]interface{}, context 
 	context.EnableResourceDirty(query)
 }
 
+// Handle notification telemetry pre-mitigation aggregated by server
+func handleNotifyUriFilteringTelemetryPreMitigation(mapData map[string]interface{}, context *libcoap.Context) {
+	var preMitigation db_models.UriFilteringTelemetryPreMitigation
+	if mapData["table_trigger"].(string) == string(URI_FILTERING_TRAFFIC) || mapData["table_trigger"].(string) == string(URI_FILTERING_TOTAL_ATTACK_CONNECTION) {
+		prefixType := mapData["prefix_type"].(string)
+		prefixTypeId, err := strconv.Atoi(mapData["prefix_type_id"].(string))
+		if err != nil {
+			log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+			return
+		}
+		if prefixType == string(models.TARGET_PREFIX) {
+			preMitigation, err = getTelemetryPreMitigation(int64(prefixTypeId), 0, 0)
+			if err != nil {
+				return
+			}
+		} else {
+			preMitigation, err = getTelemetryPreMitigation(0, 0, int64(prefixTypeId))
+			if err != nil {
+				return
+			}
+		}
+	} else if mapData["table_trigger"].(string) == string(URI_FILTERING_TRAFFIC_PROTOCOL) || mapData["table_trigger"].(string) == string(URI_FILTERING_TRAFFIC_PORT) ||
+		mapData["table_trigger"].(string) == string(URI_FILTERING_TOTAL_ATTACK_CONNECTION_PORT) || mapData["table_trigger"].(string) == string(URI_FILTERING_ATTACK_DETAIL) {
+		telePreMitigationId, err := strconv.Atoi(mapData["tele_pre_mitigation_id"].(string))
+		if err != nil {
+			log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+			return
+		}
+		preMitigation, err = getTelemetryPreMitigation(int64(telePreMitigationId), 0, 0)
+		if err != nil {
+			return
+		}
+	} else if mapData["table_trigger"].(string) == string(URI_FILTERING_SOURCE_COUNT) || mapData["table_trigger"].(string) == string(URI_FILTERING_TOP_TALKER) {
+		attackDetailId, err := strconv.Atoi(mapData["tele_attack_detail_id"].(string))
+		if err != nil {
+			log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+			return
+		}
+		preMitigation, err = getTelemetryPreMitigation(0, int64(attackDetailId), 0)
+		if err != nil {
+			return
+		}
+	} else {
+		topTalkerId, err := strconv.Atoi(mapData["tele_top_talker_id"].(string))
+		if err != nil {
+			log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+			return
+		}
+		preMitigation, err = getTelemetryPreMitigation(0, 0, int64(topTalkerId))
+		if err != nil {
+			return
+		}
+	}
+	isServerOriginatedTelemetry, err := getServerOriginatedTelemetry(preMitigation.CustomerId, preMitigation.Cuid)
+	if err != nil {
+		log.Error("[MySQL-Notification]: Failed to get server-originated-telemetry")
+		return
+	}
+	// If the 'server-originated-telemetry' set to false, DOTS server will not notify
+	if !isServerOriginatedTelemetry {
+		log.Debug("[MySQL-Notification]: DOTS server will not notify to DOST client due to 'server-originated-telemetry' set to false")
+		return
+	}
+	uriQueryPaths := libcoap.GetUriFilterByValue(preMitigation.Tmid)
+	log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
+	if len(uriQueryPaths) > 0 {
+		// Enable uri-query resource
+		for _, v := range uriQueryPaths {
+			uriQueryPath := strings.Split(v, "?")
+			queries := strings.Split(uriQueryPath[1], "&")
+			targetPrefix, targetPort, targetProtocol, targetFqdn, _, aliasName, _ := models.GetQueriesFromUriQuery(queries)
+			if models.IsContainStringValue(targetPrefix, preMitigation.TargetPrefix) && (models.IsContainIntValue(targetPort, preMitigation.LowerPort) || models.IsContainIntValue(targetPort, preMitigation.UpperPort)) &&
+			models.IsContainIntValue(targetProtocol, preMitigation.TargetProtocol) && models.IsContainStringValue(targetFqdn, preMitigation.TargetFqdn) && models.IsContainStringValue(aliasName, preMitigation.AliasName) {
+				context.EnableResourceDirty(v)
+			}
+		}
+	} else {
+		// Enable resource
+		uriPath := messages.MessageTypes[messages.TELEMETRY_PRE_MITIGATION_REQUEST].Path
+		var query string
+		if preMitigation.Cdid == "" {
+			query = uriPath + "/cuid=" + preMitigation.Cuid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
+		} else {
+			query = uriPath + "/cuid=" + preMitigation.Cuid + "cdid=" + preMitigation.Cdid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
+		}
+		context.EnableResourceDirty(query)
+	}
+}
+
 // Get server originated telemetry from telemetry configuration
 func getServerOriginatedTelemetry(customerId int, cuid string) (bool, error) {
 	isServerOriginatedTelemetry := false
@@ -376,4 +486,34 @@ func getServerOriginatedTelemetry(customerId int, cuid string) (bool, error) {
 		isServerOriginatedTelemetry = defaultValue.ServerOriginatedTelemetry
 	}
 	return isServerOriginatedTelemetry, nil
+}
+
+// Get telemetry pre-mitigation
+func getTelemetryPreMitigation(telemetryPreMitigationId int64, attackDetailId int64, topTalkerId int64) (db_models.UriFilteringTelemetryPreMitigation, error) {
+	preMitigation := db_models.UriFilteringTelemetryPreMitigation{}
+	if topTalkerId > 0 {
+		// Get uri_filtering_top_talker
+		topTalker, err := models.GetUriFilteringTopTalkerById(int64(topTalkerId))
+		if err != nil {
+			return preMitigation, err
+		}
+		attackDetailId = topTalker.TeleAttackDetailId
+	}
+	if attackDetailId > 0 {
+		// Get uri_filtering_attack-detail
+		attackDetail, err := models.GetUriFilteringAttackDetailById(attackDetailId)
+		if err != nil {
+			return preMitigation, err
+		}
+		telemetryPreMitigationId = attackDetail.TelePreMitigationId
+	}
+	if telemetryPreMitigationId > 0 {
+		// Get uri_filtering_telemetry_pre_mitigation
+		tmpPreMitigation, err := models.GetUriFilteringTelemetryPreMitigationById(telemetryPreMitigationId)
+		if err != nil {
+			return preMitigation, err
+		}
+		preMitigation = tmpPreMitigation
+	}
+	return preMitigation, nil
 }

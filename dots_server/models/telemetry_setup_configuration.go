@@ -529,6 +529,9 @@ func GetTelemetryPrefixAsTarget(prefixs []Prefix) (targetList []Target) {
 // Get telemetry fqdn as target
 func GetTelemetryFqdnAsTarget(fqdns SetString) (targetList []Target, err error) {
 	for _, fqdn := range fqdns.List() {
+		if fqdn == "" {
+			continue
+		}
 		prefixes, err := NewPrefixFromFQDN(fqdn)
 		if err != nil {
 			return nil, err
@@ -543,6 +546,9 @@ func GetTelemetryFqdnAsTarget(fqdns SetString) (targetList []Target, err error) 
 // Get telemetry uri as target
 func GetTelemetryUriAsTarget(uris SetString) (targetList []Target, err error) {
 	for _, uri := range uris.List() {
+		if uri == "" {
+			continue
+		}
 		prefixes, err := NewPrefixFromURI(uri)
 		if err != nil {
 			return nil, err

@@ -267,7 +267,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             if isTelemetryRequest {
                 // Register observer for resources of telemetry pre-mitigation
                 responses := res.Body.(messages.TelemetryPreMitigationResponse).TelemetryPreMitigation.PreOrOngoingMitigation
-                registerResourceAllTelemetryPreMitigation(responses, request, context, observe, session, token, block2Value, resource.UriPath())
+                registerResourceAllTelemetryPreMitigation(responses, request, context, observe, session, token, block2Value, resource.UriPath(), typ, controller, is_unknown)
             } else {
                 // Register observer for resources of all mitigation
                 responses := res.Body.(messages.MitigationResponse).MitigationScope.Scopes
@@ -526,10 +526,38 @@ func registerResourceAllMitigation(responses []messages.ScopeStatus, request *li
  *     observe = 1, delete observe resource for each telemetry pre-mitigation  with token of resource all
  */
 func registerResourceAllTelemetryPreMitigation(responses []messages.PreOrOngoingMitigationResponse, request *libcoap.Pdu, context *libcoap.Context, observe int,
-                                   session *libcoap.Session, token *[]byte, block2Value int, uriPathResource string) {
+    session *libcoap.Session, token *[]byte, block2Value int, uriPathResource string, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) {
     if len(responses) >= 1 {
+        var query string
+        uriPathSplit := strings.Split(request.PathString(), "/tmid=")
         for _, res := range responses {
-            query := request.PathString() + "/tmid=" + strconv.Itoa(res.Tmid)
+            if len(uriPathSplit) > 1 {
+                query = request.PathString()
+            } else {
+                query = request.PathString() + "/tmid=" + strconv.Itoa(res.Tmid)
+            }
+            if len(request.Queries()) > 0 {
+                var tmpUriQuery string
+                for _, v := range request.Queries() {
+                    if tmpUriQuery != "" {
+                        tmpUriQuery += "&"
+                        tmpUriQuery += v
+                    } else {
+                        tmpUriQuery += v
+                    }
+                }
+                query += "?"
+                query += tmpUriQuery
+                r := libcoap.ResourceInit(&query, 0)
+                r.TurnOnResourceObservable()
+                resource := context.GetResourceByQuery(&query)
+                if resource == nil {
+                    libcoap.SetUriFilter(query, res.Tmid)
+                    r.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
+                    context.AddResource(r)
+                    log.Debugf("Create sub resource (uri-path contains uri-query) for telemetry pre-mitigation to handle observation later : uri-path=%+v", query)
+                }
+            }
             resourceOne := context.GetResourceByQuery(&query)
             if resourceOne != nil {
                 AddOrDeleteObserve(resourceOne, session, &query, *token, observe, nil)
@@ -699,6 +727,9 @@ func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *l
             if resourceAll != nil {
                 resourceAll.ToRemovableResource()
             }
+            // Delete resource (uri-path contains uri-query)
+            tmid, _ := strconv.Atoi(uriPathSplit[1])
+            deleteUriQueryResource(context, tmid)
         } else {
             // Delete resource one
             for _, v := range telemetryPreMitigationList {
@@ -707,7 +738,21 @@ func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *l
                 if resourceOne != nil {
                     resourceOne.ToRemovableResource()
                 }
+                // Delete resource (uri-path contains uri-query)
+                deleteUriQueryResource(context, v.Tmid)
             }
         }
     }
+}
+
+// Delete resource (uri-path contains uri-query)
+func deleteUriQueryResource(context *libcoap.Context, tmid int) {
+    uriQueries := libcoap.GetUriFilterByValue(tmid)
+    for _, v := range uriQueries {
+        resourceQuery := context.GetResourceByQuery(&v)
+        if resourceQuery != nil {
+            resourceQuery.ToRemovableResource()
+        }
+    }
+    libcoap.DeleteUriFilterByValue(tmid)
 }

@@ -19,20 +19,6 @@ import (
 	common "github.com/nttdots/go-dots/dots_common"
 )
 
-type arrayFlags []string
-func (i *arrayFlags) String() string {
-    return "my string representation"
-}
-func (i *arrayFlags) Set(value string) error {
-	for _, v := range *i {
-		if v == value {
-			return nil
-		}
-	}
-    *i = append(*i, strings.TrimSpace(value))
-    return nil
-}
-
 var (
 	requestName   string
 	requestMethod string
@@ -46,13 +32,12 @@ var (
 	socket        string
 	observe       string
 	ifMatch       string
-	targetPrefix   arrayFlags
-	lowerPort      arrayFlags
-	upperPort      arrayFlags
-	targetProtocol arrayFlags
-	targetFqdn     arrayFlags
-	targetUri      arrayFlags
-	aliasName      arrayFlags
+	targetPrefix   string
+	targetPort     string
+	targetProtocol string
+	targetFqdn     string
+	targetUri      string
+	aliasName      string
 )
 
 /*
@@ -75,13 +60,12 @@ func init() {
 	flag.StringVar(&socket, "socket", common.DEFAULT_CLIENT_SOCKET_FILE, "dots client socket")
 	flag.StringVar(&observe, "observe", defaultValue, "mitigation request observe")
 	flag.StringVar(&ifMatch, "ifMatch", defaultIfMatchValue, "If-Match option")
-	flag.Var(&targetPrefix, "targetPrefix", "target-prefix parameter")
-	flag.Var(&lowerPort, "lowerPort", "lower-port parameter")
-	flag.Var(&upperPort, "upperPort", "upper-port parameter")
-	flag.Var(&targetProtocol, "targetProtocol", "target-protocol parameter")
-	flag.Var(&targetFqdn, "targetFqdn", "target-fqdn parameter")
-	flag.Var(&targetUri, "targetUri", "target-uri parameter")
-	flag.Var(&aliasName, "aliasName", "alias-name parameter")
+	flag.StringVar(&targetPrefix, "targetPrefix", defaultValue, "target-prefix parameter")
+	flag.StringVar(&targetPort, "targetPort", defaultValue, "target-port parameter")
+	flag.StringVar(&targetProtocol, "targetProtocol", defaultValue, "target-protocol parameter")
+	flag.StringVar(&targetFqdn, "targetFqdn", defaultValue, "target-fqdn parameter")
+	flag.StringVar(&targetUri, "targetUri", defaultValue, "target-uri parameter")
+	flag.StringVar(&aliasName, "aliasName", defaultValue, "alias-name parameter")
 }
 
 /*
@@ -180,26 +164,46 @@ func main() {
 			// add tmid for telemetry pre-mitigation request
 			u.Path += "/tmid=" + tmid
 		}
-		for _, v := range targetPrefix{
-			u.Path += "/target-prefix="+v
-		}
-		for _, v := range lowerPort {
-			u.Path += "/lower-port="+v
-		}
-		for _, v := range upperPort {
-			u.Path += "/upper-port="+v
-		}
-		for _, v := range targetProtocol {
-			u.Path += "/target-protocol="+v
-		}
-		for _, v := range targetFqdn {
-			u.Path += "/target-fqdn="+v
-		}
-		for _, v := range targetUri {
-			u.Path += "/target-uri="+v
-		}
-		for _, v := range aliasName {
-			u.Path += "/alias-name="+v
+		if targetPrefix != "" || targetPort != "" || targetProtocol != "" || targetFqdn != "" || targetUri != "" || aliasName != "" {
+			var queryPath string
+			// target-prefix
+			if targetPrefix != "" && queryPath != "" {
+				queryPath += "&target-prefix="+targetPrefix
+			} else if targetPrefix != "" {
+				queryPath += "target-prefix="+targetPrefix
+			}
+			// target-port
+			if targetPort != "" && queryPath != "" {
+				queryPath += "&target-port="+targetPort
+			} else if targetPort != "" {
+				queryPath += "target-port="+targetPort
+			}
+			// target-protocol
+			if targetProtocol != "" && queryPath != "" {
+				queryPath += "&target-protocol="+targetProtocol
+			} else if targetProtocol != "" {
+				queryPath += "target-protocol="+targetProtocol
+			}
+			// target-fqdn
+			if targetFqdn != "" && queryPath != "" {
+				queryPath += "&target-fqdn="+targetFqdn
+			} else if targetFqdn != "" {
+				queryPath += "target-fqdn="+targetFqdn
+			}
+			// target-uri
+			if targetUri != "" && queryPath != "" {
+				queryPath += "&target-uri="+targetUri
+			} else if targetUri != "" {
+				queryPath += "target-uri="+targetUri
+			}
+			// alias-name
+			if aliasName != "" && queryPath != "" {
+				queryPath += "&alias-name="+aliasName
+			} else if aliasName != "" {
+				queryPath += "alias-name="+aliasName
+			}
+			u.Path += "?"
+			u.Path += queryPath
 		}
 	} else if sid != "" {
 		// for session configuration

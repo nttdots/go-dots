@@ -163,7 +163,7 @@ In order to handle out-of-order delivery of mitigation requests, 'mid' values MU
 ### Client Controller [mitigation_retrieve_one_query]
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
-     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -targetPrefix=1.2.0.10:32
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -targetPrefix=1.2.0.10/32
 
 ### Client Controller [mitigation_withdraw]
 

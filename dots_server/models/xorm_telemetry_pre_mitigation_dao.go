@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -45,45 +46,91 @@ func CreateTelemetryPreMitigation(customer *Customer, cuid string, cdid string, 
 		return err
 	}
 	// Get Telemetry pre-mitigation by customerId and cuid
-	currentPreMitgations, err := GetTelemetryPreMitigationByCustomerIdAndCuid(customer.Id, cuid, nil)
+	currentPreMitgations, err := GetTelemetryPreMitigationByCustomerIdAndCuid(customer.Id, cuid)
 	if err != nil {
 		return err
 	}
+	// Handle overlapping telemetry pre-mitigation aggregated by client
 	for _, currentPreMitigation := range currentPreMitgations {
 		// Get targets by telemetry pre-mitigation id
 		targets, err := GetTelemetryTargets(engine, customer.Id, cuid, currentPreMitigation.Id)
 		if err != nil {
 			return err
 		}
-		if  tmid == currentPreMitigation.Tmid {
+		if tmid == currentPreMitigation.Tmid {
 			continue
 		}
 		// Check overlap targets
 		isOverlap := CheckOverlapTargetList(newPreMitigation.Targets.TargetList, targets.TargetList)
 		if isOverlap && tmid > currentPreMitigation.Tmid {
 			// Delete current telemetry pre-mitigation
-			log.Debugf("Delete telemetry pre-mitigation with id = %+v", currentPreMitigation.Id)
-			err = DeleteCurrentTelemetryPreMitigation(engine, session, customer.Id, cuid, false, currentPreMitigation.Id, nil)
+			log.Debugf("Delete telemetry pre-mitigation aggregated by client with tmid = %+v", currentPreMitigation.Tmid)
+			err = DeleteCurrentTelemetryPreMitigation(engine, session, customer.Id, cuid, false, currentPreMitigation.Id)
 			if err != nil {
 				session.Rollback()
 				return err
 			}
 		}
 	}
-	// Create or update
-	if !isPresent {
-		log.Debug("Create telemetry pre-mitigation")
-		err = createTelemetryPreMitigation(session, customer.Id, cuid, cdid, tmid, nil, newPreMitigation)
-		if err != nil {
-			session.Rollback()
-			return err
+	// Handle overlapping telemetry pre-mitigation aggregated by server
+	currentUriFilteringTarget, err := GetUriFilteringPreMitigationList(engine, customer.Id, cuid)
+	if err != nil {
+		session.Rollback()
+		return err
+	}
+	for _, ufTarget := range currentUriFilteringTarget {
+		if tmid == ufTarget.Tmid {
+			continue
+		}
+		// Check overlap targets
+		isOverlap := CheckOverlapTargetList(newPreMitigation.Targets.TargetList, ufTarget.TargetList)
+		if isOverlap && tmid > ufTarget.Tmid {
+			// Delete current uri filtering telemetry pre-mitigation
+			log.Debugf("Delete telemetry pre-mitigation aggregated by server with tmid = %+v", ufTarget.Tmid)
+			err = DeleteCurrentUriFilteringTelemetryPreMitigation(engine, session, customer.Id, cuid, ufTarget.Tmid)
+			if err != nil {
+				session.Rollback()
+				return err
+			}
+		}
+	}
+	if len(dataRequest.TotalTraffic) == 0 && len(dataRequest.TotalTrafficProtocol) == 0 && len(dataRequest.TotalTrafficPort) == 0 && len(dataRequest.TotalAttackTraffic) == 0 &&
+	len(dataRequest.TotalAttackTrafficProtocol) == 0 && len(dataRequest.TotalAttackTrafficPort) == 0 && !isExistedTotalAttackConnection(dataRequest.TotalAttackConnection) &&
+	!isExistedTotalAttackConnectionPort(dataRequest.TotalAttackConnectionPort) && len(dataRequest.AttackDetail) == 0 {
+		// Handle 7.3
+		// Create or update telemetry pre-mitigation aggregated by server
+		if !isPresent {
+			log.Debugf("Create telemetry pre-mitigation aggregated by server")
+			err = RegisterUriFilteringTelemetryPreMitigation(session, customer.Id, cuid, cdid, tmid, newPreMitigation)
+			if err != nil {
+				session.Rollback()
+				return err
+			}
+		} else {
+			log.Debugf("Update telemetry pre-mitigation aggregated by server")
+			err = updateUriFilteringTelemetryPreMitigation(session, customer.Id, cuid, cdid, tmid, newPreMitigation)
+			if err != nil {
+				session.Rollback()
+				return err
+			}
 		}
 	} else {
-		log.Debug("Update telemetry pre-mitigation")
-		err = updateTelemetryPreMitigation(engine, session, customer.Id, cuid, cdid, tmid, newPreMitigation)
-		if err != nil {
-			session.Rollback()
-			return err
+		// Handle 7.2
+		// Create or update telemetry pre-mitigation aggregated by client
+		if !isPresent {
+			log.Debug("Create telemetry pre-mitigation aggregated by client")
+			err = createTelemetryPreMitigation(session, customer.Id, cuid, cdid, tmid, nil, newPreMitigation, nil)
+			if err != nil {
+				session.Rollback()
+				return err
+			}
+		} else {
+			log.Debug("Update telemetry pre-mitigation aggregated by client")
+			err = updateTelemetryPreMitigation(engine, session, customer.Id, cuid, cdid, tmid, newPreMitigation)
+			if err != nil {
+				session.Rollback()
+				return err
+			}
 		}
 	}
 	// add Commit() after all actions
@@ -92,62 +139,104 @@ func CreateTelemetryPreMitigation(customer *Customer, cuid string, cdid string, 
 }
 
 // Create telemetry pre-mitigation
-func createTelemetryPreMitigation(session *xorm.Session, customerId int, cuid string, cdid string, tmid int, currentPreMitigationId *int64, preMitigation *TelemetryPreMitigation) error {
+func createTelemetryPreMitigation(session *xorm.Session, customerId int, cuid string, cdid string, tmid int, currentPreMitigation *db_models.TelemetryPreMitigation, newPreMitigation *TelemetryPreMitigation, preMitigation *TelemetryPreMitigation) error {
+	var currentPreMitigationId int64
 	// Register telemetry pre-mitigation
-	if currentPreMitigationId == nil {
+	if currentPreMitigation == nil {
 		newTelePreMitigation, err := RegisterTelemetryPreMitigation(session, customerId, cuid, cdid, tmid)
 		if err != nil {
 			return err
 		}
-		currentPreMitigationId = &newTelePreMitigation.Id
+		currentPreMitigationId = newTelePreMitigation.Id
+	} else if preMitigation != nil {
+		currentPreMitigationId = currentPreMitigation.Id
+		// Compare between the current pre-mitigation and the new pre-mitigation
+		// If the new pre-mitigation different from the current pre-mitigation, Dots server will update the telemetry_pre_mitigation
+		if !reflect.DeepEqual(GetModelsTelemetryPreMitigation(*newPreMitigation), GetModelsTelemetryPreMitigation(*preMitigation)) {
+			_, err := session.Id(currentPreMitigation.Id).Update(currentPreMitigation)
+			if err != nil {
+				log.Errorf("telemetry_pre_mitigation update err: %s", err)
+				return err
+			}
+		}
 	}
 	// Create targets(target_prefix, target_port_range, target_uri, target_fqdn, alias_name)
-	err := CreateTargets(session, *currentPreMitigationId, preMitigation.Targets)
+	err := CreateTargets(session, currentPreMitigationId, newPreMitigation.Targets)
 	if err != nil {
 		return err
 	}
 	// Register total-traffic
-	err = RegisterTraffic(session, string(TELEMETRY), string(TARGET_PREFIX), *currentPreMitigationId, string(TOTAL_TRAFFIC), preMitigation.TotalTraffic)
+	err = RegisterTraffic(session, string(TELEMETRY), string(TARGET_PREFIX), currentPreMitigationId, string(TOTAL_TRAFFIC), newPreMitigation.TotalTraffic)
 	if err != nil {
 		return err
 	}
 	// Register total-traffic-protocol
-	err = RegisterTrafficPerProtocol(session, string(TELEMETRY), *currentPreMitigationId, string(TOTAL_TRAFFIC), preMitigation.TotalTrafficProtocol)
+	err = RegisterTrafficPerProtocol(session, string(TELEMETRY), currentPreMitigationId, string(TOTAL_TRAFFIC), newPreMitigation.TotalTrafficProtocol)
 	if err != nil {
 		return err
 	}
 	// Register total-traffic-port
-	err = RegisterTrafficPerPort(session, string(TELEMETRY), *currentPreMitigationId, string(TOTAL_TRAFFIC), preMitigation.TotalTrafficPort)
+	err = RegisterTrafficPerPort(session, string(TELEMETRY), currentPreMitigationId, string(TOTAL_TRAFFIC), newPreMitigation.TotalTrafficPort)
 	if err != nil {
 		return err
 	}
 	// Register total-attack-traffic
-	err = RegisterTraffic(session, string(TELEMETRY), string(TARGET_PREFIX), *currentPreMitigationId, string(TOTAL_ATTACK_TRAFFIC), preMitigation.TotalAttackTraffic)
+	err = RegisterTraffic(session, string(TELEMETRY), string(TARGET_PREFIX), currentPreMitigationId, string(TOTAL_ATTACK_TRAFFIC), newPreMitigation.TotalAttackTraffic)
 	if err != nil {
 		return err
 	}
 	// Register total-attack-traffic-protocol
-	err = RegisterTrafficPerProtocol(session, string(TELEMETRY), *currentPreMitigationId, string(TOTAL_ATTACK_TRAFFIC), preMitigation.TotalAttackTrafficProtocol)
+	err = RegisterTrafficPerProtocol(session, string(TELEMETRY), currentPreMitigationId, string(TOTAL_ATTACK_TRAFFIC), newPreMitigation.TotalAttackTrafficProtocol)
 	if err != nil {
 		return err
 	}
 	// Register total-attack-traffic-port
-	err = RegisterTrafficPerPort(session, string(TELEMETRY), *currentPreMitigationId, string(TOTAL_ATTACK_TRAFFIC), preMitigation.TotalAttackTrafficPort)
+	err = RegisterTrafficPerPort(session, string(TELEMETRY), currentPreMitigationId, string(TOTAL_ATTACK_TRAFFIC), newPreMitigation.TotalAttackTrafficPort)
 	if err != nil {
 		return err
 	}
 	// Create total-attack-connection(low/mid/high_percentile_l, peak_l)
-	err = CreateTotalAttackConnection(session, string(TARGET_PREFIX),*currentPreMitigationId, preMitigation.TotalAttackConnection)
+	err = CreateTotalAttackConnection(session, string(TARGET_PREFIX),currentPreMitigationId, newPreMitigation.TotalAttackConnection)
 	if err != nil {
 		return err
 	}
 	// Create total-attack-connection-port(low/mid/high_percentile_l, peak_l)
-	err = CreateTotalAttackConnectionPort(session, *currentPreMitigationId, preMitigation.TotalAttackConnectionPort)
+	err = CreateTotalAttackConnectionPort(session, currentPreMitigationId, newPreMitigation.TotalAttackConnectionPort)
 	if err != nil {
 		return err
 	}
 	// Create attack-detail
-	err = CreateAttackDetail(session, *currentPreMitigationId, preMitigation.AttackDetail)
+	err = CreateAttackDetail(session, currentPreMitigationId, newPreMitigation.AttackDetail)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Update uri filtering telemetry pre-mitigation
+func updateUriFilteringTelemetryPreMitigation(session *xorm.Session, customerId int, cuid string, cdid string, tmid int, newPreMitigation *TelemetryPreMitigation) error {
+	// Get telemetry pre-mitigation by tmid
+	currentPreMitigation, err := db_models.GetTelemetryPreMitigationByTmid(engine, customerId, cuid, tmid)
+	if err != nil {
+		log.Errorf("Failed to get telemetry pre-mitigation. Error: %+v", err)
+		return err
+	}
+	if currentPreMitigation.Id > 0 {
+		// Delete telemetry pre-mitigation
+		log.Debugf("Delete telemetry pre-mitigation aggregated by client with tmid = %+v", tmid)
+		err = DeleteCurrentTelemetryPreMitigation(engine, session, customerId, cuid, false, currentPreMitigation.Id)
+		if err != nil {
+			return err
+		}
+	} else {
+		// Delete uri_filtering_telemetry_pre_mitigation
+		err = DeleteCurrentUriFilteringTelemetryPreMitigation(engine, session, customerId, cuid, tmid)
+		if err != nil {
+			return err
+		}
+	}
+	// Register uri_filtering_telemetry_pre_mitigation
+	err = RegisterUriFilteringTelemetryPreMitigation(session, customerId, cuid, cdid, tmid, newPreMitigation)
 	if err != nil {
 		return err
 	}
@@ -162,13 +251,30 @@ func updateTelemetryPreMitigation(engine *xorm.Engine, session *xorm.Session, cu
 		log.Errorf("Failed to get telemetry pre-mitigation. Error: %+v", err)
 		return err
 	}
-	// Delete telemetry pre-mitigation
-	err = DeleteCurrentTelemetryPreMitigation(engine, session, customerId, cuid, true, currentPreMitigation.Id, newPreMitigation.AttackDetail)
-	if err != nil {
-		return err
+	var preMitigation *TelemetryPreMitigation
+	if currentPreMitigation.Id > 0 {
+		preMitigationTmp, err := GetTelemetryPreMitigationAttributes(customerId, cuid, currentPreMitigation.Id)
+		if err != nil {
+			return err
+		}
+		preMitigation = &preMitigationTmp
+		// Delete telemetry pre-mitigation
+		err = DeleteCurrentTelemetryPreMitigation(engine, session, customerId, cuid, true, currentPreMitigation.Id)
+		if err != nil {
+			return err
+		}
+	} else {
+		preMitigation = nil
+		currentPreMitigation = nil
+		log.Debugf("Delete telemetry pre-mitigation aggregated by server with tmid=%+v", tmid)
+		// Delete uri_filtering_telemetry_pre_mitigation
+		err = DeleteCurrentUriFilteringTelemetryPreMitigation(engine, session, customerId, cuid, tmid)
+		if err != nil {
+			return err
+		}
 	}
 	// Create telemetry pre-mitigation
-	err = createTelemetryPreMitigation(session, customerId, cuid, cdid, tmid, &currentPreMitigation.Id, newPreMitigation)
+	err = createTelemetryPreMitigation(session, customerId, cuid, cdid, tmid, currentPreMitigation, newPreMitigation, preMitigation)
 	return nil
 }
 
@@ -759,6 +865,88 @@ func RegisterTelemetryTotalAttackConnection(session *xorm.Session, prefixType st
 	return nil
 }
 
+// Register uri filtering telemetry pre-mitigation
+func RegisterUriFilteringTelemetryPreMitigation(session *xorm.Session, customerId int, cuid string, cdid string, tmid int, newPreMitigation *TelemetryPreMitigation) error {
+	uriFilteringList := []db_models.UriFilteringTelemetryPreMitigation{}
+	prefixList := make([]string, 0)
+	portList := make([]PortRange, 0)
+	protocolList := make([]int, 0)
+	fqdnList := make([]string, 0)
+	aliasNameList := make([]string, 0)
+	// target-prefix
+	if len(newPreMitigation.Targets.TargetPrefix) > 0 {
+		for _, prefix := range newPreMitigation.Targets.TargetPrefix {
+			prefixList = append(prefixList, prefix.String())
+		}
+	} else {
+		prefixList = append(prefixList, "")
+	}
+	// target-port
+	if len(newPreMitigation.Targets.TargetPortRange) > 0 {
+		for _, port := range newPreMitigation.Targets.TargetPortRange {
+			portList = append(portList, port)
+		}
+	} else {
+		portList = append(portList, PortRange{0,0})
+	}
+	// target-protocol
+	if len(newPreMitigation.Targets.TargetProtocol.List()) > 0 {
+		for _, protocol := range newPreMitigation.Targets.TargetProtocol.List() {
+			protocolList = append(protocolList, protocol)
+		}
+	} else {
+		protocolList = append(protocolList, 0)
+	}
+	// target-fqdn
+	if len(newPreMitigation.Targets.FQDN.List()) > 0 {
+		for _, fqdn := range newPreMitigation.Targets.FQDN.List() {
+			fqdnList = append(fqdnList, fqdn)
+		}
+	} else {
+		fqdnList = append(fqdnList, "")
+	}
+	// alias-name
+	if len(newPreMitigation.Targets.AliasName.List()) > 0 {
+		for _, aliasName := range newPreMitigation.Targets.AliasName.List() {
+			aliasNameList = append(aliasNameList, aliasName)
+		}
+	} else {
+		aliasNameList = append(aliasNameList, "")
+	}
+	for _, prefix := range prefixList {
+		for _, port := range portList {
+			for _, protocol := range protocolList {
+				for _, fqdn := range fqdnList {
+					for _, aliasName := range aliasNameList {
+						uriFiltering := db_models.UriFilteringTelemetryPreMitigation{
+							CustomerId:     customerId,
+							Cuid:           cuid,
+							Cdid:           cdid,
+							Tmid:           tmid,
+							TargetPrefix:   prefix,
+							LowerPort:      port.LowerPort,
+							UpperPort:      port.UpperPort,
+							TargetProtocol: protocol,
+							TargetFqdn:     fqdn,
+							AliasName:      aliasName,
+						}
+						uriFilteringList = append(uriFilteringList, uriFiltering)
+					}
+				}
+			}
+		}
+	}
+	if len(uriFilteringList) > 0 {
+		// Register uri_filtering_telemetry_pre_mitigation
+		_, err := session.Insert(&uriFilteringList)
+		if err != nil {
+			log.Errorf("uri_filtering_telemetry_pre_mitigation insert err: %s", err)
+			return err
+		}
+	}
+	return nil
+}
+
 // Get telemetry pre-mitigation by cuid
 func GetTelemetryPreMitigationListByCuid(customerId int, cuid string) ([]db_models.TelemetryPreMitigation, error) {
 	// database connection create
@@ -841,7 +1029,7 @@ func GetTelemetryPreMitigationAttributes(customerId int, cuid string, telePremit
 }
 
 // Get telemetry pre-mitigation by tmid
-func GetTelemetryPreMitigationByTmid(customerId int, cuid string, tmid int, queries []string) (*db_models.TelemetryPreMitigation, error) {
+func GetTelemetryPreMitigationByTmid(customerId int, cuid string, tmid int) (*db_models.TelemetryPreMitigation, error) {
 	telePreMitigation := &db_models.TelemetryPreMitigation{}
 	// database connection create
 	engine, err := ConnectDB()
@@ -854,198 +1042,153 @@ func GetTelemetryPreMitigationByTmid(customerId int, cuid string, tmid int, quer
 		log.Errorf("Find tmid of telemetry pre-mitigation error: %s\n", err)
 		return nil, err
 	}
-	// Get telemetry pre-mitigation with queries
-	if telePreMitigation != nil {
-		isFound, err := IsFoundTargetQueries(engine, telePreMitigation.Id, queries, true)
-		if err != nil {
-			return nil, err
-		}
-		if !isFound {
-			return nil, nil
-		}
-	}
 	return telePreMitigation, nil
 }
 
 /*
- * Check existed pre-mitigation/mitigation contains targets queries
+ * Check existed mitigation contains targets queries
  * response:
- *    true: if existed pre-mitigation/mitigation contains targets queries
- *    false: if pre-mitigation/mitigation doesn't contain targets queries
+ *    true: if existed mitigation contains targets queries
+ *    false: if mitigation doesn't contain targets queries
  */
 func IsFoundTargetQueries(engine *xorm.Engine, id int64, queries []string, isPreMitigation bool) (bool, error) {
-	targetPrefixs, lowerPorts, upperPorts, targetProtocols, targetFqdns,targetUris, aliasNames := GetQueriesFromUriQuery(queries)
-	var dbTargetPrefixs   []string
-	var dbLowerPorts      []string
-	var dbUpperPorts      []string
-	var dbTargetProtocols []string
-	var dbTargetFqdns     []string
-	var dbTargetUris      []string
-	var dbAliasNames      []string
-	var err error
-	if isPreMitigation {
-		dbTargetPrefixs, dbLowerPorts, dbUpperPorts, dbTargetProtocols, dbTargetFqdns, dbTargetUris, dbAliasNames, err = GetTargetTelemetryPreMitigation(engine, id)
-	} else {
-		dbTargetPrefixs, dbLowerPorts, dbUpperPorts, dbTargetProtocols, dbTargetFqdns, dbTargetUris, dbAliasNames, err = GetTargetMitigation(engine, id)
+	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, errMsg := GetQueriesFromUriQuery(queries)
+	if errMsg != "" {
+		log.Errorf(errMsg)
+		return false, nil
 	}
+	dbTargetPrefixs, dbTargetPorts, dbTargetProtocols, dbTargetFqdns, dbTargetUris, dbAliasNames, err := GetTargetMitigation(engine, id)
 	if err != nil {
 		return false, err
 	}
-	isFoundTargetPrefix := IsFoundArrayValuesString(targetPrefixs, dbTargetPrefixs)
-	if err != nil {
-		return false, err
+	// target-prefix
+	for _, v := range dbTargetPrefixs {
+		if !IsContainStringValue(targetPrefix, v) {
+			return false, nil
+		}
 	}
-	if !isFoundTargetPrefix {
-		return false, nil
+	// target-port
+	for _, v := range dbTargetPorts {
+		if !IsContainIntValue(targetPort, v.LowerPort) && !IsContainIntValue(targetPort, v.UpperPort) {
+			return false, nil
+		}
 	}
-	isFoundLowerPort := IsFoundArrayValuesString(lowerPorts, dbLowerPorts)
-	if !isFoundLowerPort {
-		return false, nil
+	// target-protocl
+	for _, v := range dbTargetProtocols {
+		if !IsContainIntValue(targetProtocol, v) {
+			return false, nil
+		}
 	}
-	isFoundUpperPort := IsFoundArrayValuesString(upperPorts, dbUpperPorts)
-	if !isFoundUpperPort {
-		return false, nil
+	// target-fqdn
+	for _, v := range dbTargetFqdns {
+		if !IsContainStringValue(targetFqdn, v) {
+			return false, nil
+		}
 	}
-	isFoundTargetProtocol := IsFoundArrayValuesString(targetProtocols, dbTargetProtocols)
-	if !isFoundTargetProtocol {
-		return false, nil
+	// target-uri
+	for _, v := range dbTargetUris {
+		if !IsContainStringValue(targetUri, v) {
+			return false, nil
+		}
 	}
-	isFoundTargetFqdn := IsFoundArrayValuesString(targetFqdns, dbTargetFqdns)
-	if !isFoundTargetFqdn {
-		return false, nil
-	}
-	isFoundTargetUri := IsFoundArrayValuesString(targetUris, dbTargetUris)
-	if !isFoundTargetUri {
-		return false, nil
-	}
-	isFoundAliasName := IsFoundArrayValuesString(aliasNames, dbAliasNames)
-	if !isFoundAliasName {
-		return false, nil
+	// alias-name
+	for _, v := range dbAliasNames {
+		if !IsContainStringValue(aliasName, v) {
+			return false, nil
+		}
 	}
 	return true, nil
 }
 
-/*
- * Check targets queries are match or not match with targets of mid/tmid
- * response:
- *    true: if targets queries are match
- *    false: if targets queries are not match
- */
-func IsFoundArrayValuesString(as []string, bs []string) bool {
-	var foundValues []string
-	for _, a := range as {
-		for _, b := range bs {
-			if a == b {
-				foundValues = append(foundValues, a)
+// Check contain string value between uri-query and target-value 
+// target-prefix, target-fqdn, alias-name
+func IsContainStringValue(targetQuery string, targetValue string) bool {
+	multiValues := strings.Split(targetQuery, ",")
+	wildcardNames := strings.Split(targetQuery, "*")
+	if len(multiValues) > 1 {
+		for _, v := range multiValues {
+			vWilcardNames := strings.Split(v, "*")
+			if len(vWilcardNames) > 1 && strings.Contains(targetValue, vWilcardNames[1]) {
+				return true
+			} else if len(vWilcardNames) <= 1 && v == targetValue {
+				return true
 			}
 		}
+	} else if len(wildcardNames) > 1 {
+		if strings.Contains(targetValue, wildcardNames[1]) {
+			return true
+		}
+	} else {
+		if targetQuery == targetValue || targetQuery == "" {
+			return true
+		}
 	}
-	if !reflect.DeepEqual(as, foundValues) {
-		return false
+	return false
+}
+
+// Check contain integer value between uri-query and target-value
+// target-port, target-protocol
+func IsContainIntValue(targetQuery string, targetValue int) bool {
+	multiValues := strings.Split(targetQuery, ",")
+	rangeValues := strings.Split(targetQuery, "-")
+	if len(multiValues) > 1 {
+		for _, v := range multiValues {
+			queryValue, _ := strconv.Atoi(v)
+			if queryValue == targetValue {
+				return true
+			}
+		}
+	} else if len(rangeValues) > 1 {
+		lowerQueryValue, _ := strconv.Atoi(rangeValues[0])
+		upperQueryValue, _ := strconv.Atoi(rangeValues[0])
+		if targetValue >= lowerQueryValue && targetValue <= upperQueryValue {
+			return true
+		}
+	} else {
+		queryValue, _ := strconv.Atoi(targetQuery)
+		if queryValue == targetValue || targetQuery == "" {
+			return true
+		}
 	}
-	return true
+	return false
 }
 
 // Get queries from Uri-query
-func GetQueriesFromUriQuery(queries []string) (targetPrefixs []string, lowerPorts []string, upperPorts []string, targetProtocols []string, targetFqdns []string, targetUris []string, aliasNames []string) {
+func GetQueriesFromUriQuery(queries []string) (targetPrefix string, targetPort string, targetProtocol string, targetFqdn string, targetUri string, aliasName string, errMsg string) {
 	for _, query := range queries {
 		if (strings.HasPrefix(query, "target-prefix=")){
-			targetPrefixs = append(targetPrefixs, query[strings.Index(query, "target-prefix=")+14:])
-		} else if (strings.HasPrefix(query, "lower-port=")){
-			lowerPorts = append(lowerPorts, query[strings.Index(query, "lower-port=")+11:])
-		} else if (strings.HasPrefix(query, "upper-port=")){
-			upperPorts = append(upperPorts, query[strings.Index(query, "upper-port=")+11:])
+			targetPrefix = query[strings.Index(query, "target-prefix=")+14:]
+		} else if (strings.HasPrefix(query, "target-port=")){
+			targetPort = query[strings.Index(query, "target-port=")+12:]
 		} else if (strings.HasPrefix(query, "target-protocol=")){
-			targetProtocols = append(targetProtocols, query[strings.Index(query, "target-protocol=")+16:])
+			targetProtocol = query[strings.Index(query, "target-protocol=")+16:]
 		} else if (strings.HasPrefix(query, "target-fqdn=")){
-			targetFqdns = append(targetFqdns, query[strings.Index(query, "target-fqdn=")+12:])
+			targetFqdn = query[strings.Index(query, "target-fqdn=")+12:]
 		} else if (strings.HasPrefix(query, "target-uri=")){
-			targetUris = append(targetUris, query[strings.Index(query, "target-uri=")+11:])
+			targetUri = query[strings.Index(query, "target-uri=")+11:]
 		} else if (strings.HasPrefix(query, "alias-name=")){
-			aliasNames = append(aliasNames, query[strings.Index(query, "alias-name=")+11:])
+			aliasName = query[strings.Index(query, "alias-name=")+11:]
+		} else {
+			errMsg = fmt.Sprintf("Invalid the uri-query: %+v", query)
 		}
-	}
-	return
-}
-
-// Get target telemtry pre-mitigation
-func GetTargetTelemetryPreMitigation(engine *xorm.Engine, telePreMitigationId int64) (targetPrefixs []string, lowerPorts []string, upperPorts []string, targetProtocols []string, targetFqdns []string, targetUris []string, aliasNames []string, err error) {
-	dbTelemetryPrefixList, err := db_models.GetTelemetryPrefix(engine, string(TELEMETRY), telePreMitigationId, string(TARGET_PREFIX))
-	if err != nil {
-		log.Errorf("Get telemetry target-prefix error: %s\n", err)
-		return
-	}
-	for _, v := range dbTelemetryPrefixList {
-		targetPrefixs = append(targetPrefixs, v.Addr+"/"+strconv.Itoa(v.PrefixLen))
-	}
-	dbTelemetryPortRangeList, err := db_models.GetTelemetryPortRange(engine, string(TELEMETRY), telePreMitigationId, string(TARGET_PREFIX))
-	if err != nil {
-		log.Errorf("Get telemetry port-range error: %s\n", err)
-		return
-	}
-	for _, v := range dbTelemetryPortRangeList {
-		lowerPorts = append(lowerPorts, strconv.Itoa(v.LowerPort))
-		upperPorts = append(upperPorts, strconv.Itoa(v.UpperPort))
-	}
-	dbTargetProtocolList, err := db_models.GetTelemetryParameterValue(engine, string(TELEMETRY), telePreMitigationId, string(TARGET_PROTOCOL))
-	if err != nil {
-		log.Errorf("Get telemetry target-protoccol error: %s\n", err)
-		return
-	}
-	for _, v := range dbTargetProtocolList {
-		targetProtocols = append(targetProtocols, strconv.Itoa(v.IntValue))
-	}
-	dbTargetFqdnList, err := db_models.GetTelemetryParameterValue(engine, string(TELEMETRY), telePreMitigationId, string(TARGET_FQDN))
-	if err != nil {
-		log.Errorf("Get telemetry target-fqdn error: %s\n", err)
-		return
-	}
-	for _, v := range dbTargetFqdnList {
-		targetFqdns = append(targetFqdns, v.StringValue)
-	}
-	dbTargetUriList, err := db_models.GetTelemetryParameterValue(engine, string(TELEMETRY), telePreMitigationId, string(TARGET_URI))
-	if err != nil {
-		log.Errorf("Get telemetry target-uri error: %s\n", err)
-		return
-	}
-	for _, v := range dbTargetUriList {
-		targetUris = append(targetUris, v.StringValue)
-	}
-	dbAliasNameList, err := db_models.GetTelemetryParameterValue(engine, string(TELEMETRY), telePreMitigationId, string(ALIAS_NAME))
-	if err != nil {
-		log.Errorf("Get telemetry alias-name error: %s\n", err)
-		return
-	}
-	for _, v := range dbAliasNameList {
-		aliasNames = append(aliasNames, v.StringValue)
 	}
 	return
 }
 
 // Get telemetry pre-mitigation by customer_id and cuid
-func GetTelemetryPreMitigationByCustomerIdAndCuid(customerId int, cuid string, queries []string) (preMitigationList []db_models.TelemetryPreMitigation, err error) {
+func GetTelemetryPreMitigationByCustomerIdAndCuid(customerId int, cuid string) (dbPreMitigationList []db_models.TelemetryPreMitigation, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
 		log.Errorf("Database connect error: %s", err)
 		return
 	}
-	preMitigationList = []db_models.TelemetryPreMitigation{}
-	dbPreMitigationList := []db_models.TelemetryPreMitigation{}
+	dbPreMitigationList = []db_models.TelemetryPreMitigation{}
 
 	err = engine.Where("customer_id = ? AND cuid = ?", customerId, cuid).Find(&dbPreMitigationList)
 	if err != nil {
 		log.Errorf("Find tmid of telemetry pre-mitigation error: %s\n", err)
 		return
-	}
-	for _, v := range dbPreMitigationList {
-		isFound, err := IsFoundTargetQueries(engine, v.Id, queries, true)
-		if err != nil {
-			return nil, err
-		}
-		if isFound {
-			preMitigationList = append(preMitigationList, v)
-		}
 	}
 	return
 }
@@ -1594,8 +1737,652 @@ func GetTelemetrySourceIcmpTypeRange(engine *xorm.Engine, teleTopTalkerId int64)
 	return icmpTypeRangeList, nil
 }
 
+// Get uri filtering telemetry pre-mitigation
+func GetUriFilteringTelemetryPreMitigation(customerId int, cuid string, tmid *int, queries []string) ([]db_models.UriFilteringTelemetryPreMitigation, error) {
+	uriFilterPreMitigation := []db_models.UriFilteringTelemetryPreMitigation{}
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("Database connect error: %s", err)
+		return nil, err
+	}
+	dbPreMitigation := []db_models.UriFilteringTelemetryPreMitigation{}
+	if tmid == nil {
+		// Get all
+		dbPreMitigation, err = db_models.GetUriFilteringTelemetryPreMitigationByCuid(engine, customerId, cuid)
+		if err != nil {
+			log.Errorf("Find uri_filtering_telemetry_pre_mitigation error: %s\n", err)
+			return nil, err
+		}
+	} else {
+		// Get one
+		dbPreMitigation, err = db_models.GetUriFilteringTelemetryPreMitigationByTmid(engine, customerId, cuid, *tmid)
+		if err != nil {
+			log.Errorf("Find uri_filtering_telemetry_pre_mitigation error: %s\n", err)
+			return nil, err
+		}
+	}
+	if len(queries) > 0 {
+		targetPrefix, targetPort, targetProtocol, targetFqdn, _, aliasName, _ := GetQueriesFromUriQuery(queries)
+		for _, v := range dbPreMitigation {
+			if IsContainStringValue(targetPrefix, v.TargetPrefix) && (IsContainIntValue(targetPort, v.LowerPort) || IsContainIntValue(targetPort, v.UpperPort)) &&
+			IsContainIntValue(targetProtocol, v.TargetProtocol) && IsContainStringValue(targetFqdn, v.TargetFqdn) && IsContainStringValue(aliasName, v.AliasName) {
+				uriFilterPreMitigation = append(uriFilterPreMitigation, v)
+			}
+		}
+	} else {
+		uriFilterPreMitigation = dbPreMitigation
+	}
+	return uriFilterPreMitigation, nil
+}
+
+// Get uri filtering telemetry pre-mitigation attributes
+func GetUriFilteringTelemetryPreMitigationAttributes(customerId int, cuid string, ufPreMitigations []db_models.UriFilteringTelemetryPreMitigation) (preMitigationList []TelemetryPreMitigation, err error) {
+	preMitigationList = []TelemetryPreMitigation{}
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("Database connect error: %s", err)
+		return
+	}
+	for _, ufPreMitigation := range ufPreMitigations {
+		preMitigation := TelemetryPreMitigation{}
+		preMitigation.Tmid = ufPreMitigation.Tmid
+		//target
+		targets := Targets{make([]Prefix, 0),make([]PortRange, 0),NewSetInt(),NewSetString(),NewSetString(),NewSetString(), make([]Target, 0)}
+		var prefix Prefix
+		if ufPreMitigation.TargetPrefix != "" {
+			prefix, err =  NewPrefix(ufPreMitigation.TargetPrefix)
+			if err != nil {
+				log.Errorf("New prefix err %+v", err)
+				return
+			}
+			targets.TargetPrefix = append(targets.TargetPrefix, prefix)
+		}
+		if ufPreMitigation.LowerPort > 0 {
+			targets.TargetPortRange = append(targets.TargetPortRange, PortRange{ufPreMitigation.LowerPort, ufPreMitigation.UpperPort})
+		}
+		if ufPreMitigation.TargetProtocol > 0 {
+			targets.TargetProtocol.Append(ufPreMitigation.TargetProtocol)
+		}
+		if ufPreMitigation.TargetFqdn != "" {
+			targets.FQDN.Append(ufPreMitigation.TargetFqdn)
+		}
+		if ufPreMitigation.AliasName != "" {
+			targets.AliasName.Append(ufPreMitigation.AliasName)
+		}
+		preMitigation.Targets = targets
+		// Get total traffic
+		preMitigation.TotalTraffic, err = GetUriFilteringTraffic(engine, string(TARGET_PREFIX), ufPreMitigation.Id, string(TOTAL_TRAFFIC))
+		if err != nil {
+			return
+		}
+		// Get total traffic protocol
+		preMitigation.TotalTrafficProtocol, err = GetUriFilteringTrafficPerProtocol(engine, ufPreMitigation.Id, string(TOTAL_TRAFFIC))
+		if err != nil {
+			return
+		}
+		// Get total traffic port
+		preMitigation.TotalTrafficPort, err = GetUriFilteringTrafficPerPort(engine, ufPreMitigation.Id, string(TOTAL_TRAFFIC))
+		if err != nil {
+			return
+		}
+		// Get total attack traffic
+		preMitigation.TotalAttackTraffic, err = GetUriFilteringTraffic(engine, string(TARGET_PREFIX), ufPreMitigation.Id, string(TOTAL_ATTACK_TRAFFIC))
+		if err != nil {
+			return
+		}
+		// Get total attack traffic protocol
+		preMitigation.TotalAttackTrafficProtocol, err = GetUriFilteringTrafficPerProtocol(engine, ufPreMitigation.Id, string(TOTAL_ATTACK_TRAFFIC))
+		if err != nil {
+			return
+		}
+		// Get total attack traffic port
+		preMitigation.TotalAttackTrafficPort, err = GetUriFilteringTrafficPerPort(engine, ufPreMitigation.Id, string(TOTAL_ATTACK_TRAFFIC))
+		if err != nil {
+			return
+		}
+		// Get total attack connection
+		preMitigation.TotalAttackConnection, err = GetUriFilteringTotalAttackConnection(engine, string(TARGET_PREFIX), ufPreMitigation.Id)
+		if err != nil {
+			return
+		}
+		// Get total attack connection port
+		preMitigation.TotalAttackConnectionPort, err = GetUriFilteringTotalAttackConnectionPort(engine, ufPreMitigation.Id)
+		if err != nil {
+			return
+		}
+		// Get attack detail
+		preMitigation.AttackDetail, err = GetUriFilteringAttackDetail(engine, ufPreMitigation.Id)
+		if err != nil {
+			return
+		}
+		if len(preMitigationList) > 0 {
+			for k, v := range preMitigationList {
+				// the values is appended with same tmid
+				if v.Tmid == preMitigation.Tmid {
+					if !reflect.DeepEqual(v.Targets.TargetPrefix, preMitigation.Targets.TargetPrefix) {
+						v.Targets.TargetPrefix = append(v.Targets.TargetPrefix, preMitigation.Targets.TargetPrefix...)
+					}
+					if !reflect.DeepEqual(v.Targets.TargetPortRange, preMitigation.Targets.TargetPortRange) {
+						v.Targets.TargetPortRange = append(v.Targets.TargetPortRange, preMitigation.Targets.TargetPortRange...)
+					}
+					if !reflect.DeepEqual(v.Targets.TargetProtocol.List(), preMitigation.Targets.TargetProtocol.List()) {
+						v.Targets.TargetProtocol.AddList(preMitigation.Targets.TargetProtocol.List())
+					}
+					if !reflect.DeepEqual(v.Targets.FQDN.List(), preMitigation.Targets.FQDN.List()) {
+						v.Targets.FQDN.AddList(preMitigation.Targets.FQDN.List())
+					}
+					if !reflect.DeepEqual(v.Targets.AliasName.List(), preMitigation.Targets.AliasName.List()) {
+						v.Targets.AliasName.AddList(preMitigation.Targets.AliasName.List())
+					}
+					v.TotalTraffic                              = append(v.TotalTraffic, preMitigation.TotalTraffic...)
+					v.TotalTrafficProtocol                      = append(v.TotalTrafficProtocol, preMitigation.TotalTrafficProtocol...)
+					v.TotalTrafficPort                          = append(v.TotalTrafficPort, preMitigation.TotalTrafficPort...)
+					v.TotalAttackTraffic                        = append(v.TotalAttackTraffic, preMitigation.TotalAttackTraffic...)
+					v.TotalAttackTrafficProtocol                = append(v.TotalAttackTrafficProtocol, preMitigation.TotalAttackTrafficProtocol...)
+					v.TotalAttackTrafficPort                    = append(v.TotalAttackTrafficPort, preMitigation.TotalAttackTrafficPort...)
+					v.TotalAttackConnection.LowPercentileL      = append(v.TotalAttackConnection.LowPercentileL, preMitigation.TotalAttackConnection.LowPercentileL...)
+					v.TotalAttackConnection.MidPercentileL      = append(v.TotalAttackConnection.MidPercentileL, preMitigation.TotalAttackConnection.MidPercentileL...)
+					v.TotalAttackConnection.HighPercentileL     = append(v.TotalAttackConnection.HighPercentileL, preMitigation.TotalAttackConnection.HighPercentileL...)
+					v.TotalAttackConnection.PeakL               = append(v.TotalAttackConnection.PeakL, preMitigation.TotalAttackConnection.PeakL...)
+					v.TotalAttackConnectionPort.LowPercentileL  = append(v.TotalAttackConnectionPort.LowPercentileL, preMitigation.TotalAttackConnectionPort.LowPercentileL...)
+					v.TotalAttackConnectionPort.MidPercentileL  = append(v.TotalAttackConnectionPort.MidPercentileL, preMitigation.TotalAttackConnectionPort.MidPercentileL...)
+					v.TotalAttackConnectionPort.HighPercentileL = append(v.TotalAttackConnectionPort.HighPercentileL, preMitigation.TotalAttackConnectionPort.HighPercentileL...)
+					v.TotalAttackConnectionPort.PeakL           = append(v.TotalAttackConnectionPort.PeakL, preMitigation.TotalAttackConnectionPort.PeakL...)
+					v.AttackDetail                              = append(v.AttackDetail, preMitigation.AttackDetail...)
+					preMitigationList = append(preMitigationList[:k], preMitigationList[k+1:]...)
+					preMitigationList = append(preMitigationList, v)
+				} else {
+					preMitigationList = append(preMitigationList, preMitigation)
+				}
+			}
+		} else {
+			preMitigationList = append(preMitigationList, preMitigation)
+		}
+	}
+	return
+}
+
+// Get uri filtering traffic
+func GetUriFilteringTraffic(engine *xorm.Engine, prefixType string, preMitigationId int64, trafficType string) (trafficList []Traffic, err error) {
+	traffics, err := db_models.GetUriFilteringTraffic(engine, prefixType, preMitigationId, trafficType)
+	if err != nil {
+		log.Errorf("Get uri_filtering_traffic err: %+v", err)
+		return nil, err
+	}
+	trafficList = []Traffic{}
+	for _, vTraffic := range traffics {
+		traffic := Traffic{}
+		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
+		traffic.LowPercentileG  = vTraffic.LowPercentileG
+		traffic.MidPercentileG  = vTraffic.MidPercentileG
+		traffic.HighPercentileG = vTraffic.HighPercentileG
+		traffic.PeakG           = vTraffic.PeakG
+		trafficList             = append(trafficList, traffic)
+	}
+	return trafficList, nil
+}
+
+// Get uri filtering traffic per protocol
+func GetUriFilteringTrafficPerProtocol(engine *xorm.Engine, preMitigationId int64, trafficType string) (trafficList []TrafficPerProtocol, err error) {
+	traffics, err := db_models.GetUriFilteringTrafficPerProtocol(engine, preMitigationId, trafficType)
+	if err != nil {
+		log.Errorf("Get uri_filtering_traffic_per_protocol err: %+v", err)
+		return nil, err
+	}
+	trafficList = []TrafficPerProtocol{}
+	for _, vTraffic := range traffics {
+		traffic := TrafficPerProtocol{}
+		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
+		traffic.Protocol        = vTraffic.Protocol
+		traffic.LowPercentileG  = vTraffic.LowPercentileG
+		traffic.MidPercentileG  = vTraffic.MidPercentileG
+		traffic.HighPercentileG = vTraffic.HighPercentileG
+		traffic.PeakG           = vTraffic.PeakG
+		trafficList             = append(trafficList, traffic)
+	}
+	return trafficList, nil
+}
+
+// Get uri filtering traffic per port
+func GetUriFilteringTrafficPerPort(engine *xorm.Engine, preMitigationId int64, trafficType string) (trafficList []TrafficPerPort, err error) {
+	traffics, err := db_models.GetUriFilteringTrafficPerPort(engine, preMitigationId, trafficType)
+	if err != nil {
+		log.Errorf("Get uri_filtering_traffic_per_port err: %+v", err)
+		return nil, err
+	}
+	trafficList = []TrafficPerPort{}
+	for _, vTraffic := range traffics {
+		traffic := TrafficPerPort{}
+		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
+		traffic.Port            = vTraffic.Port
+		traffic.LowPercentileG  = vTraffic.LowPercentileG
+		traffic.MidPercentileG  = vTraffic.MidPercentileG
+		traffic.HighPercentileG = vTraffic.HighPercentileG
+		traffic.PeakG           = vTraffic.PeakG
+		trafficList             = append(trafficList, traffic)
+	}
+	return trafficList, nil
+}
+
+// Get uri filtering total attack connection
+func GetUriFilteringTotalAttackConnection(engine *xorm.Engine, prefixType string, prefixTypeId int64) (tac TotalAttackConnection, err error) {
+	tac = TotalAttackConnection{}
+	// Get low-precentile-l
+	tac.LowPercentileL, err = GetUriFilteringConnectionProtocolPercentile(engine, prefixType, prefixTypeId, string(LOW_PERCENTILE_L))
+	if err != nil {
+		return
+	}
+	// Get mid-precentile-l
+	tac.MidPercentileL, err = GetUriFilteringConnectionProtocolPercentile(engine, prefixType, prefixTypeId, string(MID_PERCENTILE_L))
+	if err != nil {
+		return
+	}
+	// Get high-precentile-l
+	tac.HighPercentileL, err = GetUriFilteringConnectionProtocolPercentile(engine, prefixType, prefixTypeId, string(HIGH_PERCENTILE_L))
+	if err != nil {
+		return
+	}
+	// Get peak-l
+	tac.PeakL, err = GetUriFilteringConnectionProtocolPercentile(engine, prefixType, prefixTypeId, string(PEAK_L))
+	if err != nil {
+		return
+	}
+	return
+}
+
+// Get uri filtering total attack connection port
+func GetUriFilteringTotalAttackConnectionPort(engine *xorm.Engine, telePreMitigationId int64) (tac TotalAttackConnectionPort, err error) {
+	tac = TotalAttackConnectionPort{}
+	// Get low-precentile-l
+	tac.LowPercentileL, err = GetUriFilteringConnectionProtocolPortPercentile(engine, telePreMitigationId, string(LOW_PERCENTILE_L))
+	if err != nil {
+		return
+	}
+	// Get mid-precentile-l
+	tac.MidPercentileL, err = GetUriFilteringConnectionProtocolPortPercentile(engine, telePreMitigationId, string(MID_PERCENTILE_L))
+	if err != nil {
+		return
+	}
+	// Get high-precentile-l
+	tac.HighPercentileL, err = GetUriFilteringConnectionProtocolPortPercentile(engine, telePreMitigationId, string(HIGH_PERCENTILE_L))
+	if err != nil {
+		return
+	}
+	// Get peak-l
+	tac.PeakL, err = GetUriFilteringConnectionProtocolPortPercentile(engine, telePreMitigationId, string(PEAK_L))
+	if err != nil {
+		return
+	}
+	return
+}
+
+// Get uri filtering connection protocol percentile (low/mid/high_percentile_l, peak_l)
+func GetUriFilteringConnectionProtocolPercentile(engine *xorm.Engine, prefixType string, prefixTypeId int64, percentileType string) (cppList []ConnectionProtocolPercentile, err error) {
+	cppList = []ConnectionProtocolPercentile{}
+	cpps, err := db_models.GetUriFilteringTotalAttackConnection(engine, prefixType, prefixTypeId, percentileType)
+	if err != nil {
+		log.Errorf("Failed to get uri_filtering_total_attack_connection. Error: %+v", err)
+		return
+	}
+	for _, v := range cpps {
+		cpp := ConnectionProtocolPercentile{}
+		cpp.Protocol         = v.Protocol
+		cpp.Connection       = v.Connection
+		cpp.Embryonic        = v.Embryonic
+		cpp.ConnectionPs     = v.ConnectionPs
+		cpp.RequestPs        = v.RequestPs
+		cpp.PartialRequestPs = v.PartialRequestPs
+		cppList = append(cppList, cpp)
+	}
+	return
+}
+
+// Get uri filtering connection protocol port percentile (low/mid/high_percentile_l, peak_l)
+func GetUriFilteringConnectionProtocolPortPercentile(engine *xorm.Engine, telePreMitigationId int64, percentileType string) (cppList []ConnectionProtocolPortPercentile, err error) {
+	cppList = []ConnectionProtocolPortPercentile{}
+	cpps, err := db_models.GetUriFilteringTotalAttackConnectionPort(engine, telePreMitigationId, percentileType)
+	if err != nil {
+		log.Errorf("Failed to get uri_filtering_total_attack_connection_port. Error: %+v", err)
+		return
+	}
+	for _, v := range cpps {
+		cpp := ConnectionProtocolPortPercentile{}
+		cpp.Protocol         = v.Protocol
+		cpp.Port             = v.Port
+		cpp.Connection       = v.Connection
+		cpp.Embryonic        = v.Embryonic
+		cpp.ConnectionPs     = v.ConnectionPs
+		cpp.RequestPs        = v.RequestPs
+		cpp.PartialRequestPs = v.PartialRequestPs
+		cppList = append(cppList, cpp)
+	}
+	return
+}
+
+// Get uri filtering attack detail
+func GetUriFilteringAttackDetail(engine *xorm.Engine, preMitigationId int64) ([]AttackDetail, error) {
+	attackDetailList := []AttackDetail{}
+	// Get attack-detail
+	dbAds, err := db_models.GetUriFilteringAttackDetailByTelePreMitigationId(engine, preMitigationId)
+	if err != nil {
+		log.Errorf("Failed to get uri_filtering_attack_detail. Error: %+v", err)
+		return nil, err
+	}
+	for _, dbAd := range dbAds {
+		attackDetail := AttackDetail{}
+		attackDetail.Id = dbAd.AttackDetailId
+		attackDetail.AttackId = dbAd.AttackId
+		attackDetail.AttackName = dbAd.AttackName
+		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
+		attackDetail.StartTime = dbAd.StartTime
+		attackDetail.EndTime = dbAd.EndTime
+		// Get source-count
+		attackDetail.SourceCount, err = GetUriFilteringSourceCount(engine, dbAd.Id)
+		if err != nil {
+			return nil, err
+		}
+		// Get top-talker
+		attackDetail.TopTalker, err = GetUriFilteringTopTalker(engine, dbAd.Id)
+		if err != nil {
+			return nil, err
+		}
+		attackDetailList = append(attackDetailList, attackDetail)
+	}
+	return attackDetailList, nil
+}
+
+// Get uri filtering source count
+func GetUriFilteringSourceCount(engine *xorm.Engine, adId int64) (SourceCount, error) {
+	sourceCount := SourceCount{}
+	dbSc, err := db_models.GetUriFilteringSourceCountByTeleAttackDetailId(engine, adId)
+	if err != nil {
+		log.Errorf("Failed to get uri_filtering_source_count. Error: %+v", err)
+		return sourceCount, err
+	}
+	if dbSc != nil {
+		sourceCount.LowPercentileG  = dbSc.LowPercentileG
+		sourceCount.MidPercentileG  = dbSc.MidPercentileG
+		sourceCount.HighPercentileG = dbSc.HighPercentileG
+		sourceCount.PeakG           = dbSc.PeakG
+	}
+	return sourceCount, nil
+}
+
+// Get uri filtering top talker
+func GetUriFilteringTopTalker(engine *xorm.Engine, adId int64) ([]TopTalker, error) {
+	topTalkerList := []TopTalker{}
+	// Get top-talker
+	dbTopTalkerList, err := db_models.GetUriFilteringTopTalkerByTeleAttackDetailId(engine, adId)
+	if err != nil {
+		log.Errorf("Failed to get uri_filtering_top_talker. Error: %+v", err)
+		return nil, err
+	}
+	for _, v := range dbTopTalkerList {
+		topTalker := TopTalker{}
+		topTalker.SpoofedStatus = v.SpoofedStatus
+		// Get source-prefix
+		prefix, err := GetUriFilteringSourcePrefix(engine, v.Id)
+		if err != nil {
+			return nil, err
+		}
+		topTalker.SourcePrefix = prefix
+		// Get source port range
+		topTalker.SourcePortRange, err = GetUriFilteringSourcePortRange(engine, v.Id)
+		if err != nil {
+			return  nil, err
+		}
+		// Get source icmp type range
+		topTalker.SourceIcmpTypeRange, err = GetUriFilteringIcmpTypeRange(engine, v.Id)
+		if err != nil {
+			return  nil, err
+		}
+		// Get total attack traffic
+		topTalker.TotalAttackTraffic, err = GetUriFilteringTraffic(engine, string(SOURCE_PREFIX), v.Id, string(TOTAL_ATTACK_TRAFFIC))
+		if err != nil {
+			return nil, err
+		}
+		// Get total attack connection
+		topTalker.TotalAttackConnection, err = GetUriFilteringTotalAttackConnection(engine, string(SOURCE_PREFIX), v.Id)
+		if err != nil {
+			return nil, err
+		}
+		topTalkerList = append(topTalkerList, topTalker)
+	}
+	return topTalkerList, nil
+}
+
+// Get uri filtering source prefix
+func GetUriFilteringSourcePrefix(engine *xorm.Engine, teleTopTalkerId int64) (prefix Prefix, err error) {
+	dbPrefix, err := db_models.GetUriFilteringSourcePrefix(engine, teleTopTalkerId)
+	if err != nil {
+		log.Errorf("Get uri_filtering_source_prefix err: %+v", err)
+		return prefix, err
+	}
+	prefix, err = NewPrefix(db_models.CreateIpAddress(dbPrefix.Addr, dbPrefix.PrefixLen))
+	if err != nil {
+		log.Errorf("Get uri_filtering_source_prefix err: %+v", err)
+		return prefix, err
+	}
+	return prefix, nil
+}
+
+// Get uri filtering source port range
+func GetUriFilteringSourcePortRange(engine *xorm.Engine, teleTopTalkerId int64) (portRangeList []PortRange, err error) {
+	portRanges, err := db_models.GetUriFilteringSourcePortRange(engine, teleTopTalkerId)
+	if err != nil {
+		log.Errorf("Get uri_filtering_source_port_range err: %+v", err)
+		return nil, err
+	}
+	portRangeList = []PortRange{}
+	for _, vPortRange := range portRanges {
+		portRange := PortRange{}
+		portRange.LowerPort = vPortRange.LowerPort
+		portRange.UpperPort = vPortRange.UpperPort
+		portRangeList       = append(portRangeList, portRange)
+	}
+	return portRangeList, nil
+}
+
+// Get uri filtering icmp type range
+func GetUriFilteringIcmpTypeRange(engine *xorm.Engine, teleTopTalkerId int64) (icmpTypeRangeList []ICMPTypeRange, err error) {
+	icmpTypeRanges, err := db_models.GetUriFilteringIcmpTypeRange(engine, teleTopTalkerId)
+	if err != nil {
+		log.Errorf("Get uri_filtering_icmp_type_range err: %+v", err)
+		return nil, err
+	}
+	icmpTypeRangeList = []ICMPTypeRange{}
+	for _, v := range icmpTypeRanges {
+		icmpTypeRange := ICMPTypeRange{}
+		icmpTypeRange.LowerType = v.LowerType
+		icmpTypeRange.UpperType = v.UpperType
+		icmpTypeRangeList = append(icmpTypeRangeList, icmpTypeRange)
+	}
+	return icmpTypeRangeList, nil
+}
+
+// Get tmids (telemetry_pre_mitigation and uri_filtering_telemetry_pre_mitigation) by customer_id and cuid
+func GetTmidListByCustomerIdAndCuid(customerId int, cuid string) (tmids []int, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("Database connect error: %s", err)
+		return
+	}
+	var dbTmids []int
+	err = engine.Table("telemetry_pre_mitigation").Where("customer_id = ? AND cuid = ?", customerId, cuid).Cols("tmid").Find(&dbTmids)
+	if err != nil {
+		log.Errorf("Find tmid of telemetry pre-mitigation error: %s\n", err)
+		return
+	}
+	var dbUriFilteringTmids []int
+	err = engine.Table("uri_filtering_telemetry_pre_mitigation").Where("customer_id = ? AND cuid = ?", customerId, cuid).Cols("tmid").Find(&dbUriFilteringTmids)
+	if err != nil {
+		log.Errorf("Find tmid of uri filtering telemetry pre-mitigation error: %s\n", err)
+		return
+	}
+	if len(dbTmids) > 0 {
+		tmids = dbTmids
+		for _, v := range dbUriFilteringTmids {
+			for _, tmid := range tmids {
+				if v != tmid {
+					tmids = append(tmids, v)
+				}
+			}
+		}
+	} else if len(dbUriFilteringTmids) > 0 {
+		for _, v := range dbUriFilteringTmids {
+			if len(tmids) == 0 {
+				tmids = append(tmids, v)
+			} else {
+				for _, tmid := range tmids {
+					if v != tmid {
+						tmids = append(tmids, v)
+					}
+				}
+			}
+		}
+	}
+	return
+}
+
+// Get uri filtering pre-mitigation list
+func  GetUriFilteringPreMitigationList(engine *xorm.Engine, customerId int, cuid string) ([]UriFilteringTelemetryPreMitigation, error) {
+	dbPreMitigationList := []db_models.UriFilteringTelemetryPreMitigation{}
+	err := engine.Where("customer_id = ? AND cuid = ?", customerId, cuid).Find(&dbPreMitigationList)
+	if err != nil {
+		log.Errorf("Find uri filtering telemetry pre-mitigation error: %s\n", err)
+		return nil, err
+	}
+	uriFilterPreMitigationList := []UriFilteringTelemetryPreMitigation{}
+	for _, vCurrent := range dbPreMitigationList {
+		if len(uriFilterPreMitigationList) <= 0 {
+			uriFilterPreMitigation := UriFilteringTelemetryPreMitigation{}
+			uriFilterPreMitigation.Tmid = vCurrent.Tmid
+			// Get target list from target
+			uriFilterPreMitigation.TargetList, err = GetUriFilteringTarget(customerId, cuid, vCurrent)
+			if err != nil {
+				return nil, err
+			}
+			uriFilterPreMitigationList = append(uriFilterPreMitigationList, uriFilterPreMitigation)
+		} else {
+			for k, ufPreMitigation := range uriFilterPreMitigationList {
+				uriFilterPreMitigation := UriFilteringTelemetryPreMitigation{}
+				if vCurrent.Tmid == ufPreMitigation.Tmid {
+					uriFilterPreMitigation = ufPreMitigation
+					uriFilterPreMitigationList = append(uriFilterPreMitigationList[:k], uriFilterPreMitigationList[k+1:]...)
+				}
+				uriFilterPreMitigation.Tmid = vCurrent.Tmid
+				// Get target list from target
+				targetList, err := GetUriFilteringTarget(customerId, cuid, vCurrent)
+				if err != nil {
+					return nil, err
+				}
+				uriFilterPreMitigation.TargetList = append(uriFilterPreMitigation.TargetList, targetList...)
+				uriFilterPreMitigationList = append(uriFilterPreMitigationList, uriFilterPreMitigation)
+			}
+		}
+	}
+	return uriFilterPreMitigationList, nil
+}
+
+// Get uri filtering target
+func GetUriFilteringTarget(customerId int, cuid string, ufPreMitigation db_models.UriFilteringTelemetryPreMitigation) ([]Target, error) {
+	var prefixs []Prefix
+	fqdns := make(SetString)
+	uris := make(SetString)
+	aliasNames := make(SetString)
+	targetList := []Target{}
+	// target-prefix
+	prefix, err := NewPrefix(ufPreMitigation.TargetPrefix)
+	if err != nil {
+		log.Errorf("Failed to new prefix. Err: %+v", err)
+		return targetList, err
+	}
+	prefixs = append(prefixs, prefix)
+	fqdns.Append(ufPreMitigation.TargetFqdn)
+	aliasNames.Append(ufPreMitigation.AliasName)
+	// target-list
+	targetList, err = GetTelemetryTargetList(prefixs, fqdns, uris)
+	if err != nil {
+		return targetList, err
+	}
+	// Get alias data by alias name
+	if len(aliasNames) > 0 {
+		aliasList, err := GetAliasByName(engine, customerId, cuid, aliasNames.List())
+		if err != nil {
+			return targetList, err
+		}
+		if len(aliasList.Alias) > 0 {
+			aliasTargetList, err := GetAliasDataAsTargetList(aliasList)
+			if err != nil {
+				log.Errorf ("Failed to get alias data as target list. Error: %+v", err)
+				return targetList, err
+			}
+			// Append alias into target list
+			targetList = append(targetList, aliasTargetList...)
+		}
+	}
+	return targetList, nil
+}
+
+// Get uri filtering telemetry pre-mitigation by id
+func GetUriFilteringTelemetryPreMitigationById(id int64) (dbPreMitigation db_models.UriFilteringTelemetryPreMitigation, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("Database connect error: %s", err)
+		return
+	}
+	dbPreMitigation = db_models.UriFilteringTelemetryPreMitigation{}
+	_, err = engine.Where("id = ?", id).Get(&dbPreMitigation)
+	if err != nil {
+		log.Errorf("Failed to get uri_filtering_telemetry_pre_mitigation by id. Error: %+v", err)
+		return
+
+	}
+	return
+}
+
+// Get uri filtering attack detail by id
+func GetUriFilteringAttackDetailById(id int64) (dbAttackDetail db_models.UriFilteringAttackDetail, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("Database connect error: %s", err)
+		return
+	}
+	dbAttackDetail = db_models.UriFilteringAttackDetail{}
+	_, err = engine.Where("id = ?", id).Get(&dbAttackDetail)
+	if err != nil {
+		log.Errorf("Failed to get uri_filtering_attack_detail by id. Error: %+v", err)
+		return
+
+	}
+	return
+}
+
+// Get uri filtering top talker by id
+func GetUriFilteringTopTalkerById(id int64) (dbTopTalker db_models.UriFilteringTopTalker, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("Database connect error: %s", err)
+		return
+	}
+	dbTopTalker = db_models.UriFilteringTopTalker{}
+	_, err = engine.Where("id = ?", id).Get(&dbTopTalker)
+	if err != nil {
+		log.Errorf("Failed to get uri_filtering_top_talker by id. Error: %+v", err)
+		return
+
+	}
+	return
+}
+
 // Delete one telemetry pre-mitigation
-func DeleteOneTelemetryPreMitigation(customerId int, cuid string, preMitigationId int64) error {
+func DeleteOneTelemetryPreMitigation(customerId int, cuid string, tmid int, preMitigationId int64) error {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -1610,8 +2397,16 @@ func DeleteOneTelemetryPreMitigation(customerId int, cuid string, preMitigationI
 	if err != nil {
 		return err
 	}
-	// Delete telemetry pre-mitigation
-	err = DeleteCurrentTelemetryPreMitigation(engine, session, customerId, cuid, false, preMitigationId, nil)
+	// Delete current telemetry pre-mitigation aggregated by client
+	if preMitigationId > 0 {
+		err = DeleteCurrentTelemetryPreMitigation(engine, session, customerId, cuid, false, preMitigationId)
+		if err != nil {
+			session.Rollback()
+			return err
+		}
+	}
+	// Delete current telemetry pre-mitigation aggregated by server
+	err = DeleteCurrentUriFilteringTelemetryPreMitigation(engine, session, customerId, cuid, tmid)
 	if err != nil {
 		session.Rollback()
 		return err
@@ -1637,24 +2432,55 @@ func DeleteAllTelemetryPreMitigation(customerId int, cuid string) error {
 	if err != nil {
 		return err
 	}
-	telePreMitigationList, err := GetTelemetryPreMitigationByCustomerIdAndCuid(customerId, cuid, nil)
+	// Get all telemetry pre-mitigation aggregated by client
+	telePreMitigationList, err := GetTelemetryPreMitigationByCustomerIdAndCuid(customerId, cuid)
 	if err != nil {
 		return err
 	}
+	// Delete all telemetry pre-mitigation aggregated by client
 	for _, telePreMitigation := range telePreMitigationList{
-		log.Debugf("Delete telemetry pre-mitigation with id = %+v", telePreMitigation.Id)
-		err = DeleteCurrentTelemetryPreMitigation(engine, session, customerId, cuid, false, telePreMitigation.Id, nil)
+		log.Debugf("Delete telemetry pre-mitigation with tmid = %+v", telePreMitigation.Tmid)
+		err = DeleteCurrentTelemetryPreMitigation(engine, session, customerId, cuid, false, telePreMitigation.Id)
 		if err != nil {
+			session.Rollback()
 			return err
 		}
 	}
+	// Get all telemetry pre-mitigation aggregated by server
+	var ufTmids []int
+	ufPreMitigationList, err := GetUriFilteringTelemetryPreMitigation(customerId, cuid, nil, nil)
+	if err != nil {
+		session.Rollback()
+		return err
+	}
+	for _, v := range ufPreMitigationList {
+		if len(ufTmids) < 1 {
+			ufTmids = append(ufTmids, v.Tmid)
+		} else {
+			for _, tmid := range ufTmids {
+				if v.Tmid != tmid {
+					ufTmids = append(ufTmids, v.Tmid)
+				}
+			}
+		}
+	}
+	// Delete all telemetry pre-mitigation aggregated by server
+	for _, tmid := range ufTmids {
+		log.Debugf("Delete uri_filter_telemetry_pre_mitigation with tmid = %+v", tmid)
+		err = DeleteCurrentUriFilteringTelemetryPreMitigation(engine, session, customerId, cuid, tmid)
+		if err != nil {
+			session.Rollback()
+			return err
+		}
+	}
+
 	// add Commit() after all actions
 	err = session.Commit()
 	return err
 }
 
 // Delete current telemetry pre-mitigation
-func DeleteCurrentTelemetryPreMitigation(engine *xorm.Engine, session *xorm.Session, customerId int, cuid string, isUpdate bool, preMitigationId int64, newAttackDetail []AttackDetail) error {
+func DeleteCurrentTelemetryPreMitigation(engine *xorm.Engine, session *xorm.Session, customerId int, cuid string, isUpdate bool, preMitigationId int64) error {
 	// Delete telemetry pre-mitigation
 	if !isUpdate {
 		err := db_models.DeleteTelemetryPreMitigationById(session, preMitigationId)
@@ -1699,7 +2525,7 @@ func DeleteCurrentTelemetryPreMitigation(engine *xorm.Engine, session *xorm.Sess
 		return err
 	}
 	// Delete attack-detail
-	err = DeleteAttackDetail(engine, session, preMitigationId, newAttackDetail)
+	err = DeleteAttackDetail(engine, session, preMitigationId)
 	if err != nil {
 		return err
 	}
@@ -1730,35 +2556,12 @@ func DeleteTargets(session *xorm.Session, preMitigationId int64) error {
 }
 
 // Delete attack detail
-func DeleteAttackDetail(engine *xorm.Engine, session *xorm.Session, preMitigationId int64, newAttackDetailList []AttackDetail) error {
+func DeleteAttackDetail(engine *xorm.Engine, session *xorm.Session, preMitigationId int64) error {
 	// Get attack-detail
 	attackDetailList, err := db_models.GetAttackDetailByTelePreMitigationId(engine, preMitigationId)
 	if err != nil {
 		log.Errorf("Failed to get attack-detail. Error: %+v", err)
 		return err
-	}
-	currentAttackDetailList, err := GetAttackDetail(engine, preMitigationId)
-	if err != nil {
-		log.Errorf("Failed to get attack-detail. Error: %+v", err)
-		return err
-	}
-	// If Existed attack-detail in body request that different from current attack-detail, DOTS server will update attack-detail
-	// Else if attack-detail in body request doesn't exist, DOTS server will delete attack-detail
-	if len(newAttackDetailList) > 0 && len(currentAttackDetailList) > 0 && !reflect.DeepEqual(GetModelsAttackDetail(newAttackDetailList), GetModelsAttackDetail(currentAttackDetailList)) {
-		attackDetail := attackDetailList[0]
-		newAttackDetail := newAttackDetailList[0]
-		// Update attack detail
-		attackDetail.AttackDetailId = newAttackDetail.Id
-		attackDetail.AttackId       = newAttackDetail.AttackId
-		attackDetail.AttackName     = newAttackDetail.AttackName
-		attackDetail.AttackSeverity = ConvertAttackSeverityToString(newAttackDetail.AttackSeverity)
-		attackDetail.StartTime      = newAttackDetail.StartTime
-		attackDetail.EndTime        = newAttackDetail.EndTime
-		_, err = session.Id(attackDetail.Id).Update(attackDetail)
-		if err != nil {
-			log.Errorf("attack_detail update err: %s", err)
-			return err
-		}
 	}
 	for _, attackDetail := range attackDetailList {
 		// Delete attack-detail
@@ -1908,6 +2711,220 @@ func DeleteTelemetryAttackDetail(engine *xorm.Engine, session *xorm.Session, mit
 	return nil
 }
 
+// Delete current uri filtering telemetry pre-mitigation
+func DeleteCurrentUriFilteringTelemetryPreMitigation(engine *xorm.Engine, session *xorm.Session, customerId int, cuid string, tmid int) error {
+	// Get uri filtering pre-mitigation
+	currentUriFilterPreMitigation, err := db_models.GetUriFilteringTelemetryPreMitigationByTmid(engine, customerId, cuid, tmid)
+	if err != nil {
+		log.Errorf("Failed to get uri_filtering_telemetry_pre_mitigation. Err: %+v", err)
+		return err
+	}
+	// Delete uri_filtering_telemetry_pre_mitigation by tmid
+	err = db_models.DeleteUriFilteringTelemetryPreMitigationByTmid(session, tmid)
+	if err != nil {
+		log.Debugf("Failed to delete uri_filtering_telemetry_pre_mitigation. Err: %+v", err)
+		return err
+	}
+	for _, v := range currentUriFilterPreMitigation {
+		// Delete uri_filtering_traffic
+		err = db_models.DeleteUriFilteringTraffic(session, string(TARGET_PREFIX), v.Id)
+		if err != nil {
+			log.Debugf("Failed to delete uri_filtering_traffic. Err: %+v", err)
+			return err
+		}
+		// Delete uri_filtering_traffic_per_protocol
+		err = db_models.DeleteUriFilteringTrafficPerProtocol(session, v.Id)
+		if err != nil {
+			log.Debugf("Failed to delete uri_filtering_traffic_per_protocol. Err: %+v", err)
+			return err
+		}
+		// Delete uri_filtering_traffic_per_port
+		err = db_models.DeleteUriFilteringTrafficPerPort(session, v.Id)
+		if err != nil {
+			log.Debugf("Failed to delete uri_filtering_traffic_per_port. Err: %+v", err)
+			return err
+		}
+		// Delete uri_filtering_total_attack_connection
+		err = db_models.DeleteUriFilteringTotalAttackConnection(session, string(TARGET_PREFIX), v.Id)
+		if err != nil {
+			log.Debugf("Failed to delete uri_filtering_total_attack_connection. Err: %+v", err)
+			return err
+		}
+		// Delete uri_filtering_total_attack_connection_port
+		err = db_models.DeleteUriFilteringTotalAttackConnectionPort(session, v.Id)
+		if err != nil {
+			log.Debugf("Failed to delete uri_filtering_total_attack_connection_port. Err: %+v", err)
+			return err
+		}
+		err = DeleteUriFilteringAttackDetail(engine, session, v.Id)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Delete uri filtering attack detail
+func DeleteUriFilteringAttackDetail(engine *xorm.Engine, session *xorm.Session, uriFilterPreMitigationId int64) error {
+	// Get uri_filtering_attack_detail
+	attackDetailList, err := db_models.GetUriFilteringAttackDetailByTelePreMitigationId(engine, uriFilterPreMitigationId)
+	if err != nil {
+		log.Debugf("Failed to get uri_filtering_attack_detail. Err: %+v", err)
+		return err
+	}
+	// Delete uri_filtering_attack_detail
+	err = db_models.DeleteUriFilteringAttackDetailByTelePreMitigationId(session, uriFilterPreMitigationId)
+	if err != nil {
+		log.Debugf("Failed to delete uri_filtering_attack_detail. Err: %+v", err)
+		return err
+	}
+	for _, v := range attackDetailList {
+		// Delete uri_filtering_source_count
+		err = db_models.DeleteUriFilteringSourceCountByTeleAttackDetailId(session, v.Id)
+		if err != nil {
+			log.Debugf("Failed to delete uri_filtering_source_count. Err: %+v", err)
+			return err
+		}
+		// Get uri_filtering_top_talker
+		talkerList, err := db_models.GetUriFilteringTopTalkerByTeleAttackDetailId(engine, v.Id)
+		if err != nil {
+			log.Debugf("Failed to get uri_filtering_top_talker. Err: %+v", err)
+			return err
+		}
+		// Delete uri_filtering_top_talker
+		err = db_models.DeleteUriFilteringTopTalkerByAttackDetailId(session, v.Id)
+		if err != nil {
+			log.Debugf("Failed to delete uri_filtering_top_talker. Err: %+v", err)
+			return err
+		}
+		for _, talker := range talkerList {
+			// Delete uri_filtering_source_prefix
+			err = db_models.DeleteUriFilteringSourcePrefix(session, talker.Id)
+			if err != nil {
+				log.Debugf("Failed to delete uri_filtering_source_prefix. Err: %+v", err)
+				return err
+			}
+			// Delete uri_filtering_source_port_range
+			err = db_models.DeleteUriFilteringSourcePortRange(session, talker.Id)
+			if err != nil {
+				log.Debugf("Failed to delete uri_filtering_source_port_range. Err: %+v", err)
+				return err
+			}
+			// Delete uri_filtering_icmp_type_range
+			err = db_models.DeleteUriFilteringIcmpTypeRange(session, talker.Id)
+			if err != nil {
+				log.Debugf("Failed to delete uri_filtering_icmp_type_range. Err: %+v", err)
+				return err
+			}
+			// Delete uri_filtering_traffic
+			err = db_models.DeleteUriFilteringTraffic(session, string(SOURCE_PREFIX), talker.Id)
+			if err != nil {
+				log.Debugf("Failed to delete uri_filtering_traffic. Err: %+v", err)
+				return err
+			}
+			// Delete uri_filtering_total_attack_connection
+			err = db_models.DeleteUriFilteringTotalAttackConnection(session, string(SOURCE_PREFIX), talker.Id)
+			if err != nil {
+				log.Debugf("Failed to delete uri_filtering_total_attack_connection. Err: %+v", err)
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// Get telemetry pre-mitigation with type TelemetryPreMitigation
+func GetModelsTelemetryPreMitigation(telePreMitigation TelemetryPreMitigation) (result TelemetryPreMitigation) {
+	// target
+	target := GetModelsTarget(telePreMitigation.Targets)
+	// total-traffic
+	tt := GetModelsTraffic(telePreMitigation.TotalTraffic)
+	// total-traffic-protocol
+	ttProtocol := GetModelsTrafficProtocol(telePreMitigation.TotalTrafficProtocol)
+	// total-traffic-port
+	ttPort := GetModelsTrafficPort(telePreMitigation.TotalTrafficPort)
+	// total-attack-traffic
+	tat := GetModelsTraffic(telePreMitigation.TotalAttackTraffic)
+	// total-attack-traffic-protocol
+	tatProtocol := GetModelsTrafficProtocol(telePreMitigation.TotalAttackTrafficProtocol)
+	// total-attack-traffic-port
+	tatPort := GetModelsTrafficPort(telePreMitigation.TotalAttackTrafficPort)
+	// total-attack-connection
+	tac := GetModelsTotalAttackConnection(telePreMitigation.TotalAttackConnection)
+	// total-attack-connection-port
+	tacPort := GetModelsTotalAttackConnectionPort(telePreMitigation.TotalAttackConnectionPort)
+	// attack-detail'
+	ad := GetModelsAttackDetail(telePreMitigation.AttackDetail)
+	result = TelemetryPreMitigation{"","",0, target, tt, ttProtocol, ttPort, tat, tatProtocol, tatPort, tac, tacPort, ad}
+	return
+}
+
+// Get target with type Targets
+func GetModelsTarget(target Targets) (result Targets) {
+	result = Targets{}
+	for _, v := range target.TargetPrefix {
+		result.TargetPrefix = append(result.TargetPrefix, v)
+	}
+	for _, v := range target.TargetPortRange {
+		result.TargetPortRange = append(result.TargetPortRange, PortRange{v.LowerPort, v.UpperPort})
+	}
+	result.TargetProtocol = target.TargetProtocol
+	result.FQDN = target.FQDN
+	result.URI = target.URI
+	result.AliasName = target.AliasName
+	return
+}
+
+// Get traffic protocol with type TrafficPerProtocol
+func GetModelsTrafficProtocol(traffics []TrafficPerProtocol) (trafficList []TrafficPerProtocol) {
+	trafficList = []TrafficPerProtocol{}
+	for _, v := range traffics {
+		traffic := TrafficPerProtocol{0, v.Unit, v.Protocol, v.LowPercentileG, v.MidPercentileG, v.HighPercentileG, v.PeakG}
+		trafficList = append(trafficList, traffic)
+	}
+	return
+}
+
+// Get traffic port with type TrafficPerPort
+func GetModelsTrafficPort(traffics []TrafficPerPort) (trafficList []TrafficPerPort) {
+	trafficList = []TrafficPerPort{}
+	for _, v := range traffics {
+		traffic := TrafficPerPort{0, v.Unit, v.Port, v.LowPercentileG, v.MidPercentileG, v.HighPercentileG, v.PeakG}
+		trafficList = append(trafficList, traffic)
+	}
+	return
+}
+
+// Get total-attack-connection with type TotalAttackConnection
+func GetModelsTotalAttackConnection(tac TotalAttackConnection) (result TotalAttackConnection) {
+	lowPercentileL  := GetModelsConnectionProtocolPercentile(tac.LowPercentileL)
+	midPercentileL  := GetModelsConnectionProtocolPercentile(tac.MidPercentileL)
+	highPercentileL := GetModelsConnectionProtocolPercentile(tac.HighPercentileL)
+	peakL           := GetModelsConnectionProtocolPercentile(tac.PeakL)
+	result          = TotalAttackConnection{lowPercentileL, midPercentileL, highPercentileL, peakL}
+	return
+}
+
+// Get total-attack-connection-port with type TotalAttackConnectionPort
+func GetModelsTotalAttackConnectionPort(tac TotalAttackConnectionPort) (result TotalAttackConnectionPort) {
+	lowPercentileL  := GetModelsConnectionProtocolPortPercentile(tac.LowPercentileL)
+	midPercentileL  := GetModelsConnectionProtocolPortPercentile(tac.MidPercentileL)
+	highPercentileL := GetModelsConnectionProtocolPortPercentile(tac.HighPercentileL)
+	peakL           := GetModelsConnectionProtocolPortPercentile(tac.PeakL)
+	result          = TotalAttackConnectionPort{lowPercentileL, midPercentileL, highPercentileL, peakL}
+	return
+}
+
+// Get connection-protocol-port-percentile with type ConnectionProtocolPortPercentile
+func GetModelsConnectionProtocolPortPercentile(cpps []ConnectionProtocolPortPercentile) (cppList []ConnectionProtocolPortPercentile) {
+	cppList = []ConnectionProtocolPortPercentile{}
+	for _, v := range cpps {
+		cpp := ConnectionProtocolPortPercentile{v.Protocol, v.Port, v.Connection, v.Embryonic, v.ConnectionPs, v.RequestPs, v.PartialRequestPs}
+		cppList = append(cppList, cpp)
+	}
+	return
+}
+
 // Get attack-detail with type AttackDetail
 func GetModelsAttackDetail(values []AttackDetail) (attackDetailList []AttackDetail) {
 	attackDetailList = []AttackDetail{}
@@ -1962,11 +2979,7 @@ func GetModelsTopTalker(topTalkers []TopTalker) (topTalkerList []TopTalker) {
 			sourceIcmpTypeRangeList = append(sourceIcmpTypeRangeList, sourceIcmpTypeRange)
 		}
 		trafficList     := GetModelsTraffic(v.TotalAttackTraffic)
-		lowPercentileL  := GetModelsConnectionProtocolPercentile(v.TotalAttackConnection.LowPercentileL)
-		midPercentileL  := GetModelsConnectionProtocolPercentile(v.TotalAttackConnection.MidPercentileL)
-		highPercentileL := GetModelsConnectionProtocolPercentile(v.TotalAttackConnection.HighPercentileL)
-		peakL           := GetModelsConnectionProtocolPercentile(v.TotalAttackConnection.PeakL)
-		tac             := TotalAttackConnection{lowPercentileL, midPercentileL, highPercentileL, peakL}
+		tac             := GetModelsTotalAttackConnection(v.TotalAttackConnection)
 		topTalker       := TopTalker{v.SpoofedStatus, sourcePrefix, sourcePortRangeList, sourceIcmpTypeRangeList, trafficList, tac}
 		topTalkerList    = append(topTalkerList, topTalker)
 	}
@@ -2090,4 +3103,32 @@ func ConvertAttackSeverityToInt(attackSeverity string) (attackSeverityInt int) {
 	case string(messages.ALERT):     attackSeverityInt = int(Alert)
 	}
 	return
+}
+
+/*
+ * Check existed TotalAttackConnection
+ * return:
+ *    true: if existed
+ *    false: if doesn't exist
+ */
+ func isExistedTotalAttackConnection(tac *messages.TotalAttackConnection) bool {
+	isExist := false
+	if tac != nil && (len(tac.LowPercentileL) > 0 || len(tac.MidPercentileL) > 0 || len(tac.HighPercentileL) > 0 || len(tac.PeakL) > 0) {
+		isExist = true
+	}
+	return isExist
+}
+
+/*
+ * Check existed TotalAttackConnectionPort
+ * return:
+ *    true: if existed
+ *    false: if doesn't exist
+ */
+func isExistedTotalAttackConnectionPort(tac *messages.TotalAttackConnectionPort) bool {
+	isExist := false
+	if tac != nil && (len(tac.LowPercentileL) > 0 || len(tac.MidPercentileL) > 0 || len(tac.HighPercentileL) > 0 || len(tac.PeakL) > 0) {
+		isExist = true
+	}
+	return isExist
 }

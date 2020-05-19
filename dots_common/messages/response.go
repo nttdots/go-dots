@@ -1036,6 +1036,7 @@ type SourceICMPTypeRangeResponse struct {
 	result = "\n \"ietf-dots-telemetry:telemetry\":\n"
 	for key, t := range tpm.TelemetryPreMitigation.PreOrOngoingMitigation {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces3, "pre-or-ongoing-mitigation", key+1)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "tmid", t.Tmid)
 		result += fmt.Sprintf("%s\"%s\":\n", spaces6, "target")
 		result += ConvertTargetsResponseToStrings(t.Target.TargetPrefix, t.Target.TargetPortRange, t.Target.TargetProtocol, t.Target.FQDN, t.Target.URI, t.Target.AliasName, spaces9)
 		for k, v := range t.TotalTraffic {

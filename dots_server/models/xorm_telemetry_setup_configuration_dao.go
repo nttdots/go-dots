@@ -1806,10 +1806,12 @@ func GetAliasByName(engine *xorm.Engine, customerId int, cuid string, aliasNames
 		return aliases, err
 	}
 	if !hasClient {
-		log.Warnf("Not found data client by cuid=%+v", cuid)
 		return aliases, nil
 	}
 	for _, name := range aliasNames {
+		if name == "" {
+			continue
+		}
 		// Get data alias
 		alias := db_models_data.Alias{}
 		hasAlias, err := engine.Where("data_client_id = ? AND name = ?", client.Id, name).Get(&alias)

@@ -115,8 +115,7 @@ const (
 type UriQuery string
 const (
     TargetPrefix   UriQuery = "target-prefix"
-    LowerPort      UriQuery = "lower-port"
-    UpperPort      UriQuery = "upper-port"
+    TargetPort     UriQuery = "target-port"
     TargetProtocol UriQuery = "target-protocol"
     TargetFqdn     UriQuery = "target-fqdn"
     TargetUri      UriQuery = "target-uri"
@@ -295,13 +294,7 @@ func (pdu *Pdu) SetPath(path []string) {
     }
     for _, s := range path {
         if 0 < len(s) {
-            if strings.Contains(s,string(TargetPrefix)) {
-                sSplit := strings.Split(s, ":")
-                if len(sSplit) > 1 {
-                    uriQueryPrefix := sSplit[0] + "/" + sSplit[1]
-                    opts = append(opts, OptionUriQuery.String(uriQueryPrefix))
-                }
-            } else if strings.Contains(s,string(LowerPort)) || strings.Contains(s,string(UpperPort)) || strings.Contains(s,string(TargetProtocol)) ||
+            if strings.Contains(s,string(TargetPrefix)) || strings.Contains(s,string(TargetPort)) || strings.Contains(s,string(TargetProtocol)) ||
                strings.Contains(s,string(TargetFqdn)) || strings.Contains(s,string(TargetUri)) || strings.Contains(s,string(AliasName)){
                 opts = append(opts, OptionUriQuery.String(s))
             } else {

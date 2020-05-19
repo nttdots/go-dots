@@ -1,0 +1,26 @@
+{
+    "ietf-dots-telemetry:telemetry":{
+        "pre-or-ongoing-mitigation":[
+            {
+                "target":{
+                    "target-prefix":[
+                        "1.1.2.13/32"
+                    ],
+                    "target-protocol":[
+                        6
+                    ],
+                    "target-port-range":[
+                        {
+                            "lower-port":80,
+                            "upper-port":8080
+                        }
+                    ],
+                    "alias-name":[
+                        "https1",
+                        "https2"
+                    ]
+                }
+            }
+        ]
+    }
+}

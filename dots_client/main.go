@@ -236,7 +236,19 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
 		// _, requestName := path.Split(r.URL.Path)
 		// Split requestName and QueryParam
-		tmpPaths := strings.Split(r.URL.Path, "/")
+		var tmpPaths []string
+		paths := strings.Split(r.URL.Path, "?")
+		if len(paths) > 1 {
+			tmpPaths = strings.Split(paths[0], "/")
+			queryPaths := strings.Split(paths[1],"&")
+			if len(queryPaths) > 1 {
+				tmpPaths = append(tmpPaths, queryPaths...)
+			} else {
+				tmpPaths = append(tmpPaths, paths[1])
+			}
+		} else {
+			tmpPaths = strings.Split(r.URL.Path, "/")
+		}
 		var requestName = ""
 		var tmpPath string
 		var requestQuerys []string

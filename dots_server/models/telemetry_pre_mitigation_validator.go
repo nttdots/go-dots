@@ -11,19 +11,19 @@ func ValidateTelemetryPreMitigation(customer *Customer, cuid string, tmid int, d
 	isPresent = false
 	isUnprocessableEntity = false
 	errMsg = ""
-	currentTelePreMitgations, err := GetTelemetryPreMitigationByCustomerIdAndCuid(customer.Id, cuid, nil)
+	currentTmids, err := GetTmidListByCustomerIdAndCuid(customer.Id, cuid)
 	if err != nil {
 		errMsg = fmt.Sprintf("Failed to get telemetry pre-mitigation. Error = %+v", err)
 		log.Error(errMsg)
 		return
 	}
 	// Validate tmid
-	for _, currentTelePreMitgation := range currentTelePreMitgations {
-		if tmid < currentTelePreMitgation.Tmid {
+	for _, currentTmid := range currentTmids {
+		if tmid < currentTmid {
 			errMsg = "'tmid' value MUST increase"
 			log.Error(errMsg)
 			return
-		} else if tmid == currentTelePreMitgation.Tmid {
+		} else if tmid == currentTmid {
 			isPresent = true
 		}
 	}

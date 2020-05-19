@@ -104,10 +104,17 @@ func export_method_handler(ctx   *C.coap_context_t,
         request.Code = RequestGet
         request.Options = make([]Option, 0)
 
-        uri := strings.Split(*(rsrc.uri_path.toString()), "/")
-        for _, path := range uri {
-            request.Options = append(request.Options, OptionUriPath.String(path))
+        var uri []string
+        tmpUri := strings.Split(*(rsrc.uri_path.toString()), "?")
+        // Set uri-query and uri-path for handle observe
+        if len(tmpUri) > 1 {
+            uri = strings.Split(tmpUri[0], "/")
+            queries := strings.Split(tmpUri[1], "&")
+            uri = append(uri, queries...)
+        } else {
+            uri = strings.Split(*(rsrc.uri_path.toString()), "/")
         }
+        request.SetPath(uri)
         session.SetIsNotification(true)
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
     }

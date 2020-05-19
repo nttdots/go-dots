@@ -26,6 +26,9 @@ func (p *Prefix) String() string {
 
 // Create new prefixes from CIDR format strings.
 func NewPrefix(addrString string) (p Prefix, err error) {
+	if addrString == "" {
+		return
+	}
 	ip, ipNet, err := net.ParseCIDR(addrString)
 	if err != nil {
 		return

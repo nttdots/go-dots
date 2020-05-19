@@ -297,10 +297,6 @@ func ValidateBaseline(customer *Customer, cuid string, tsid int, data []messages
 
 // Validate prefix
 func ValidatePrefix(customer *Customer, targetPrefixs []string, targetFqdns []string, targetUris []string) (errMsg string) {
-	if len(targetPrefixs) == 0 && len(targetFqdns) == 0 && len(targetUris) == 0 {
-		errMsg = fmt.Sprint("At least one of the attributes 'target-prefix','target-fqdn', or 'target-uri' MUST be present.")
-		return
-	}
 	var targets []Target
 	// target-prefix
 	for _, prefix := range targetPrefixs {

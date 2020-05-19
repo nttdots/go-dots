@@ -201,9 +201,9 @@ SKIP_OBSERVE:
 		r.pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppDotsCbor))
 		log.Debugf("hex dump cbor request:\n%s", hex.Dump(r.pdu.Data))
 	}
-	tmpPathWithQuery := r.RequestCode.PathString() + "/" + strings.Join(r.queryParams, "/")
-	r.pdu.SetPathString(tmpPathWithQuery)
-	log.Debugf("SetPathString=%+v", tmpPathWithQuery)
+	requestQueryPaths := strings.Split(r.RequestCode.PathString(), "/")
+	requestQueryPaths = append(requestQueryPaths, r.queryParams...)
+	r.pdu.SetPath(requestQueryPaths)
 	log.Debugf("r.pdu=%+v", r.pdu)
 }
 

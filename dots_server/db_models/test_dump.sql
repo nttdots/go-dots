@@ -775,6 +775,19 @@ CREATE TABLE `telemetry_pre_mitigation` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+# telemetry_pre_mitigation trigger when any attribute of telemetry_pre_mitigation change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_pre_mitigation_trigger AFTER UPDATE ON telemetry_pre_mitigation
+FOR EACH ROW
+BEGIN
+  IF NEW.updated <> OLD.updated THEN
+    SELECT MySQLNotification('telemetry_pre_mitigation', NEW.id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
 # total_attack_connection
 # ------------------------------------------------------------
 
@@ -835,19 +848,6 @@ CREATE TABLE `attack_detail` (
   `updated`                datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-# attack_detail trigger when any attribute of attack_detail change
-# ------------------------------------------------------------------------------
-
-DELIMITER @@
-CREATE TRIGGER attack_detail_trigger AFTER UPDATE ON attack_detail
-FOR EACH ROW
-BEGIN
-  IF NEW.updated <> OLD.updated THEN
-    SELECT MySQLNotification('attack_detail', NEW.tele_pre_mitigation_id) INTO @x;
-  END IF;
-END@@
-DELIMITER ;
 
 # source_count
 # ------------------------------------------------------------
@@ -1052,3 +1052,373 @@ CREATE TABLE `telemetry_source_icmp_type_range` (
   `updated`            datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_telemetry_pre_mitigation
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_telemetry_pre_mitigation`;
+
+CREATE TABLE `uri_filtering_telemetry_pre_mitigation` (
+  `id`              bigint(20)   NOT NULL AUTO_INCREMENT,
+  `customer_id`     int(11)      NOT NULL,
+  `cuid`            varchar(255) NOT NULL,
+  `cdid`            varchar(255) DEFAULT NULL,
+  `tmid`            int(11)      NOT NULL,
+  `target_prefix`   varchar(255) NOT NULL,
+  `lower_port`      int(11)      NOT NULL,
+  `upper_port`      int(11)      NOT NULL,
+  `target_protocol` int(11)      NOT NULL,
+  `target_fqdn`     varchar(255) NOT NULL,
+  `alias_name`      varchar(255) NOT NULL,
+  `created`         datetime     DEFAULT NULL,
+  `updated`         datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_traffic
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_traffic`;
+
+CREATE TABLE `uri_filtering_traffic` (
+  `id`                bigint(20)   NOT NULL AUTO_INCREMENT,
+  `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
+  `prefix_type_id`    bigint(20)   NOT NULL,
+  `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
+  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
+  `low_percentile_g`  int(11)     DEFAULT NULL,
+  `mid_percentile_g`  int(11)     DEFAULT NULL,
+  `high_percentile_g` int(11)     DEFAULT NULL,
+  `peak_g`            int(11)     DEFAULT NULL,
+  `created`           datetime    DEFAULT NULL,
+  `updated`           datetime    DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_traffic trigger when any attribute of uri_filtering_traffic change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_traffic_trigger AFTER UPDATE ON uri_filtering_traffic
+FOR EACH ROW
+BEGIN
+  IF NEW.unit <> OLD.unit OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g
+     OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    SELECT MySQLNotification('uri_filtering_traffic', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+
+# uri_filtering_traffic_per_protocol
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_traffic_per_protocol`;
+
+CREATE TABLE `uri_filtering_traffic_per_protocol` (
+  `id`                     bigint(20)   NOT NULL AUTO_INCREMENT,
+  `tele_pre_mitigation_id` bigint(20)   NOT NULL,
+  `traffic_type`           enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
+  `unit`                   enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
+  `protocol`               int(11)     NOT NULL,
+  `low_percentile_g`       int(11)     DEFAULT NULL,
+  `mid_percentile_g`       int(11)     DEFAULT NULL,
+  `high_percentile_g`      int(11)     DEFAULT NULL,
+  `peak_g`                 int(11)     DEFAULT NULL,
+  `created`                datetime    DEFAULT NULL,
+  `updated`                datetime    DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_traffic_per_protocol trigger when any attribute of uri_filtering_traffic_per_protocol change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_traffic_per_protocol_trigger AFTER UPDATE ON uri_filtering_traffic_per_protocol
+FOR EACH ROW
+BEGIN
+  IF NEW.unit <> OLD.unit OR NEW.protocol <> OLD.protocol OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g 
+    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    SELECT MySQLNotification('uri_filtering_traffic_per_protocol', NEW.tele_pre_mitigation_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+# uri_filtering_traffic_per_port
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_traffic_per_port`;
+
+CREATE TABLE `uri_filtering_traffic_per_port` (
+  `id`                     bigint(20)   NOT NULL AUTO_INCREMENT,
+  `tele_pre_mitigation_id` bigint(20)   NOT NULL,
+  `traffic_type`           enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
+  `unit`                   enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
+  `port`                   int(11)     NOT NULL,
+  `low_percentile_g`       int(11)     DEFAULT NULL,
+  `mid_percentile_g`       int(11)     DEFAULT NULL,
+  `high_percentile_g`      int(11)     DEFAULT NULL,
+  `peak_g`                 int(11)     DEFAULT NULL,
+  `created`                datetime    DEFAULT NULL,
+  `updated`                datetime    DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_traffic_per_port trigger when any attribute of uri_filtering_traffic_per_port change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_traffic_per_port_trigger AFTER UPDATE ON uri_filtering_traffic_per_port
+FOR EACH ROW
+BEGIN
+  IF NEW.unit <> OLD.unit OR NEW.port <> OLD.port OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g 
+    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    SELECT MySQLNotification('uri_filtering_traffic_per_port', NEW.tele_pre_mitigation_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+# uri_filtering_total_attack_connection
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_total_attack_connection`;
+
+CREATE TABLE `uri_filtering_total_attack_connection` (
+  `id`                bigint(20) NOT NULL AUTO_INCREMENT,
+  `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
+  `prefix_type_id`    bigint(20) NOT NULL,
+  `percentile_type`   enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
+  `protocol`          int(11)  NOT NULL,
+  `connection`        int(11)  DEFAULT NULL,
+  `embryonic`         int(11)  DEFAULT NULL,
+  `connection_ps`     int(11)  DEFAULT NULL,
+  `request_ps`        int(11)  DEFAULT NULL,
+  `partial_request_ps`int(11)  DEFAULT NULL,
+  `created`           datetime DEFAULT NULL,
+  `updated`           datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_total_attack_connection trigger when any attribute of uri_filtering_total_attack_connection change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_total_attack_connection_trigger AFTER UPDATE ON uri_filtering_total_attack_connection
+FOR EACH ROW
+BEGIN
+  IF NEW.protocol <> OLD.protocol OR NEW.connection <> OLD.connection OR NEW.embryonic <> OLD.embryonic OR NEW.connection_ps <> OLD.connection_ps
+     OR NEW.request_ps <> OLD.request_ps OR NEW.partial_request_ps <> OLD.partial_request_ps THEN
+    SELECT MySQLNotification('uri_filtering_total_attack_connection', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+# uri_filtering_total_attack_connection_port
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_total_attack_connection_port`;
+
+CREATE TABLE `uri_filtering_total_attack_connection_port` (
+  `id`                     bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_pre_mitigation_id` bigint(20) NOT NULL,
+  `percentile_type`        enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
+  `protocol`               int(11)  NOT NULL,
+  `port`                   int(11)  NOT NULL,
+  `connection`             int(11)  DEFAULT NULL,
+  `embryonic`              int(11)  DEFAULT NULL,
+  `connection_ps`          int(11)  DEFAULT NULL,
+  `request_ps`             int(11)  DEFAULT NULL,
+  `partial_request_ps`     int(11)  DEFAULT NULL,
+  `created`                datetime DEFAULT NULL,
+  `updated`                datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_total_attack_connection_port trigger when any attribute of uri_filtering_total_attack_connection_port change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_total_attack_connection_port_trigger AFTER UPDATE ON uri_filtering_total_attack_connection_port
+FOR EACH ROW
+BEGIN
+  IF NEW.protocol <> OLD.protocol OR NEW.port <> OLD.port OR NEW.connection <> OLD.connection OR NEW.embryonic <> OLD.embryonic OR NEW.connection_ps <> OLD.connection_ps
+     OR NEW.request_ps <> OLD.request_ps OR NEW.partial_request_ps <> OLD.partial_request_ps THEN
+    SELECT MySQLNotification('uri_filtering_total_attack_connection_port', NEW.tele_pre_mitigation_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+# uri_filtering_attack_detail
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_attack_detail`;
+
+CREATE TABLE `uri_filtering_attack_detail` (
+  `id`                     bigint(20)   NOT NULL AUTO_INCREMENT,
+  `tele_pre_mitigation_id` bigint(20),
+  `attack_detail_id`       int(11)      NOT NULL,
+  `attack_id`              varchar(255) NOT NULL,
+  `attack_name`            varchar(255),
+  `attack_severity`        enum('EMERGENCY','CRITICAL','ALERT') NOT NULL,
+  `start_time`             int(11),
+  `end_time`               int(11),
+  `created`                datetime DEFAULT NULL,
+  `updated`                datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_attack_detail trigger when any attribute of uri_filtering_attack_detail change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_attack_detail_trigger AFTER UPDATE ON uri_filtering_attack_detail
+FOR EACH ROW
+BEGIN
+  IF NEW.attack_detail_id <> OLD.attack_detail_id OR NEW.attack_id <> OLD.attack_id OR NEW.attack_name <> OLD.attack_name OR NEW.attack_severity <> OLD.attack_severity
+     OR NEW.start_time <> OLD.start_time OR NEW.end_time <> OLD.end_time THEN
+    SELECT MySQLNotification('uri_filtering_attack_detail', NEW.tele_pre_mitigation_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+# uri_filtering_source_count
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_source_count`;
+
+CREATE TABLE `uri_filtering_source_count` (
+  `id`                    bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_attack_detail_id` bigint(20) NOT NULL,
+  `low_percentile_g`      int(11),
+  `mid_percentile_g`      int(11),
+  `high_percentile_g`     int(11),
+  `peak_g`                int(11),
+  `created`               datetime DEFAULT NULL,
+  `updated`               datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+# uri_filtering_source_count trigger when any attribute of uri_filtering_source_count change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_source_count_trigger AFTER UPDATE ON uri_filtering_source_count
+FOR EACH ROW
+BEGIN
+  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    SELECT MySQLNotification('uri_filtering_source_count', NEW.tele_attack_detail_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+# uri_filtering_top_talker
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_top_talker`;
+
+CREATE TABLE `uri_filtering_top_talker` (
+  `id`                    bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_attack_detail_id` bigint(20) NOT NULL,
+  `spoofed_status`        tinyint(1),
+  `created`               datetime DEFAULT NULL,
+  `updated`               datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_top_talker trigger when any attribute of uri_filtering_top_talker change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_top_talker_trigger AFTER UPDATE ON uri_filtering_top_talker
+FOR EACH ROW
+BEGIN
+  IF NEW.spoofed_status <> OLD.spoofed_status THEN
+    SELECT MySQLNotification('uri_filtering_top_talker', NEW.tele_attack_detail_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+# uri_filtering_source_prefix
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_source_prefix`;
+
+CREATE TABLE `uri_filtering_source_prefix` (
+  `id`                 bigint(20)   NOT NULL AUTO_INCREMENT,
+  `tele_top_talker_id` bigint(20)   NOT NULL,
+  `addr`               varchar(255) DEFAULT NULL,
+  `prefix_len`         int(11)      DEFAULT NULL,
+  `created`            datetime     DEFAULT NULL,
+  `updated`            datetime     DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8;
+
+# uri_filtering_source_prefix trigger when any attribute of uri_filtering_source_prefix change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_source_prefix_trigger AFTER UPDATE ON uri_filtering_source_prefix
+FOR EACH ROW
+BEGIN
+  IF NEW.addr <> OLD.addr OR NEW.prefix_len <> OLD.prefix_len THEN
+    SELECT MySQLNotification('uri_filtering_source_prefix', NEW.tele_top_talker_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+# uri_filtering_source_port_range
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_source_port_range`;
+
+CREATE TABLE `uri_filtering_source_port_range` (
+  `id`                 bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_top_talker_id` bigint(20) NOT NULL,
+  `lower_port`         int(11)    NOT NULL,
+  `upper_port`         int(11)    DEFAULT NULL,
+  `created`            datetime   DEFAULT NULL,
+  `updated`            datetime   DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_source_port_range trigger when any attribute of uri_filtering_source_port_range change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_source_port_range_trigger AFTER UPDATE ON uri_filtering_source_port_range
+FOR EACH ROW
+BEGIN
+  IF NEW.lower_port <> OLD.lower_port OR NEW.upper_port <> OLD.upper_port THEN
+    SELECT MySQLNotification('uri_filtering_source_port_range', NEW.tele_top_talker_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
+# uri_filtering_icmp_type_range
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `uri_filtering_icmp_type_range`;
+
+CREATE TABLE `uri_filtering_icmp_type_range` (
+  `id`                 bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_top_talker_id` bigint(20) NOT NULL,
+  `lower_type`         int(11)    NOT NULL,
+  `upper_type`         int(11)    DEFAULT NULL,
+  `created`            datetime   DEFAULT NULL,
+  `updated`            datetime   DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# uri_filtering_icmp_type_range trigger when any attribute of uri_filtering_icmp_type_range change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER uri_filtering_icmp_type_range_trigger AFTER UPDATE ON uri_filtering_icmp_type_range
+FOR EACH ROW
+BEGIN
+  IF NEW.lower_type <> OLD.lower_type OR NEW.upper_type <> OLD.upper_type THEN
+    SELECT MySQLNotification('uri_filtering_icmp_type_range', NEW.tele_top_talker_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;

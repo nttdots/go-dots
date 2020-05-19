@@ -236,7 +236,7 @@ func (env *Env) GetAllRequestQuery() (map[string] *RequestQuery) {
 func QueryParamsToString(queryParams []string) (str string) {
 	str = ""
 	for _, query := range queryParams {
-        if strings.Contains(query, string(libcoap.TargetPrefix)) || strings.Contains(query, string(libcoap.LowerPort)) || strings.Contains(query, string(libcoap.UpperPort)) || strings.Contains(query, string(libcoap.TargetProtocol)) ||
+        if strings.Contains(query, string(libcoap.TargetPrefix)) || strings.Contains(query, string(libcoap.TargetPort)) || strings.Contains(query, string(libcoap.TargetProtocol)) ||
            strings.Contains(query, string(libcoap.TargetFqdn)) || strings.Contains(query, string(libcoap.TargetUri)) || strings.Contains(query, string(libcoap.AliasName)) {
                continue
         }
