@@ -1069,7 +1069,7 @@ func IsFoundTargetQueries(engine *xorm.Engine, id int64, queries []string, isPre
 	}
 	// target-port
 	for _, v := range dbTargetPorts {
-		if !IsContainIntValue(targetPort, v.LowerPort) && !IsContainIntValue(targetPort, v.UpperPort) {
+		if !IsContainRangeValue(targetPort, v.LowerPort, v.UpperPort) {
 			return false, nil
 		}
 	}
@@ -1127,7 +1127,7 @@ func IsContainStringValue(targetQuery string, targetValue string) bool {
 }
 
 // Check contain integer value between uri-query and target-value
-// target-port, target-protocol
+// target-protocol
 func IsContainIntValue(targetQuery string, targetValue int) bool {
 	multiValues := strings.Split(targetQuery, ",")
 	rangeValues := strings.Split(targetQuery, "-")
@@ -1140,13 +1140,41 @@ func IsContainIntValue(targetQuery string, targetValue int) bool {
 		}
 	} else if len(rangeValues) > 1 {
 		lowerQueryValue, _ := strconv.Atoi(rangeValues[0])
-		upperQueryValue, _ := strconv.Atoi(rangeValues[0])
+		upperQueryValue, _ := strconv.Atoi(rangeValues[1])
 		if targetValue >= lowerQueryValue && targetValue <= upperQueryValue {
 			return true
 		}
 	} else {
 		queryValue, _ := strconv.Atoi(targetQuery)
 		if queryValue == targetValue || targetQuery == "" {
+			return true
+		}
+	}
+	return false
+}
+
+// Check contain range values between uri-query and target-value
+// target-port
+func IsContainRangeValue(targetQuery string, lowerPort int, upperPort int) bool {
+	multiValues := strings.Split(targetQuery, ",")
+	rangeValues := strings.Split(targetQuery, "-")
+	if len(multiValues) > 1 {
+		for _, v := range multiValues {
+			queryValue, _ := strconv.Atoi(v)
+			if queryValue >= lowerPort && queryValue <= upperPort {
+				return true
+			}
+		}
+	} else if len(rangeValues) > 1 {
+		lowerQueryValue, _ := strconv.Atoi(rangeValues[0])
+		upperQueryValue, _ := strconv.Atoi(rangeValues[1])
+		if (lowerQueryValue >= lowerPort && lowerQueryValue <= upperPort) || (upperQueryValue >= lowerPort && upperQueryValue <= upperPort) ||
+		  (lowerPort >= lowerQueryValue && lowerPort <= upperQueryValue) || (upperPort >= lowerQueryValue && upperPort <= upperQueryValue) {
+			return true
+		}
+	} else {
+		queryValue, _ := strconv.Atoi(targetQuery)
+		if queryValue >= lowerPort && queryValue <= upperPort || targetQuery == "" {
 			return true
 		}
 	}
@@ -1765,7 +1793,7 @@ func GetUriFilteringTelemetryPreMitigation(customerId int, cuid string, tmid *in
 	if len(queries) > 0 {
 		targetPrefix, targetPort, targetProtocol, targetFqdn, _, aliasName, _ := GetQueriesFromUriQuery(queries)
 		for _, v := range dbPreMitigation {
-			if IsContainStringValue(targetPrefix, v.TargetPrefix) && (IsContainIntValue(targetPort, v.LowerPort) || IsContainIntValue(targetPort, v.UpperPort)) &&
+			if IsContainStringValue(targetPrefix, v.TargetPrefix) && IsContainRangeValue(targetPort, v.LowerPort, v.UpperPort) &&
 			IsContainIntValue(targetProtocol, v.TargetProtocol) && IsContainStringValue(targetFqdn, v.TargetFqdn) && IsContainStringValue(aliasName, v.AliasName) {
 				uriFilterPreMitigation = append(uriFilterPreMitigation, v)
 			}
@@ -1861,7 +1889,16 @@ func GetUriFilteringTelemetryPreMitigationAttributes(customerId int, cuid string
 			for k, v := range preMitigationList {
 				// the values is appended with same tmid
 				if v.Tmid == preMitigation.Tmid {
-					if !reflect.DeepEqual(v.Targets.TargetPrefix, preMitigation.Targets.TargetPrefix) {
+					countDifferent := 0
+					for _, aPrefix := range v.Targets.TargetPrefix {
+						for _, bPrefix := range preMitigation.Targets.TargetPrefix {
+							if aPrefix.String() == bPrefix.String() {
+								continue
+							}
+							countDifferent ++
+						}
+					}
+					if len(v.Targets.TargetPrefix) == countDifferent {
 						v.Targets.TargetPrefix = append(v.Targets.TargetPrefix, preMitigation.Targets.TargetPrefix...)
 					}
 					if !reflect.DeepEqual(v.Targets.TargetPortRange, preMitigation.Targets.TargetPortRange) {

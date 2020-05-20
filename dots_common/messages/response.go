@@ -1192,6 +1192,10 @@ func (ad AttackDetailResponse) String(spacesn string) (result string) {
 	if ad.EndTime != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "end-time", *ad.EndTime)
 	}
+	if ad.SourceCount != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "source-count")
+		result += ad.SourceCount.String(spacesn3)
+	}
 	if ad.TopTalKer != nil {
 		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "top-talker")
 		for k, v := range ad.TopTalKer.Talker {

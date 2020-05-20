@@ -446,7 +446,7 @@ func handleNotifyUriFilteringTelemetryPreMitigation(mapData map[string]interface
 			uriQueryPath := strings.Split(v, "?")
 			queries := strings.Split(uriQueryPath[1], "&")
 			targetPrefix, targetPort, targetProtocol, targetFqdn, _, aliasName, _ := models.GetQueriesFromUriQuery(queries)
-			if models.IsContainStringValue(targetPrefix, preMitigation.TargetPrefix) && (models.IsContainIntValue(targetPort, preMitigation.LowerPort) || models.IsContainIntValue(targetPort, preMitigation.UpperPort)) &&
+			if models.IsContainStringValue(targetPrefix, preMitigation.TargetPrefix) && models.IsContainRangeValue(targetPort, preMitigation.LowerPort, preMitigation.UpperPort) &&
 			models.IsContainIntValue(targetProtocol, preMitigation.TargetProtocol) && models.IsContainStringValue(targetFqdn, preMitigation.TargetFqdn) && models.IsContainStringValue(aliasName, preMitigation.AliasName) {
 				context.EnableResourceDirty(v)
 			}
