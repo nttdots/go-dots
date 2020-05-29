@@ -2,9 +2,8 @@ package messages
 
 import (
 	"fmt"
-
-	config "github.com/nttdots/go-dots/dots_server/config"
 	"github.com/shopspring/decimal"
+	config "github.com/nttdots/go-dots/dots_server/config"
 )
 
 type MitigationResponse struct {
@@ -68,8 +67,8 @@ type TelemetryTrafficResponse struct {
 
 type TelemetryAttackDetailResponse struct {
 	_struct        bool                          `codec:",uint"` //encode struct with "unsigned integer" keys
-	Id             *int                          `json:"ietf-dots-telemetry:id" codec:"32897,omitempty"`
-	AttackId       string                        `json:"ietf-dots-telemetry:attack-id" codec:"32898,omitempty"`
+	VendorId       int                           `json:"ietf-dots-telemetry:vendor-id" codec:"32917,omitempty"` // CBOR key temp
+	AttackId       int                           `json:"ietf-dots-telemetry:attack-id" codec:"32898,omitempty"`
 	AttackName     *string                       `json:"ietf-dots-telemetry:attack-name" codec:"32899,omitempty"`
 	AttackSeverity int                           `json:"ietf-dots-telemetry:attack-severity" codec:"32900,omitempty"`
 	StartTime      *int                          `json:"ietf-dots-telemetry:start-time" codec:"32901,omitempty"`
@@ -493,6 +492,7 @@ type TelemetrySetupResp struct {
 	MaxConfig     *TelemetryConfigurationResponse `json:"max-config-values" codec:"32851,omitempty"`
 	MinConfig     *TelemetryConfigurationResponse `json:"min-config-values" codec:"32852,omitempty"`
 	SupportedUnit *SupportedUnitResponse          `json:"supported-units" codec:"32853,omitempty"`
+	QueryType     []int                           `json:"query-type" codec:"32915,omitempty"` // CBOR key temp
 	Telemetry     []TelemetryResponse             `json:"telemetry" codec:"32802,omitempty"`
 }
 
@@ -635,6 +635,9 @@ type TotalConnectionCapacityPerPortResponse struct {
 			result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "unit", v.Unit)
 			result += fmt.Sprintf("%s\"%s\": %t\n", spaces9, "unit-status", v.UnitStatus)
 		}
+	}
+	for k, v := range ts.TelemetrySetup.QueryType {
+		result += fmt.Sprintf("%s\"%s[%d]\":%d\n", spaces3, "query-type", k+1, v)
 	}
 	for key, t := range ts.TelemetrySetup.Telemetry {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces3, "telemetry", key+1)
@@ -966,8 +969,8 @@ type TotalAttackConnectionPortResponse struct {
 
 type AttackDetailResponse struct {
 	_struct        bool                 `codec:",uint"` //encode struct with "unsigned integer" keys
-	Id             *int                 `json:"id" codec:"32836,omitempty"`
-	AttackId       string               `json:"attack-id" codec:"32837,omitempty"`
+	VendorId       int                  `json:"vendor-id" codec:"32916,omitempty"` // CBOR key temp
+	AttackId       int                  `json:"attack-id" codec:"32837,omitempty"`
 	AttackName     *string              `json:"attack-name" codec:"32838,omitempty"`
 	AttackSeverity int                  `json:"attack-severity" codec:"32839,omitempty"`
 	StartTime      *int                 `json:"start-time" codec:"32840,omitempty"`
@@ -1178,10 +1181,8 @@ func (ad AttackDetailResponse) String(spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
 	spacesn6 := spacesn3 + spaces3
-	if ad.Id != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "id", *ad.Id)
-	}
-	result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-id", ad.AttackId)
+	result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "vendor-id", ad.VendorId)
+	result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "attack-id", ad.AttackId)
 	if ad.AttackName != nil {
 		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-name", *ad.AttackName)
 	}
@@ -1281,10 +1282,8 @@ func (ad TelemetryAttackDetailResponse) String(spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
 	spacesn6 := spacesn3 + spaces3
-	if ad.Id != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3,"ietf-dots-telemetry:id", *ad.Id)
-	}
-	result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "ietf-dots-telemetry:attack-id", ad.AttackId)
+	result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3,"ietf-dots-telemetry:vendor-id", ad.VendorId)
+	result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:attack-id", ad.AttackId)
 	if ad.AttackName != nil {
 		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "ietf-dots-telemetry:attack-name", *ad.AttackName)
 	}

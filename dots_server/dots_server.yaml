@@ -114,5 +114,9 @@ system:
 
   # Time(seconds) max-age of session configuration
   maxAgeOption: 45
-   # Time interval to delete expired items in cache
+  # Time interval to delete expired items in cache
   cacheInterval: 10
+  # The queries are supported by go-dots
+  queryType: 1,2,3,4,6,8,9,10
+  # vendor-mapping-enabled to get the Dots server's vendor attack mapping
+  vendorMappingEnabled: false

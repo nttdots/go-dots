@@ -495,6 +495,8 @@ func handleGetAllTelemetrySetup(customerId int, cuid string) (res Response, err 
 	telemetrySetupResp.TelemetrySetup.MaxConfig     = maxConfig
 	telemetrySetupResp.TelemetrySetup.MinConfig     = minConfig
 	telemetrySetupResp.TelemetrySetup.SupportedUnit = supportedUnit
+	// query-type config value
+	telemetrySetupResp.TelemetrySetup.QueryType = dots_config.GetServerSystemConfig().QueryType
 	res = Response{
 		Type: common.Acknowledgement,
 		Code: common.Content,

@@ -645,7 +645,7 @@ func RegisterTotalAttackConnectionPort(session *xorm.Session, telePreMitigationI
 func RegisterAttackDetail(session *xorm.Session, telePreMitigationId int64, attackDetail AttackDetail) (*db_models.AttackDetail, error) {
 	newAttackDetail := db_models.AttackDetail{
 		TelePreMitigationId: telePreMitigationId,
-		AttackDetailId:      attackDetail.Id,
+		VendorId:            attackDetail.VendorId,
 		AttackId:            attackDetail.AttackId,
 		AttackName:          attackDetail.AttackName,
 		AttackSeverity:      ConvertAttackSeverityToString(attackDetail.AttackSeverity),
@@ -742,12 +742,12 @@ func RegisterTelemetryTraffic(session *xorm.Session, prefixType string, prefixTy
 func RegisterTelemetryAttackDetail(session *xorm.Session, mitigationScopeId int64, attackDetail TelemetryAttackDetail) (*db_models.TelemetryAttackDetail, error) {
 	newTelemetryAttackDetail := db_models.TelemetryAttackDetail{
 		MitigationScopeId: mitigationScopeId,
-		AttackDetailId:    attackDetail.Id,
-		AttackId:          attackDetail.AttackId,
-		AttackName:        attackDetail.AttackName,
-		AttackSeverity:    ConvertAttackSeverityToString(attackDetail.AttackSeverity),
-		StartTime:         attackDetail.StartTime,
-		EndTime:           attackDetail.EndTime,
+		VendorId:       attackDetail.VendorId,
+		AttackId:       attackDetail.AttackId,
+		AttackName:     attackDetail.AttackName,
+		AttackSeverity: ConvertAttackSeverityToString(attackDetail.AttackSeverity),
+		StartTime:      attackDetail.StartTime,
+		EndTime:        attackDetail.EndTime,
 	}
 	_, err := session.Insert(&newTelemetryAttackDetail)
 	if err != nil {
@@ -1052,7 +1052,7 @@ func GetTelemetryPreMitigationByTmid(customerId int, cuid string, tmid int) (*db
  *    false: if mitigation doesn't contain targets queries
  */
 func IsFoundTargetQueries(engine *xorm.Engine, id int64, queries []string, isPreMitigation bool) (bool, error) {
-	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, errMsg := GetQueriesFromUriQuery(queries)
+	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, _, _, _, errMsg := GetQueriesFromUriQuery(queries)
 	if errMsg != "" {
 		log.Errorf(errMsg)
 		return false, nil
@@ -1155,26 +1155,26 @@ func IsContainIntValue(targetQuery string, targetValue int) bool {
 
 // Check contain range values between uri-query and target-value
 // target-port
-func IsContainRangeValue(targetQuery string, lowerPort int, upperPort int) bool {
+func IsContainRangeValue(targetQuery string, lower int, upper int) bool {
 	multiValues := strings.Split(targetQuery, ",")
 	rangeValues := strings.Split(targetQuery, "-")
 	if len(multiValues) > 1 {
 		for _, v := range multiValues {
 			queryValue, _ := strconv.Atoi(v)
-			if queryValue >= lowerPort && queryValue <= upperPort {
+			if queryValue >= lower && queryValue <= upper {
 				return true
 			}
 		}
 	} else if len(rangeValues) > 1 {
 		lowerQueryValue, _ := strconv.Atoi(rangeValues[0])
 		upperQueryValue, _ := strconv.Atoi(rangeValues[1])
-		if (lowerQueryValue >= lowerPort && lowerQueryValue <= upperPort) || (upperQueryValue >= lowerPort && upperQueryValue <= upperPort) ||
-		  (lowerPort >= lowerQueryValue && lowerPort <= upperQueryValue) || (upperPort >= lowerQueryValue && upperPort <= upperQueryValue) {
+		if (lowerQueryValue >= lower && lowerQueryValue <= upper) || (upperQueryValue >= lower && upperQueryValue <= upper) ||
+		  (lower >= lowerQueryValue && lower <= upperQueryValue) || (upper >= lowerQueryValue && upper <= upperQueryValue) {
 			return true
 		}
 	} else {
 		queryValue, _ := strconv.Atoi(targetQuery)
-		if queryValue >= lowerPort && queryValue <= upperPort || targetQuery == "" {
+		if queryValue >= lower && queryValue <= upper || targetQuery == "" {
 			return true
 		}
 	}
@@ -1182,7 +1182,8 @@ func IsContainRangeValue(targetQuery string, lowerPort int, upperPort int) bool 
 }
 
 // Get queries from Uri-query
-func GetQueriesFromUriQuery(queries []string) (targetPrefix string, targetPort string, targetProtocol string, targetFqdn string, targetUri string, aliasName string, errMsg string) {
+func GetQueriesFromUriQuery(queries []string) (targetPrefix string, targetPort string, targetProtocol string, targetFqdn string, targetUri string, aliasName string, 
+	sourcePrefix string, sourcePort string, sourceIcmpType string, errMsg string) {
 	for _, query := range queries {
 		if (strings.HasPrefix(query, "target-prefix=")){
 			targetPrefix = query[strings.Index(query, "target-prefix=")+14:]
@@ -1196,6 +1197,12 @@ func GetQueriesFromUriQuery(queries []string) (targetPrefix string, targetPort s
 			targetUri = query[strings.Index(query, "target-uri=")+11:]
 		} else if (strings.HasPrefix(query, "alias-name=")){
 			aliasName = query[strings.Index(query, "alias-name=")+11:]
+		} else if (strings.HasPrefix(query, "source-prefix=")){
+			sourcePrefix = query[strings.Index(query, "source-prefix=")+14:]
+		} else if (strings.HasPrefix(query, "source-port=")){
+			sourcePort = query[strings.Index(query, "source-port=")+12:]
+		} else if (strings.HasPrefix(query, "source-icmp-type=")){
+			sourceIcmpType = query[strings.Index(query, "source-icmp-type=")+17:]
 		} else {
 			errMsg = fmt.Sprintf("Invalid the uri-query: %+v", query)
 		}
@@ -1429,7 +1436,7 @@ func GetAttackDetail(engine *xorm.Engine, telePremitigationId int64) ([]AttackDe
 	}
 	for _, dbAd := range dbAds {
 		attackDetail := AttackDetail{}
-		attackDetail.Id = dbAd.AttackDetailId
+		attackDetail.VendorId = dbAd.VendorId
 		attackDetail.AttackId = dbAd.AttackId
 		attackDetail.AttackName = dbAd.AttackName
 		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
@@ -1573,7 +1580,7 @@ func GetTelemetryAttackDetail(engine *xorm.Engine, mitigationScopeId int64) ([]T
 	}
 	for _, dbAd := range dbAds {
 		attackDetail:= TelemetryAttackDetail{}
-		attackDetail.Id = dbAd.AttackDetailId
+		attackDetail.VendorId = dbAd.VendorId
 		attackDetail.AttackId = dbAd.AttackId
 		attackDetail.AttackName = dbAd.AttackName
 		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
@@ -1791,10 +1798,12 @@ func GetUriFilteringTelemetryPreMitigation(customerId int, cuid string, tmid *in
 		}
 	}
 	if len(queries) > 0 {
-		targetPrefix, targetPort, targetProtocol, targetFqdn, _, aliasName, _ := GetQueriesFromUriQuery(queries)
 		for _, v := range dbPreMitigation {
-			if IsContainStringValue(targetPrefix, v.TargetPrefix) && IsContainRangeValue(targetPort, v.LowerPort, v.UpperPort) &&
-			IsContainIntValue(targetProtocol, v.TargetProtocol) && IsContainStringValue(targetFqdn, v.TargetFqdn) && IsContainStringValue(aliasName, v.AliasName) {
+			isExist, err := IsExistTelemetryPreMitigationValueByQueries(queries, v)
+			if err != nil {
+				return nil, err
+			}
+			if isExist {
 				uriFilterPreMitigation = append(uriFilterPreMitigation, v)
 			}
 		}
@@ -1802,6 +1811,66 @@ func GetUriFilteringTelemetryPreMitigation(customerId int, cuid string, tmid *in
 		uriFilterPreMitigation = dbPreMitigation
 	}
 	return uriFilterPreMitigation, nil
+}
+
+/*
+ * Check existed uri filtering telemetry pre-mitigation by uri-query
+ * return:
+ *    true: if existed
+ *    false: if doesn't exist
+ */
+func IsExistTelemetryPreMitigationValueByQueries(queries []string, preMitigation db_models.UriFilteringTelemetryPreMitigation) (bool, error) {
+	isExistTarget := false
+	isExistSource := false
+	targetPrefix, targetPort, targetProtocol, targetFqdn, _, aliasName, sourcePrefix, sourcePort, sourceIcmpType, _ := GetQueriesFromUriQuery(queries)
+	if IsContainStringValue(targetPrefix, preMitigation.TargetPrefix) && IsContainRangeValue(targetPort, preMitigation.LowerPort, preMitigation.UpperPort) &&
+	IsContainIntValue(targetProtocol, preMitigation.TargetProtocol) && IsContainStringValue(targetFqdn, preMitigation.TargetFqdn) && IsContainStringValue(aliasName, preMitigation.AliasName) {
+		isExistTarget = true
+	}
+	if sourcePrefix != "" || sourcePort != "" || sourceIcmpType != "" {
+		attackDetailList, err := GetUriFilteringAttackDetail(engine, preMitigation.Id)
+		if err != nil {
+			return false, err
+		}
+		for _, ad := range attackDetailList {
+			for _, tt := range ad.TopTalker {
+				isExistPrefix := false
+				isExistPort := false
+				isExistIcmpType := false
+				// source-prefix
+				if IsContainStringValue(sourcePrefix, tt.SourcePrefix.String()) {
+					isExistPrefix = true
+				}
+				// source-port
+				for _, port := range tt.SourcePortRange {
+					if IsContainRangeValue(sourcePort, port.LowerPort, port.UpperPort) {
+						isExistPort = true
+						break
+					}
+				}
+				// source-icmp-type
+				for _, icmpType := range tt.SourceIcmpTypeRange {
+					if IsContainRangeValue(sourceIcmpType, icmpType.LowerType, icmpType.UpperType) {
+						isExistIcmpType = true
+						break
+					}
+				}
+				if isExistPrefix && isExistPort && isExistIcmpType {
+					isExistSource = true
+					break
+				}
+			}
+			if isExistSource {
+				break
+			}
+		}
+	} else {
+		isExistSource = true
+	}
+	if isExistTarget && isExistSource {
+		return true, nil
+	}
+	return false, nil
 }
 
 // Get uri filtering telemetry pre-mitigation attributes
@@ -2109,7 +2178,7 @@ func GetUriFilteringAttackDetail(engine *xorm.Engine, preMitigationId int64) ([]
 	}
 	for _, dbAd := range dbAds {
 		attackDetail := AttackDetail{}
-		attackDetail.Id = dbAd.AttackDetailId
+		attackDetail.VendorId = dbAd.VendorId
 		attackDetail.AttackId = dbAd.AttackId
 		attackDetail.AttackName = dbAd.AttackName
 		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
@@ -2967,7 +3036,7 @@ func GetModelsAttackDetail(values []AttackDetail) (attackDetailList []AttackDeta
 	attackDetailList = []AttackDetail{}
 	for _, value := range values {
 		attackDetail := AttackDetail {
-			Id:             value.Id,
+			VendorId:       value.VendorId,
 			AttackId:       value.AttackId,
 			AttackName:     value.AttackName,
 			AttackSeverity: value.AttackSeverity,
@@ -3048,7 +3117,7 @@ func GetModelsTelemetryAttackDetail(values []TelemetryAttackDetail) (attackDetai
 	attackDetailList = []TelemetryAttackDetail{}
 	for _, value := range values {
 		attackDetail := TelemetryAttackDetail {
-			Id:             value.Id,
+			VendorId:       value.VendorId,
 			AttackId:       value.AttackId,
 			AttackName:     value.AttackName,
 			AttackSeverity: value.AttackSeverity,
@@ -3125,9 +3194,11 @@ func GetModelsTelemetryConnectionPercentile(v *ConnectionPercentile) (cp Connect
 // Convert attack-severity to string
 func ConvertAttackSeverityToString(attackSeverity int) (attackSeverityString string) {
 	switch attackSeverity {
-	case int(Emergency): attackSeverityString = string(messages.EMERGENCY)
-	case int(Critical):  attackSeverityString = string(messages.CRITICAL)
-	case int(Alert):     attackSeverityString = string(messages.ALERT)
+	case int(None):    attackSeverityString = string(messages.NONE)
+	case int(Low):     attackSeverityString = string(messages.LOW)
+	case int(Medium):  attackSeverityString = string(messages.MEDIUM)
+	case int(High):    attackSeverityString = string(messages.HIGH)
+	case int(Unknown): attackSeverityString = string(messages.UNKNOWN)
 	}
 	return
 }
@@ -3135,9 +3206,29 @@ func ConvertAttackSeverityToString(attackSeverity int) (attackSeverityString str
 // Convert attack-severity to int
 func ConvertAttackSeverityToInt(attackSeverity string) (attackSeverityInt int) {
 	switch attackSeverity {
-	case string(messages.EMERGENCY): attackSeverityInt = int(Emergency)
-	case string(messages.CRITICAL):   attackSeverityInt = int(Critical)
-	case string(messages.ALERT):     attackSeverityInt = int(Alert)
+	case string(messages.NONE):    attackSeverityInt = int(None)
+	case string(messages.LOW):     attackSeverityInt = int(Low)
+	case string(messages.MEDIUM):  attackSeverityInt = int(Medium)
+	case string(messages.HIGH):    attackSeverityInt = int(High)
+	case string(messages.UNKNOWN): attackSeverityInt = int(Unknown)
+	}
+	return
+}
+
+// Convert query-type to string
+func ConvertQueryTypeToString(queryType int) (queryTypeString string) {
+	switch queryType {
+	case int(TargetPrefix):   queryTypeString = string(messages.TARGET_PREFIX)
+	case int(TargetPort):     queryTypeString = string(messages.TARGET_PORT)
+	case int(TargetProtocol): queryTypeString = string(messages.TARGET_PROTOCOL)
+	case int(TargetFqdn):     queryTypeString = string(messages.TARGET_FQDN)
+	case int(TargetUri):      queryTypeString = string(messages.TARGET_URI)
+	case int(TargetAlias):    queryTypeString = string(messages.TARGET_ALIAS)
+	case int(Mid):            queryTypeString = string(messages.MID)
+	case int(SourcePrefix):   queryTypeString = string(messages.SOURCE_PREFIX)
+	case int(SourcePort):     queryTypeString = string(messages.SOURCE_PORT)
+	case int(SourceIcmpType): queryTypeString = string(messages.SOURCE_ICMP_TYPE)
+	case int(Content):        queryTypeString = string(messages.CONTENT)
 	}
 	return
 }

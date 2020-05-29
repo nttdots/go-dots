@@ -83,8 +83,8 @@ type TelemetryTraffic struct {
 
 type TelemetryAttackDetail struct {
 	_struct        bool                  `codec:",uint"` //encode struct with "unsigned integer" keys
-	Id             *uint32               `json:"ietf-dots-telemetry:id" codec:"32897,omitempty"`
-	AttackId       *string               `json:"ietf-dots-telemetry:attack-id" codec:"32898,omitempty"`
+	VendorId       *uint32               `json:"ietf-dots-telemetry:vendor-id" codec:"32917,omitempty"` // CBOR key temp
+	AttackId       *uint32               `json:"ietf-dots-telemetry:attack-id" codec:"32898,omitempty"`
 	AttackName     *string               `json:"ietf-dots-telemetry:attack-name" codec:"32899,omitempty"`
 	AttackSeverity *int                  `json:"ietf-dots-telemetry:attack-severity" codec:"32900,omitempty"`
 	StartTime      *uint64               `json:"ietf-dots-telemetry:start-time" codec:"32901,omitempty"`
@@ -862,8 +862,8 @@ type TotalAttackConnectionPort struct {
 
 type AttackDetail struct {
 	_struct        bool         `codec:",uint"` //encode struct with "unsigned integer" keys
-	Id             *uint32      `json:"id" codec:"32836,omitempty"`
-	AttackId       *string      `json:"attack-id" codec:"32837,omitempty"`
+	VendorId       *uint32      `json:"vendor-id" codec:"32916,omitempty"` // CBOR key temp
+	AttackId       *uint32      `json:"attack-id" codec:"32837,omitempty"`
 	AttackName     *string      `json:"attack-name" codec:"32838,omitempty"`
 	AttackSeverity *int         `json:"attack-severity" codec:"32839,omitempty"`
 	StartTime      *uint64      `json:"start-time" codec:"32840,omitempty"`
@@ -1079,11 +1079,11 @@ func (ad AttackDetail) String(spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
 	spacesn6 := spacesn3 + spaces3
-	if ad.Id != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "id", *ad.Id)
+	if ad.VendorId != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "vendor-id", *ad.VendorId)
 	}
 	if ad.AttackId != nil {
-		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-id", *ad.AttackId)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "attack-id", *ad.AttackId)
 	}
 	if ad.AttackName != nil {
 		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-name", *ad.AttackName)
@@ -1176,11 +1176,11 @@ func (ad TelemetryAttackDetail) String(spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
 	spacesn6 := spacesn3 + spaces3
-	if ad.Id != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:id", *ad.Id)
+	if ad.VendorId != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:vendor-id", *ad.VendorId)
 	}
 	if ad.AttackId != nil {
-		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "ietf-dots-telemetry:attack-id", *ad.AttackId)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:attack-id", *ad.AttackId)
 	}
 	if ad.AttackName != nil {
 		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "ietf-dots-telemetry:attack-name", *ad.AttackName)

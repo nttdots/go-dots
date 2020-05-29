@@ -56,8 +56,8 @@ type TotalAttackConnectionPort struct {
 }
 
 type AttackDetail struct {
-	Id             int
-	AttackId       string
+	VendorId       int
+	AttackId       int
 	AttackName     string
 	AttackSeverity int
 	StartTime      int
@@ -117,8 +117,8 @@ type ConnectionPercentile struct {
 }
 
 type TelemetryAttackDetail struct {
-	Id             int
-	AttackId       string
+	VendorId       int
+	AttackId       int
 	AttackName     string
 	AttackSeverity int
 	StartTime      int
@@ -138,9 +138,26 @@ type TelemetryTopTalker struct {
 
 type AttackSeverity int
 const (
-	Emergency AttackSeverity = iota + 1
-	Critical
-	Alert
+	None AttackSeverity = iota + 1
+	Low
+	Medium
+	High
+	Unknown
+)
+
+type QueryType int
+const (
+	TargetPrefix QueryType = iota + 1
+	TargetPort
+	TargetProtocol
+	TargetFqdn
+	TargetUri
+	TargetAlias
+	Mid
+	SourcePrefix
+	SourcePort
+	SourceIcmpType
+	Content
 )
 
 // New telemetry pre-mtigation
@@ -268,11 +285,11 @@ func NewAttackDetail(adRequests []messages.AttackDetail) (attackDetailList []Att
 	attackDetailList = []AttackDetail{}
 	for _, adRequest := range adRequests {
 		attackDetail := AttackDetail{}
-		if adRequest.Id != nil {
-			attackDetail.Id = int(*adRequest.Id)
+		if adRequest.VendorId != nil {
+			attackDetail.VendorId = int(*adRequest.VendorId)
 		}
 		if adRequest.AttackId != nil {
-			attackDetail.AttackId = *adRequest.AttackId
+			attackDetail.AttackId = int(*adRequest.AttackId)
 		}
 		if adRequest.AttackName != nil {
 			attackDetail.AttackName = *adRequest.AttackName
@@ -280,7 +297,7 @@ func NewAttackDetail(adRequests []messages.AttackDetail) (attackDetailList []Att
 		if adRequest.AttackSeverity != nil {
 			attackDetail.AttackSeverity = int(*adRequest.AttackSeverity)
 		} else {
-			attackDetail.AttackSeverity = int(Emergency)
+			attackDetail.AttackSeverity = int(None)
 		}
 		if adRequest.StartTime != nil {
 			attackDetail.StartTime = int(*adRequest.StartTime)
@@ -447,11 +464,15 @@ func NewTelemetryAttackDetail(adRequests []messages.TelemetryAttackDetail) (atta
 	attackDetailList = []TelemetryAttackDetail{}
 	for _, adRequest := range adRequests {
 		attackDetail := TelemetryAttackDetail{}
-		if adRequest.Id != nil {
-			attackDetail.Id = int(*adRequest.Id)
+		if adRequest.VendorId != nil {
+			attackDetail.VendorId = int(*adRequest.VendorId)
+		} else {
+			errMsg := "Missing required 'vendor-id' attribute"
+			log.Error(errMsg)
+			return nil, errors.New(errMsg)
 		}
 		if adRequest.AttackId != nil {
-			attackDetail.AttackId = *adRequest.AttackId
+			attackDetail.AttackId = int(*adRequest.AttackId)
 		} else {
 			errMsg := "Missing required 'attack-id' attribute"
 			log.Error(errMsg)
@@ -461,14 +482,15 @@ func NewTelemetryAttackDetail(adRequests []messages.TelemetryAttackDetail) (atta
 			attackDetail.AttackName = *adRequest.AttackName
 		}
 		if adRequest.AttackSeverity != nil {
-			if adRequest.AttackSeverity != nil && *adRequest.AttackSeverity != int(Emergency) && *adRequest.AttackSeverity != int(Critical) && *adRequest.AttackSeverity != int(Alert) {
-				errMsg := fmt.Sprintf("Invalid 'attack-severity' value %+v. Expected values include 1:Emergency, 2:Critical, 3:Alert", *adRequest.AttackSeverity)
+			if adRequest.AttackSeverity != nil && *adRequest.AttackSeverity != int(None) && *adRequest.AttackSeverity != int(Low) && *adRequest.AttackSeverity != int(Medium) &&
+			*adRequest.AttackSeverity != int(High) && *adRequest.AttackSeverity != int(Unknown) {
+				errMsg := fmt.Sprintf("Invalid 'attack-severity' value %+v. Expected values include 1:None, 2:Low, 3:Medium, 4:High, 5:Unknown", *adRequest.AttackSeverity)
 				log.Error(errMsg)
 				return nil, errors.New(errMsg)
 			}
 			attackDetail.AttackSeverity = int(*adRequest.AttackSeverity)
 		} else {
-			attackDetail.AttackSeverity = int(Emergency)
+			attackDetail.AttackSeverity = int(None)
 		}
 		if adRequest.StartTime != nil {
 			attackDetail.StartTime = int(*adRequest.StartTime)

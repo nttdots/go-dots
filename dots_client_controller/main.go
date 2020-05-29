@@ -38,6 +38,9 @@ var (
 	targetFqdn     string
 	targetUri      string
 	aliasName      string
+	sourcePrefix   string
+	sourcePort     string
+	sourceIcmpType string
 )
 
 /*
@@ -66,6 +69,9 @@ func init() {
 	flag.StringVar(&targetFqdn, "targetFqdn", defaultValue, "target-fqdn parameter")
 	flag.StringVar(&targetUri, "targetUri", defaultValue, "target-uri parameter")
 	flag.StringVar(&aliasName, "aliasName", defaultValue, "alias-name parameter")
+	flag.StringVar(&sourcePrefix, "sourcePrefix", defaultValue, "source-prefix parameter")
+	flag.StringVar(&sourcePort, "sourcePort", defaultValue, "source-port parameter")
+	flag.StringVar(&sourceIcmpType, "sourceIcmpType", defaultValue, "source-icmp-type parameter")
 }
 
 /*
@@ -164,7 +170,8 @@ func main() {
 			// add tmid for telemetry pre-mitigation request
 			u.Path += "/tmid=" + tmid
 		}
-		if targetPrefix != "" || targetPort != "" || targetProtocol != "" || targetFqdn != "" || targetUri != "" || aliasName != "" {
+		if targetPrefix != "" || targetPort != "" || targetProtocol != "" || targetFqdn != "" || targetUri != "" || aliasName != "" ||
+	        sourcePrefix != "" || sourcePort != "" || sourceIcmpType != "" {
 			var queryPath string
 			// target-prefix
 			if targetPrefix != "" && queryPath != "" {
@@ -201,6 +208,24 @@ func main() {
 				queryPath += "&alias-name="+aliasName
 			} else if aliasName != "" {
 				queryPath += "alias-name="+aliasName
+			}
+			// source-prefix
+			if sourcePrefix != "" && queryPath != "" {
+				queryPath += "&source-prefix="+sourcePrefix
+			} else if sourcePrefix != "" {
+				queryPath += "source-prefix="+sourcePrefix
+			}
+			// source-port
+			if sourcePort != "" && queryPath != "" {
+				queryPath += "&source-port="+sourcePort
+			} else if sourcePort != "" {
+				queryPath += "source-port="+sourcePort
+			}
+			// source-icmp-type
+			if sourceIcmpType != "" && queryPath != "" {
+				queryPath += "&source-icmp-type="+sourceIcmpType
+			} else if sourceIcmpType != "" {
+				queryPath += "source-icmp-type="+sourceIcmpType
 			}
 			u.Path += "?"
 			u.Path += queryPath

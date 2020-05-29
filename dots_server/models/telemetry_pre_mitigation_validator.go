@@ -210,13 +210,17 @@ func ValidateConnectionProtocolPortPercentile(cpps []messages.ConnectionProtocol
 func ValidateAttackDetail(ads []messages.AttackDetail) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
 	for _, ad := range ads {
+		if ad.VendorId == nil {
+			errMsg = "Missing required 'vendor-id' attribute"
+			return
+		}
 		if ad.AttackId == nil {
 			errMsg = "Missing required 'attack-id' attribute"
 			return
 		}
 		// Validate attack-severity
-		if ad.AttackSeverity != nil && *ad.AttackSeverity != int(Emergency) && *ad.AttackSeverity != int(Critical) && *ad.AttackSeverity != int(Alert) {
-			errMsg = fmt.Sprintf("Invalid 'attack-severity' value %+v. Expected values include 1:Emergency, 2:Critical, 3:Alert", *ad.AttackSeverity)
+		if ad.AttackSeverity != nil && *ad.AttackSeverity != int(None) && *ad.AttackSeverity != int(Low) && *ad.AttackSeverity != int(Medium) && *ad.AttackSeverity != int(High) && *ad.AttackSeverity != int(Unknown) {
+			errMsg = fmt.Sprintf("Invalid 'attack-severity' value %+v. Expected values include 1:None, 2:Low, 3:Medium, 4:High, 5:Unknown", *ad.AttackSeverity)
 			isUnprocessableEntity = true
 			return
 		}

@@ -364,6 +364,30 @@ Remove Filtering Rules
 
     $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
 
+### Managing Vendor Attack Mapping
+Create vendor-mapping
+
+    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleVendorAttackMapping.json
+
+Update vendor-mapping
+
+    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping/vendor-id=345 sampleVendorAttackMapping.json
+
+Get vendor-mapping of server
+
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/ietf-dots-mapping:vendor-mapping
+
+Get vendor-mapping
+
+    Get vendor-mapping with 'depth'
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping?depth=3
+
+    Get vendor-mapping with 'content'
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping?content=all
+
+    Get vendor-mapping without 'depth' and 'content'
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping?content=all
+
 ## Signal Channel Control Filtering
 Unlike the DOTS signal channel, the DOTS data channel is not expected to deal with attack conditions.
 Therefore, when DOTS client is under attacked by DDoS, the DOTS client can use DOTS signal channel protocol to manage the filtering rule in DOTS Data Channel to enhance the protection capability of DOTS protocols.

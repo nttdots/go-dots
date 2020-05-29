@@ -9,6 +9,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	common "github.com/nttdots/go-dots/dots_common"
 	types "github.com/nttdots/go-dots/dots_common/types/data"
+	dots_config "github.com/nttdots/go-dots/dots_server/config"
 	data_controllers "github.com/nttdots/go-dots/dots_server/controllers/data"
 )
 
@@ -128,6 +129,36 @@ func (t *TelemetryPreMitigationRequest) HandlePut(request Request, customer *mod
 				Body: errMsg,
 			}
 			return res, nil
+		}
+	}
+	// Check existed vendor attack-id
+	if len(preMitigation.AttackDetail) > 0 {
+		vendorMapping, err := data_controllers.GetVendorMappingByCuid(customer, cuid)
+		if err != nil {
+			log.Errorf("Get vendor-mapping error: %+v", err)
+			return Response{}, err
+		}
+		if vendorMapping != nil {
+			for k, attackDetail := range preMitigation.AttackDetail {
+				for _, vendor := range vendorMapping.Vendor {
+					if *attackDetail.VendorId == *vendor.VendorId {
+						for _, attack := range vendor.AttackMapping {
+							if *attackDetail.AttackId == *attack.AttackId && attackDetail.AttackName != nil {
+								errMsg = fmt.Sprintf("Existed vendor-mapping with vendor-id: %+v, attack-id: %+v. DOTS agents MUST NOT include 'attack-name'", *vendor.VendorId, *attack.AttackId)
+								log.Errorf(errMsg)
+								res = Response {
+									Type: common.NonConfirmable,
+									Code: common.BadRequest,
+									Body: errMsg,
+								}
+								return res, nil
+							} else if *attackDetail.AttackId == *attack.AttackId {
+								preMitigation.AttackDetail[k].AttackName = attack.AttackName
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 	// Create telemetry pre-mitigation
@@ -713,10 +744,10 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 	attackDetailRespList = []messages.AttackDetailResponse{}
 	for _, attackDetail := range attackDetails {
 		attackDetailResp := messages.AttackDetailResponse{}
-		if attackDetail.Id > 0 {
-			attackDetailResp.Id = &attackDetail.Id
+		if attackDetail.VendorId > 0 {
+			attackDetailResp.VendorId = attackDetail.VendorId
 		}
-		if attackDetail.AttackId != "" {
+		if attackDetail.AttackId > 0 {
 			attackDetailResp.AttackId = attackDetail.AttackId
 		}
 		if attackDetail.AttackName != "" {
@@ -839,10 +870,10 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 	attackDetailRespList = []messages.TelemetryAttackDetailResponse{}
 	for _, attackDetail := range attackDetails {
 		attackDetailResp := messages.TelemetryAttackDetailResponse{}
-		if attackDetail.Id > 0 {
-			attackDetailResp.Id = &attackDetail.Id
+		if attackDetail.VendorId > 0 {
+			attackDetailResp.VendorId = attackDetail.VendorId
 		}
-		if attackDetail.AttackId != "" {
+		if attackDetail.AttackId > 0 {
 			attackDetailResp.AttackId = attackDetail.AttackId
 		}
 		if attackDetail.AttackName != "" {
@@ -902,7 +933,28 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 
 // Validate query parameter
 func validateQueryParameter(queries []string) (errMsg string) {
-	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, errMsg := models.GetQueriesFromUriQuery(queries)
+	// Check uri-query unsupported by go-dots
+	var queryTypes []string
+	countSame := 0
+	queryTypesInt := dots_config.GetServerSystemConfig().QueryType
+	for _, v := range queryTypesInt {
+		queryTypeTmp := models.ConvertQueryTypeToString(v)
+		queryTypes  = append(queryTypes, queryTypeTmp)
+	}
+	for _, queryType := range queryTypes {
+		for _, query := range queries {
+			if strings.Contains(query, queryType) {
+				countSame ++
+				continue
+			}
+		}
+	}
+	if len(queries) > countSame {
+		errMsg = fmt.Sprintf("The uri-query (%+v) unsupported by go-dots. The uri-query is supported as %+v", queries, queryTypes)
+		return
+	}
+	// Get query values from uri-query
+	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, sourcePrefix, sourcePort, sourceIcmpType, errMsg := models.GetQueriesFromUriQuery(queries)
 	if errMsg != "" {
 		return
 	}
@@ -947,6 +999,25 @@ func validateQueryParameter(queries []string) (errMsg string) {
 	}
 	if strings.Contains(aliasName, "*") {
 		errMsg = "The 'alias-name' query MUST NOT contain wildcard names"
+		return
+	}
+	// source-prefix
+	if strings.Contains(sourcePrefix, "-") {
+		errMsg = "The 'source-prefix' query MUST NOT contain range values"
+		return
+	}
+	if strings.Contains(sourcePrefix, "*") {
+		errMsg = "The 'source-prefix' query MUST NOT contain wildcard names"
+		return
+	}
+	// source-port
+	if strings.Contains(sourcePort, "*") {
+		errMsg = "The 'source-port' query MUST NOT contain wildcard names"
+		return
+	}
+	// source-icmp-type
+	if strings.Contains(sourceIcmpType, "*") {
+		errMsg = "The 'source-icmp-type' query MUST NOT contain wildcard names"
 		return
 	}
 	return

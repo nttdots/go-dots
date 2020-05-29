@@ -136,10 +136,28 @@ const (
 
 type AttackSeverity string
 const (
-	EMERGENCY AttackSeverity = "EMERGENCY"
-	CRITICAL  AttackSeverity = "CRITICAL"
-	ALERT     AttackSeverity = "ALERT"
+	NONE    AttackSeverity = "NONE"
+	LOW     AttackSeverity = "LOW"
+	MEDIUM  AttackSeverity = "MEDIUM"
+	HIGH    AttackSeverity = "HIGH"
+	UNKNOWN AttackSeverity = "UNKNOWN"
 )
+
+type QueryType string
+const (
+	TARGET_PREFIX    QueryType = "target-prefix"
+	TARGET_PORT      QueryType = "target-port"
+	TARGET_PROTOCOL  QueryType = "target-protocol"
+	TARGET_FQDN      QueryType = "target-fqdn"
+	TARGET_URI       QueryType = "target-uri"
+	TARGET_ALIAS     QueryType = "alias-name"
+	MID              QueryType = "mid"
+	SOURCE_PREFIX    QueryType = "source-prefix"
+	SOURCE_PORT      QueryType = "source-port"
+	SOURCE_ICMP_TYPE QueryType = "source-icmp-type"
+	CONTENT          QueryType = "content"
+)
+
 
 /*
  * Dots message structure.

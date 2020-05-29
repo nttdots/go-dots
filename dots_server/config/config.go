@@ -374,6 +374,22 @@ func  ConvertMaxAge(maxAge string) (uint, error) {
 	return uint(m), nil
 }
 
+func ConvertQueryType(queryType string) ([]int, error) {
+	var result []int
+	if queryType == "" {
+		queryType = "1,2,3,4,6"
+	}
+	queryTypeSplit := strings.Split(queryType, ",")
+	for _, v := range queryTypeSplit {
+		resultTmp, err := strconv.Atoi(v)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, resultTmp)
+	}
+	return result, nil
+}
+
 // Configuration root structure read from the system configuration file
 type ServerConfigTree struct {
 	ServerSystemConfig ServerSystemConfigNode `yaml:"system"`
@@ -527,6 +543,8 @@ type ServerSystemConfig struct {
 	LifetimeConfiguration             *LifetimeConfiguration
 	MaxAgeOption                      uint
 	CacheInterval                     int
+	QueryType                         []int
+	VendorMappingEnabled              bool
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -544,6 +562,8 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
 	GetServerSystemConfig().setMaxAgeOption(sc.MaxAgeOption)
 	GetServerSystemConfig().setCacheInterval(sc.CacheInterval)
+	GetServerSystemConfig().setQueryType(sc.QueryType)
+	GetServerSystemConfig().setVendorMappingEnabled(sc.VendorMappingEnabled)
 }
 
 type ServerSystemConfigNode struct {
@@ -561,6 +581,8 @@ type ServerSystemConfigNode struct {
 	LifetimeConfiguration             LifetimeConfigurationNode             `yaml:"lifetimeConfiguration"`
 	MaxAgeOption                      string                                `yaml:"maxAgeOption"`
 	CacheInterval                     string                                `yaml:"cacheInterval"`
+	QueryType                         string                                `yaml:"queryType"`
+	VendorMappingEnabled              bool                                  `yaml:"vendorMappingEnabled"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -630,6 +652,10 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 	}
 
 	cacheInterval := parseIntegerValue(scn.CacheInterval)
+	queryType, err := ConvertQueryType(scn.QueryType)
+	if err != nil {
+		return nil, err
+	}
 
 	return &ServerSystemConfig{
 		SignalConfigurationParameter:      signalConfigurationParameter.(*SignalConfigurationParameter),
@@ -646,6 +672,8 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		LifetimeConfiguration:             lifetimeConfiguration.(*LifetimeConfiguration),
 		MaxAgeOption:                      maxAgeOption,
 		CacheInterval:                     cacheInterval,
+		QueryType:                         queryType,
+		VendorMappingEnabled:               scn.VendorMappingEnabled,
 	}, nil
 }
 
@@ -703,6 +731,14 @@ func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint) {
 
 func (sc *ServerSystemConfig) setCacheInterval(parameter int) {
 	sc.CacheInterval = parameter
+}
+
+func (sc *ServerSystemConfig) setQueryType(parameter []int) {
+	sc.QueryType = parameter
+}
+
+func (sc *ServerSystemConfig) setVendorMappingEnabled(parameter bool) {
+	sc.VendorMappingEnabled = parameter
 }
 
 var systemConfigInstance *ServerSystemConfig

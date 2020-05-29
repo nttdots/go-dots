@@ -11,6 +11,8 @@ type Capabilities struct {
   TCP                *Capabilities_TCP  `yang:"nonconfig" json:"tcp"`
   UDP                *Capabilities_UDP  `yang:"nonconfig" json:"udp"`
   ICMP               *Capabilities_ICMP `yang:"nonconfig" json:"icmp"`
+
+  VendorMappingEnabled *bool `yang:"nonconfig" json:"vendor_mapping_enabled"`
 }
 
 type Capabilities_IPv4 struct {
