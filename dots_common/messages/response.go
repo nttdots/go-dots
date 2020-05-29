@@ -41,7 +41,7 @@ type ScopeStatus struct {
 	SourcePrefix    []string `json:"ietf-dots-call-home:source-prefix" codec:"32768,omitempty"`
 	SourcePortRange []PortRangeResponse`json:"ietf-dots-call-home:source-port-range" codec:"32769,omitempty"`
 	SourceICMPTypeRange []ICMPTypeRangeResponse`json:"ietf-dots-call-home:source-icmp-type-range" codec:"32770,omitempty"`
-	AclList         []ACL    `json:"ietf-dots-signal-control:acl-list" codec:"22,omitempty"`
+	AclList         []ACL    `json:"ietf-dots-signal-control:acl-list" codec:"53,omitempty"`
 	TriggerMitigation bool `json:"trigger-mitigation" codec:"45,omitempty"`
 	Lifetime        int   `json:"lifetime"         codec:"14"`
 	Status          int   `json:"status"           codec:"16"`

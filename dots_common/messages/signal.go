@@ -17,8 +17,8 @@ type ICMPTypeRange struct {
 
 type ACL struct {
 	_struct        bool   `codec:",uint"` //encode struct with "unsigned integer" keys
-	AclName        string `json:"ietf-dots-signal-control:acl-name" codec:"23,omitempty"`
-	ActivationType *int   `json:"ietf-dots-signal-control:activation-type" codec:"49,omitempty"`
+	AclName        string `json:"ietf-dots-signal-control:acl-name" codec:"54,omitempty"`
+	ActivationType *int   `json:"ietf-dots-signal-control:activation-type" codec:"52,omitempty"`
 }
 
 type MitigationScope struct {
@@ -53,7 +53,7 @@ type Scope struct {
 	// source icmp type range
 	SourceICMPTypeRange []ICMPTypeRange `json:"ietf-dots-call-home:source-icmp-type-range" codec:"32770,omitempty"`
 	// list of acl
-	AclList []ACL `json:"ietf-dots-signal-control:acl-list" codec:"22,omitempty"`
+	AclList []ACL `json:"ietf-dots-signal-control:acl-list" codec:"53,omitempty"`
 	// lifetime
 	Lifetime *int `json:"lifetime" codec:"14,omitempty"`
 	// attack-status
