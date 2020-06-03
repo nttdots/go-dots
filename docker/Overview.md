@@ -3,13 +3,13 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-signal-channel-35
-* draft-ietf-dots-data-channel-30
-* draft-ietf-dots-architecture-06
-* draft-ietf-dots-requirements-14
-* draft-ietf-dots-use-cases-14
-* draft-nishizuka-dots-signal-control-filtering-06
-* draft-ietf-dots-signal-call-home-06
+* RFC 8782 (was draft-ietf-dots-signal-channel)
+* RFC 8783 (was draft-ietf-dots-data-channel)
+* draft-ietf-dots-architecture-18
+* RFC 8612 (was draft-ietf-dots-requirements)
+* draft-ietf-dots-use-cases-21
+* draft-ietf-dots-signal-filter-control-04
+* draft-ietf-dots-signal-call-home-07
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
