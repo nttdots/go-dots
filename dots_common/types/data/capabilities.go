@@ -53,16 +53,16 @@ type Capabilities_TCP struct {
   WindowSize            *bool `yang:"nonconfig" json:"window-size"`
   UrgentPointer         *bool `yang:"nonconfig" json:"urgent-pointer"`
   Options               *bool `yang:"nonconfig" json:"options"`
-  SourcePort            *bool `yang:"nonconfig" json:"source-port-range-or-operator"`
-  DestinationPort       *bool `yang:"nonconfig" json:"destination-port-range-or-operator"`
+  SourcePort            *bool `yang:"nonconfig" json:"source-port"`
+  DestinationPort       *bool `yang:"nonconfig" json:"destination-port"`
   PortRange             *bool `yang:"nonconfig" json:"port-range"`
 }
 
 type Capabilities_UDP struct {
   Length          *bool `yang:"nonconfig" json:"length"`
   SourcePort      *bool `yang:"nonconfig" json:"source-port"`
-  DestinationPort *bool `yang:"nonconfig" json:"destination-port-range-or-operator"`
-  PortRange       *bool `yang:"nonconfig" json:"port-range-range-or-operator"`
+  DestinationPort *bool `yang:"nonconfig" json:"destination-port-"`
+  PortRange       *bool `yang:"nonconfig" json:"port-range"`
 }
 
 type Capabilities_ICMP struct {
