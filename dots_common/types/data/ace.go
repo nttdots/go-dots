@@ -80,14 +80,14 @@ type TCP struct {
   UrgentPointer         *uint16              `yang:"config" json:"urgent-pointer"`
   Options               *uint32              `yang:"config" json:"options"`
   FlagsBitmask          *FlagsBitmask        `yang:"config" json:"flags-bitmask"`
-  SourcePort            *PortRangeOrOperator `yang:"config" json:"source-port"`
-  DestinationPort       *PortRangeOrOperator `yang:"config" json:"destination-port"`
+  SourcePort            *PortRangeOrOperator `yang:"config" json:"source-port-range-or-operator"`
+  DestinationPort       *PortRangeOrOperator `yang:"config" json:"destination-port-range-or-operator"`
 }
 
 type UDP struct {
   Length          *uint16              `yang:"config" json:"length"`
-  SourcePort      *PortRangeOrOperator `yang:"config" json:"source-port"`
-  DestinationPort *PortRangeOrOperator `yang:"config" json:"destination-port"`
+  SourcePort      *PortRangeOrOperator `yang:"config" json:"source-port-range-or-operator"`
+  DestinationPort *PortRangeOrOperator `yang:"config" json:"destination-port-range-or-operator"`
 }
 
 type ICMP struct {

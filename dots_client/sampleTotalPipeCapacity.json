@@ -1,0 +1,15 @@
+{
+    "ietf-dots-telemetry:telemetry-setup":{
+      "telemetry":[
+        {
+          "total-pipe-capacity":[
+            {
+              "link-id":"link1",
+              "capacity":500,
+              "unit": 1
+            }
+          ]
+        }
+      ]
+    }
+}

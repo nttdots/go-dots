@@ -3,6 +3,7 @@ package task
 import (
     "time"
     "reflect"
+    "strings"
     "strconv"
     "github.com/shopspring/decimal"
     "github.com/nttdots/go-dots/libcoap"
@@ -31,6 +32,8 @@ type Env struct {
 
     // The new connected session that will replace the current
     replacingSession *libcoap.Session
+
+    isServerStopped bool
 }
 
 type RequestQuery struct {
@@ -55,6 +58,7 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         nil,
         nil,
         nil,
+        false,
     }
 }
 
@@ -195,6 +199,15 @@ func (env *Env) SetCurrentMissingHb(currentMissingHb int) {
     env.current_missing_hb = currentMissingHb
 }
 
+func (env *Env) GetIsServerStopped() bool {
+    return env.isServerStopped
+}
+
+func (env *Env) SetIsServerStopped(isServerStopped bool) {
+    env.isServerStopped = isServerStopped
+}
+
+
 func (env *Env) AddRequestQuery(token string, requestQuery *RequestQuery) {
     env.requestQueries[token] = requestQuery
 }
@@ -223,7 +236,11 @@ func (env *Env) GetAllRequestQuery() (map[string] *RequestQuery) {
 func QueryParamsToString(queryParams []string) (str string) {
 	str = ""
 	for _, query := range queryParams {
-		str += "/" + query
+        if strings.Contains(query, string(libcoap.TargetPrefix)) || strings.Contains(query, string(libcoap.TargetPort)) || strings.Contains(query, string(libcoap.TargetProtocol)) ||
+           strings.Contains(query, string(libcoap.TargetFqdn)) || strings.Contains(query, string(libcoap.TargetUri)) || strings.Contains(query, string(libcoap.AliasName)) {
+               continue
+        }
+        str += "/" + query
 	}
 	return
 }

@@ -124,5 +124,11 @@ func CreateRouter() *httprouter.Router {
   r.GET   (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/acls/acl=", Wrap(acls.Get))
   r.DELETE(config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/acls/acl=", Wrap(acls.Delete))
 
+  vendors := data_controllers.VendorMappingController{}
+  r.PUT (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/ietf-dots-mapping:vendor-mapping/vendor-id=:vendorId", Wrap(vendors.Put))
+  r.GET (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/ietf-dots-mapping:vendor-mapping", Wrap(vendors.Get))
+  r.GET (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/ietf-dots-mapping:vendor-mapping", Wrap(vendors.GetVendorMappingOfServer))
+  // Send request vendors missing vendor-id
+  r.PUT (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/ietf-dots-mapping:vendor-mapping/vendor-id=", Wrap(vendors.Put))
   return r
 }

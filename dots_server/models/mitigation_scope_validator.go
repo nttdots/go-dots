@@ -310,12 +310,12 @@ func (v *mitigationScopeValidatorBase) ValidateLifetime(lifetime int) (errMsg st
  */
 func (v *mitigationScopeValidatorBase) ValidatePrefix(customer *Customer, scope *MitigationScope) (errMsg string) {
 	targets := scope.GetPrefixAsTarget()
-	errMsg = isValid(targets)
+	errMsg = IsValid(targets)
 	if errMsg != "" {
 		return
 	}
 
-	errMsg = isInCustomerDomain(customer, targets)
+	errMsg = IsInCustomerDomain(customer, targets)
 	if errMsg != "" {
 		return
 	}
@@ -339,12 +339,12 @@ func (v *mitigationScopeValidatorBase) ValidateFqdn(customer *Customer, scope *M
 		log.Warnf("failed to parse fqnd to prefix: %+v", err)
 		return
 	}
-	errMsg = isValid(targets)
+	errMsg = IsValid(targets)
 	if errMsg != "" {
 		return
 	}
 
-	errMsg = isInCustomerDomain(customer, targets)
+	errMsg = IsInCustomerDomain(customer, targets)
 	if errMsg != "" {
 		return
 	}
@@ -368,12 +368,12 @@ func (v *mitigationScopeValidatorBase) ValidateUri(customer *Customer, scope *Mi
 		log.Warnf("failed to parse uri to prefix: %+v", err)
 		return
 	}
-	errMsg = isValid(targets)
+	errMsg = IsValid(targets)
 	if errMsg != "" {
 		return
 	}
 
-	errMsg = isInCustomerDomain(customer, targets)
+	errMsg = IsInCustomerDomain(customer, targets)
 	if errMsg != "" {
 		return
 	}
@@ -463,7 +463,7 @@ func (v *mitigationScopeValidatorBase) ValidateAliasName(aliasNames SetString, a
  *   ""     all targets are in customer's domain
  *   errMsg some of targets is not in customer's domain
  */
-func isInCustomerDomain(customer *Customer, targets []Target) (errMsg string) {
+func IsInCustomerDomain(customer *Customer, targets []Target) (errMsg string) {
 	// Are the destination_ip specified in these MitigationScopes are included by the customer AddressRange?
 	for _, target := range targets {
 		if !customer.CustomerNetworkInformation.AddressRange.Includes(target.TargetPrefix) {
@@ -483,7 +483,7 @@ func isInCustomerDomain(customer *Customer, targets []Target) (errMsg string) {
  *   ""     all targets are valid
  *   errMsg some of targets is invalid
  */
-func isValid(targets []Target) (errMsg string) {
+func IsValid(targets []Target) (errMsg string) {
 	for _, target := range targets {
 		if target.TargetPrefix.IsMulticast() || target.TargetPrefix.IsBroadCast() || target.TargetPrefix.IsLoopback() {
 			errMsg = fmt.Sprintf("invalid %+v: %+v", target.TargetType, target.TargetValue)

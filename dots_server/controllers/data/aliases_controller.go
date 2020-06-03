@@ -249,6 +249,7 @@ func GetDataAliasesByName(customer *models.Customer, cuid string, aliases []stri
       }
       if alias == nil {
         log.Warnf("Alias with name: %+v has not been created by client: %+v", name, cuid)
+        res.Alias = nil
         return
       }
 

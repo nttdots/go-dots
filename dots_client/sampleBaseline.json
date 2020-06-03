@@ -1,0 +1,22 @@
+{
+    "ietf-dots-telemetry:telemetry-setup":{
+      "telemetry":[
+        {
+          "baseline":[
+            {
+              "id":1,
+              "target-prefix":[
+                "1.1.2.10/32"
+              ],
+              "total-traffic-normal":[
+                {
+                  "unit":2,
+                  "peak-g":50
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+}

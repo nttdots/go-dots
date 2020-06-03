@@ -23,6 +23,24 @@ type EndPoint struct {
     ptr *C.coap_endpoint_t
 }
 
+// Mitigation map between uri-path (mitigation) and bool (is notify telemetry attributes)
+var mitigationMap = make(map[string]bool)
+
+// Set mitigation map
+func SetMitigationMap(key string, value bool) {
+    mitigationMap[key] = value
+}
+
+// Get mitigation map by key
+func GetMitigationMapByKey(key string) bool {
+    return mitigationMap[key]
+}
+
+// Delete mitigation map by key
+func DeleteMitigationMapByKey(key string) {
+    delete(mitigationMap, key)
+}
+
 type Event int
 const (
     EventSessionDisconnected Event = C.COAP_EVENT_DTLS_CLOSED
@@ -86,10 +104,18 @@ func export_method_handler(ctx   *C.coap_context_t,
         request.Code = RequestGet
         request.Options = make([]Option, 0)
 
-        uri := strings.Split(*(rsrc.uri_path.toString()), "/")
-        for _, path := range uri {
-            request.Options = append(request.Options, OptionUriPath.String(path))
+        var uri []string
+        tmpUri := strings.Split(*(rsrc.uri_path.toString()), "?")
+        // Set uri-query and uri-path for handle observe
+        if len(tmpUri) > 1 {
+            uri = strings.Split(tmpUri[0], "/")
+            queries := strings.Split(tmpUri[1], "&")
+            uri = append(uri, queries...)
+        } else {
+            uri = strings.Split(*(rsrc.uri_path.toString()), "/")
         }
+        request.SetPath(uri)
+        session.SetIsNotification(true)
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
     }
     
@@ -182,7 +208,7 @@ func export_event_handler(ctx *C.coap_context_t,
 
     session, ok := sessions[sess]
     if !ok {
-        session = &Session{ sess, &SessionConfig{false, false, false, 0, 0 } }
+        session = &Session{ sess, &SessionConfig{false, false, false, false, false, false, false, 0, 0 } }
     }
     
     // Run event handler when session is connected or disconnected

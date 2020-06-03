@@ -62,7 +62,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	}
 
 	var mpp []mpPair
-	mpp, err = loadMitigations(customer, cuid, mid)
+	mpp, err = loadMitigations(customer, cuid, mid, request.Queries)
 	if err != nil {
 		log.WithError(err).Error("loadMitigation failed.")
 		return
@@ -138,18 +138,34 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			aclList := messages.ACL{AclName: item.ACLName, ActivationType: item.ActivationType}
 			scopeStates.AclList = append(scopeStates.AclList, aclList)
 		}
+		// Set telemetry attributes to response
+		scopeStates.TotalTraffic = convertToTelemetryTrafficResponse(mp.mitigation.TelemetryTotalTraffic)
+		scopeStates.TotalAttackTraffic = convertToTelemetryTrafficResponse(mp.mitigation.TelemetryTotalAttackTraffic)
+		if !reflect.DeepEqual(models.GetModelsTelemetryTotalAttackConnection(&mp.mitigation.TelemetryTotalAttackConnection), models.GetModelsTelemetryTotalAttackConnection(nil)) {
+			scopeStates.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(mp.mitigation.TelemetryTotalAttackConnection)
+		} else {
+			scopeStates.TotalAttackConnection = nil
+		}
+		scopeStates.AttackDetail = convertToTelemetryAttackDetailResponse(mp.mitigation.TelemetryAttackDetail)
 		scopes = append(scopes, scopeStates)
 	}
 
 	// Return error when there is no Mitigation matched
 	if len(scopes) == 0 {
 		if mid != nil {
-			errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s, mid: %v", cuid, *mid)
-			log.Infof(errMessage)
+			if len(request.Queries) > 0 {
+				errMessage = fmt.Sprintf("Not found any mitigation with cuid: %s, mid: %v, queries: %+v", cuid, *mid, request.Queries)
+			} else {
+				errMessage = fmt.Sprintf("Not found any mitigation with cuid: %s, mid: %v", cuid, *mid)
+			}
 		} else {
-			errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s", cuid)
-			log.Infof(errMessage)
+			if len(request.Queries) > 0 {
+				errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s, queries: %+v", cuid, request.Queries)
+			} else {
+				errMessage = fmt.Sprintf("Not found any mitigations with cuid: %s", cuid)
+			}
 		}
+		log.Error(errMessage)
 		res = Response{
 			Type: common.NonConfirmable,
 			Code: common.NotFound,
@@ -225,7 +241,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 	} else {
 		// If mid = 0, load all current available mitigation requests for validatation
 		if *mid == 0 {
-			mitigations, err := loadMitigations(customer, cuid, nil)
+			mitigations, err := loadMitigations(customer, cuid, nil, nil)
 			if err != nil {
 				log.WithError(err).Error("Mitigations load error.")
 				return Response{}, err
@@ -414,10 +430,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			return res, nil
 		} else {
 			log.Warnf("Not found any mitigation request (cuid=%+v, mid=%+v) for efficacy update", cuid, *mid)
-			res = Response{
-				Type: common.NonConfirmable,
-			}
-            return res, nil
+			goto ResponseNG
 		}
 		
 	ResponseConflict:
@@ -488,7 +501,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		mitigationScope.Lifetime = config.ActiveButTerminatingPeriod
 		mitigationScope.Status = models.ActiveButTerminating
 
-		err = models.UpdateMitigationScope(*mitigationScope, *customer)
+		err = models.UpdateMitigationScope(*mitigationScope, *customer, false)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope update error.")
 			return Response{}, err
@@ -509,7 +522,7 @@ Response:
 /*
  * Create MitigationScope objects based on the mitigationRequest request messages.
  */
-func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier string, clientDomainIdentifier string) (m *models.MitigationScope, err error) {
+func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier string, clientDomainIdentifier string, isIfMatchOption bool) (m *models.MitigationScope, err error) {
 	log.Debugf("newMitigationScope req=%+v, c=%+v, clientIdentifier=%+v, clientDomainIdentifier=%+v", req, c, clientIdentifier, clientDomainIdentifier)
 	m = models.NewMitigationScope(c, clientIdentifier)
 	m.MitigationId = *req.MitigationId
@@ -554,6 +567,16 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	}
 	m.ControlFilteringList = newControlFiltering(req.AclList)
 
+	if isIfMatchOption {
+		m.TelemetryTotalAttackTraffic, err = models.NewTelemetryTotalAttackTraffic(req.TotalAttackTraffic)
+		if err != nil {
+			return
+		}
+		m.TelemetryAttackDetail, err = models.NewTelemetryAttackDetail(req.AttackDetail)
+		if err != nil {
+			return
+		}
+	}
 	return
 }
 
@@ -596,7 +619,7 @@ func newPortRange(targetPortRange []messages.PortRange) (portRanges []models.Por
 /*
  * Parse the 'source-icmp-type-range' field in a mitigationScope and return a list of ICMPTypeRange objects.
  */
- func newICMPTypeRange(icmpTypeRange []messages.SourceICMPTypeRange) (icmpTypeRanges []models.ICMPTypeRange, err error) {
+ func newICMPTypeRange(icmpTypeRange []messages.ICMPTypeRange) (icmpTypeRanges []models.ICMPTypeRange, err error) {
 	icmpTypeRanges = make([]models.ICMPTypeRange, len(icmpTypeRange))
 	for i, r := range icmpTypeRange {
 		// Check the lower-type is mandatory
@@ -644,26 +667,29 @@ func filterDuplicate(input []int) (res []int) {
 /*
  * load mitigation and protection
  */
-func loadMitigations(customer *models.Customer, clientIdentifier string, mitigationId *int) ([]mpPair, error) {
+func loadMitigations(customer *models.Customer, clientIdentifier string, mitigationId *int, queries []string) ([]mpPair, error) {
 
 	r := make([]mpPair, 0)
 	var mitigationIds []int
 
 	// if Uri-Path mid is empty, get all DOTS mitigation request
 	if mitigationId == nil {
-		mids, err := models.GetMitigationIds(customer.Id, clientIdentifier)
+		mids, err := models.GetMitigationIds(customer.Id, clientIdentifier, queries)
 		if err != nil {
 			return nil, err
 		}
-		if mids == nil {
-			log.WithField("ClientIdentifiers", clientIdentifier).Warn("mitigation id not found for this client identifiers.")		
-		} else {
+		if mids != nil {
 			log.WithField("list of mitigation id", mids).Info("found mitigation ids.")
 			mitigationIds = filterDuplicate(mids)
 		}
-		
 	} else {
-		mitigationIds = append(mitigationIds, *mitigationId)
+		mid, err := models.GetMitigationId(customer.Id, clientIdentifier, *mitigationId, queries)
+		if err != nil {
+			return nil, err
+		}
+		if mid != nil {
+			mitigationIds = append(mitigationIds, *mid)
+		}
 	}
 
 	for _, mid := range mitigationIds {
@@ -674,18 +700,6 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 		if s == nil {
 			log.WithField("mitigation_id", mid).Warn("mitigation_scope not found.")
 			continue
-		}
-
-		// Get alias data from data channel
-		aliases, err := data_controllers.GetDataAliasesByName(customer, clientIdentifier, s.AliasName.List())
-		if err != nil {
-			return nil, err
-		}
-
-		// Append alias data to new mitigation scope
-		err = appendAliasesDataToMitigationScope(aliases, s)
-		if err != nil {
-			return nil, err
 		}
 
 		// If mitigation request's status is active (1,2,3,4,5), get its active protection
@@ -803,7 +817,7 @@ func callBlocker(data *messages.MitigationRequest, c *models.Customer, mitigatio
 	// retrieve scope objects from the request, then validate it.
 	// obtain an appropriate blocker from the blocker selection service if the validation succeeded.
 	for _, messageScope := range data.MitigationScope.Scopes {
-		scope, err := newMitigationScope(messageScope, c, data.EffectiveClientIdentifier(), data.EffectiveClientDomainIdentifier())
+		scope, err := newMitigationScope(messageScope, c, data.EffectiveClientIdentifier(), data.EffectiveClientDomainIdentifier(), false)
 		if err != nil {
 			return err
 		}
@@ -974,7 +988,7 @@ func ManageExpiredMitigation(lifetimeInterval int) {
 func CreateMitigation(body *messages.MitigationRequest, customer *models.Customer, currentScope *models.MitigationScope, isIfMatchOption bool) (*models.ConflictInformation, error) {
 
 	// Create new mitigation scope from body request
-	requestScope, err := newMitigationScope(body.MitigationScope.Scopes[0], customer, body.EffectiveClientIdentifier(), body.EffectiveClientDomainIdentifier())
+	requestScope, err := newMitigationScope(body.MitigationScope.Scopes[0], customer, body.EffectiveClientIdentifier(), body.EffectiveClientDomainIdentifier(), isIfMatchOption)
 	if err != nil {
 		return nil, err
 	}
@@ -1264,7 +1278,8 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 		return false, errMessage
 	}
 
-	attackStatus := body.MitigationScope.Scopes[0].AttackStatus
+	bodyData := body.MitigationScope.Scopes[0]
+	attackStatus := bodyData.AttackStatus
 	if attackStatus == nil {
 		errMessage = "attack-status is mandatory field."
 		log.Error(errMessage)
@@ -1900,7 +1915,7 @@ func RecheckIpRangeForMitigations(customer *models.Customer) error {
 			return err
 		}
 
-		// Re-check ip-address range by validating target prefix, fadn, uri of mitigation scope
+		// Re-check ip-address range by validating target prefix, fqdn, uri of mitigation scope
 		validator := models.GetMitigationScopeValidator(blockerConfig.BlockerType)
 		if validator == nil { return errors.New("Unknown blocker type: " + blockerConfig.BlockerType)}
 		prefixErrMsg := validator.ValidatePrefix(customer, mitigation)

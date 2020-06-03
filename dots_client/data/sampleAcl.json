@@ -19,7 +19,7 @@
                              "dscp": 3
                           },
                           "tcp":{
-                              "destination-port":{
+                              "destination-port-range-or-operator":{
                                   "lower-port":443,
                                   "upper-port":445
                               }

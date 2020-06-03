@@ -198,12 +198,12 @@ SKIP_OBSERVE:
 
 	if r.Message != nil {
 		r.pdu.Data = r.dumpCbor()
-		r.pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppCbor))
+		r.pdu.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppDotsCbor))
 		log.Debugf("hex dump cbor request:\n%s", hex.Dump(r.pdu.Data))
 	}
-	tmpPathWithQuery := r.RequestCode.PathString() + "/" + strings.Join(r.queryParams, "/")
-	r.pdu.SetPathString(tmpPathWithQuery)
-	log.Debugf("SetPathString=%+v", tmpPathWithQuery)
+	requestQueryPaths := strings.Split(r.RequestCode.PathString(), "/")
+	requestQueryPaths = append(requestQueryPaths, r.queryParams...)
+	r.pdu.SetPath(requestQueryPaths)
 	log.Debugf("r.pdu=%+v", r.pdu)
 }
 
@@ -423,6 +423,30 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			data, err = json.Marshal(v)
 			logStr = v.String()
 		}
+	case "telemetry_setup_request":
+		switch r.method {
+		case "GET":
+			var v messages.TelemetrySetupResponse
+			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
+			logStr = v.String()
+		case "PUT":
+			var v messages.TelemetrySetupResponseConflict
+			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
+			logStr = v.String()
+		}
+	case "telemetry_pre_mitigation_request":
+		switch r.method {
+		case "GET":
+			var v messages.TelemetryPreMitigationResponse
+			err = dec.Decode(&v)
+			if err != nil { goto CBOR_DECODE_FAILED }
+			data, err = json.Marshal(v)
+			logStr = v.String()
+		}
 	}
 	if err != nil {
 		log.WithError(err).Warn("Parse object to JSON failed.")
@@ -624,7 +648,12 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
 		if sessionTask != nil {
 			RefreshSessionConfig(pdu, env, sessionTask.MessageTask())
 		}
-    } else {
+	} else if strings.Contains(hex, string(libcoap.IETF_TELEMETRY_PRE_MITIGATION)) {
+        var v messages.TelemetryPreMitigationResponse
+        err = dec.Decode(&v)
+        logStr = v.String()
+        log.Debug("Receive telemetry pre-mitigation notification.")
+    }else {
         log.Warnf("Unknown notification is received.")
     }
 

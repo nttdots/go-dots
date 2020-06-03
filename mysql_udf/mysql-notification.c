@@ -31,10 +31,24 @@ enum TRIGGER_TYPE {
 };
 
 #define PORT 9999
-#define MITIGATION_SCOPE      "mitigation_scope"
-#define SESSION_CONFIGURATION "signal_session_configuration"
-#define PREFIX_ADDRESS_RANGE  "prefix"
-#define DATA_ACLS             "data_acls"
+#define MITIGATION_SCOPE         "mitigation_scope"
+#define SESSION_CONFIGURATION    "signal_session_configuration"
+#define PREFIX_ADDRESS_RANGE     "prefix"
+#define DATA_ACLS                "data_acls"
+#define	TELEMETRY_PRE_MITIGATION "telemetry_pre_mitigation"
+#define	TELEMETRY_ATTACK_DETAIL  "telemetry_attack_detail"
+
+#define URI_FILTERING_TRAFFIC                      "uri_filtering_traffic"
+#define URI_FILTERING_TRAFFIC_PROTOCOL             "uri_filtering_traffic_per_protocol"
+#define URI_FILTERING_TRAFFIC_PORT                 "uri_filtering_traffic_per_port"
+#define URI_FILTERING_TOTAL_ATTACK_CONNECTION      "uri_filtering_total_attack_connection"
+#define URI_FILTERING_TOTAL_ATTACK_CONNECTION_PORT "uri_filtering_total_attack_connection_port"
+#define URI_FILTERING_ATTACK_DETAIL                "uri_filtering_attack_detail"
+#define URI_FILTERING_SOURCE_COUNT                 "uri_filtering_source_count"
+#define URI_FILTERING_TOP_TALKER                   "uri_filtering_top_talker"
+#define URI_FILTERING_SOURCE_PREFIX                "uri_filtering_source_prefix"
+#define URI_FILTERING_ICMP_TYPE_RANGE              "uri_filtering_icmp_type_range"
+#define URI_FILTERING_SOURCE_PORT_RANGE            "uri_filtering_source_port_range"
 
 my_bool MySQLNotification_init(UDF_INIT *initid, 
                                           UDF_ARGS *args,
@@ -92,6 +106,136 @@ my_bool MySQLNotification_init(UDF_INIT *initid,
 
         if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT || args->arg_type[2] != INT_RESULT) {
             strcpy(message, "MySQLNotification() requires two integers, and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], TELEMETRY_PRE_MITIGATION) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], TELEMETRY_ATTACK_DETAIL) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TRAFFIC) == 0) {
+        // check the arguments format
+        if(args->arg_count != 3) {
+            strcpy(message, "MySQLNotification() requires exactly three arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer, one string and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TRAFFIC_PROTOCOL) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TRAFFIC_PORT) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TOTAL_ATTACK_CONNECTION) == 0) {
+        // check the arguments format
+        if(args->arg_count != 3) {
+            strcpy(message, "MySQLNotification() requires exactly three arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != STRING_RESULT || args->arg_type[2] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer, one string and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TOTAL_ATTACK_CONNECTION_PORT) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_ATTACK_DETAIL) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_SOURCE_COUNT) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TOP_TALKER) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_SOURCE_PREFIX) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_SOURCE_PORT_RANGE) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
+            return 1;
+        }
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_ICMP_TYPE_RANGE) == 0) {
+        // check the arguments format
+        if(args->arg_count != 2) {
+            strcpy(message, "MySQLNotification() requires exactly two arguments");
+            return 1;
+        }
+        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
+            strcpy(message, "MySQLNotification() requires one integer and table name");
             return 1;
         }
     } else {
@@ -159,6 +303,58 @@ longlong MySQLNotification(UDF_INIT *initid, UDF_ARGS *args,
 
         // format a message containing id of row and type of change
         sprintf(packet, "{\"table_trigger\":\"%s\", \"aclId\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], TELEMETRY_PRE_MITIGATION) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], TELEMETRY_ATTACK_DETAIL) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"mitigation_scope_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TRAFFIC) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"prefix_type\":\"%s\", \"prefix_type_id\":\"%lld\"}", ((char*)args->args[0]), ((char*)args->args[1]), *((longlong*)args->args[2]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TRAFFIC_PROTOCOL) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_pre_mitigation_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TRAFFIC_PORT) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_pre_mitigation_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TOTAL_ATTACK_CONNECTION) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"prefix_type\":\"%s\", \"prefix_type_id\":\"%lld\"}", ((char*)args->args[0]), ((char*)args->args[1]), *((longlong*)args->args[2]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TOTAL_ATTACK_CONNECTION_PORT) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_pre_mitigation_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_ATTACK_DETAIL) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_pre_mitigation_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_SOURCE_COUNT) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_attack_detail_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_TOP_TALKER) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_attack_detail_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_SOURCE_PREFIX) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_top_talker_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_SOURCE_PORT_RANGE) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_top_talker_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
+    } else if (strcmp((char*)args->args[0], URI_FILTERING_ICMP_TYPE_RANGE) == 0) {
+
+        // format a message containing id of row and type of change
+        sprintf(packet, "{\"table_trigger\":\"%s\", \"tele_top_talker_id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
     }
 
     send(_server, packet, strlen(packet), 0);

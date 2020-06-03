@@ -159,6 +159,10 @@ type MitigationScope struct {
 	AclName          string
 	TargetList       []Target     // List of target prefix/fqdn/uri
 	ControlFilteringList []ControlFiltering
+	TelemetryTotalTraffic          []Traffic
+	TelemetryTotalAttackTraffic    []Traffic
+	TelemetryTotalAttackConnection TelemetryTotalAttackConnection
+	TelemetryAttackDetail          []TelemetryAttackDetail
 }
 
 // Conflict Scope constructor
@@ -202,6 +206,10 @@ func NewMitigationScope(c *Customer, clientIdentifier string) (s *MitigationScop
 		"",
 		make([]Target, 0),
 		make([]ControlFiltering, 0),
+		make([]Traffic, 0),
+		make([]Traffic, 0),
+		TelemetryTotalAttackConnection{},
+		make([]TelemetryAttackDetail, 0),
 	}
 	return
 }

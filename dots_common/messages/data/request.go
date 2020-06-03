@@ -9,20 +9,26 @@ import (
   "github.com/nttdots/go-dots/dots_common/messages"
 )
 
-type AliasesOrACLsRequest struct {
+type PostRequest struct {
   Aliases *types.Aliases `json:"ietf-dots-data-channel:aliases"`
   ACLs    *types.ACLs    `json:"ietf-dots-data-channel:acls"`
+  VendorMapping *types.VendorMapping `json:"ietf-dots-mapping:vendor-mapping"`
 }
 
-func (r *AliasesOrACLsRequest) ValidateExtract(method string, customer *models.Customer) (interface{}, error) {
-  if r.Aliases == nil && r.ACLs == nil {
-    log.Error("aliases == nil and acls == nil")
-    return nil, errors.New("Validation failed : Both of aliases and acls are not found")
+func (r *PostRequest) ValidateExtract(method string, customer *models.Customer) (interface{}, error) {
+  if r.Aliases == nil && r.ACLs == nil && r.VendorMapping == nil {
+    log.Error("aliases == nil and acls == nil and vendor-mapping = nil")
+    return nil, errors.New("Validation failed : Both of aliases and acls and vendor-mapping are not found")
   }
 
-  if r.Aliases != nil && r.ACLs != nil {
-    log.Error("Request must be either of alias or acl")
-    return nil, errors.New("Validation failed : Request must be either of aliases or acls")
+  if r.Aliases != nil && r.ACLs != nil && r.VendorMapping != nil{
+    log.Error("Request must be either of alias or acl or vendor-mapping")
+    return nil, errors.New("Validation failed : Request must be either of aliases, acls or vendor-mapping")
+  }
+
+  if r.VendorMapping != nil {
+    t := VendorMappingRequest{ *r.VendorMapping }
+    return &t, nil
   }
 
   // Get blocker configuration by customerId and target_type in table blocker_configuration

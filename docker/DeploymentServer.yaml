@@ -27,8 +27,7 @@ spec:
                 cp -n $GOPATH/src/github.com/nttdots/go-dots/gobgp-server/gobgpd.conf .;
                 cp -n $GOPATH/src/github.com/nttdots/go-dots/mysql_udf/* /usr/lib/mysql/plugin;
                 cp -n $GOPATH/src/github.com/nttdots/go-dots/certs/* /dots/certs;
-                $GOPATH/bin/dots_server --config dots_server.yaml -vv;
-                while true; do sleep 30; done;"]
+                $GOPATH/bin/dots_server --config dots_server.yaml -vv;"]
         ports:
         - containerPort: 4646
           name: signalchannel
@@ -59,8 +58,7 @@ spec:
         image: osrg/gobgp:latest
         workingDir: "/dots/config"
         command: [ "/bin/sh", "-c", "--" ]
-        args: ["$GOPATH/bin/gobgpd -f gobgpd.conf;
-                while true; do sleep 30; done;"]
+        args: ["$GOPATH/bin/gobgpd -f gobgpd.conf;"]
         volumeMounts:
         - mountPath: "/dots"
           name: volume-config-dots

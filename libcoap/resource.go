@@ -26,6 +26,7 @@ type Attr struct {
     ptr   *C.coap_attr_t
 }
 
+var uriFilter = make(map[string]int)
 var resources = make(map[*C.coap_resource_t] *Resource)
 
 func GetAllResource() map[*C.coap_resource_t] *Resource {
@@ -217,4 +218,29 @@ func (resource *Resource) SetCustomerId(id *int) {
  */
 func (resource *Resource) GetCustomerId() *int {
    return resource.customerId
+}
+
+// Set uri filter
+func SetUriFilter(key string, value int) {
+    uriFilter[key] = value
+}
+
+// Get uri filter by value
+func GetUriFilterByValue(value int) []string {
+    var keys []string
+    for k, v:= range uriFilter {
+        if v == value {
+            keys = append(keys, k)
+        }
+    }
+    return keys
+}
+
+// Delete uri filter by value
+func DeleteUriFilterByValue(value int) {
+    for k, v:= range uriFilter {
+        if v == value {
+            delete(uriFilter, k)
+        }
+    }
 }

@@ -28,6 +28,8 @@ const (
 	CREATE_IDENTIFIERS
 	INSTALL_FILTERING_RULE
 	SIGNAL_CHANNEL
+	TELEMETRY_SETUP_REQUEST
+	TELEMETRY_PRE_MITIGATION_REQUEST
 )
 
 /*
@@ -93,6 +95,70 @@ const (
 	JSON_HEART_BEAT_CLIENT = "jsonHeartBeatClient.json"
 )
 
+type Unit string
+const (
+	PACKETS_PER_SECOND     Unit = "PACKETS_PS"
+	BITS_PER_SECOND        Unit = "BITS_PS"
+	BYTES_PER_SECOND       Unit = "BYTES_PS"
+	KILOPACKETS_PER_SECOND Unit = "KILOPACKETS_PS"
+	KILOBITS_PER_SECOND    Unit = "KILOBITS_PS"
+	KILOBYTES_PER_SECOND   Unit = "KILOBYTES_PS"
+	MEGAPACKETS_PER_SECOND Unit = "MEGAPACKETS_PS"
+	MEGABITS_PER_SECOND    Unit = "MEGABITS_PS"
+	MEGABYTES_PER_SECOND   Unit = "MEGABYTES_PS"
+	GIGAPACKETS_PER_SECOND Unit = "GIGAPACKETS_PS"
+	GIGABITS_PER_SECOND    Unit = "GIGABITS_PS"
+	GIGABYTES_PER_SECOND   Unit = "GIGABYTES_PS"
+	TERAPACKETS_PER_SECOND Unit = "TERAPACKETS_PS"
+	TERABITS_PER_SECOND    Unit = "TERABITS_PS"
+	TERABYTES_PER_SECOND   Unit = "TERABYTES_PS"
+)
+
+type Interval string
+const (
+	HOUR  Interval = "HOUR"
+	DAY   Interval = "DAY"
+	WEEK  Interval = "WEEK"
+	MONTH Interval = "MONTH"
+)
+
+type Sample string
+const (
+	SECOND          Sample = "SECOND"
+	FIVE_SECONDS    Sample = "5_SECONDS"
+	THIRTY_SECONDDS Sample = "30_SECONDS"
+	ONE_MINUTE      Sample = "ONE_MINUTE"
+	FIVE_MINUTES    Sample = "5_MINUTES"
+	TEN_MINUTES     Sample = "10_MINUTES"
+	THIRTY_MINUTES  Sample = "30_MINUTES"
+	ONE_HOUR        Sample = "ONE_HOUR"
+)
+
+type AttackSeverity string
+const (
+	NONE    AttackSeverity = "NONE"
+	LOW     AttackSeverity = "LOW"
+	MEDIUM  AttackSeverity = "MEDIUM"
+	HIGH    AttackSeverity = "HIGH"
+	UNKNOWN AttackSeverity = "UNKNOWN"
+)
+
+type QueryType string
+const (
+	TARGET_PREFIX    QueryType = "target-prefix"
+	TARGET_PORT      QueryType = "target-port"
+	TARGET_PROTOCOL  QueryType = "target-protocol"
+	TARGET_FQDN      QueryType = "target-fqdn"
+	TARGET_URI       QueryType = "target-uri"
+	TARGET_ALIAS     QueryType = "alias-name"
+	MID              QueryType = "mid"
+	SOURCE_PREFIX    QueryType = "source-prefix"
+	SOURCE_PORT      QueryType = "source-port"
+	SOURCE_ICMP_TYPE QueryType = "source-icmp-type"
+	CONTENT          QueryType = "content"
+)
+
+
 /*
  * Dots message structure.
  */
@@ -128,6 +194,8 @@ func init() {
 	register(MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "mitigation_request", ".well-known/dots/mitigate", MitigationRequest{})
 	register(SESSION_CONFIGURATION, REQUEST, libcoap.TypeCon, SIGNAL, "session_configuration", ".well-known/dots/config", SignalConfigRequest{})
 	register(HEARTBEAT, REQUEST, libcoap.TypeNon, SIGNAL, "heartbeat", ".well-known/dots/hb", HeartBeatRequest{})
+	register(TELEMETRY_SETUP_REQUEST, REQUEST, libcoap.TypeCon, SIGNAL, "telemetry_setup_request", ".well-known/dots/tm-setup", TelemetrySetupRequest{})
+	register(TELEMETRY_PRE_MITIGATION_REQUEST, REQUEST, libcoap.TypeNon, SIGNAL, "telemetry_pre_mitigation_request", ".well-known/dots/tm", TelemetryPreMitigationRequest{})
 
 	register(SIGNAL_CHANNEL, REQUEST, libcoap.TypeNon, SIGNAL, "signal_channel", ".well-known/dots", SignalChannelRequest{})
 }
@@ -269,6 +337,40 @@ func ParseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err err
 	    log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, nil)
 	} else {
         log.Debugf("Parsing URI-Path result : cdid=%+v, cuid=%+v, mid=%+v", cdid, cuid, *mid)
+	}
+	return
+}
+
+/*
+ *  Get cuid, tmid, cdid value from URI-Path
+ */
+ func ParseTelemetryPreMitigationUriPath(uriPath []string) (cuid string, tmid *int, cdid string, err error){
+	log.Debugf("Parsing URI-Path : %+v", uriPath)
+	// Get cuid, cdid, tmid from Uri-Path
+	for _, uriPath := range uriPath{
+		if(strings.HasPrefix(uriPath, "cuid=")){
+			cuid = uriPath[strings.Index(uriPath, "cuid=")+5:]
+		} else if(strings.HasPrefix(uriPath, "cdid=")){
+			cuid = uriPath[strings.Index(uriPath, "cdid=")+5:]
+		} else if(strings.HasPrefix(uriPath, "tmid=")){
+			tmidStr := uriPath[strings.Index(uriPath, "tmid=")+5:]
+			tmidValue, err := strconv.Atoi(tmidStr)
+			if err != nil {
+				log.Error("Tmid is not integer type.")
+				return cuid, tmid, cdid, err
+			}
+			if tmidStr == "" {
+			    tmid = nil
+			} else {
+			    tmid = &tmidValue
+			}
+		}
+	}
+	// Log nil if tmid does not exist in path. Otherwise, log tmid's value
+	if tmid == nil {
+	    log.Debugf("Parsing URI-Path result : cuid=%+v, tmid=%+v", cuid, nil)
+	} else {
+        log.Debugf("Parsing URI-Path result : cuid=%+v, tmid=%+v", cuid, *tmid)
 	}
 	return
 }

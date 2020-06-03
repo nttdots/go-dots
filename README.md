@@ -6,12 +6,12 @@
 
 "go-dots" is a DDoS Open Threat Signaling (dots) implementation written in Go. This implmentation is based on the Internet drafts below. 
 
-* draft-ietf-dots-signal-channel-40
-* draft-ietf-dots-data-channel-31
-* draft-ietf-dots-architecture-14
+* RFC 8782 (was draft-ietf-dots-signal-channel)
+* RFC 8783 (was draft-ietf-dots-data-channel)
+* draft-ietf-dots-architecture-18
 * RFC 8612 (was draft-ietf-dots-requirements)
-* draft-ietf-dots-use-cases-20
-* draft-ietf-dots-signal-filter-control-02
+* draft-ietf-dots-use-cases-21
+* draft-ietf-dots-signal-filter-control-04
 * draft-ietf-dots-signal-call-home-07
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
@@ -155,6 +155,16 @@ In order to handle out-of-order delivery of mitigation requests, 'mid' values MU
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
+### Client Controller [mitigation_retrieve_all_query]
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -targetProtocol=17 -aliasName=https1
+
+### Client Controller [mitigation_retrieve_one_query]
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -targetPrefix=1.2.0.10/32
+
 ### Client Controller [mitigation_withdraw]
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Delete \
@@ -185,6 +195,12 @@ A DOTS client can convey the 'If-Match' option with empty value in the PUT reque
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftEfficacyUpdate.json
+
+DOTS client to DOTS server mitigation efficacy DOTS telemetry attributes
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationEfficacyTelemetryAttributes.json
 
 ### Client Controller [session_configuration_request]
 
@@ -348,6 +364,30 @@ Remove Filtering Rules
 
     $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
 
+### Managing Vendor Attack Mapping
+Create vendor-mapping
+
+    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleVendorAttackMapping.json
+
+Update vendor-mapping
+
+    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping/vendor-id=345 sampleVendorAttackMapping.json
+
+Get vendor-mapping of server
+
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/ietf-dots-mapping:vendor-mapping
+
+Get vendor-mapping
+
+    Get vendor-mapping with 'depth'
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping?depth=3
+
+    Get vendor-mapping with 'content'
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping?content=all
+
+    Get vendor-mapping without 'depth' and 'content'
+    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping?content=all
+
 ## Signal Channel Control Filtering
 Unlike the DOTS signal channel, the DOTS data channel is not expected to deal with attack conditions.
 Therefore, when DOTS client is under attacked by DDoS, the DOTS client can use DOTS signal channel protocol to manage the filtering rule in DOTS Data Channel to enhance the protection capability of DOTS protocols.
@@ -367,6 +407,72 @@ when the DOTS client is under attacked by DDoS, the DOTS client sends the attack
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
      -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftCallHome.json
+
+##  Telemetry
+The telemetry aims to enrich DOTS signal channel protocol with various telemetry attributes allowing optimal DDoS attack mitigation. The telemetry specifies the normal traffic baseline and attack traffic telemetry attributes a DOTS client can convey to its DOTS server in the mitigation request, the mitigation status telemetry attributes a DOTS server can communicate to a DOTS client, and the mitigation efficacy telemetry attributes a DOTS client can communicate to a DOTS server. The telemetry contains `Telemetry Setup Configuration` and `Telemetry Pre-or-ongoing-mitigation`
+
+
+### Client Controller [telemmetry_setup_request] (Telemetry Setup Configuration)
+Registering telemetry configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123\
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleTelemetryConfiguration.json
+
+Registering total pipe capacity
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123\
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleTotalPipeCapacity.json
+
+Registering baseline
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123\
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleBaseline.json
+
+Get one telemetry setup configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123
+
+Get all telemetry setup configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw
+
+Delete one telemetry setup configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123
+
+Delete all telemetry setup configuration
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw
+
+### Client Controller [telemmetry_pre_mitigation_request] (Telemetry Pre-Or-Ongoing-Mitigation)
+Registering telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123\
+     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleTelemetryPreMitigation.json
+
+Get one telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123
+
+Get all telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw
+
+Get one telemetry pre-or-ongoing-mitigation with query
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123 -targetProtocol=17
+
+Get all telemetry pre-or-ongoing-mitigation with query
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -targetProtocol=17
+
+Delete one telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123
+
+Delete all telemetry pre-or-ongoing-mitigation
+
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Delete -cuid=dz6pHjaADkaFTbjr0JGBpw
 
 ## DB
 

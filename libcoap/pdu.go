@@ -94,21 +94,35 @@ const (
 
 type HexCBOR string
 const (
-    IETF_MITIGATION_SCOPE_HEX      HexCBOR = "a1 01"    // "ietf-dots-signal-channel:mitigation-scope"
-    IETF_SESSION_CONFIGURATION_HEX HexCBOR = "a1 18 1e" // "ietf-dots-signal-channel:signal-config"
+    IETF_MITIGATION_SCOPE_HEX      HexCBOR = "a1 01"       // "ietf-dots-signal-channel:mitigation-scope"
+    IETF_SESSION_CONFIGURATION_HEX HexCBOR = "a1 18 1e"    // "ietf-dots-signal-channel:signal-config"
+    IETF_TELEMETRY_PRE_MITIGATION  HexCBOR = "a1 19 80 92" // "ietf-dots-telemetry:telemetry"
 )
 
 // MediaType specifies the content type of a message.
 type MediaType uint16
 // Content types.
 const (
-	TextPlain     MediaType = 0  // text/plain;charset=utf-8
-	AppLinkFormat MediaType = 40 // application/link-format
-	AppXML        MediaType = 41 // application/xml
-	AppOctets     MediaType = 42 // application/octet-stream
-	AppExi        MediaType = 47 // application/exi
-	AppJSON       MediaType = 50 // application/json
-	AppCbor       MediaType = 60 // application/cbor https://tools.ietf.org/html/rfc7049#page-37
+    TextPlain     MediaType = 0   // text/plain;charset=utf-8
+    AppLinkFormat MediaType = 40  // application/link-format
+    AppXML        MediaType = 41  // application/xml
+    AppOctets     MediaType = 42  // application/octet-stream
+    AppExi        MediaType = 47  // application/exi
+    AppJSON       MediaType = 50  // application/json
+    AppDotsCbor   MediaType = 271 // application/dots+cbor
+)
+
+type UriQuery string
+const (
+    TargetPrefix   UriQuery = "target-prefix"
+    TargetPort     UriQuery = "target-port"
+    TargetProtocol UriQuery = "target-protocol"
+    TargetFqdn     UriQuery = "target-fqdn"
+    TargetUri      UriQuery = "target-uri"
+    AliasName      UriQuery = "alias-name"
+    SourcePrefix   UriQuery = "source-prefix"
+    SourcePort     UriQuery = "source-port"
+    SourceIcmpType UriQuery = "source-icmp-type"
 )
 
 type Pdu struct {
@@ -283,7 +297,13 @@ func (pdu *Pdu) SetPath(path []string) {
     }
     for _, s := range path {
         if 0 < len(s) {
-            opts = append(opts, OptionUriPath.String(s))
+            if strings.Contains(s,string(TargetPrefix)) || strings.Contains(s,string(TargetPort)) || strings.Contains(s,string(TargetProtocol)) ||
+               strings.Contains(s,string(TargetFqdn)) || strings.Contains(s,string(TargetUri)) || strings.Contains(s,string(AliasName)) ||
+               strings.Contains(s,string(SourcePrefix)) || strings.Contains(s,string(SourcePort)) || strings.Contains(s,string(SourceIcmpType)) {
+                opts = append(opts, OptionUriQuery.String(s))
+            } else {
+                opts = append(opts, OptionUriPath.String(s))
+            }
         }
     }
     pdu.Options = opts

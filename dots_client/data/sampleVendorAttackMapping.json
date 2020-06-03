@@ -1,0 +1,19 @@
+{
+    "ietf-dots-mapping:vendor-mapping":{
+        "ietf-dots-mapping:vendor":[
+            {
+                "ietf-dots-mapping:vendor-id":345,
+                "ietf-dots-mapping:attack-mapping":[
+                    {
+                        "ietf-dots-mapping:attack-id":1,
+                        "ietf-dots-mapping:attack-name":"Include a description of this attack"
+                    },
+                    {
+                        "ietf-dots-mapping:attack-id":2,
+                        "ietf-dots-mapping:attack-name":"Again, include a description of the attack"
+                    }
+                ]
+            }
+        ]
+    }
+}

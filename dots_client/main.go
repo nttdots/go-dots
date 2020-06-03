@@ -148,8 +148,14 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 		if event == libcoap.EventSessionConnected {
 			if orgEnv != nil {
 				orgEnv.SetReplacingSession(session)
+				env.SetIsServerStopped(false)
 			}
 		} else if event == libcoap.EventSessionDisconnected {
+			if orgEnv == nil {
+				log.Warn("Server is stopped. DOTS client can't connect to server")
+				env.SetIsServerStopped(true)
+				return
+			}
 			session.SessionRelease()
 			restartConnection(env)
 		}
@@ -230,7 +236,19 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 	return func (w http.ResponseWriter, r *http.Request) {
 		// _, requestName := path.Split(r.URL.Path)
 		// Split requestName and QueryParam
-		tmpPaths := strings.Split(r.URL.Path, "/")
+		var tmpPaths []string
+		paths := strings.Split(r.URL.Path, "?")
+		if len(paths) > 1 {
+			tmpPaths = strings.Split(paths[0], "/")
+			queryPaths := strings.Split(paths[1],"&")
+			if len(queryPaths) > 1 {
+				tmpPaths = append(tmpPaths, queryPaths...)
+			} else {
+				tmpPaths = append(tmpPaths, paths[1])
+			}
+		} else {
+			tmpPaths = strings.Split(r.URL.Path, "/")
+		}
 		var requestName = ""
 		var tmpPath string
 		var requestQuerys []string
@@ -492,7 +510,11 @@ func main() {
 		os.Exit(1)
 	}
 	config = dots_config.GetSystemConfig()
-	log.Debugf("dots client starting with config: %# v", config)
+	if config == nil {
+		log.Warnf("The config is nil -> Stopped dots client")
+		return
+	}
+	log.Debugf("dots client starting with config: %+v", config.String())
 
 	serverIPs, err := net.LookupIP(server)
 	if err != nil {

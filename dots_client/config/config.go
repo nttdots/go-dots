@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"io/ioutil"
 	"gopkg.in/yaml.v2"
 	log "github.com/sirupsen/logrus"
@@ -73,4 +74,55 @@ func LoadClientConfig(path string) (error) {
 */
 func GetSystemConfig() *ClientSystemConfig {
 	return config
+}
+
+// Convert config to String
+func (config *ClientSystemConfig) String() (result string) {
+	spaces3 := "   "
+	spaces6 := spaces3 + spaces3
+	result += "\nsystem:\n"
+	if config.DefaultSessionConfiguration != nil {
+		defaultSessionConfiguration := config.DefaultSessionConfiguration
+		result += fmt.Sprintf("%s%s:\n", spaces3, "defaultSessionConfiguration")
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "heartbeatInterval", defaultSessionConfiguration.HeartbeatInterval)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "missingHbAllowed", defaultSessionConfiguration.MissingHbAllowed)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "maxRetransmit", defaultSessionConfiguration.MaxRetransmit)
+		result += fmt.Sprintf("%s%s: %.2f\n", spaces6, "ackTimeout", defaultSessionConfiguration.AckTimeout)
+		result += fmt.Sprintf("%s%s: %.2f\n", spaces6, "ackRandomFactor", defaultSessionConfiguration.AckRandomFactor)
+	}
+	if config.ClientRestfulApiConfiguration != nil {
+		clientRestfulApiConfiguration := config.ClientRestfulApiConfiguration
+		result += fmt.Sprintf("%s%s:\n", spaces3, "clientRestfulApiConfiguration")
+		result += fmt.Sprintf("%s%s: \"%s\"\n", spaces6, "restfulApiAddress", clientRestfulApiConfiguration.RestfulApiAddress)
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "restfulApiPort", clientRestfulApiConfiguration.RestfulApiPort)
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "restfulApiPath", clientRestfulApiConfiguration.RestfulApiPath)
+	}
+	if config.NonConfirmableMessageTask != nil {
+		nonConfirmableMessageTask := config.NonConfirmableMessageTask
+		result += fmt.Sprintf("%s%s:\n", spaces3, "nonConfirmableMessageTask")
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskInterval", nonConfirmableMessageTask.TaskInterval)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskRetryNumber", nonConfirmableMessageTask.TaskRetryNumber)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskTimeout", nonConfirmableMessageTask.TaskTimeout)
+	}
+	if config.ConfirmableMessageTask != nil {
+		confirmableMessageTask := config.ConfirmableMessageTask
+		result += fmt.Sprintf("%s%s:\n", spaces3, "confirmableMessageTask")
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskInterval", confirmableMessageTask.TaskInterval)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskRetryNumber", confirmableMessageTask.TaskRetryNumber)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskTimeout", confirmableMessageTask.TaskTimeout)
+	}
+	result += fmt.Sprintf("%s%s: %d\n", spaces3, "intervalBeforeMaxAge", config.IntervalBeforeMaxAge)
+	if config.InitialRequestBlockSize != nil {
+		result += fmt.Sprintf("%s%s: %d\n", spaces3, "initialRequestBlockSize", *config.InitialRequestBlockSize)
+	}
+	if config.SecondRequestBlockSize != nil {
+		result += fmt.Sprintf("%s%s: %d\n", spaces3, "secondRequestBlockSize", *config.SecondRequestBlockSize)
+	}
+	if config.PinnedCertificate != nil {
+		pinnedCertificate := config.PinnedCertificate
+		result += fmt.Sprintf("%s%s:\n", spaces3, "pinnedCertificate")
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "referenceIdentifier", pinnedCertificate.ReferenceIdentifier)
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "presentIdentifierList", pinnedCertificate.PresentIdentifierList)
+	}
+	return
 }

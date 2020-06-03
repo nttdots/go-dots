@@ -85,7 +85,7 @@ func main() {
 	libcoap.CreateNewCache(int(messages.EXCHANGE_LIFETIME), config.CacheInterval)
 
 	// Register nack handler
-    signalCtx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
+    signalCtx.RegisterNackHandler(func(_ *libcoap.Context, session *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
 			// Pong message
 			env.HandleResponse(sent)
@@ -100,6 +100,7 @@ func main() {
 
 	// Register event handler
 	signalCtx.RegisterEventHandler(func(_ *libcoap.Context, event libcoap.Event, session *libcoap.Session){
+		env.SetCoapSession(session)
 		if event == libcoap.EventSessionConnected {
 			// Session connected: Add session to map
 			log.Debugf("New session connecting to dots server: %+v", session.String())
@@ -117,7 +118,8 @@ func main() {
 	// Set env
 	task.SetEnv(env)
 	// Register response handler
-	signalCtx.RegisterResponseHandler(func(_ *libcoap.Context, _ *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
+	signalCtx.RegisterResponseHandler(func(_ *libcoap.Context, session *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
+		env.SetCoapSession(session)
 		env.HandleResponse(received)
 	})
 	

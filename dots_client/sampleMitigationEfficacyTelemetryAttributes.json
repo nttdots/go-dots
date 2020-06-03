@@ -1,0 +1,25 @@
+{
+    "ietf-dots-signal-channel:mitigation-scope":{
+        "scope":[
+            {
+                "target-prefix":[
+                    "1.1.2.10/32"
+                ],
+                "lifetime":500,
+                "attack-status":1,
+                "ietf-dots-telemetry:total-attack-traffic":[
+                    {
+                        "ietf-dots-telemetry:unit":3,
+                        "ietf-dots-telemetry:protocol":6,
+                        "ietf-dots-telemetry:mid-percentile-g":900
+                    }
+                ],
+                "ietf-dots-telemetry::attack-detail":{
+                    "ietf-dots-telemetry:source-count":{
+                        "ietf-dots-telemetry:peak-g":10000
+                    }
+                }
+            }
+        ]
+    }
+}

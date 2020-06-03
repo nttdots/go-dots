@@ -1,0 +1,73 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "properties": {
+        "ietf-dots-telemetry:telemetry-setup": {
+            "type":"object",
+            "properties": {
+                "telemetry": {
+                    "type":"array",
+                    "items": {
+                        "current-config": {
+                            "$ref":"#definitions/CurrentConfig"
+                        },
+                        "total-pipe-capacity": {
+                            "$ref":"#definitions/TotalPipeCapacity"
+                        },
+                        "baseline": {
+                            "$ref":"#definitions/Baseline"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "CurrentConfig": {
+            "type":"object",
+            "properties": {
+                "measurement-interval": {
+                    "type":"integer"
+                },
+                "measurement-sample": {
+                    "type":"integer"
+                },
+                "low-percentile": {
+                    "type":"number"
+                },
+                "mid-percentile": {
+                    "type":"number"
+                },
+                "high-percentile": {
+                    "type":"number"
+                },
+                "unit-config": {
+                    "type":"array",
+                    "items": {
+                        "type":"object",
+                        "properties": {
+                            "unit": {
+                                "type":"integer"
+                            },
+                            "unit-status": {
+                                "type":"boolean"
+                            }
+                        }
+                    }
+                },
+                "server-originated-telemetry": {
+                    "type":"boolean"
+                },
+                "telemetry-notify-interval": {
+                    "type":"integer"
+                }
+            }
+        },
+        "TotalPipeCapacity": {
+
+        },
+        "Baseline": {
+
+        }
+    }
+  }
