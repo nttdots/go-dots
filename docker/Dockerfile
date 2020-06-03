@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 USER root
 ENV HOME /home
@@ -7,8 +7,8 @@ ENV HOME /home
 RUN apt-get update && apt-get -y install wget curl git build-essential autoconf automake libtool pkg-config gnutls-bin sudo vim
 RUN apt-get install -q -y libmysqld-dev
 
-# install go1.13.3
-RUN wget https://dl.google.com/go/go1.13.3.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.13.3.linux-amd64.tar.gz
+# install go1.13.5
+RUN wget https://dl.google.com/go/go1.13.5.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.13.5.linux-amd64.tar.gz
 RUN mkdir $HOME/go
 ENV PATH $PATH:/usr/local/go/bin
 ENV GOPATH $HOME/go
@@ -29,7 +29,7 @@ RUN echo '/usr/local/lib' >> /etc/ld.so.conf
 WORKDIR $HOME
 RUN git clone https://github.com/obgm/libcoap.git
 WORKDIR $HOME/libcoap
-RUN git checkout f1a5435193131ea0edbbdf2558d61244a768c961
+RUN git checkout 6fc3a7315f6629d804cc7928004cddeb4a84443c
 RUN ./autogen.sh
 RUN ./configure --disable-documentation --with-openssl
 RUN make && make install
