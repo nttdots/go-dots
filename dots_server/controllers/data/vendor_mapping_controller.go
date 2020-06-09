@@ -9,6 +9,7 @@ import (
 	"github.com/nttdots/go-dots/dots_server/db"
 	"github.com/nttdots/go-dots/dots_server/models"
 	"github.com/nttdots/go-dots/dots_server/models/data"
+	"github.com/nttdots/go-dots/dots_server/db_models/data"
 	log "github.com/sirupsen/logrus"
 	types    "github.com/nttdots/go-dots/dots_common/types/data"
 	messages "github.com/nttdots/go-dots/dots_common/messages/data"
@@ -115,6 +116,82 @@ func (vc *VendorMappingController) Put(customer *models.Customer, r *http.Reques
 	})
 }
 
+// Delete one vendor-mapping
+func (v *VendorMappingController) DeleteOne(customer *models.Customer, r *http.Request, p httprouter.Params) (Response, error) {
+	var errMsg string
+	cuid := p.ByName("cuid")
+	vendorId := p.ByName("vendorId")
+	log.WithField("cuid", cuid).WithField("vendor-id", vendorId).Info("[VendorMappingController] DELETE One")
+	// Check missing 'cuid'
+	if cuid == "" {
+		errMsg = "Missing required path 'cuid' value."
+		log.Error(errMsg)
+		return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, errMsg)
+	}
+	if vendorId == "" {
+		errMsg = "Missing required path 'vendor-id' value."
+		log.Error(errMsg)
+	    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, errMsg)
+	}
+	vId, err := strconv.Atoi(vendorId)
+	if err != nil {
+		errMsg := "Failed to convert 'vendor-id' to int"
+		log.Errorf(errMsg)
+		return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+	}
+	capabilities := getCapabilities()
+	if *capabilities.Capabilities.VendorMappingEnabled == false {
+		errMsg := "'vendor-mapping-enabled' is set to 'false'. Failed to Delete the Dots server's vendor attack mapping details."
+		log.Error(errMsg)
+	    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+	}
+	return WithTransaction(func (tx *db.Tx) (Response, error) {
+		return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
+			// Delete vendor-mapping
+			return deleteVendorAttackMapping(tx, client.Id, vId)
+		})
+	})
+}
+
+// Delete all vendor-mapping
+func (v *VendorMappingController) DeleteAll(customer *models.Customer, r *http.Request, p httprouter.Params) (Response, error) {
+	var errMsg string
+	cuid := p.ByName("cuid")
+	log.WithField("cuid", cuid).Info("[VendorMappingController] DELETE All")
+	// Check missing 'cuid'
+	if cuid == "" {
+		errMsg = "Missing required path 'cuid' value."
+		log.Error(errMsg)
+		return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, errMsg)
+	}
+	capabilities := getCapabilities()
+	if *capabilities.Capabilities.VendorMappingEnabled == false {
+		errMsg := "'vendor-mapping-enabled' is set to 'false'. Failed to Delete the Dots server's vendor attack mapping details."
+		log.Error(errMsg)
+	    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+	}
+	return WithTransaction(func (tx *db.Tx) (Response, error) {
+		return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
+			vendorList, err := data_models.FindVendorMappingByClientId(tx, &client.Id)
+			if err != nil {
+				return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, err.Error())
+			}
+			// If vendor-mapping doesn't exist, Dots server return 200
+			if len(vendorList) <= 0 {
+				return EmptyResponse(http.StatusNoContent)
+			}
+			// Delete vendor-mapping
+			for _, vendor := range vendorList {
+				res, err := deleteVendorAttackMapping(tx, client.Id, vendor.VendorId)
+				if res.Code != http.StatusNoContent {
+					return res, err
+				}
+			}
+			return EmptyResponse(http.StatusNoContent)
+		})
+	})
+}
+
 // Find vendor-mapping
 func findVendorMapping(tx *db.Tx, clientId *int64, cuid string, r *http.Request) (Response, error) {
 	// Find vendor-mapping by client_id
@@ -168,4 +245,36 @@ func GetVendorMappingByCuid(customer *models.Customer, cuid string) (res *types.
 		})
 	})
 	return
+}
+
+// Delete a vendor attack mapping
+func deleteVendorAttackMapping(tx *db.Tx, clientId int64, vId int) (Response, error) {
+	errMsg := ""
+	// Find vendor-mapping by vendor-id
+	e, err := data_models.FindVendorByVendorId(tx, clientId, vId)
+	if err != nil {
+		errMsg = fmt.Sprintf("Failed to get vendor with 'vendor-id' = %+v. Error: %+v", vId, err)
+		log.Errorf(errMsg)
+		return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+	}
+	if e.Id == 0 {
+		errMsg := fmt.Sprintf("Not Found vendor-mapping by specified vendor-id = %+v", vId)
+		log.Errorf(errMsg)
+		return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
+	}
+	// Delete vendor-mapping by id
+	err = data_db_models.DeleteVendorMappingById(tx.Session, e.Id)
+	if err != nil {
+		errMsg = fmt.Sprintf("Failed to delete vendor with 'vendor-id' = %+v. Error: %+v", vId, err)
+		log.Errorf(errMsg)
+		return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+	}
+	// Delete attack-mapping by vendor-mapping id
+	err = data_db_models.DeleteAttackMappingByVendorMappingId(tx.Session, e.Id)
+	if err != nil {
+		errMsg = fmt.Sprintf("Failed to delete attack-mapping with 'vendor-id' = %+v. Error: %+v", vId, err)
+		log.Errorf(errMsg)
+		return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+	}
+	return EmptyResponse(http.StatusNoContent)
 }

@@ -1,6 +1,7 @@
 package data_db_models
 
 import "time"
+import "github.com/go-xorm/xorm"
 
 type VendorMapping struct {
 	Id           int64     `xorm:"'id' pk autoincr"`
@@ -12,4 +13,10 @@ type VendorMapping struct {
 
 func (_ *AttackMapping) VendorMapping() string {
 	return "vendor_mapping"
+}
+
+// Delete uri filtering traffic
+func DeleteVendorMappingById(session *xorm.Session, id int64) (err error) {
+	_, err = session.Delete(&VendorMapping{Id: id})
+	return
 }

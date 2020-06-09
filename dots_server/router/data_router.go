@@ -128,7 +128,10 @@ func CreateRouter() *httprouter.Router {
   r.PUT (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/ietf-dots-mapping:vendor-mapping/vendor-id=:vendorId", Wrap(vendors.Put))
   r.GET (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/ietf-dots-mapping:vendor-mapping", Wrap(vendors.Get))
   r.GET (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/ietf-dots-mapping:vendor-mapping", Wrap(vendors.GetVendorMappingOfServer))
+  r.DELETE (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/ietf-dots-mapping:vendor-mapping", Wrap(vendors.DeleteAll))
+  r.DELETE (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/ietf-dots-mapping:vendor-mapping/vendor-id=:vendorId", Wrap(vendors.DeleteOne))
   // Send request vendors missing vendor-id
   r.PUT (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/ietf-dots-mapping:vendor-mapping/vendor-id=", Wrap(vendors.Put))
+  r.DELETE (config.Network.HrefPathname + "/data/ietf-dots-data-channel:dots-data/dots-client=:cuid/ietf-dots-mapping:vendor-mapping/vendor-id=", Wrap(vendors.DeleteOne))
   return r
 }

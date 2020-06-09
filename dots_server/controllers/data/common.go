@@ -189,12 +189,17 @@ func WithTransaction(f func(*db.Tx) (Response, error)) (Response, error) {
 }
 
 func WithClient(tx *db.Tx, customer *models.Customer, cuid string, f func(*data_models.Client) (Response, error)) (Response, error) {
+  errMsg :=""
   client, err := data_models.FindClientByCuid(tx, customer, cuid)
   if err != nil {
-    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get dot-client")
+    errMsg = "Fail to get dot-client"
+    log.Errorf(errMsg)
+    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
   }
   if client == nil {
-    return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found dot-client by specified cuid")
+    errMsg = "Not Found dot-client by specified cuid"
+    log.Errorf(errMsg)
+    return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
   }
   return f(client)
 }

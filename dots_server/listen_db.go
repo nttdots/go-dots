@@ -445,7 +445,7 @@ func handleNotifyUriFilteringTelemetryPreMitigation(mapData map[string]interface
 		for _, v := range uriQueryPaths {
 			uriQueryPath := strings.Split(v, "?")
 			queries := strings.Split(uriQueryPath[1], "&")
-			isExist, err := models.IsExistTelemetryPreMitigationValueByQueries(queries, preMitigation)
+			isExist, err := models.IsExistTelemetryPreMitigationValueByQueries(queries, preMitigation.CustomerId, preMitigation.Cuid, preMitigation)
 			if err != nil {
 				return
 			}

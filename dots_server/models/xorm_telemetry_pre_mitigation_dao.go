@@ -8,6 +8,7 @@ import (
 	"github.com/go-xorm/xorm"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_server/db_models"
+	"github.com/nttdots/go-dots/dots_server/db_models/data"
 	log "github.com/sirupsen/logrus"
 	types "github.com/nttdots/go-dots/dots_common/types/data"
 )
@@ -1021,7 +1022,7 @@ func GetTelemetryPreMitigationAttributes(customerId int, cuid string, telePremit
 		return
 	}
 	// Get attack detail
-	preMitigation.AttackDetail, err = GetAttackDetail(engine, telePremitigationId)
+	preMitigation.AttackDetail, err = GetAttackDetail(engine, customerId, cuid, telePremitigationId)
 	if err != nil {
 		return
 	}
@@ -1426,7 +1427,14 @@ func GetConnectionProtocolPortPercentile(engine *xorm.Engine, telePreMitigationI
 }
 
 // Get attack detail
-func GetAttackDetail(engine *xorm.Engine, telePremitigationId int64) ([]AttackDetail, error) {
+func GetAttackDetail(engine *xorm.Engine, customerId int, cuid string, telePremitigationId int64) ([]AttackDetail, error) {
+	// Get data_clients
+	client := data_db_models.Client{}
+	_, err := engine.Where("customer_id=? AND cuid=?", customerId, cuid).Get(&client)
+	if err != nil {
+		log.Error("Failed to get data_clients. Err: %+v", err)
+		return nil, err
+	}
 	attackDetailList := []AttackDetail{}
 	// Get attack-detail
 	dbAds, err := db_models.GetAttackDetailByTelePreMitigationId(engine, telePremitigationId)
@@ -1438,7 +1446,15 @@ func GetAttackDetail(engine *xorm.Engine, telePremitigationId int64) ([]AttackDe
 		attackDetail := AttackDetail{}
 		attackDetail.VendorId = dbAd.VendorId
 		attackDetail.AttackId = dbAd.AttackId
-		attackDetail.AttackName = dbAd.AttackName
+		isExist, err := IsExistedVendorAttackMapping(engine, client.Id, attackDetail.VendorId, attackDetail.AttackId)
+		if err != nil {
+			return nil, err
+		}
+		if isExist {
+			attackDetail.AttackName = ""
+		} else {
+			attackDetail.AttackName = dbAd.AttackName
+		}
 		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
 		attackDetail.StartTime = dbAd.StartTime
 		attackDetail.EndTime = dbAd.EndTime
@@ -1799,7 +1815,7 @@ func GetUriFilteringTelemetryPreMitigation(customerId int, cuid string, tmid *in
 	}
 	if len(queries) > 0 {
 		for _, v := range dbPreMitigation {
-			isExist, err := IsExistTelemetryPreMitigationValueByQueries(queries, v)
+			isExist, err := IsExistTelemetryPreMitigationValueByQueries(queries, customerId, cuid, v)
 			if err != nil {
 				return nil, err
 			}
@@ -1819,7 +1835,7 @@ func GetUriFilteringTelemetryPreMitigation(customerId int, cuid string, tmid *in
  *    true: if existed
  *    false: if doesn't exist
  */
-func IsExistTelemetryPreMitigationValueByQueries(queries []string, preMitigation db_models.UriFilteringTelemetryPreMitigation) (bool, error) {
+func IsExistTelemetryPreMitigationValueByQueries(queries []string, customerId int, cuid string, preMitigation db_models.UriFilteringTelemetryPreMitigation) (bool, error) {
 	isExistTarget := false
 	isExistSource := false
 	targetPrefix, targetPort, targetProtocol, targetFqdn, _, aliasName, sourcePrefix, sourcePort, sourceIcmpType, _ := GetQueriesFromUriQuery(queries)
@@ -1828,7 +1844,7 @@ func IsExistTelemetryPreMitigationValueByQueries(queries []string, preMitigation
 		isExistTarget = true
 	}
 	if sourcePrefix != "" || sourcePort != "" || sourceIcmpType != "" {
-		attackDetailList, err := GetUriFilteringAttackDetail(engine, preMitigation.Id)
+		attackDetailList, err := GetUriFilteringAttackDetail(engine, customerId, cuid, preMitigation.Id)
 		if err != nil {
 			return false, err
 		}
@@ -1950,7 +1966,7 @@ func GetUriFilteringTelemetryPreMitigationAttributes(customerId int, cuid string
 			return
 		}
 		// Get attack detail
-		preMitigation.AttackDetail, err = GetUriFilteringAttackDetail(engine, ufPreMitigation.Id)
+		preMitigation.AttackDetail, err = GetUriFilteringAttackDetail(engine, customerId, cuid, ufPreMitigation.Id)
 		if err != nil {
 			return
 		}
@@ -2168,7 +2184,14 @@ func GetUriFilteringConnectionProtocolPortPercentile(engine *xorm.Engine, telePr
 }
 
 // Get uri filtering attack detail
-func GetUriFilteringAttackDetail(engine *xorm.Engine, preMitigationId int64) ([]AttackDetail, error) {
+func GetUriFilteringAttackDetail(engine *xorm.Engine, customerId int, cuid string, preMitigationId int64) ([]AttackDetail, error) {
+	// Get data_clients
+	client := data_db_models.Client{}
+	_, err := engine.Where("customer_id=? AND cuid=?", customerId, cuid).Get(&client)
+	if err != nil {
+		log.Error("Failed to get data_clients. Err: %+v", err)
+		return nil, err
+	}
 	attackDetailList := []AttackDetail{}
 	// Get attack-detail
 	dbAds, err := db_models.GetUriFilteringAttackDetailByTelePreMitigationId(engine, preMitigationId)
@@ -2180,7 +2203,15 @@ func GetUriFilteringAttackDetail(engine *xorm.Engine, preMitigationId int64) ([]
 		attackDetail := AttackDetail{}
 		attackDetail.VendorId = dbAd.VendorId
 		attackDetail.AttackId = dbAd.AttackId
-		attackDetail.AttackName = dbAd.AttackName
+		isExist, err := IsExistedVendorAttackMapping(engine, client.Id, attackDetail.VendorId, attackDetail.AttackId)
+		if err != nil {
+			return nil, err
+		}
+		if isExist {
+			attackDetail.AttackName = ""
+		} else {
+			attackDetail.AttackName = dbAd.AttackName
+		}
 		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
 		attackDetail.StartTime = dbAd.StartTime
 		attackDetail.EndTime = dbAd.EndTime
@@ -2485,6 +2516,31 @@ func GetUriFilteringTopTalkerById(id int64) (dbTopTalker db_models.UriFilteringT
 
 	}
 	return
+}
+
+/*
+ * Check vendor-mapping is exist
+ * true: if existed
+ * false: if doesn't exist
+ */
+func IsExistedVendorAttackMapping(engine *xorm.Engine, clientId int64, vendorId int, attackId int) (bool, error) {
+	// Find vendor-mapping by vendor-id
+	dbVendor := data_db_models.VendorMapping{}
+	_, err := engine.Where("data_client_id = ? AND vendor_id = ?", clientId, vendorId).Get(&dbVendor)
+	if err != nil {
+		log.Errorf("Failed to get vendor-mapping. Err: %+v", err)
+		return false, err
+	}
+	dbAttackMapping := data_db_models.AttackMapping{}
+	_, err = engine.Where("vendor_mapping_id = ? AND attack_id = ?", dbVendor.Id, attackId).Get(&dbAttackMapping)
+	if err != nil {
+		log.Errorf("Failed to get attack-mapping. Err: %+v", err)
+		return false, err
+	}
+	if dbAttackMapping.Id == 0 {
+		return false, nil
+	}
+	return true, nil
 }
 
 // Delete one telemetry pre-mitigation

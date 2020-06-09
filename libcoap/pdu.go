@@ -464,7 +464,7 @@ func (code Code) HttpCode() int {
         case ResponseCreated:              return http.StatusCreated
         case ResponseDeleted:              return http.StatusOK
         case ResponseValid:                return http.StatusNotModified
-        case ResponseChanged:              return http.StatusOK
+        case ResponseChanged:              return http.StatusNoContent
         case ResponseContent:              return http.StatusOK
         case ResponseBadRequest:           return http.StatusBadRequest
         case ResponseUnauthorized:         return http.StatusUnauthorized
