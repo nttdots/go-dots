@@ -162,8 +162,9 @@ func (vendors Vendors) ToTypesVendorMapping(depth *int) (*types.VendorMapping) {
 				for _, a := range v.AttackMapping {
 					attack := types.AttackMapping{}
 					attackId := uint32(a.AttackId)
+					attackName := a.AttackName
 					attack.AttackId   = &attackId
-					attack.AttackName = &a.AttackName
+					attack.AttackName = &attackName
 					vendor.AttackMapping = append(vendor.AttackMapping, attack)
 				}
 			} else {
