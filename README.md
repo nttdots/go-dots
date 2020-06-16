@@ -27,10 +27,10 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.13.5 or later is required. (for the latest GoBGP - v2.12.0)
+  * go 1.13.5 or later is required. (for the latest GoBGP - v2.17.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
-  * OpenSSL 1.1.1d or higher (for libcoap)
+  * OpenSSL 1.1.1g or higher (for libcoap)
 
 * MySQL 5.7.x and its development package (MySQL 8.0.x or higher not yet supported)
   * Install mysql development package in Ubuntu:
@@ -388,6 +388,14 @@ Get vendor-mapping
 
     Get vendor-mapping without 'depth' and 'content'
     $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping?content=all
+
+Delete vendor-mapping
+
+    Delete one vendor-mapping
+    $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping/vendor-id=345
+
+    Delete all vendor-mapping
+    $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/ietf-dots-mapping:vendor-mapping
 
 ## Signal Channel Control Filtering
 Unlike the DOTS signal channel, the DOTS data channel is not expected to deal with attack conditions.
