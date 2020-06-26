@@ -61,7 +61,7 @@ type Capabilities_TCP struct {
 type Capabilities_UDP struct {
   Length          *bool `yang:"nonconfig" json:"length"`
   SourcePort      *bool `yang:"nonconfig" json:"source-port"`
-  DestinationPort *bool `yang:"nonconfig" json:"destination-port-"`
+  DestinationPort *bool `yang:"nonconfig" json:"destination-port"`
   PortRange       *bool `yang:"nonconfig" json:"port-range"`
 }
 

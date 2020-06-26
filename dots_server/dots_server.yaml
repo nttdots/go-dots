@@ -112,6 +112,38 @@ system:
     manageLifetimeInterval: 100
     conflictRetryTimer: 120
 
+  # Default value of Filtering capabilities
+  capabilities:
+    addressFamily: ipv4,ipv6
+    forwardingActions: drop,accept
+    rateLimit: true
+    transportProtocols: 1,6,17,58
+    ipv4:
+      length: true
+      protocol: true
+      destinationPrefix: true
+      sourcePrefix: true
+      fragment: true
+    ipv6:
+      length: true
+      protocol: true
+      destinationPrefix: true
+      sourcePrefix: true
+      fragment: true
+    tcp:
+      flagsBitmask: true
+      sourcePort: true
+      destinationPort: true
+      portRange: true
+    udp:
+      length: true
+      sourcePort: true
+      destinationPort: true
+      portRange: true
+    icmp:
+      type: true
+      code: true
+
   # Time(seconds) max-age of session configuration
   maxAgeOption: 45
   # Time interval to delete expired items in cache

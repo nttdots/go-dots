@@ -11,6 +11,7 @@ import (
 
 	"github.com/hashicorp/hcl"
 	"gopkg.in/yaml.v2"
+	types "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
 /*
@@ -126,6 +127,45 @@ type LifetimeConfigurationNode struct {
 	MaxActiveButTerminatingPeriod string `yaml:"maxActiveButTerminatingPeriod"`
 	ManageLifetimeInterval        string `yaml:"manageLifetimeInterval"`
 	ConflictRetryTimer            string `yaml:"conflictRetryTimer"`
+}
+
+type CapabilitiesNode struct {
+	AddressFamily      string   `yaml:"addressFamily"`
+	ForwardingActions  string   `yaml:"forwardingActions"`
+	RateLimit          bool     `yaml:"rateLimit"`
+	TransportProtocols string   `yaml:"transportProtocols"`
+	IPv4               IPNode   `yaml:"ipv4"`
+	IPv6               IPNode   `yaml:"ipv6"`
+	TCP                TCPNode  `yaml:"tcp"`
+	UDP                UDPNode  `yaml:"udp"`
+	ICMP               ICMPNode `yaml:"icmp"`
+}
+
+type IPNode struct {
+	Length            bool `yaml:"length"`
+	Protocol          bool `yaml:"protocol"`
+	DestinationPrefix bool `yaml:"destinationPrefix"`
+	SourcePrefix      bool `yaml:"sourcePrefix"`
+	Fragment          bool `yaml:"fragment"`
+}
+
+type TCPNode struct {
+	FlagsBitmask    bool `yaml:"flagsBitmask"`
+	SourcePort      bool `yaml:"sourcePort"`
+	DestinationPort bool `yaml:"destinationPort"`
+	PortRange       bool `yaml:"portRange"`
+}
+
+type UDPNode struct {
+	Length          bool `yaml:"length"`
+	SourcePort      bool `yaml:"sourcePort"`
+	DestinationPort bool `yaml:"destinationPort"`
+	PortRange       bool `yaml:"portRange"`
+}
+
+type ICMPNode struct {
+	Type bool `yaml:"type"`
+	Code bool `yaml:"code"`
 }
 
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
@@ -358,6 +398,85 @@ func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
 	}, nil
 }
 
+func (cn CapabilitiesNode) Convert() (interface{}, error) {
+	var addressFamily      []string
+	var forwardingActions  []string
+	var transportProtocols []uint8
+	var ipv4 IP
+	var ipv6 IP
+	var tcp  TCP
+	var udp  UDP
+	var icmp ICMP
+	// address-family
+	addressFamilyList := strings.Split(cn.AddressFamily, ",")
+	if len(addressFamilyList) > 1 {
+		for _, af := range addressFamilyList {
+			if af != string(types.AddressFamily_IPv4) && af != string(types.AddressFamily_IPv6) {
+				errStr := fmt.Sprintf("Invalid address-family with value: %+v", af)
+				return nil, errors.New(errStr)
+			}
+			addressFamily = append(addressFamily, af)
+		}
+	} else {
+		addressFamily = append(addressFamily, cn.AddressFamily)
+	}
+	// forwarding-actions
+	forwardingActionList := strings.Split(cn.ForwardingActions, ",")
+	if len(forwardingActionList) > 1 {
+		for _, fa := range forwardingActionList {
+			if fa != string(types.ForwardingAction_Accept) && fa != string(types.ForwardingAction_Drop) && fa != string(types.ForwardingAction_RateLimit) {
+				errStr := fmt.Sprintf("Invalid forwarding-actions with value: %+v", fa)
+				return nil, errors.New(errStr)
+			}
+			forwardingActions = append(forwardingActions, fa)
+		}
+	} else {
+		forwardingActions = append(forwardingActions, cn.ForwardingActions)
+	}
+	// transport-protocols
+	transportProtocolList := strings.Split(cn.TransportProtocols, ",")
+	if len(transportProtocolList) > 1 {
+		for _, tp := range transportProtocolList {
+			protocol, err := strconv.Atoi(tp)
+			if err != nil {
+				return nil, err
+			}
+			if protocol < 0 || protocol > 255 {
+				errStr := fmt.Sprintf("Invalid transport-protocols with value: %+v", protocol)
+				return nil, errors.New(errStr)
+			}
+			transportProtocols = append(transportProtocols, uint8(protocol))
+		}
+	} else {
+		protocol, err := strconv.Atoi(cn.TransportProtocols)
+			if err != nil {
+				return nil, err
+			}
+		transportProtocols = append(transportProtocols, uint8(protocol))
+	}
+	// ipv4
+	ipv4 = IP{cn.IPv4.Length, cn.IPv4.Protocol, cn.IPv4.DestinationPrefix, cn.IPv4.SourcePrefix, cn.IPv4.Fragment}
+	// ipv6
+	ipv6 = IP{cn.IPv6.Length, cn.IPv6.Protocol, cn.IPv6.DestinationPrefix, cn.IPv6.SourcePrefix, cn.IPv6.Fragment}
+	// tcp
+	tcp = TCP{cn.TCP.FlagsBitmask, cn.TCP.SourcePort, cn.TCP.DestinationPort, cn.TCP.PortRange}
+	// udp
+	udp = UDP{cn.UDP.Length, cn.UDP.SourcePort, cn.UDP.DestinationPort, cn.UDP.PortRange}
+	// icmp
+	icmp = ICMP{cn.ICMP.Type, cn.ICMP.Code}
+	return &Capabilities{
+		AddressFamily:      addressFamily,
+		ForwardingActions:  forwardingActions,
+		RateLimit:          cn.RateLimit,
+		TransportProtocols: transportProtocols,
+		IPv4:               ipv4,
+		IPv6:               ipv6,
+		TCP:                tcp,
+		UDP:                udp,
+		ICMP:               icmp,
+	}, nil
+}
+
 func  ConvertMaxAge(maxAge string) (uint, error) {
 	var m int
 	if maxAge != "" {
@@ -541,6 +660,7 @@ type ServerSystemConfig struct {
 	Network                           *Network
 	Database                          *Database
 	LifetimeConfiguration             *LifetimeConfiguration
+	Capabilities                      *Capabilities
 	MaxAgeOption                      uint
 	CacheInterval                     int
 	QueryType                         []int
@@ -560,6 +680,7 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setNetwork(*sc.Network)
 	GetServerSystemConfig().setDatabase(*sc.Database)
 	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
+	GetServerSystemConfig().setCapabilities(*sc.Capabilities)
 	GetServerSystemConfig().setMaxAgeOption(sc.MaxAgeOption)
 	GetServerSystemConfig().setCacheInterval(sc.CacheInterval)
 	GetServerSystemConfig().setQueryType(sc.QueryType)
@@ -579,6 +700,7 @@ type ServerSystemConfigNode struct {
 	Network                           NetworkNode                           `yaml:"network"`
 	Database                          DatabaseNode                          `yaml:"database"`
 	LifetimeConfiguration             LifetimeConfigurationNode             `yaml:"lifetimeConfiguration"`
+	Capabilities                      CapabilitiesNode                      `yaml:"capabilities"`
 	MaxAgeOption                      string                                `yaml:"maxAgeOption"`
 	CacheInterval                     string                                `yaml:"cacheInterval"`
 	QueryType                         string                                `yaml:"queryType"`
@@ -646,6 +768,11 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
+	capabilities, err := scn.Capabilities.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	maxAgeOption, err := ConvertMaxAge(scn.MaxAgeOption)
 	if err != nil {
 		return nil, err
@@ -670,10 +797,11 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		Network:                           network.(*Network),
 		Database:                          database.(*Database),
 		LifetimeConfiguration:             lifetimeConfiguration.(*LifetimeConfiguration),
+		Capabilities:                      capabilities.(*Capabilities),
 		MaxAgeOption:                      maxAgeOption,
 		CacheInterval:                     cacheInterval,
 		QueryType:                         queryType,
-		VendorMappingEnabled:               scn.VendorMappingEnabled,
+		VendorMappingEnabled:              scn.VendorMappingEnabled,
 	}, nil
 }
 
@@ -723,6 +851,10 @@ func (sc *ServerSystemConfig) setDatabase(config Database) {
 
 func (sc *ServerSystemConfig) setLifetimeConfiguration(parameter LifetimeConfiguration) {
 	sc.LifetimeConfiguration = &parameter
+}
+
+func (sc *ServerSystemConfig) setCapabilities(parameter Capabilities) {
+	sc.Capabilities = &parameter
 }
 
 func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint) {
@@ -1089,6 +1221,45 @@ type LifetimeConfiguration struct {
 	MaxActiveButTerminatingPeriod  int
 	ManageLifetimeInterval	       int
 	ConflictRetryTimer             int
+}
+
+type Capabilities struct {
+	AddressFamily      []string
+	ForwardingActions  []string
+	RateLimit          bool
+	TransportProtocols []uint8
+	IPv4               IP
+	IPv6               IP
+	TCP                TCP
+	UDP                UDP
+	ICMP               ICMP
+}
+
+type IP struct {
+	Length            bool
+	Protocol          bool
+	DestinationPrefix bool
+	SourcePrefix      bool
+	Fragment          bool
+}
+
+type TCP struct {
+	FlagsBitmask    bool
+	SourcePort      bool
+	DestinationPort bool
+	PortRange       bool
+}
+
+type UDP struct {
+	Length          bool
+	SourcePort      bool
+	DestinationPort bool
+	PortRange       bool
+}
+
+type ICMP struct {
+	Type bool
+	Code bool
 }
 
 func (scp *SignalConfigurationParameter) Store() {
