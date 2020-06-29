@@ -11,7 +11,7 @@
 * draft-ietf-dots-architecture-18
 * RFC 8612 (was draft-ietf-dots-requirements)
 * draft-ietf-dots-use-cases-21
-* draft-ietf-dots-signal-filter-control-04
+* draft-ietf-dots-signal-filter-control-07
 * draft-ietf-dots-signal-call-home-08
 * draft-ietf-dots-telemetry-08
 

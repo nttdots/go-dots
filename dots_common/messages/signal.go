@@ -17,8 +17,8 @@ type ICMPTypeRange struct {
 
 type ACL struct {
 	_struct        bool   `codec:",uint"` //encode struct with "unsigned integer" keys
-	AclName        string `json:"ietf-dots-signal-control:acl-name" codec:"54,omitempty"`
-	ActivationType *int   `json:"ietf-dots-signal-control:activation-type" codec:"52,omitempty"`
+	AclName        string `json:"acl-name" codec:"23,omitempty"`
+	ActivationType *int   `json:"activation-type" codec:"52,omitempty"`
 }
 
 type MitigationScope struct {
@@ -266,9 +266,9 @@ func (m *MitigationRequest) String() (result string) {
 		if scope.AclList != nil {
 			for k, v := range scope.AclList {
 				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-signal-control:acl-list", k+1)
-				result += fmt.Sprintf("%s\"%s\": %s\n", spaces9, "ietf-dots-signal-control:acl-name", v.AclName)
+				result += fmt.Sprintf("%s\"%s\": %s\n", spaces9, "acl-name", v.AclName)
 				if v.ActivationType != nil {
-					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "ietf-dots-signal-control:activation-type", *v.ActivationType)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "activation-type", *v.ActivationType)
 				}
 			}
 		}
