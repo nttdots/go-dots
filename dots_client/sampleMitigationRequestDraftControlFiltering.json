@@ -22,8 +22,8 @@
         ],
         "ietf-dots-signal-control:acl-list": [
           {
-              "ietf-dots-signal-control:acl-name": "sample-ipv6-acl",
-              "ietf-dots-signal-control:activation-type": 3
+              "acl-name": "sample-ipv6-acl",
+              "activation-type": 3
           }
         ],
         "lifetime": 100,

@@ -232,7 +232,7 @@ type ConflictScope struct {
 // Acl filtering rule for white list that conflict with attacking target (not implemented)
 type Acl struct {
 	_struct   bool    `codec:",uint"`        //encode struct with "unsigned integer" keys
-	AclName   string  `json:"alc-name" codec:"23,omitempty"`
+	AclName   string  `json:"acl-name" codec:"23,omitempty"`
 	AclType   string  `json:"acl-type" codec:"24,omitempty"`
 }
 
@@ -286,9 +286,9 @@ func (m *MitigationResponse) String() (result string) {
 		}
 		for k, v := range scope.AclList {
 			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-signal-control:acl-list", k+1)
-			result += fmt.Sprintf("%s\"%s\": %s\n", spaces9, "ietf-dots-signal-control:acl-name", v.AclName)
+			result += fmt.Sprintf("%s\"%s\": %s\n", spaces9, "acl-name", v.AclName)
 			if v.ActivationType != nil {
-				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "ietf-dots-signal-control:activation-type", *v.ActivationType)
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "activation-type", *v.ActivationType)
 			}
 		}
 		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "lifetime", scope.Lifetime)
