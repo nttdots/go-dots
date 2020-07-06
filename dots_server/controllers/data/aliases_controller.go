@@ -152,6 +152,7 @@ func (c *AliasesController) Delete(customer *models.Customer, r *http.Request, p
 func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p httprouter.Params) (Response, error) {
   now := time.Now()
   cuid := p.ByName("cuid")
+  cdid := p.ByName("cdid")
   name := p.ByName("alias")
   errMsg := ""
   log.WithField("cuid", cuid).WithField("alias", name).Info("[AliasesController] PUT")
@@ -198,6 +199,12 @@ func (c *AliasesController) Put(customer *models.Customer, r *http.Request, p ht
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (Response, error) {
+      // If the request contains 'cuid' and 'cdid' but DOTS server doesn't maintain 'cdid' for this 'cuid', DOTS server will response 403 Forbidden
+      if cdid != "" && (client.Cdid == nil || ( client.Cdid != nil && cdid != *client.Cdid)) {
+        errMsg := fmt.Sprintf("Dots server does not maintain a 'cdid' for client with cuid = %+v", client.Cuid)
+        log.Error(errMsg)
+        return ErrorResponse(http.StatusForbidden, ErrorTag_Access_Denied, errMsg)
+      }
       alias := req.Aliases.Alias[0]
       e, err := data_models.FindAliasByName(tx, client, alias.Name, now)
       if err != nil {

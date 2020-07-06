@@ -47,6 +47,12 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (res Response, err error) {
+      // If the request contains 'cuid' and 'cdid' but DOTS server doesn't maintain 'cdid' for this 'cuid', DOTS server will response 403 Forbidden
+      if cdid != "" && (client.Cdid == nil || ( client.Cdid != nil && cdid != *client.Cdid)) {
+        errMsg := fmt.Sprintf("Dots server does not maintain a 'cdid' for client with cuid = %+v", client.Cuid)
+        log.Error(errMsg)
+        return ErrorResponse(http.StatusForbidden, ErrorTag_Access_Denied, errMsg)
+      }
       switch req := ir.(type) {
       case *messages.AliasesRequest:
         res, err = postAliases(tx, client, req, now)
@@ -178,10 +184,6 @@ func postAcls(tx *db.Tx, client *data_models.Client, customer *models.Customer, 
 // Post vendor-mapping
 func postVendorMapping(tx *db.Tx, client *data_models.Client, req *messages.VendorMappingRequest, cdid string) (Response, error) {
   var errMsg string
-  if client != nil && client.Cdid == nil && cdid != "" {
-    errMsg = fmt.Sprintf("Dots server has not maintain a 'cdid' for client with cuid = %+v", client.Cuid)
-    return ErrorResponse(http.StatusForbidden, ErrorTag_Access_Denied, errMsg)
-  }
   errMsg = messages.ValidateVendorMapping(req)
   if errMsg != "" {
     log.Errorf(errMsg)
