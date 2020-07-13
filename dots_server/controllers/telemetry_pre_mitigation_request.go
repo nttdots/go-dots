@@ -332,7 +332,7 @@ func handleGetOneTelemetryPreMitigation(customer *models.Customer, cuid string, 
 		if err != nil {
 			return Response{}, err
 		}
-		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigation)
+		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigation, "")
 		if err != nil {
 			return Response{}, err
 		}
@@ -368,7 +368,13 @@ func handleGetOneTelemetryPreMitigation(customer *models.Customer, cuid string, 
 		if err != nil {
 			return Response{}, err
 		}
-		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigationList[0])
+		content := ""
+		for _, query := range queries {
+			if (strings.HasPrefix(query, "c=")){
+				content = query[strings.Index(query, "c=")+2:]
+			}
+		}
+		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigationList[0], content)
 		if err != nil {
 			return Response{}, err
 		}
@@ -418,7 +424,7 @@ func handleGetAllTelemetryPreMitigation(customer *models.Customer, cuid string, 
 				if err != nil {
 					return Response{}, err
 				}
-				preMitigationResp, err := convertToTelemetryPreMitigationRespone(customer.Id, cuid, telePreMitigation.Tmid, tmpPreMitigation)
+				preMitigationResp, err := convertToTelemetryPreMitigationRespone(customer.Id, cuid, telePreMitigation.Tmid, tmpPreMitigation, "")
 				if err != nil {
 					return Response{}, err
 				}
@@ -432,7 +438,7 @@ func handleGetAllTelemetryPreMitigation(customer *models.Customer, cuid string, 
 				return Response{}, err
 			}
 			for _, v := range preMitigationList {
-				preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, v.Tmid, v)
+				preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, v.Tmid, v, "")
 				if err != nil {
 					return Response{}, err
 				}
@@ -452,39 +458,45 @@ func handleGetAllTelemetryPreMitigation(customer *models.Customer, cuid string, 
 }
 
 // Covert telemetryPreMitigation to PreMitigationResponse
-func convertToTelemetryPreMitigationRespone(customerId int, cuid string, tmid int, preMitigation models.TelemetryPreMitigation) (preMitigationResp messages.PreOrOngoingMitigationResponse, err error) {
+func convertToTelemetryPreMitigationRespone(customerId int, cuid string, tmid int, preMitigation models.TelemetryPreMitigation, content string) (preMitigationResp messages.PreOrOngoingMitigationResponse, err error) {
 	preMitigationResp = messages.PreOrOngoingMitigationResponse{}
 	preMitigationResp.Tmid = tmid
-	// targets response
-	preMitigationResp.Target = convertToTargetResponse(preMitigation.Targets)
-	// total traffic response
-	preMitigationResp.TotalTraffic = convertToTrafficResponse(preMitigation.TotalTraffic)
-	// total traffic protocol response
-	preMitigationResp.TotalTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalTrafficProtocol)
-	// total traffic port response
-	preMitigationResp.TotalTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalTrafficPort)
-	// total attack traffic response
-	preMitigationResp.TotalAttackTraffic = convertToTrafficResponse(preMitigation.TotalAttackTraffic)
-	// total attack traffic protocol response
-	preMitigationResp.TotalAttackTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalAttackTrafficProtocol)
-	// total attack traffic port response
-	preMitigationResp.TotalAttackTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalAttackTrafficPort)
-	// total attack connection response
-	if len(preMitigation.TotalAttackConnection.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnection.MidPercentileL) > 0 ||
-	   len(preMitigation.TotalAttackConnection.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnection.PeakL) > 0 {
-		preMitigationResp.TotalAttackConnection = convertToTotalAttackConnectionResponse(preMitigation.TotalAttackConnection)
-	} else {
-		preMitigationResp.TotalAttackConnection = nil
+	// 'c' query is null, all or config
+	if content == "" || content == string(messages.ALL) || content == string(messages.CONFIG) {
+		// targets response
+		preMitigationResp.Target = convertToTargetResponse(preMitigation.Targets)
 	}
-	// total attack connection port response
-	if len(preMitigation.TotalAttackConnectionPort.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.MidPercentileL) > 0 ||
-	   len(preMitigation.TotalAttackConnectionPort.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.PeakL) > 0 {
-		preMitigationResp.TotalAttackConnectionPort = convertToTotalAttackConnectionPortResponse(preMitigation.TotalAttackConnectionPort)
-	} else {
-		preMitigationResp.TotalAttackConnection = nil
+	// 'c' query is null, all or non-config
+	if content == "" || content == string(messages.ALL) || content == string(messages.NON_CONFIG) {
+		// total traffic response
+		preMitigationResp.TotalTraffic = convertToTrafficResponse(preMitigation.TotalTraffic)
+		// total traffic protocol response
+		preMitigationResp.TotalTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalTrafficProtocol)
+		// total traffic port response
+		preMitigationResp.TotalTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalTrafficPort)
+		// total attack traffic response
+		preMitigationResp.TotalAttackTraffic = convertToTrafficResponse(preMitigation.TotalAttackTraffic)
+		// total attack traffic protocol response
+		preMitigationResp.TotalAttackTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalAttackTrafficProtocol)
+		// total attack traffic port response
+		preMitigationResp.TotalAttackTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalAttackTrafficPort)
+		// total attack connection response
+		if len(preMitigation.TotalAttackConnection.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnection.MidPercentileL) > 0 ||
+		len(preMitigation.TotalAttackConnection.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnection.PeakL) > 0 {
+			preMitigationResp.TotalAttackConnection = convertToTotalAttackConnectionResponse(preMitigation.TotalAttackConnection)
+		} else {
+			preMitigationResp.TotalAttackConnection = nil
+		}
+		// total attack connection port response
+		if len(preMitigation.TotalAttackConnectionPort.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.MidPercentileL) > 0 ||
+		len(preMitigation.TotalAttackConnectionPort.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.PeakL) > 0 {
+			preMitigationResp.TotalAttackConnectionPort = convertToTotalAttackConnectionPortResponse(preMitigation.TotalAttackConnectionPort)
+		} else {
+			preMitigationResp.TotalAttackConnection = nil
+		}
+		// Get attack detail response
+		preMitigationResp.AttackDetail = convertToAttackDetailResponse(preMitigation.AttackDetail)
 	}
-	// Get attack detail response
-	preMitigationResp.AttackDetail = convertToAttackDetailResponse(preMitigation.AttackDetail)
 	return preMitigationResp, nil
 }
 
@@ -954,7 +966,7 @@ func validateQueryParameter(queries []string) (errMsg string) {
 		return
 	}
 	// Get query values from uri-query
-	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, sourcePrefix, sourcePort, sourceIcmpType, errMsg := models.GetQueriesFromUriQuery(queries)
+	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, sourcePrefix, sourcePort, sourceIcmpType, content, errMsg := models.GetQueriesFromUriQuery(queries)
 	if errMsg != "" {
 		return
 	}
@@ -1018,6 +1030,11 @@ func validateQueryParameter(queries []string) (errMsg string) {
 	// source-icmp-type
 	if strings.Contains(sourceIcmpType, "*") {
 		errMsg = "The 'source-icmp-type' query MUST NOT contain wildcard names"
+		return
+	}
+	// content
+	if content != "" && content != string(messages.CONFIG) && content != string(messages.NON_CONFIG) && content != string(messages.ALL) {
+		errMsg = fmt.Sprintf("Invalid 'c' (content) value %+v. Expected values include 'c':config, 'n':non-config, 'a':all", content)
 		return
 	}
 	return

@@ -123,6 +123,7 @@ const (
     SourcePrefix   UriQuery = "source-prefix"
     SourcePort     UriQuery = "source-port"
     SourceIcmpType UriQuery = "source-icmp-type"
+    Content        UriQuery = "c="
 )
 
 type Pdu struct {
@@ -299,7 +300,8 @@ func (pdu *Pdu) SetPath(path []string) {
         if 0 < len(s) {
             if strings.Contains(s,string(TargetPrefix)) || strings.Contains(s,string(TargetPort)) || strings.Contains(s,string(TargetProtocol)) ||
                strings.Contains(s,string(TargetFqdn)) || strings.Contains(s,string(TargetUri)) || strings.Contains(s,string(AliasName)) ||
-               strings.Contains(s,string(SourcePrefix)) || strings.Contains(s,string(SourcePort)) || strings.Contains(s,string(SourceIcmpType)) {
+               strings.Contains(s,string(SourcePrefix)) || strings.Contains(s,string(SourcePort)) || strings.Contains(s,string(SourceIcmpType)) || 
+               strings.Contains(s,string(Content)) {
                 opts = append(opts, OptionUriQuery.String(s))
             } else {
                 opts = append(opts, OptionUriPath.String(s))

@@ -470,6 +470,7 @@ Get all telemetry pre-or-ongoing-mitigation
 Get one telemetry pre-or-ongoing-mitigation with query
 
     $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123 -targetProtocol=17
+    $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Get -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123 -c=a
 
 Get all telemetry pre-or-ongoing-mitigation with query
 

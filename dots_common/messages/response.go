@@ -1040,8 +1040,10 @@ type SourceICMPTypeRangeResponse struct {
 	for key, t := range tpm.TelemetryPreMitigation.PreOrOngoingMitigation {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces3, "pre-or-ongoing-mitigation", key+1)
 		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "tmid", t.Tmid)
-		result += fmt.Sprintf("%s\"%s\":\n", spaces6, "target")
-		result += ConvertTargetsResponseToStrings(t.Target.TargetPrefix, t.Target.TargetPortRange, t.Target.TargetProtocol, t.Target.FQDN, t.Target.URI, t.Target.AliasName, spaces9)
+		if t.Target != nil {
+			result += fmt.Sprintf("%s\"%s\":\n", spaces6, "target")
+			result += ConvertTargetsResponseToStrings(t.Target.TargetPrefix, t.Target.TargetPortRange, t.Target.TargetProtocol, t.Target.FQDN, t.Target.URI, t.Target.AliasName, spaces9)
+		}
 		for k, v := range t.TotalTraffic {
 			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-traffic", k+1)
 			result += v.String(spaces6)

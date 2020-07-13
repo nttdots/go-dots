@@ -588,6 +588,7 @@ func AddOrDeleteObserve(resource *libcoap.Resource, session *libcoap.Session, qu
     } else if observe == int(messages.Deregister) && resource.IsObserved() {
         log.Debugf("Delete observer in sub-resource with query: %+v", resource.UriPath())
         resource.DeleteObserver(session, token)
+        libcoap.DeleteUriFilterByKey(*query)
     }
 }
 

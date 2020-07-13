@@ -155,9 +155,15 @@ const (
 	SOURCE_PREFIX    QueryType = "source-prefix"
 	SOURCE_PORT      QueryType = "source-port"
 	SOURCE_ICMP_TYPE QueryType = "source-icmp-type"
-	CONTENT          QueryType = "content"
+	CONTENT          QueryType = "c"
 )
 
+type Content string
+const (
+	CONFIG     Content = "c"
+	NON_CONFIG Content = "n"
+	ALL        Content = "a"
+)
 
 /*
  * Dots message structure.

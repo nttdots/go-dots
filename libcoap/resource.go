@@ -244,3 +244,12 @@ func DeleteUriFilterByValue(value int) {
         }
     }
 }
+
+// Delete uri filter by key
+func DeleteUriFilterByKey(key string) {
+    for k, _:= range uriFilter {
+        if k == key {
+            delete(uriFilter, k)
+        }
+    }
+}

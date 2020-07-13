@@ -1053,7 +1053,7 @@ func GetTelemetryPreMitigationByTmid(customerId int, cuid string, tmid int) (*db
  *    false: if mitigation doesn't contain targets queries
  */
 func IsFoundTargetQueries(engine *xorm.Engine, id int64, queries []string, isPreMitigation bool) (bool, error) {
-	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, _, _, _, errMsg := GetQueriesFromUriQuery(queries)
+	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, _, _, _,_, errMsg := GetQueriesFromUriQuery(queries)
 	if errMsg != "" {
 		log.Errorf(errMsg)
 		return false, nil
@@ -1184,7 +1184,7 @@ func IsContainRangeValue(targetQuery string, lower int, upper int) bool {
 
 // Get queries from Uri-query
 func GetQueriesFromUriQuery(queries []string) (targetPrefix string, targetPort string, targetProtocol string, targetFqdn string, targetUri string, aliasName string, 
-	sourcePrefix string, sourcePort string, sourceIcmpType string, errMsg string) {
+	sourcePrefix string, sourcePort string, sourceIcmpType string, content string, errMsg string) {
 	for _, query := range queries {
 		if (strings.HasPrefix(query, "target-prefix=")){
 			targetPrefix = query[strings.Index(query, "target-prefix=")+14:]
@@ -1203,7 +1203,9 @@ func GetQueriesFromUriQuery(queries []string) (targetPrefix string, targetPort s
 		} else if (strings.HasPrefix(query, "source-port=")){
 			sourcePort = query[strings.Index(query, "source-port=")+12:]
 		} else if (strings.HasPrefix(query, "source-icmp-type=")){
-			sourceIcmpType = query[strings.Index(query, "source-icmp-type=")+17:]
+			content = query[strings.Index(query, "source-icmp-type=")+17:]
+		} else if (strings.HasPrefix(query, "c=")){
+			content = query[strings.Index(query, "c=")+2:]
 		} else {
 			errMsg = fmt.Sprintf("Invalid the uri-query: %+v", query)
 		}
@@ -1838,7 +1840,7 @@ func GetUriFilteringTelemetryPreMitigation(customerId int, cuid string, tmid *in
 func IsExistTelemetryPreMitigationValueByQueries(queries []string, customerId int, cuid string, preMitigation db_models.UriFilteringTelemetryPreMitigation) (bool, error) {
 	isExistTarget := false
 	isExistSource := false
-	targetPrefix, targetPort, targetProtocol, targetFqdn, _, aliasName, sourcePrefix, sourcePort, sourceIcmpType, _ := GetQueriesFromUriQuery(queries)
+	targetPrefix, targetPort, targetProtocol, targetFqdn, _, aliasName, sourcePrefix, sourcePort, sourceIcmpType, _, _ := GetQueriesFromUriQuery(queries)
 	if IsContainStringValue(targetPrefix, preMitigation.TargetPrefix) && IsContainRangeValue(targetPort, preMitigation.LowerPort, preMitigation.UpperPort) &&
 	IsContainIntValue(targetProtocol, preMitigation.TargetProtocol) && IsContainStringValue(targetFqdn, preMitigation.TargetFqdn) && IsContainStringValue(aliasName, preMitigation.AliasName) {
 		isExistTarget = true

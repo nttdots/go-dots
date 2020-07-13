@@ -41,6 +41,7 @@ var (
 	sourcePrefix   string
 	sourcePort     string
 	sourceIcmpType string
+	content        string
 )
 
 /*
@@ -72,6 +73,7 @@ func init() {
 	flag.StringVar(&sourcePrefix, "sourcePrefix", defaultValue, "source-prefix parameter")
 	flag.StringVar(&sourcePort, "sourcePort", defaultValue, "source-port parameter")
 	flag.StringVar(&sourceIcmpType, "sourceIcmpType", defaultValue, "source-icmp-type parameter")
+	flag.StringVar(&content, "c", defaultValue, "c parameter")
 }
 
 /*
@@ -171,7 +173,7 @@ func main() {
 			u.Path += "/tmid=" + tmid
 		}
 		if targetPrefix != "" || targetPort != "" || targetProtocol != "" || targetFqdn != "" || targetUri != "" || aliasName != "" ||
-	        sourcePrefix != "" || sourcePort != "" || sourceIcmpType != "" {
+	        sourcePrefix != "" || sourcePort != "" || sourceIcmpType != "" || content != "" {
 			var queryPath string
 			// target-prefix
 			if targetPrefix != "" && queryPath != "" {
@@ -226,6 +228,12 @@ func main() {
 				queryPath += "&source-icmp-type="+sourceIcmpType
 			} else if sourceIcmpType != "" {
 				queryPath += "source-icmp-type="+sourceIcmpType
+			}
+			// c
+			if content != "" && queryPath != "" {
+				queryPath += "&c="+content
+			} else if content != "" {
+				queryPath += "c="+content
 			}
 			u.Path += "?"
 			u.Path += queryPath
