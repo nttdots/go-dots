@@ -90,6 +90,14 @@ const (
   TCPFlag_FIN TCPFlag = "fin"
 )
 
+type Insert string
+const (
+  FIRST   Insert = "first"
+  LAST    Insert = "last"
+  BEFORE  Insert = "before"
+  AFTER   Insert = "after"
+)
+
 func (e AddressFamily) String() string {
   return string(e)
 }

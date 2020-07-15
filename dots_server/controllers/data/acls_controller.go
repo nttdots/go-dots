@@ -5,16 +5,16 @@ import (
   "time"
   "fmt"
   "errors"
+  "strings"
 
   "github.com/julienschmidt/httprouter"
-  log "github.com/sirupsen/logrus"
-
-  messages "github.com/nttdots/go-dots/dots_common/messages/data"
-  types    "github.com/nttdots/go-dots/dots_common/types/data"
-  messages_common "github.com/nttdots/go-dots/dots_common/messages"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_server/models/data"
+  log "github.com/sirupsen/logrus"
+  messages "github.com/nttdots/go-dots/dots_common/messages/data"
+  types "github.com/nttdots/go-dots/dots_common/types/data"
+  messages_common "github.com/nttdots/go-dots/dots_common/messages"
 )
 
 const (
@@ -209,37 +209,43 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
         log.Error(errMsg)
         return ErrorResponse(http.StatusForbidden, ErrorTag_Access_Denied, errMsg)
       }
+      // Get insert and point parameters from uri-query
+      insert, point, errMsg := getUriQuery(r.URL.RawQuery)
+      if errMsg != "" {
+        return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+      }
+      // Vidate uri-query
+      errMsg = validUriQuery(insert, point)
+      if errMsg != "" {
+        return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+      }
       acl := req.ACLs.ACL[0]
       e, err := data_models.FindACLByName(tx, client, acl.Name, now)
       if err != nil {
         errMsg = fmt.Sprintf("Failed to get acl with name = %+v", acl.Name)
         return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
       }
-      if acl.ActivationType == nil {
-        defValue := types.ActivationType_ActivateWhenMitigating
-        acl.ActivationType = &defValue
-      }
-      if acl.ACEs.ACE != nil {
-        for _,ace := range acl.ACEs.ACE {
-          if ace.Matches.IPv4 != nil && ace.Matches.IPv4.Fragment != nil && ace.Matches.IPv4.Fragment.Operator == nil {
-            defValue := types.Operator_MATCH
-            ace.Matches.IPv4.Fragment.Operator = &defValue
-          } else if ace.Matches.IPv6 != nil && ace.Matches.IPv6.Fragment != nil && ace.Matches.IPv6.Fragment.Operator == nil {
-            defValue := types.Operator_MATCH
-            ace.Matches.IPv6.Fragment.Operator = &defValue
-          }
-          if ace.Matches.TCP != nil && ace.Matches.TCP.FlagsBitmask != nil && ace.Matches.TCP.FlagsBitmask.Operator == nil {
-            defValue := types.Operator_MATCH
-            ace.Matches.TCP.FlagsBitmask.Operator = &defValue
-          }
-        }
-      }
+      setDefaultValue(&acl)
       status := http.StatusCreated
       var oldActivateType types.ActivationType
       if e == nil {
         t := data_models.NewACL(client, acl, now, defaultACLLifetime)
+        priority, err := handleInsertAclWithinAcls(tx, client, now, insert, point, 1)
+        if err != nil {
+          errMsg = fmt.Sprintf("Failed to insert acl within acls set. Err: %+v", err.Error())
+          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+        }
+        if priority == 0 {
+          errMsg := fmt.Sprintf("Not Found acl by specified point (%v)", point)
+          return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
+        }
+        t.Priority = priority
         e = &t
       } else {
+        if insert != "" {
+          errMsg = fmt.Sprintf("Existed acl is %+v. Dots server MUST NOT insert acl", acl.Name)
+          return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+        }
         oldActivateType = *e.ACL.ActivationType
         e.ACL = types.ACL(acl)
         e.ValidThrough = now.Add(defaultACLLifetime)
@@ -511,4 +517,109 @@ func HandleCallBlockerOrCancelBlocker(acl *data_models.ACL, customer *models.Cus
     }
   }
   return
+}
+
+// Handle insert acl within acls set
+func handleInsertAclWithinAcls(tx *db.Tx, client *data_models.Client, now time.Time, insert string, point string, lenReqAcls int) (int, error) {
+  var pointPriority int
+  var dbAcl *data_models.ACL
+  var err error
+  if point != "" {
+    dbAcl, err = data_models.FindACLByName(tx, client, point, now)
+    if err != nil {
+      log.Errorf("Failed to get acl with 'point' = %+v", point)
+      return 0, err
+    }
+    if dbAcl == nil {
+      return 0, nil
+    }
+  }
+  switch insert {
+  case string(types.FIRST):
+    pointPriority = 1
+  case string(types.BEFORE):
+    pointPriority = dbAcl.Priority
+  case string(types.AFTER):
+    pointPriority = dbAcl.Priority + 1
+  default:
+    maxPriority, err := data_models.GetMaxPriority(tx.Engine)
+    if err != nil {
+      return 0, err
+    }
+    pointPriority = maxPriority + 1
+  }
+  // update priority for acls
+  if insert == string(types.FIRST) || insert == string(types.BEFORE) || insert == string(types.AFTER) {
+    err = data_models.UpdatePriorityAcl(tx.Session, lenReqAcls, pointPriority)
+    if err != nil {
+      return 0, err
+    }
+  }
+  return pointPriority, nil
+}
+
+// Get uri query
+func getUriQuery(uriQuery string) (insert string, point string, errMsg string) {
+  var queryPath []string
+  querySplit := strings.Split(uriQuery, "&")
+  if len(querySplit) > 1 {
+    queryPath = append(queryPath, querySplit[0])
+    queryPath = append(queryPath, querySplit[1])
+  } else {
+    queryPath = append(queryPath, uriQuery)
+  }
+  if len(queryPath) > 0 {
+    log.Debugf("The uri-query: %+v", queryPath)
+    for _, query := range queryPath {
+      if (strings.HasPrefix(query, "insert=")){
+        insert = query[strings.Index(query, "insert=")+7:]
+      } else if (strings.HasPrefix(query, "point=")){
+        point = query[strings.Index(query, "point=")+6:]
+      } else if query != "" {
+        errMsg = fmt.Sprintf("Invalid the uri-query: %+v", query)
+        return
+      }
+    }
+  }
+  return
+}
+
+// Validate uri query
+func validUriQuery(insert string, point string) (errMsg string) {
+  if insert != "" && insert != string(types.FIRST) && insert != string(types.LAST) && insert != string(types.BEFORE) && insert != string(types.AFTER) {
+    errMsg = fmt.Sprintf("Invalid `insert` value: %+v. Expected values include first, last, before, after.", insert)
+    return
+  }
+  if (insert == string(types.BEFORE) || insert == string(types.AFTER)) && point == "" {
+    errMsg = "If the `insert` values 'before' or 'after' are used, the `point` MUST also be present."
+    return
+  }
+  if (insert == "" || insert == string(types.FIRST) || insert == string(types.LAST)) && point != "" {
+    errMsg = "If the `insert` query parameter is not present or has a value other than 'before' or 'after', the `point` MUST NOT also be present."
+    return
+  }
+  return
+}
+
+// Set default value for acl
+func setDefaultValue(acl *types.ACL) {
+  if acl.ActivationType == nil {
+    defValue := types.ActivationType_ActivateWhenMitigating
+    acl.ActivationType = &defValue
+  }
+  if acl.ACEs.ACE != nil {
+    for _,ace := range acl.ACEs.ACE {
+      if ace.Matches.IPv4 != nil && ace.Matches.IPv4.Fragment != nil && ace.Matches.IPv4.Fragment.Operator == nil {
+        defValue := types.Operator_MATCH
+        ace.Matches.IPv4.Fragment.Operator = &defValue
+      } else if ace.Matches.IPv6 != nil && ace.Matches.IPv6.Fragment != nil && ace.Matches.IPv6.Fragment.Operator == nil {
+        defValue := types.Operator_MATCH
+        ace.Matches.IPv6.Fragment.Operator = &defValue
+      }
+      if ace.Matches.TCP != nil && ace.Matches.TCP.FlagsBitmask != nil && ace.Matches.TCP.FlagsBitmask.Operator == nil {
+        defValue := types.Operator_MATCH
+        ace.Matches.TCP.FlagsBitmask.Operator = &defValue
+      }
+    }
+  }
 }

@@ -10,7 +10,6 @@ import (
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_server/models/data"
   log "github.com/sirupsen/logrus"
-  types "github.com/nttdots/go-dots/dots_common/types/data"
   messages "github.com/nttdots/go-dots/dots_common/messages/data"
 )
 
@@ -57,7 +56,7 @@ func (c *PostController) Post(customer *models.Customer, r *http.Request, p http
       case *messages.AliasesRequest:
         res, err = postAliases(tx, client, req, now)
       case *messages.ACLsRequest:
-        res, err = postAcls(tx, client, customer, req, now)
+        res, err = postAcls(tx, client, customer, req, r.URL.RawQuery, now)
       case *messages.VendorMappingRequest:
         res, err = postVendorMapping(tx, client, req, cdid)
       default:
@@ -105,9 +104,19 @@ func postAliases(tx *db.Tx, client *data_models.Client, req *messages.AliasesReq
 }
 
 // Post acls
-func postAcls(tx *db.Tx, client *data_models.Client, customer *models.Customer, req *messages.ACLsRequest, now time.Time) (Response, error) {
+func postAcls(tx *db.Tx, client *data_models.Client, customer *models.Customer, req *messages.ACLsRequest, query string, now time.Time) (Response, error) {
   var errMsg string
   n := []data_models.ACL{}
+  // Get insert and point parameters from uri-query
+  insert, point, errMsg := getUriQuery(query)
+  if errMsg != "" {
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+  }
+  // Validate uri-query
+  errMsg = validUriQuery(insert, point)
+  if errMsg != "" {
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+  }
   for _,acl := range req.ACLs.ACL {
     e, err := data_models.FindACLByName(tx, client, acl.Name, now)
     if err != nil {
@@ -117,33 +126,23 @@ func postAcls(tx *db.Tx, client *data_models.Client, customer *models.Customer, 
     if e != nil {
       errMsg = fmt.Sprintf("Specified acl 'name'(%v) is already registered", acl.Name)
       return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, errMsg)
-    } else {
-      if acl.ActivationType == nil {
-        defValue := types.ActivationType_ActivateWhenMitigating
-        acl.ActivationType = &defValue
-      }
-      if acl.ACEs.ACE != nil {
-        for _,ace := range acl.ACEs.ACE {
-          if ace.Matches.IPv4 != nil && ace.Matches.IPv4.Fragment != nil && ace.Matches.IPv4.Fragment.Operator == nil {
-            defValue := types.Operator_MATCH
-            ace.Matches.IPv4.Fragment.Operator = &defValue
-          } else if ace.Matches.IPv6 != nil && ace.Matches.IPv6.Fragment != nil && ace.Matches.IPv6.Fragment.Operator == nil {
-            defValue := types.Operator_MATCH
-            ace.Matches.IPv6.Fragment.Operator = &defValue
-          }
-          if ace.Matches.TCP != nil && ace.Matches.TCP.FlagsBitmask != nil && ace.Matches.TCP.FlagsBitmask.Operator == nil {
-            defValue := types.Operator_MATCH
-            ace.Matches.TCP.FlagsBitmask.Operator = &defValue
-          }
-        }
-      }
-      n = append(n, data_models.NewACL(client, acl, now, defaultACLLifetime))
     }
+    setDefaultValue(&acl)
+    n = append(n, data_models.NewACL(client, acl, now, defaultACLLifetime))
   }
-
+  pointPriority, err := handleInsertAclWithinAcls(tx, client, now, insert, point, len(n))
+  if err != nil {
+    errMsg = fmt.Sprintf("Failed to insert acl within acls set. Err: %+v", err.Error())
+    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+  }
+  if pointPriority == 0 {
+    errMsg := fmt.Sprintf("Not Found acl by specified point (%v)", point)
+    return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
+  }
   acls := []data_models.ACL{}
   aclMap := []data_models.ACL{}
-  for _,acl := range n {
+  for k, acl := range n {
+    acl.Priority = pointPriority + k
     err := acl.Save(tx)
     if err != nil {
       errMsg = fmt.Sprintf("Failed to save acl with 'name' = %+v", acl.ACL.Name)
@@ -163,7 +162,7 @@ func postAcls(tx *db.Tx, client *data_models.Client, customer *models.Customer, 
   }
 
   // Call blocker
-  err := data_models.CallBlocker(acls, customer.Id)
+  err = data_models.CallBlocker(acls, customer.Id)
   if err != nil{
     log.Errorf("Data channel POST ACL. CallBlocker is error: %s\n", err)
     // handle error when call blocker failed
@@ -194,12 +193,10 @@ func postVendorMapping(tx *db.Tx, client *data_models.Client, req *messages.Vend
     e, err := data_models.FindVendorByVendorId(tx, client.Id, int(*v.VendorId))
     if err != nil {
       errMsg = fmt.Sprintf("Failed to get vendor with 'vendor-id' = %+v. Error: %+v", *v.VendorId, err)
-      log.Errorf(errMsg)
       return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
     }
     if e.Id > 0 {
       errMsg = fmt.Sprintf("Specified vendor 'vendor-id' (%v) is already registered", *v.VendorId)
-      log.Errorf(errMsg)
       return ErrorResponse(http.StatusConflict, ErrorTag_Resource_Denied, errMsg)
     }
     vendor := data_models.NewVendorMapping(client.Id, v)

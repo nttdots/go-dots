@@ -1211,6 +1211,13 @@ func createControlFiltering(session *xorm.Session, mitigationScope MitigationSco
 		return err
 	}
 
+	// update the priority of acls after priority of the deleted acl
+	_, err = engine.Exec("Update data_acls set priority = priority - 1 where priority > ?", acl.Priority)
+	if err != nil {
+		log.Errorf("Update the priority of Acls error: %s\n", err)
+		return err
+	}
+
 	return nil
 }
 

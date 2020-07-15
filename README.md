@@ -332,9 +332,20 @@ Install Filtering Rules
     Post acl:
     $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAcl.json
 
+    Post acl with insert:
+    $ ./do_request_from_file.sh POST '{href}/data/ietf-dots-data-channel:dots-data/dots-client=123?insert=first' sampleAcl.json
+
+    Post acl with insert and point:
+    $ ./do_request_from_file.sh POST '{href}/data/ietf-dots-data-channel:dots-data/dots-client=123?insert=after&point=xxx' sampleAcl.json
+
     Put acl:
     $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=xxx sampleAcl.json
 
+    Put acl with insert:
+    $ ./do_request_from_file.sh PUT '{href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=xxx?insert=last' sampleAcl.json
+
+    Put acl with insert and point:
+    $ ./do_request_from_file.sh PUT '{href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=xxx?insert=before?point=xxx1' sampleAcl.json
 Retrieve Installed Filtering Rules
 
     Get all Acl without 'content' parameter:

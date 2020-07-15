@@ -2,6 +2,7 @@ package data_controllers
 
 import (
   "fmt"
+  "errors"
   "io/ioutil"
   "encoding/json"
   "net/http"
@@ -132,16 +133,16 @@ func EmptyResponse(code int) (Response, error) {
 }
 
 func ErrorResponse(errorCode int, errorTag ErrTag, errorMsg string) (Response, error) {
-
-  errors := make([]Error, 1)
+  log.Errorf(errorMsg)
+  errs := make([]Error, 1)
   e := Error{}
   e.ErrorTag = errorTag
   e.ErrorType = e.GetDefaultErrorType()
   e.ErrorMessage = errorMsg
-  errors[0] = e
+  errs[0] = e
 
   eres := ErrorsResponse{}
-  eres.Errors.Error = errors
+  eres.Errors.Error = errs
 
   r := Response{}
 
@@ -154,7 +155,7 @@ func ErrorResponse(errorCode int, errorTag ErrTag, errorMsg string) (Response, e
   r.Headers = make(http.Header)
   r.Headers.Add("Content-Type", "application/yang-data+json")
   r.Content = raw
-  return r, nil
+  return r, errors.New(errorMsg)
 }
 
 func YangJsonResponse(content interface{}) (Response, error) {

@@ -17,6 +17,7 @@ func (p *DataACL) ToDB() ([]byte, error) {
 type ACL struct {
   Id           int64
   ClientId     int64     `xorm:"data_client_id"`
+  Priority     int
   Name         string
   ACL          DataACL   `xorm:"content"`
   ValidThrough time.Time
