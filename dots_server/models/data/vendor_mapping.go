@@ -11,13 +11,15 @@ type Vendor struct {
 	Id            int64
 	ClientId      int64
 	VendorId      int
+	VendorName    string
+	LastUpdated   int
 	AttackMapping []AttackMapping
 }
 
 type AttackMapping struct {
-	Id         int64
-	AttackId   int
-	AttackName string
+	Id                int64
+	AttackId          int
+	AttackDescription string
 }
 
 type Vendors []Vendor
@@ -25,12 +27,14 @@ type Vendors []Vendor
 // New vendor-mapping
 func NewVendorMapping(clientId int64, bodyData types.Vendor) Vendor {
 	vendor := Vendor{}
-	vendor.ClientId = clientId
-	vendor.VendorId = int(*bodyData.VendorId)
+	vendor.ClientId    = clientId
+	vendor.VendorId    = int(*bodyData.VendorId)
+	vendor.VendorName  = *bodyData.VendorName
+	vendor.LastUpdated = int(*bodyData.LastUpdated)
 	for _, v := range bodyData.AttackMapping {
 		attackMapping := AttackMapping{}
-		attackMapping.AttackId   = int(*v.AttackId)
-		attackMapping.AttackName = *v.AttackName
+		attackMapping.AttackId          = int(*v.AttackId)
+		attackMapping.AttackDescription = *v.AttackDescription
 		vendor.AttackMapping = append(vendor.AttackMapping, attackMapping)
 	}
 	return vendor
@@ -42,6 +46,8 @@ func (vendor *Vendor) Save(tx *db.Tx) error {
 	v.Id           = vendor.Id
 	v.DataClientId = vendor.ClientId
 	v.VendorId     = vendor.VendorId
+	v.VendorName   = vendor.VendorName
+	v.LastUpdated  = vendor.LastUpdated
 
 	if v.Id == 0 {
 		// Register vendor-mapping
@@ -67,9 +73,9 @@ func (vendor *Vendor) Save(tx *db.Tx) error {
 	// Register attack-mapping
 	for _, attack := range vendor.AttackMapping {
 		a := data_db_models.AttackMapping{}
-		a.VendorMappingId = v.Id
-		a.AttackId        = attack.AttackId
-		a.AttackName      = attack.AttackName
+		a.VendorMappingId   = v.Id
+		a.AttackId          = attack.AttackId
+		a.AttackDescription = attack.AttackDescription
 		_, err := tx.Session.Insert(&a)
 		if err != nil {
 			log.WithError(err).Error("Insert() attack-mapping failed.")
@@ -87,9 +93,11 @@ func FindVendorByVendorId(tx *db.Tx, clientId int64, vendorId int) (Vendor, erro
 	if err != nil {
 		return vendor, err
 	}
-	vendor.Id = dbVendor.Id
-	vendor.ClientId = dbVendor.DataClientId
-	vendor.VendorId = dbVendor.VendorId
+	vendor.Id          = dbVendor.Id
+	vendor.ClientId    = dbVendor.DataClientId
+	vendor.VendorId    = dbVendor.VendorId
+	vendor.VendorName  = dbVendor.VendorName
+	vendor.LastUpdated = dbVendor.LastUpdated
 	// Get attack-mapping
 	dbAttackList := []data_db_models.AttackMapping{}
 	err = tx.Session.Where("vendor_mapping_id = ?", dbVendor.Id).Find(&dbAttackList)
@@ -99,9 +107,9 @@ func FindVendorByVendorId(tx *db.Tx, clientId int64, vendorId int) (Vendor, erro
 	}
 	for _, dbAttack := range dbAttackList {
 		attack := AttackMapping{
-			Id:         dbAttack.Id,
-			AttackId:   dbAttack.AttackId,
-			AttackName: dbAttack.AttackName,
+			Id:                dbAttack.Id,
+			AttackId:          dbAttack.AttackId,
+			AttackDescription: dbAttack.AttackDescription,
 		}
 		vendor.AttackMapping = append(vendor.AttackMapping, attack)
 	}
@@ -128,8 +136,10 @@ func FindVendorMappingByClientId(tx *db.Tx, clientId *int64) (Vendors, error) {
 	}
 	for _, dbVendor := range dbVendorList {
 		vendor := Vendor{}
-		vendor.ClientId = dbVendor.DataClientId
-		vendor.VendorId = dbVendor.VendorId
+		vendor.ClientId    = dbVendor.DataClientId
+		vendor.VendorId    = dbVendor.VendorId
+		vendor.VendorName  = dbVendor.VendorName
+	    vendor.LastUpdated = dbVendor.LastUpdated
 		// Get attack-mapping
 		dbAttackList := []data_db_models.AttackMapping{}
 		err := tx.Session.Where("vendor_mapping_id = ?", dbVendor.Id).Find(&dbAttackList)
@@ -139,9 +149,9 @@ func FindVendorMappingByClientId(tx *db.Tx, clientId *int64) (Vendors, error) {
 		}
 		for _, dbAttack := range dbAttackList {
 			attack := AttackMapping{
-				Id:         dbAttack.Id,
-				AttackId:   dbAttack.AttackId,
-				AttackName: dbAttack.AttackName,
+				Id:                dbAttack.Id,
+				AttackId:          dbAttack.AttackId,
+				AttackDescription: dbAttack.AttackDescription,
 			}
 			vendor.AttackMapping = append(vendor.AttackMapping, attack)
 		}
@@ -157,14 +167,17 @@ func (vendors Vendors) ToTypesVendorMapping(depth *int) (*types.VendorMapping) {
 		for _, v := range vendors {
 			vendor := types.Vendor{}
 			vendorId := uint32(v.VendorId)
-			vendor.VendorId = &vendorId
+			lastUpdated := uint64(v.LastUpdated)
+			vendor.VendorId    = &vendorId
+			vendor.VendorName  = &v.VendorName
+			vendor.LastUpdated = &lastUpdated
 			if depth == nil || *depth > 3 {
 				for _, a := range v.AttackMapping {
 					attack := types.AttackMapping{}
 					attackId := uint32(a.AttackId)
-					attackName := a.AttackName
+					attackDescription := a.AttackDescription
 					attack.AttackId   = &attackId
-					attack.AttackName = &attackName
+					attack.AttackDescription = &attackDescription
 					vendor.AttackMapping = append(vendor.AttackMapping, attack)
 				}
 			} else {

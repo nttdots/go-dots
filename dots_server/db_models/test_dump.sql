@@ -840,7 +840,7 @@ CREATE TABLE `attack_detail` (
   `tele_pre_mitigation_id` bigint(20),
   `vendor_id`              int(11)      NOT NULL,
   `attack_id`              int(11) NOT NULL,
-  `attack_name`            varchar(255),
+  `attack_description`     varchar(255),
   `attack_severity`        enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') NOT NULL,
   `start_time`             int(11),
   `end_time`               int(11),
@@ -906,7 +906,6 @@ CREATE TABLE `telemetry_traffic` (
   `prefix_type_id`    bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
   `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `protocol`          int(11)     NOT NULL,
   `low_percentile_g`  int(11)     DEFAULT NULL,
   `mid_percentile_g`  int(11)     DEFAULT NULL,
   `high_percentile_g` int(11)     DEFAULT NULL,
@@ -916,9 +915,9 @@ CREATE TABLE `telemetry_traffic` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `telemetry_traffic` (`id`, `prefix_type`, `prefix_type_id`, `traffic_type`, `unit`, `protocol`, `low_percentile_g`, `mid_percentile_g`, `high_percentile_g`, `peak_g`, `created`, `updated`)
+INSERT INTO `telemetry_traffic` (`id`, `prefix_type`, `prefix_type_id`, `traffic_type`, `unit`, `low_percentile_g`, `mid_percentile_g`, `high_percentile_g`, `peak_g`, `created`, `updated`)
 VALUES
-  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'PACKETS_PS', 6, 0, 100, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'PACKETS_PS', 0, 100, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 # telemetry_total_attack_connection
 # ------------------------------------------------------------
@@ -954,7 +953,7 @@ CREATE TABLE `telemetry_attack_detail` (
   `mitigation_scope_id` bigint(20) NOT NULL,
   `vendor_id`           int(11)    NOT NULL,
   `attack_id`           int(11)    NOT NULL,
-  `attack_name`         varchar(255),
+  `attack_description`  varchar(255),
   `attack_severity`     enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') NOT NULL,
   `start_time`          int(11),
   `end_time`            int(11),
@@ -1258,7 +1257,7 @@ CREATE TABLE `uri_filtering_attack_detail` (
   `tele_pre_mitigation_id` bigint(20),
   `vendor_id`              int(11)      NOT NULL,
   `attack_id`              int(11)      NOT NULL,
-  `attack_name`            varchar(255),
+  `attack_description`     varchar(255),
   `attack_severity`        enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') NOT NULL,
   `start_time`             int(11),
   `end_time`               int(11),
@@ -1274,7 +1273,7 @@ DELIMITER @@
 CREATE TRIGGER uri_filtering_attack_detail_trigger AFTER UPDATE ON uri_filtering_attack_detail
 FOR EACH ROW
 BEGIN
-  IF NEW.vendor_id <> OLD.vendor_id OR NEW.attack_id <> OLD.attack_id OR NEW.attack_name <> OLD.attack_name OR NEW.attack_severity <> OLD.attack_severity
+  IF NEW.vendor_id <> OLD.vendor_id OR NEW.attack_id <> OLD.attack_id OR NEW.attack_description <> OLD.attack_description OR NEW.attack_severity <> OLD.attack_severity
      OR NEW.start_time <> OLD.start_time OR NEW.end_time <> OLD.end_time THEN
     SELECT MySQLNotification('uri_filtering_attack_detail', NEW.tele_pre_mitigation_id) INTO @x;
   END IF;
@@ -1432,6 +1431,8 @@ CREATE TABLE `vendor_mapping` (
   `id`             bigint(20) NOT NULL AUTO_INCREMENT,
   `data_client_id` bigint(20) NOT NULL,
   `vendor_id`      int(11)    NOT NULL,
+  `vendor_name`    varchar(255),
+  `last_updated`   int(11)    NOT NULL,
   `created`        datetime   DEFAULT NULL,
   `updated`        datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1443,11 +1444,11 @@ CREATE TABLE `vendor_mapping` (
 DROP TABLE IF EXISTS `attack_mapping`;
 
 CREATE TABLE `attack_mapping` (
-  `id`                bigint(20)   NOT NULL AUTO_INCREMENT,
-  `vendor_mapping_id` bigint(20)   NOT NULL,
-  `attack_id`         int(11)      NOT NULL,
-  `attack_name`       varchar(255) NOT NULL,
-  `created`           datetime     DEFAULT NULL,
-  `updated`           datetime     DEFAULT NULL,
+  `id`                 bigint(20)   NOT NULL AUTO_INCREMENT,
+  `vendor_mapping_id`  bigint(20)   NOT NULL,
+  `attack_id`          int(11)      NOT NULL,
+  `attack_description` varchar(255) NOT NULL,
+  `created`            datetime     DEFAULT NULL,
+  `updated`            datetime     DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

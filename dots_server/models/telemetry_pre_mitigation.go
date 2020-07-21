@@ -56,14 +56,14 @@ type TotalAttackConnectionPort struct {
 }
 
 type AttackDetail struct {
-	VendorId       int
-	AttackId       int
-	AttackName     string
-	AttackSeverity int
-	StartTime      int
-	EndTime        int
-	SourceCount    SourceCount
-	TopTalker      []TopTalker
+	VendorId          int
+	AttackId          int
+	AttackDescription string
+	AttackSeverity    int
+	StartTime         int
+	EndTime           int
+	SourceCount       SourceCount
+	TopTalker         []TopTalker
 }
 
 type ConnectionProtocolPercentile struct {
@@ -117,14 +117,14 @@ type ConnectionPercentile struct {
 }
 
 type TelemetryAttackDetail struct {
-	VendorId       int
-	AttackId       int
-	AttackName     string
-	AttackSeverity int
-	StartTime      int
-	EndTime        int
-	SourceCount    SourceCount
-	TopTalker      []TelemetryTopTalker
+	VendorId          int
+	AttackId          int
+	AttackDescription string
+	AttackSeverity    int
+	StartTime         int
+	EndTime           int
+	SourceCount       SourceCount
+	TopTalker         []TelemetryTopTalker
 }
 
 type TelemetryTopTalker struct {
@@ -291,8 +291,8 @@ func NewAttackDetail(adRequests []messages.AttackDetail) (attackDetailList []Att
 		if adRequest.AttackId != nil {
 			attackDetail.AttackId = int(*adRequest.AttackId)
 		}
-		if adRequest.AttackName != nil {
-			attackDetail.AttackName = *adRequest.AttackName
+		if adRequest.AttackDescription != nil {
+			attackDetail.AttackDescription = *adRequest.AttackDescription
 		}
 		if adRequest.AttackSeverity != nil {
 			attackDetail.AttackSeverity = int(*adRequest.AttackSeverity)
@@ -432,7 +432,7 @@ func NewTopTalker(ttRequest messages.TopTalker) (talkerList []TopTalker, err err
 }
 
 // New telemetry total-attack-traffic
-func NewTelemetryTotalAttackTraffic(teleTraffics []messages.TelemetryTraffic) (trafficList []Traffic, err error) {
+func NewTelemetryTotalAttackTraffic(teleTraffics []messages.Traffic) (trafficList []Traffic, err error) {
 	trafficList = make([]Traffic, len(teleTraffics))
 	for k, v := range teleTraffics {
 		traffic := Traffic{}
@@ -478,8 +478,8 @@ func NewTelemetryAttackDetail(adRequests []messages.TelemetryAttackDetail) (atta
 			log.Error(errMsg)
 			return nil, errors.New(errMsg)
 		}
-		if adRequest.AttackName != nil {
-			attackDetail.AttackName = *adRequest.AttackName
+		if adRequest.AttackDescription != nil {
+			attackDetail.AttackDescription = *adRequest.AttackDescription
 		}
 		if adRequest.AttackSeverity != nil {
 			if adRequest.AttackSeverity != nil && *adRequest.AttackSeverity != int(None) && *adRequest.AttackSeverity != int(Low) && *adRequest.AttackSeverity != int(Medium) &&
@@ -500,7 +500,7 @@ func NewTelemetryAttackDetail(adRequests []messages.TelemetryAttackDetail) (atta
 		}
 		// Create new source count
 		if adRequest.SourceCount != nil {
-			attackDetail.SourceCount = NewTelemetrySourceCount(*adRequest.SourceCount)
+			attackDetail.SourceCount = NewSourceCount(*adRequest.SourceCount)
 		}
 		// Create new top talker
 		if adRequest.TopTalKer != nil {
@@ -512,24 +512,6 @@ func NewTelemetryAttackDetail(adRequests []messages.TelemetryAttackDetail) (atta
 		attackDetailList = append(attackDetailList, attackDetail)
 	}
 	return attackDetailList, nil
-}
-
-// New telemetry source count
-func NewTelemetrySourceCount(scRequest messages.TelemetrySourceCount) (sourceCount SourceCount) {
-	sourceCount = SourceCount{}
-	if scRequest.LowPercentileG != nil {
-		sourceCount.LowPercentileG = int(*scRequest.LowPercentileG)
-	}
-	if scRequest.MidPercentileG != nil {
-		sourceCount.MidPercentileG = int(*scRequest.MidPercentileG)
-	}
-	if scRequest.HighPercentileG != nil {
-		sourceCount.HighPercentileG = int(*scRequest.HighPercentileG)
-	}
-	if scRequest.PeakG != nil {
-		sourceCount.PeakG = int(*scRequest.PeakG)
-	}
-	return
 }
 
 // New telemetry top talker
@@ -610,7 +592,7 @@ func NewTelemetryTopTalker(ttRequest messages.TelemetryTopTalker) (talkerList []
 }
 
 // New connection percentile (low/mid/high-percentile-c, peak-c)
-func NewConnectionPercentile(cpRequest messages.TelemetryConnectionPercentile) (cp ConnectionPercentile) {
+func NewConnectionPercentile(cpRequest messages.ConnectionPercentile) (cp ConnectionPercentile) {
 	cp = ConnectionPercentile{}
 	if cpRequest.Connection != nil {
 		cp.Connection = int(*cpRequest.Connection)

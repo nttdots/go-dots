@@ -648,7 +648,7 @@ func RegisterAttackDetail(session *xorm.Session, telePreMitigationId int64, atta
 		TelePreMitigationId: telePreMitigationId,
 		VendorId:            attackDetail.VendorId,
 		AttackId:            attackDetail.AttackId,
-		AttackName:          attackDetail.AttackName,
+		AttackDescription:   attackDetail.AttackDescription,
 		AttackSeverity:      ConvertAttackSeverityToString(attackDetail.AttackSeverity),
 		StartTime:           attackDetail.StartTime,
 		EndTime:             attackDetail.EndTime,
@@ -743,12 +743,12 @@ func RegisterTelemetryTraffic(session *xorm.Session, prefixType string, prefixTy
 func RegisterTelemetryAttackDetail(session *xorm.Session, mitigationScopeId int64, attackDetail TelemetryAttackDetail) (*db_models.TelemetryAttackDetail, error) {
 	newTelemetryAttackDetail := db_models.TelemetryAttackDetail{
 		MitigationScopeId: mitigationScopeId,
-		VendorId:       attackDetail.VendorId,
-		AttackId:       attackDetail.AttackId,
-		AttackName:     attackDetail.AttackName,
-		AttackSeverity: ConvertAttackSeverityToString(attackDetail.AttackSeverity),
-		StartTime:      attackDetail.StartTime,
-		EndTime:        attackDetail.EndTime,
+		VendorId:          attackDetail.VendorId,
+		AttackId:          attackDetail.AttackId,
+		AttackDescription: attackDetail.AttackDescription,
+		AttackSeverity:    ConvertAttackSeverityToString(attackDetail.AttackSeverity),
+		StartTime:         attackDetail.StartTime,
+		EndTime:           attackDetail.EndTime,
 	}
 	_, err := session.Insert(&newTelemetryAttackDetail)
 	if err != nil {
@@ -1453,9 +1453,9 @@ func GetAttackDetail(engine *xorm.Engine, customerId int, cuid string, telePremi
 			return nil, err
 		}
 		if isExist {
-			attackDetail.AttackName = ""
+			attackDetail.AttackDescription = ""
 		} else {
-			attackDetail.AttackName = dbAd.AttackName
+			attackDetail.AttackDescription = dbAd.AttackDescription
 		}
 		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
 		attackDetail.StartTime = dbAd.StartTime
@@ -1600,7 +1600,7 @@ func GetTelemetryAttackDetail(engine *xorm.Engine, mitigationScopeId int64) ([]T
 		attackDetail:= TelemetryAttackDetail{}
 		attackDetail.VendorId = dbAd.VendorId
 		attackDetail.AttackId = dbAd.AttackId
-		attackDetail.AttackName = dbAd.AttackName
+		attackDetail.AttackDescription = dbAd.AttackDescription
 		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
 		attackDetail.StartTime = dbAd.StartTime
 		attackDetail.EndTime = dbAd.EndTime
@@ -2210,9 +2210,9 @@ func GetUriFilteringAttackDetail(engine *xorm.Engine, customerId int, cuid strin
 			return nil, err
 		}
 		if isExist {
-			attackDetail.AttackName = ""
+			attackDetail.AttackDescription = ""
 		} else {
-			attackDetail.AttackName = dbAd.AttackName
+			attackDetail.AttackDescription = dbAd.AttackDescription
 		}
 		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
 		attackDetail.StartTime = dbAd.StartTime
@@ -3094,13 +3094,13 @@ func GetModelsAttackDetail(values []AttackDetail) (attackDetailList []AttackDeta
 	attackDetailList = []AttackDetail{}
 	for _, value := range values {
 		attackDetail := AttackDetail {
-			VendorId:       value.VendorId,
-			AttackId:       value.AttackId,
-			AttackName:     value.AttackName,
-			AttackSeverity: value.AttackSeverity,
-			StartTime:      value.StartTime,
-			EndTime:        value.EndTime,
-			SourceCount:    GetModelsSourceCount(&value.SourceCount),
+			VendorId:          value.VendorId,
+			AttackId:          value.AttackId,
+			AttackDescription: value.AttackDescription,
+			AttackSeverity:    value.AttackSeverity,
+			StartTime:         value.StartTime,
+			EndTime:           value.EndTime,
+			SourceCount:       GetModelsSourceCount(&value.SourceCount),
 		}
 		if !reflect.DeepEqual(GetModelsSourceCount(&value.SourceCount), GetModelsSourceCount(nil)) {
 			attackDetail.SourceCount = GetModelsSourceCount(&value.SourceCount)
@@ -3175,12 +3175,12 @@ func GetModelsTelemetryAttackDetail(values []TelemetryAttackDetail) (attackDetai
 	attackDetailList = []TelemetryAttackDetail{}
 	for _, value := range values {
 		attackDetail := TelemetryAttackDetail {
-			VendorId:       value.VendorId,
-			AttackId:       value.AttackId,
-			AttackName:     value.AttackName,
-			AttackSeverity: value.AttackSeverity,
-			StartTime:      value.StartTime,
-			EndTime:        value.EndTime,
+			VendorId:          value.VendorId,
+			AttackId:          value.AttackId,
+			AttackDescription: value.AttackDescription,
+			AttackSeverity:    value.AttackSeverity,
+			StartTime:         value.StartTime,
+			EndTime:           value.EndTime,
 		}
 		if !reflect.DeepEqual(GetModelsSourceCount(&value.SourceCount), GetModelsSourceCount(nil)) {
 			attackDetail.SourceCount = GetModelsSourceCount(&value.SourceCount)
