@@ -8,7 +8,7 @@ type AttackDetail struct {
 	TelePreMitigationId int64     `xorm:"tele_pre_mitigation_id"`
 	VendorId            int       `xorm:"vendor_id"`
 	AttackId            int       `xorm:"'attack_id' not null"`
-	AttackName          string    `xorm:"attack_name"`
+	AttackDescription   string    `xorm:"attack_description"`
 	AttackSeverity      string    `xorm:"'attack_severity' enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') not null"`
 	StartTime           int       `xorm:"start_time"`
 	EndTime             int       `xorm:"end_time"`

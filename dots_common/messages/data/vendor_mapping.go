@@ -30,20 +30,24 @@ func ValidateWithVendorId(vendorId int, req *VendorMappingRequest) (errMsg strin
 // Validate vendor-mapping (Post/Put request)
 func ValidateVendorMapping(req *VendorMappingRequest) (errMsg string) {
 	for _, vendor := range req.VendorMapping.Vendor {
-	if vendor.VendorId == nil {
-		errMsg = fmt.Sprintf("Missing 'vendor-id' required attribute")
-		return
-	}
-	for _, attack := range vendor.AttackMapping {
-		if attack.AttackId == nil {
-			errMsg = fmt.Sprintf("Missing 'attack-id' required attribute")
+		if vendor.VendorId == nil {
+			errMsg = fmt.Sprintf("Missing 'vendor-id' required attribute")
 			return
 		}
-		if attack.AttackName == nil {
-			errMsg = fmt.Sprintf("Missing 'attack-name' required attribute")
+		if vendor.LastUpdated == nil {
+			errMsg = fmt.Sprintf("Missing 'last-updated' required attribute")
 			return
 		}
-	}
+		for _, attack := range vendor.AttackMapping {
+			if attack.AttackId == nil {
+				errMsg = fmt.Sprintf("Missing 'attack-id' required attribute")
+				return
+			}
+			if attack.AttackDescription == nil {
+				errMsg = fmt.Sprintf("Missing 'attack-description' required attribute")
+				return
+			}
+		}
 	}
 	return
 }

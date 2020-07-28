@@ -105,6 +105,15 @@ func (vc *VendorMappingController) Put(customer *models.Customer, r *http.Reques
 				return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
 			}
 			// Save attack-detail
+			e.VendorName  = *req.VendorMapping.Vendor[0].VendorName
+			e.LastUpdated = int(*req.VendorMapping.Vendor[0].LastUpdated)
+			e.AttackMapping = nil
+			for _, am := range req.VendorMapping.Vendor[0].AttackMapping {
+				attackMapping := data_models.AttackMapping{}
+				attackMapping.AttackId = int(*am.AttackId)
+				attackMapping.AttackDescription = *am.AttackDescription
+				e.AttackMapping = append(e.AttackMapping, attackMapping)
+			}
 			err = e.Save(tx)
 			if err != nil {
 				errMsg = fmt.Sprintf("Failed to save vendor-mapping with vendor-id = %+v", vId)

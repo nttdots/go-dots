@@ -139,8 +139,8 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			scopeStates.AclList = append(scopeStates.AclList, aclList)
 		}
 		// Set telemetry attributes to response
-		scopeStates.TotalTraffic = convertToTelemetryTrafficResponse(mp.mitigation.TelemetryTotalTraffic)
-		scopeStates.TotalAttackTraffic = convertToTelemetryTrafficResponse(mp.mitigation.TelemetryTotalAttackTraffic)
+		scopeStates.TotalTraffic = convertToTrafficResponse(mp.mitigation.TelemetryTotalTraffic)
+		scopeStates.TotalAttackTraffic = convertToTrafficResponse(mp.mitigation.TelemetryTotalAttackTraffic)
 		if !reflect.DeepEqual(models.GetModelsTelemetryTotalAttackConnection(&mp.mitigation.TelemetryTotalAttackConnection), models.GetModelsTelemetryTotalAttackConnection(nil)) {
 			scopeStates.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(mp.mitigation.TelemetryTotalAttackConnection)
 		} else {

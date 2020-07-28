@@ -143,8 +143,8 @@ func (t *TelemetryPreMitigationRequest) HandlePut(request Request, customer *mod
 				for _, vendor := range vendorMapping.Vendor {
 					if *attackDetail.VendorId == *vendor.VendorId {
 						for _, attack := range vendor.AttackMapping {
-							if *attackDetail.AttackId == *attack.AttackId && attackDetail.AttackName != nil {
-								errMsg = fmt.Sprintf("Existed vendor-mapping with vendor-id: %+v, attack-id: %+v. DOTS agents MUST NOT include 'attack-name'", *vendor.VendorId, *attack.AttackId)
+							if *attackDetail.AttackId == *attack.AttackId && attackDetail.AttackDescription != nil {
+								errMsg = fmt.Sprintf("Existed vendor-mapping with vendor-id: %+v, attack-id: %+v. DOTS agents MUST NOT include 'attack-description'", *vendor.VendorId, *attack.AttackId)
 								log.Errorf(errMsg)
 								res = Response {
 									Type: common.NonConfirmable,
@@ -153,7 +153,7 @@ func (t *TelemetryPreMitigationRequest) HandlePut(request Request, customer *mod
 								}
 								return res, nil
 							} else if *attackDetail.AttackId == *attack.AttackId {
-								preMitigation.AttackDetail[k].AttackName = attack.AttackName
+								preMitigation.AttackDetail[k].AttackDescription = attack.AttackDescription
 							}
 						}
 					}
@@ -762,8 +762,8 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 		if attackDetail.AttackId > 0 {
 			attackDetailResp.AttackId = attackDetail.AttackId
 		}
-		if attackDetail.AttackName != "" {
-			attackDetailResp.AttackName = &attackDetail.AttackName
+		if attackDetail.AttackDescription != "" {
+			attackDetailResp.AttackDescription = &attackDetail.AttackDescription
 		}
 		if attackDetail.AttackSeverity > 0 {
 			attackDetailResp.AttackSeverity = attackDetail.AttackSeverity
@@ -818,29 +818,6 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 	return
 }
 
-// Convert traffic to TelemetryTrafficResponse
-func convertToTelemetryTrafficResponse(traffics []models.Traffic) (trafficRespList []messages.TelemetryTrafficResponse) {
-	trafficRespList = []messages.TelemetryTrafficResponse{}
-	for _, v := range traffics {
-		trafficResp := messages.TelemetryTrafficResponse{}
-		trafficResp.Unit = v.Unit
-		if v.LowPercentileG > 0 {
-			trafficResp.LowPercentileG = &v.LowPercentileG
-		}
-		if v.MidPercentileG > 0 {
-			trafficResp.MidPercentileG = &v.MidPercentileG
-		}
-		if v.HighPercentileG > 0 {
-			trafficResp.HighPercentileG = &v.HighPercentileG
-		}
-		if v.PeakG > 0 {
-			trafficResp.PeakG = &v.PeakG
-		}
-		trafficRespList = append(trafficRespList, trafficResp)
-	}
-	return
-}
-
 // Convert TelemetryTotalAttackConnection to TelemetryTotalAttackConnectionResponse
 func convertToTelemetryTotalAttackConnectionResponse(tac models.TelemetryTotalAttackConnection) (tacResp *messages.TelemetryTotalAttackConnectionResponse) {
 	tacResp = &messages.TelemetryTotalAttackConnectionResponse{}
@@ -862,6 +839,9 @@ func convertToTelemetryTotalAttackConnectionResponse(tac models.TelemetryTotalAt
 // Convert ConnectionPercentile to TelemetryConnectionPercentileResponse
 func convertToTelemetryConnectionPercentileResponse(cp models.ConnectionPercentile) (cpResp *messages.TelemetryConnectionPercentileResponse) {
 	cpResp = &messages.TelemetryConnectionPercentileResponse{}
+	if cp.Connection > 0 {
+		cpResp.Connection = &cp.Connection
+	}
 	if cp.Embryonic > 0 {
 		cpResp.Embryonic = &cp.Embryonic
 	}
@@ -888,8 +868,8 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 		if attackDetail.AttackId > 0 {
 			attackDetailResp.AttackId = attackDetail.AttackId
 		}
-		if attackDetail.AttackName != "" {
-			attackDetailResp.AttackName = &attackDetail.AttackName
+		if attackDetail.AttackDescription != "" {
+			attackDetailResp.AttackDescription = &attackDetail.AttackDescription
 		}
 		if attackDetail.AttackSeverity > 0 {
 			attackDetailResp.AttackSeverity = attackDetail.AttackSeverity
@@ -901,7 +881,7 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 			attackDetailResp.EndTime = &attackDetail.EndTime
 		}
 		if !reflect.DeepEqual(models.GetModelsSourceCount(&attackDetail.SourceCount), models.GetModelsSourceCount(nil)) {
-			sourceCount := &messages.TelemetrySourceCountResponse{}
+			sourceCount := &messages.SourceCountResponse{}
 			if attackDetail.SourceCount.LowPercentileG > 0 {
 				sourceCount.LowPercentileG = &attackDetail.SourceCount.LowPercentileG
 			}
@@ -923,12 +903,12 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 				talkerResp.SpoofedStatus = v.SpoofedStatus
 				talkerResp.SourcePrefix = v.SourcePrefix.String()
 				for _, portRange := range v.SourcePortRange {
-					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.TelemetrySourcePortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort})
+					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.PortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort})
 				}
 				for _, typeRange := range v.SourceIcmpTypeRange {
-					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.TelemetrySourceICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: typeRange.UpperType})
+					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.SourceICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: typeRange.UpperType})
 				}
-				talkerResp.TotalAttackTraffic = convertToTelemetryTrafficResponse(v.TotalAttackTraffic)
+				talkerResp.TotalAttackTraffic = convertToTrafficResponse(v.TotalAttackTraffic)
 				if !reflect.DeepEqual(models.GetModelsTelemetryTotalAttackConnection(&v.TotalAttackConnection), models.GetModelsTelemetryTotalAttackConnection(nil)) {
 					talkerResp.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(v.TotalAttackConnection)
 				}
