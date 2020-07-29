@@ -161,6 +161,7 @@ func ValidateTotalPipeCapacity(customerID int, cuid string, tsid int, data []mes
 	// default value
 	isPresent = false
 	isUnprocessableEntity = false
+	zeroValueCount := 0
 
 	// Get telemetry setup by customerId and setup type is 'pipe'
 	currentTelemetrySetupList, err := GetTelemetrySetupByCustomerIdAndSetupType(customerID, string(PIPE))
@@ -188,6 +189,9 @@ func ValidateTotalPipeCapacity(customerID int, cuid string, tsid int, data []mes
 			isUnprocessableEntity = true
 			return
 		}
+		if *v.Capacity == 0 {
+			zeroValueCount ++
+		}
 		if *v.Unit != int(PacketsPerSecond) && *v.Unit != int(BitsPerSecond) && *v.Unit != int(BytesPerSecond) &&
 			*v.Unit != int(KiloPacketsPerSecond) && *v.Unit != int(KiloBitsPerSecond) && *v.Unit != int(KiloBytesPerSecond) &&
 			*v.Unit != int(MegaPacketsPerSecond) && *v.Unit != int(MegaBitsPerSecond) && *v.Unit != int(MegaBytesPerSecond) &&
@@ -198,6 +202,11 @@ func ValidateTotalPipeCapacity(customerID int, cuid string, tsid int, data []mes
 			isUnprocessableEntity = true
 			return
 		}
+	}
+	if zeroValueCount == len(data) {
+		errMsg = "If the PUT request with a 'capacity' attribute set to 0 for all included links, DOTS server MUST reject the request"
+		log.Error(errMsg)
+		return
 	}
 	return
 }
