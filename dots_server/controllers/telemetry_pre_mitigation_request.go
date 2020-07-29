@@ -531,16 +531,20 @@ func convertToTrafficResponse(traffics []models.Traffic) (trafficRespList []mess
 		trafficResp := messages.TrafficResponse{}
 		trafficResp.Unit = v.Unit
 		if v.LowPercentileG > 0 {
-			trafficResp.LowPercentileG = &v.LowPercentileG
+			lowPercentileG := v.LowPercentileG
+			trafficResp.LowPercentileG = &lowPercentileG
 		}
 		if v.MidPercentileG > 0 {
-			trafficResp.MidPercentileG = &v.MidPercentileG
+			midPercentileG := v.MidPercentileG
+			trafficResp.MidPercentileG = &midPercentileG
 		}
 		if v.HighPercentileG > 0 {
-			trafficResp.HighPercentileG = &v.HighPercentileG
+			highPercentileG := v.HighPercentileG
+			trafficResp.HighPercentileG = &highPercentileG
 		}
 		if v.PeakG > 0 {
-			trafficResp.PeakG = &v.PeakG
+			peakG := v.PeakG
+			trafficResp.PeakG = &peakG
 		}
 		trafficRespList = append(trafficRespList, trafficResp)
 	}
@@ -555,16 +559,20 @@ func convertToTrafficPerProtocolResponse(traffics []models.TrafficPerProtocol) (
 		trafficResp.Unit = v.Unit
 		trafficResp.Protocol = v.Protocol
 		if v.LowPercentileG > 0 {
-			trafficResp.LowPercentileG = &v.LowPercentileG
+			lowPercentileG := v.LowPercentileG
+			trafficResp.LowPercentileG = &lowPercentileG
 		}
 		if v.MidPercentileG > 0 {
-			trafficResp.MidPercentileG = &v.MidPercentileG
+			midPercentileG := v.MidPercentileG
+			trafficResp.MidPercentileG = &midPercentileG
 		}
 		if v.HighPercentileG > 0 {
-			trafficResp.HighPercentileG = &v.HighPercentileG
+			highPercentileG := v.HighPercentileG
+			trafficResp.HighPercentileG = &highPercentileG
 		}
 		if v.PeakG > 0 {
-			trafficResp.PeakG = &v.PeakG
+			peakG := v.PeakG
+			trafficResp.PeakG = &peakG
 		}
 		trafficRespList = append(trafficRespList, trafficResp)
 	}
@@ -579,16 +587,20 @@ func convertToTrafficPerPortResponse(traffics []models.TrafficPerPort) (trafficR
 		trafficResp.Unit = v.Unit
 		trafficResp.Port = v.Port
 		if v.LowPercentileG > 0 {
-			trafficResp.LowPercentileG = &v.LowPercentileG
+			lowPercentileG := v.LowPercentileG
+			trafficResp.LowPercentileG = &lowPercentileG
 		}
 		if v.MidPercentileG > 0 {
-			trafficResp.MidPercentileG = &v.MidPercentileG
+			midPercentileG := v.MidPercentileG
+			trafficResp.MidPercentileG = &midPercentileG
 		}
 		if v.HighPercentileG > 0 {
-			trafficResp.HighPercentileG = &v.HighPercentileG
+			highPercentileG := v.HighPercentileG
+			trafficResp.HighPercentileG = &highPercentileG
 		}
 		if v.PeakG > 0 {
-			trafficResp.PeakG = &v.PeakG
+			peakG := v.PeakG
+			trafficResp.PeakG = &peakG
 		}
 		trafficRespList = append(trafficRespList, trafficResp)
 	}
@@ -602,34 +614,44 @@ func convertToTotalConnectionCapacityResponse(tccs []models.TotalConnectionCapac
 		tcc := messages.TotalConnectionCapacityResponse{}
 		tcc.Protocol = vTcc.Protocol
 		if vTcc.Connection > 0 {
-			tcc.Connection = &vTcc.Connection
+			connection := vTcc.Connection
+			tcc.Connection = &connection
 		}
 		if vTcc.ConnectionClient > 0 {
-			tcc.ConnectionClient = &vTcc.ConnectionClient
+			connectionClient := vTcc.ConnectionClient
+			tcc.ConnectionClient = &connectionClient
 		}
 		if vTcc.Embryonic > 0 {
-			tcc.Embryonic = &vTcc.Embryonic
+			embryonic := vTcc.Embryonic
+			tcc.Embryonic = &embryonic
 		}
 		if vTcc.EmbryonicClient > 0 {
-			tcc.EmbryonicClient = &vTcc.EmbryonicClient
+			embryonicClient := vTcc.EmbryonicClient
+			tcc.EmbryonicClient = &embryonicClient
 		}
 		if vTcc.ConnectionPs > 0 {
-			tcc.ConnectionPs = &vTcc.ConnectionPs
+			connectionPs := vTcc.ConnectionPs
+			tcc.ConnectionPs = &connectionPs
 		}
 		if vTcc.ConnectionClientPs > 0 {
-			tcc.ConnectionClientPs = &vTcc.ConnectionClientPs
+			connectionClientPs := vTcc.ConnectionClientPs
+			tcc.ConnectionClientPs = &connectionClientPs
 		}
 		if vTcc.RequestPs > 0 {
-			tcc.RequestPs = &vTcc.RequestPs
+			requestPs := vTcc.RequestPs
+			tcc.RequestPs = &requestPs
 		}
 		if vTcc.RequestClientPs > 0 {
-			tcc.RequestClientPs = &vTcc.RequestClientPs
+			requestClientPs := vTcc.RequestClientPs
+			tcc.RequestClientPs = &requestClientPs
 		}
 		if vTcc.PartialRequestPs > 0 {
-			tcc.PartialRequestPs = &vTcc.PartialRequestPs
+			partialRequestps := vTcc.PartialRequestPs
+			tcc.PartialRequestPs = &partialRequestps
 		}
 		if vTcc.PartialRequestClientPs > 0 {
-			tcc.PartialRequestClientPs = &vTcc.PartialRequestClientPs
+			partialRequestClientPs := vTcc.PartialRequestClientPs
+			tcc.PartialRequestClientPs = &partialRequestClientPs
 		}
 		tccList = append(tccList, tcc)
 	}
@@ -644,34 +666,44 @@ func convertToTotalConnectionCapacityPerPortResponse(tccs []models.TotalConnecti
 		tcc.Protocol = vTcc.Protocol
 		tcc.Port = vTcc.Port
 		if vTcc.Connection > 0 {
-			tcc.Connection = &vTcc.Connection
+			connection := vTcc.Connection
+			tcc.Connection = &connection
 		}
 		if vTcc.ConnectionClient > 0 {
-			tcc.ConnectionClient = &vTcc.ConnectionClient
+			connectionClient := vTcc.ConnectionClient
+			tcc.ConnectionClient = &connectionClient
 		}
 		if vTcc.Embryonic > 0 {
-			tcc.Embryonic = &vTcc.Embryonic
+			embryonic := vTcc.Embryonic
+			tcc.Embryonic = &embryonic
 		}
 		if vTcc.EmbryonicClient > 0 {
-			tcc.EmbryonicClient = &vTcc.EmbryonicClient
+			embryonicClient := vTcc.EmbryonicClient
+			tcc.EmbryonicClient = &embryonicClient
 		}
 		if vTcc.ConnectionPs > 0 {
-			tcc.ConnectionPs = &vTcc.ConnectionPs
+			connectionPS := vTcc.ConnectionPs
+			tcc.ConnectionPs = &connectionPS
 		}
 		if vTcc.ConnectionClientPs > 0 {
-			tcc.ConnectionClientPs = &vTcc.ConnectionClientPs
+			connectionClientPs := vTcc.ConnectionClientPs
+			tcc.ConnectionClientPs = &connectionClientPs
 		}
 		if vTcc.RequestPs > 0 {
-			tcc.RequestPs = &vTcc.RequestPs
+			requestPs := vTcc.RequestPs
+			tcc.RequestPs = &requestPs
 		}
 		if vTcc.RequestClientPs > 0 {
-			tcc.RequestClientPs = &vTcc.RequestClientPs
+			requestClientPs := vTcc.RequestClientPs
+			tcc.RequestClientPs = &requestClientPs
 		}
 		if vTcc.PartialRequestPs > 0 {
-			tcc.PartialRequestPs = &vTcc.PartialRequestPs
+			partialRequestPs := vTcc.PartialRequestPs
+			tcc.PartialRequestPs = &partialRequestPs
 		}
 		if vTcc.PartialRequestClientPs > 0 {
-			tcc.PartialRequestClientPs = &vTcc.PartialRequestClientPs
+			partialRequestClientPs := vTcc.PartialRequestClientPs
+			tcc.PartialRequestClientPs = &partialRequestClientPs
 		}
 		tccList = append(tccList, tcc)
 	}
@@ -705,19 +737,24 @@ func convertToConnectionProtocolPercentileResponse(cpps []models.ConnectionProto
 		cppResp := messages.ConnectionProtocolPercentileResponse{}
 		cppResp.Protocol = v.Protocol
 		if v.Connection > 0 {
-			cppResp.Connection = &v.Connection
+			connection := v.Connection
+			cppResp.Connection = &connection
 		}
 		if v.Embryonic > 0 {
-			cppResp.Embryonic = &v.Embryonic
+			embryonic := v.Embryonic
+			cppResp.Embryonic = &embryonic
 		}
 		if v.ConnectionPs > 0 {
-			cppResp.ConnectionPs = &v.ConnectionPs
+			connectionPs := v.ConnectionPs
+			cppResp.ConnectionPs = &connectionPs
 		}
 		if v.RequestPs > 0 {
-			cppResp.RequestPs = &v.RequestPs
+			requestPs := v.RequestPs
+			cppResp.RequestPs = &requestPs
 		}
 		if v.PartialRequestPs > 0 {
-			cppResp.PartialRequestPs = &v.PartialRequestPs
+			partialRequestPs := v.PartialRequestPs
+			cppResp.PartialRequestPs = &partialRequestPs
 		}
 		cppRespList = append(cppRespList, cppResp)
 	}
@@ -732,19 +769,24 @@ func convertToConnectionProtocolPortPercentileResponse(cpps []models.ConnectionP
 		cppResp.Protocol = v.Protocol
 		cppResp.Port = v.Port
 		if v.Connection > 0 {
-			cppResp.Connection = &v.Connection
+			connection := v.Connection
+			cppResp.Connection = &connection
 		}
 		if v.Embryonic > 0 {
-			cppResp.Embryonic = &v.Embryonic
+			embryonic := v.Embryonic
+			cppResp.Embryonic = &embryonic
 		}
 		if v.ConnectionPs > 0 {
-			cppResp.ConnectionPs = &v.ConnectionPs
+			connectionPs := v.ConnectionPs
+			cppResp.ConnectionPs = &connectionPs
 		}
 		if v.RequestPs > 0 {
-			cppResp.RequestPs = &v.RequestPs
+			requestPs := v.RequestPs
+			cppResp.RequestPs = &requestPs
 		}
 		if v.PartialRequestPs > 0 {
-			cppResp.PartialRequestPs = &v.PartialRequestPs
+			partialRequestPs := v.PartialRequestPs
+			cppResp.PartialRequestPs = &partialRequestPs
 		}
 		cppRespList = append(cppRespList, cppResp)
 	}
@@ -763,30 +805,37 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 			attackDetailResp.AttackId = attackDetail.AttackId
 		}
 		if attackDetail.AttackDescription != "" {
-			attackDetailResp.AttackDescription = &attackDetail.AttackDescription
+			attackDescription := attackDetail.AttackDescription
+			attackDetailResp.AttackDescription = &attackDescription
 		}
 		if attackDetail.AttackSeverity > 0 {
 			attackDetailResp.AttackSeverity = attackDetail.AttackSeverity
 		}
 		if attackDetail.StartTime > 0 {
-			attackDetailResp.StartTime = &attackDetail.StartTime
+			startTime := attackDetail.StartTime
+			attackDetailResp.StartTime = &startTime
 		}
 		if attackDetail.EndTime > 0 {
-			attackDetailResp.EndTime = &attackDetail.EndTime
+			endTime := attackDetail.EndTime
+			attackDetailResp.EndTime = &endTime
 		}
 		if !reflect.DeepEqual(models.GetModelsSourceCount(&attackDetail.SourceCount), models.GetModelsSourceCount(nil)) {
 			sourceCount := &messages.SourceCountResponse{}
 			if attackDetail.SourceCount.LowPercentileG > 0 {
-				sourceCount.LowPercentileG = &attackDetail.SourceCount.LowPercentileG
+				lowPercentileG := attackDetail.SourceCount.LowPercentileG
+				sourceCount.LowPercentileG = &lowPercentileG
 			}
 			if attackDetail.SourceCount.MidPercentileG > 0 {
-				sourceCount.MidPercentileG = &attackDetail.SourceCount.MidPercentileG
+				midPercentileG := attackDetail.SourceCount.MidPercentileG
+				sourceCount.MidPercentileG = &midPercentileG
 			}
 			if attackDetail.SourceCount.HighPercentileG > 0 {
-				sourceCount.HighPercentileG = &attackDetail.SourceCount.HighPercentileG
+				highPercentileG := attackDetail.SourceCount.HighPercentileG
+				sourceCount.HighPercentileG = &highPercentileG
 			}
 			if attackDetail.SourceCount.PeakG > 0 {
-				sourceCount.PeakG = &attackDetail.SourceCount.PeakG
+				peakG := attackDetail.SourceCount.PeakG
+				sourceCount.PeakG = &peakG
 			}
 			attackDetailResp.SourceCount = sourceCount
 		}
@@ -840,19 +889,24 @@ func convertToTelemetryTotalAttackConnectionResponse(tac models.TelemetryTotalAt
 func convertToTelemetryConnectionPercentileResponse(cp models.ConnectionPercentile) (cpResp *messages.TelemetryConnectionPercentileResponse) {
 	cpResp = &messages.TelemetryConnectionPercentileResponse{}
 	if cp.Connection > 0 {
-		cpResp.Connection = &cp.Connection
+		connection := cp.Connection
+		cpResp.Connection = &connection
 	}
 	if cp.Embryonic > 0 {
-		cpResp.Embryonic = &cp.Embryonic
+		embryonic := cp.Embryonic
+		cpResp.Embryonic = &embryonic
 	}
 	if cp.ConnectionPs > 0 {
-		cpResp.ConnectionPs = &cp.ConnectionPs
+		connectionPs := cp.ConnectionPs
+		cpResp.ConnectionPs = &connectionPs
 	}
 	if cp.RequestPs > 0 {
-		cpResp.RequestPs = &cp.RequestPs
+		requestPs := cp.RequestPs
+		cpResp.RequestPs = &requestPs
 	}
 	if cp.PartialRequestPs > 0 {
-		cpResp.PartialRequestPs = &cp.PartialRequestPs
+		partialRequestPs := cp.PartialRequestPs
+		cpResp.PartialRequestPs = &partialRequestPs
 	}
 	return
 }
@@ -869,30 +923,37 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 			attackDetailResp.AttackId = attackDetail.AttackId
 		}
 		if attackDetail.AttackDescription != "" {
-			attackDetailResp.AttackDescription = &attackDetail.AttackDescription
+			attackDescription := attackDetail.AttackDescription
+			attackDetailResp.AttackDescription = &attackDescription
 		}
 		if attackDetail.AttackSeverity > 0 {
 			attackDetailResp.AttackSeverity = attackDetail.AttackSeverity
 		}
 		if attackDetail.StartTime > 0 {
-			attackDetailResp.StartTime = &attackDetail.StartTime
+			startTime := attackDetail.StartTime
+			attackDetailResp.StartTime = &startTime
 		}
 		if attackDetail.EndTime > 0 {
-			attackDetailResp.EndTime = &attackDetail.EndTime
+			endTime := attackDetail.EndTime
+			attackDetailResp.EndTime = &endTime
 		}
 		if !reflect.DeepEqual(models.GetModelsSourceCount(&attackDetail.SourceCount), models.GetModelsSourceCount(nil)) {
 			sourceCount := &messages.SourceCountResponse{}
 			if attackDetail.SourceCount.LowPercentileG > 0 {
-				sourceCount.LowPercentileG = &attackDetail.SourceCount.LowPercentileG
+				lowPercentileG := attackDetail.SourceCount.LowPercentileG
+				sourceCount.LowPercentileG = &lowPercentileG
 			}
 			if attackDetail.SourceCount.MidPercentileG > 0 {
-				sourceCount.MidPercentileG = &attackDetail.SourceCount.MidPercentileG
+				midPercentileG := attackDetail.SourceCount.MidPercentileG
+				sourceCount.MidPercentileG = &midPercentileG
 			}
 			if attackDetail.SourceCount.HighPercentileG > 0 {
-				sourceCount.HighPercentileG = &attackDetail.SourceCount.HighPercentileG
+				highPercentileG := attackDetail.SourceCount.HighPercentileG
+				sourceCount.HighPercentileG = &highPercentileG
 			}
 			if attackDetail.SourceCount.PeakG > 0 {
-				sourceCount.PeakG = &attackDetail.SourceCount.PeakG
+				peakG := attackDetail.SourceCount.PeakG
+				sourceCount.PeakG = &peakG
 			}
 			attackDetailResp.SourceCount = sourceCount
 		}

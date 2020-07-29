@@ -623,7 +623,7 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
 
 	// Check if the response body data is a string message (not an object)
 	if pdu.IsMessageResponse() {
-		log.Debugf("Server send notification with error message: %+v", pdu.Data)
+		log.Debugf("Server send notification with error message: %s", pdu.Data)
 		return
 	}
 

@@ -2886,38 +2886,38 @@ func DeleteCurrentUriFilteringTelemetryPreMitigation(engine *xorm.Engine, sessio
 	// Delete uri_filtering_telemetry_pre_mitigation by tmid
 	err = db_models.DeleteUriFilteringTelemetryPreMitigationByTmid(session, tmid)
 	if err != nil {
-		log.Debugf("Failed to delete uri_filtering_telemetry_pre_mitigation. Err: %+v", err)
+		log.Errorf("Failed to delete uri_filtering_telemetry_pre_mitigation. Err: %+v", err)
 		return err
 	}
 	for _, v := range currentUriFilterPreMitigation {
 		// Delete uri_filtering_traffic
 		err = db_models.DeleteUriFilteringTraffic(session, string(TARGET_PREFIX), v.Id)
 		if err != nil {
-			log.Debugf("Failed to delete uri_filtering_traffic. Err: %+v", err)
+			log.Errorf("Failed to delete uri_filtering_traffic. Err: %+v", err)
 			return err
 		}
 		// Delete uri_filtering_traffic_per_protocol
 		err = db_models.DeleteUriFilteringTrafficPerProtocol(session, v.Id)
 		if err != nil {
-			log.Debugf("Failed to delete uri_filtering_traffic_per_protocol. Err: %+v", err)
+			log.Errorf("Failed to delete uri_filtering_traffic_per_protocol. Err: %+v", err)
 			return err
 		}
 		// Delete uri_filtering_traffic_per_port
 		err = db_models.DeleteUriFilteringTrafficPerPort(session, v.Id)
 		if err != nil {
-			log.Debugf("Failed to delete uri_filtering_traffic_per_port. Err: %+v", err)
+			log.Errorf("Failed to delete uri_filtering_traffic_per_port. Err: %+v", err)
 			return err
 		}
 		// Delete uri_filtering_total_attack_connection
 		err = db_models.DeleteUriFilteringTotalAttackConnection(session, string(TARGET_PREFIX), v.Id)
 		if err != nil {
-			log.Debugf("Failed to delete uri_filtering_total_attack_connection. Err: %+v", err)
+			log.Errorf("Failed to delete uri_filtering_total_attack_connection. Err: %+v", err)
 			return err
 		}
 		// Delete uri_filtering_total_attack_connection_port
 		err = db_models.DeleteUriFilteringTotalAttackConnectionPort(session, v.Id)
 		if err != nil {
-			log.Debugf("Failed to delete uri_filtering_total_attack_connection_port. Err: %+v", err)
+			log.Errorf("Failed to delete uri_filtering_total_attack_connection_port. Err: %+v", err)
 			return err
 		}
 		err = DeleteUriFilteringAttackDetail(engine, session, v.Id)
@@ -2933,63 +2933,63 @@ func DeleteUriFilteringAttackDetail(engine *xorm.Engine, session *xorm.Session, 
 	// Get uri_filtering_attack_detail
 	attackDetailList, err := db_models.GetUriFilteringAttackDetailByTelePreMitigationId(engine, uriFilterPreMitigationId)
 	if err != nil {
-		log.Debugf("Failed to get uri_filtering_attack_detail. Err: %+v", err)
+		log.Errorf("Failed to get uri_filtering_attack_detail. Err: %+v", err)
 		return err
 	}
 	// Delete uri_filtering_attack_detail
 	err = db_models.DeleteUriFilteringAttackDetailByTelePreMitigationId(session, uriFilterPreMitigationId)
 	if err != nil {
-		log.Debugf("Failed to delete uri_filtering_attack_detail. Err: %+v", err)
+		log.Errorf("Failed to delete uri_filtering_attack_detail. Err: %+v", err)
 		return err
 	}
 	for _, v := range attackDetailList {
 		// Delete uri_filtering_source_count
 		err = db_models.DeleteUriFilteringSourceCountByTeleAttackDetailId(session, v.Id)
 		if err != nil {
-			log.Debugf("Failed to delete uri_filtering_source_count. Err: %+v", err)
+			log.Errorf("Failed to delete uri_filtering_source_count. Err: %+v", err)
 			return err
 		}
 		// Get uri_filtering_top_talker
 		talkerList, err := db_models.GetUriFilteringTopTalkerByTeleAttackDetailId(engine, v.Id)
 		if err != nil {
-			log.Debugf("Failed to get uri_filtering_top_talker. Err: %+v", err)
+			log.Errorf("Failed to get uri_filtering_top_talker. Err: %+v", err)
 			return err
 		}
 		// Delete uri_filtering_top_talker
 		err = db_models.DeleteUriFilteringTopTalkerByAttackDetailId(session, v.Id)
 		if err != nil {
-			log.Debugf("Failed to delete uri_filtering_top_talker. Err: %+v", err)
+			log.Errorf("Failed to delete uri_filtering_top_talker. Err: %+v", err)
 			return err
 		}
 		for _, talker := range talkerList {
 			// Delete uri_filtering_source_prefix
 			err = db_models.DeleteUriFilteringSourcePrefix(session, talker.Id)
 			if err != nil {
-				log.Debugf("Failed to delete uri_filtering_source_prefix. Err: %+v", err)
+				log.Errorf("Failed to delete uri_filtering_source_prefix. Err: %+v", err)
 				return err
 			}
 			// Delete uri_filtering_source_port_range
 			err = db_models.DeleteUriFilteringSourcePortRange(session, talker.Id)
 			if err != nil {
-				log.Debugf("Failed to delete uri_filtering_source_port_range. Err: %+v", err)
+				log.Errorf("Failed to delete uri_filtering_source_port_range. Err: %+v", err)
 				return err
 			}
 			// Delete uri_filtering_icmp_type_range
 			err = db_models.DeleteUriFilteringIcmpTypeRange(session, talker.Id)
 			if err != nil {
-				log.Debugf("Failed to delete uri_filtering_icmp_type_range. Err: %+v", err)
+				log.Errorf("Failed to delete uri_filtering_icmp_type_range. Err: %+v", err)
 				return err
 			}
 			// Delete uri_filtering_traffic
 			err = db_models.DeleteUriFilteringTraffic(session, string(SOURCE_PREFIX), talker.Id)
 			if err != nil {
-				log.Debugf("Failed to delete uri_filtering_traffic. Err: %+v", err)
+				log.Errorf("Failed to delete uri_filtering_traffic. Err: %+v", err)
 				return err
 			}
 			// Delete uri_filtering_total_attack_connection
 			err = db_models.DeleteUriFilteringTotalAttackConnection(session, string(SOURCE_PREFIX), talker.Id)
 			if err != nil {
-				log.Debugf("Failed to delete uri_filtering_total_attack_connection. Err: %+v", err)
+				log.Errorf("Failed to delete uri_filtering_total_attack_connection. Err: %+v", err)
 				return err
 			}
 		}
