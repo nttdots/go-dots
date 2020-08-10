@@ -35,7 +35,6 @@ enum TRIGGER_TYPE {
 #define SESSION_CONFIGURATION    "signal_session_configuration"
 #define PREFIX_ADDRESS_RANGE     "prefix"
 #define DATA_ACLS                "data_acls"
-#define	TELEMETRY_PRE_MITIGATION "telemetry_pre_mitigation"
 #define	TELEMETRY_ATTACK_DETAIL  "telemetry_attack_detail"
 
 #define URI_FILTERING_TRAFFIC                      "uri_filtering_traffic"
@@ -106,16 +105,6 @@ my_bool MySQLNotification_init(UDF_INIT *initid,
 
         if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT || args->arg_type[2] != INT_RESULT) {
             strcpy(message, "MySQLNotification() requires two integers, and table name");
-            return 1;
-        }
-    } else if (strcmp((char*)args->args[0], TELEMETRY_PRE_MITIGATION) == 0) {
-        // check the arguments format
-        if(args->arg_count != 2) {
-            strcpy(message, "MySQLNotification() requires exactly two arguments");
-            return 1;
-        }
-        if(args->arg_type[0] != STRING_RESULT || args->arg_type[1] != INT_RESULT ) {
-            strcpy(message, "MySQLNotification() requires one integer and table name");
             return 1;
         }
     } else if (strcmp((char*)args->args[0], TELEMETRY_ATTACK_DETAIL) == 0) {
@@ -303,10 +292,6 @@ longlong MySQLNotification(UDF_INIT *initid, UDF_ARGS *args,
 
         // format a message containing id of row and type of change
         sprintf(packet, "{\"table_trigger\":\"%s\", \"aclId\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
-    } else if (strcmp((char*)args->args[0], TELEMETRY_PRE_MITIGATION) == 0) {
-
-        // format a message containing id of row and type of change
-        sprintf(packet, "{\"table_trigger\":\"%s\", \"id\":\"%lld\"}", ((char*)args->args[0]), *((longlong*)args->args[1]));
     } else if (strcmp((char*)args->args[0], TELEMETRY_ATTACK_DETAIL) == 0) {
 
         // format a message containing id of row and type of change

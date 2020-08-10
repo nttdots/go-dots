@@ -27,7 +27,6 @@ const (
 	SESSION_CONFIGURATION    TableName = "signal_session_configuration"
 	PREFIX_ADDRESS_RANGE     TableName = "prefix"
 	DATA_ACLS                TableName = "data_acls"
-	TELEMETRY_PRE_MITIGATION TableName = "telemetry_pre_mitigation"
 	TELEMETRY_ATTACK_DETAIL  TableName = "telemetry_attack_detail"
 
 	URI_FILTERING_TRAFFIC                      TableName = "uri_filtering_traffic"
@@ -151,8 +150,6 @@ ILOOP:
 				}
 			} else if mapData["table_trigger"].(string) == string(DATA_ACLS) {
 				handleNotifyACL(mapData["aclId"].(string), context)
-			} else if mapData["table_trigger"].(string) == string(TELEMETRY_PRE_MITIGATION) {
-				handleNotifyTelemetryPreMitigation(mapData, context)
 			} else if mapData["table_trigger"].(string) == string(TELEMETRY_ATTACK_DETAIL) {
 				mitigationScopeId, err := strconv.Atoi(mapData["mitigation_scope_id"].(string))
 				if err != nil {
@@ -339,40 +336,6 @@ func handleNotifyACL(aclIDString string, context *libcoap.Context) {
 			}
 		}
 	}
-}
-
-// Handle notify telemetry pre-mitigation
-func handleNotifyTelemetryPreMitigation(mapData map[string]interface{}, context *libcoap.Context) {
-	id, err := strconv.Atoi(mapData["id"].(string))
-	if err != nil {
-		log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
-		return
-	}
-	// Get telemetry pre-mitigation
-	preMitigation, err := models.GetTelemetryPreMitigationById(int64(id))
-	if err != nil {
-		log.Errorf("[MySQL-Notification]: Failed to Get telemetry pre-mitigation. Error: %+v", err)
-		return
-	}
-	isServerOriginatedTelemetry, err := getServerOriginatedTelemetry(preMitigation.CustomerId, preMitigation.Cuid)
-	if err != nil {
-		log.Error("[MySQL-Notification]: Failed to get server-originated-telemetry")
-		return
-	}
-	// If the 'server-originated-telemetry' set to false, DOTS server will not notify
-	if !isServerOriginatedTelemetry {
-		log.Debug("[MySQL-Notification]: DOTS server will not notify to DOST client due to 'server-originated-telemetry' set to false")
-		return
-	}
-	uriPath := messages.MessageTypes[messages.TELEMETRY_PRE_MITIGATION_REQUEST].Path
-	var query string
-	if preMitigation.Cdid == "" {
-		query = uriPath + "/cuid=" + preMitigation.Cuid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
-	} else {
-		query = uriPath + "/cuid=" + preMitigation.Cuid + "cdid=" + preMitigation.Cdid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
-	}
-	log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-	context.EnableResourceDirty(query)
 }
 
 // Handle notification telemetry pre-mitigation aggregated by server

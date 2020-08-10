@@ -222,11 +222,11 @@ func (t *TelemetryPreMitigationRequest) HandleGet(request Request, customer *mod
 	}
 	if tmid != nil {
 		log.Debug("Handle get one telemetry pre-mitigation")
-		res, err = handleGetOneTelemetryPreMitigation(customer, cuid, tmid, request.Queries)
+		res, err = handleGetTelemetryPreMitigation(customer, cuid, tmid, request.Queries)
 		return
 	}
 	log.Debug("Handle get all telemetry pre-mitigation")
-	res, err = handleGetAllTelemetryPreMitigation(customer, cuid, request.Queries)
+	res, err = handleGetTelemetryPreMitigation(customer, cuid, nil, request.Queries)
 	return
 }
 
@@ -270,15 +270,11 @@ func (t *TelemetryPreMitigationRequest) HandleDelete(request Request, customer *
 	}
 	if tmid != nil {
 		log.Debug("Delete one telemetry pre-mitigation")
-		telePreMitigation, err := models.GetTelemetryPreMitigationByTmid(customer.Id, cuid, *tmid)
-		if err != nil {
-			return Response{}, err
-		}
 		uriFilterPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, tmid, nil)
 		if err != nil {
 			return Response{}, err
 		}
-		if telePreMitigation.Id <= 0 && len(uriFilterPreMitigation) < 1{
+		if len(uriFilterPreMitigation) < 1{
 			errMsg := fmt.Sprintf("Not found telemetry pre-mitigation with tmid = %+v", *tmid)
 			log.Error(errMsg)
 			res = Response{
@@ -288,7 +284,7 @@ func (t *TelemetryPreMitigationRequest) HandleDelete(request Request, customer *
 			}
 			return res, nil
 		}
-		err = models.DeleteOneTelemetryPreMitigation(customer.Id, cuid, *tmid, telePreMitigation.Id)
+		err = models.DeleteOneTelemetryPreMitigation(customer.Id, cuid, *tmid)
 		if err != nil {
 			return Response{}, err
 		}
@@ -306,39 +302,14 @@ func (t *TelemetryPreMitigationRequest) HandleDelete(request Request, customer *
 	}
 	return res, nil
 }
-// Handle get one telemetry pre-mitigation
-func handleGetOneTelemetryPreMitigation(customer *models.Customer, cuid string, tmid *int, queries []string) (res Response, err error) {
+
+// Handle get telemetry pre-mitigation
+func handleGetTelemetryPreMitigation(customer *models.Customer, cuid string, tmid *int, queries []string) (res Response, err error) {
 	var errMsg string
-	telePreMitigation, err := models.GetTelemetryPreMitigationByTmid(customer.Id, cuid, *tmid)
-	if err != nil {
-		return Response{}, err
-	}
 	telePreMitigationResp := messages.TelemetryPreMitigationResponse{}
-	preMitigationResp := messages.PreOrOngoingMitigationResponse{}
-	if telePreMitigation.Id > 0 {
-		// Handle Get 7.2
-		log.Debugf("Get telemetry pre-mitigation aggregated by client")
-		if len(queries) > 0 {
-			errMsg = "The telemetry pre-mitigation aggregated by client MUST NOT support Uri-Query"
-			log.Error(errMsg)
-			res = Response {
-				Type: common.NonConfirmable,
-				Code: common.BadRequest,
-				Body: errMsg,
-			}
-			return res, nil
-		}
-		preMitigation, err := models.GetTelemetryPreMitigationAttributes(customer.Id, cuid, telePreMitigation.Id)
-		if err != nil {
-			return Response{}, err
-		}
-		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigation, "")
-		if err != nil {
-			return Response{}, err
-		}
-	} else {
-		// Handle Get 7.3
-		log.Debugf("Get telemetry pre-mitigation aggregated by server")
+	preMitigationRespList := []messages.PreOrOngoingMitigationResponse{}
+	// Handle Get 7.2 or 7.3
+	if len(queries) > 0 {
 		errMsg = validateQueryParameter(queries)
 		if errMsg != "" {
 			log.Error(errMsg)
@@ -349,105 +320,43 @@ func handleGetOneTelemetryPreMitigation(customer *models.Customer, cuid string, 
 			}
 			return res, nil
 		}
-		ufPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, tmid, queries)
-		if err != nil {
-			return Response{}, err
-		}
-		if len(ufPreMitigation) < 1 {
+	}
+	ufPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, tmid, queries)
+	if err != nil {
+		return Response{}, err
+	}
+	if len(ufPreMitigation) < 1 {
+		if tmid != nil {
 			errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v, tmid: %+v, query: %+v", cuid, *tmid, queries)
-			log.Error(errMsg)
-			res = Response{
-				Type: common.NonConfirmable,
-				Code: common.NotFound,
-				Body: errMsg,
-			}
-			return res, nil
+		} else {
+			errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v, query: %+v", cuid, queries)
 		}
+		log.Error(errMsg)
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.NotFound,
+			Body: errMsg,
+		}
+		return res, nil
+	}
 
-		preMitigationList, err := models.GetUriFilteringTelemetryPreMitigationAttributes(customer.Id, cuid, ufPreMitigation)
-		if err != nil {
-			return Response{}, err
+	preMitigationList, err := models.GetUriFilteringTelemetryPreMitigationAttributes(customer.Id, cuid, ufPreMitigation)
+	if err != nil {
+		return Response{}, err
+	}
+
+	content := ""
+	for _, query := range queries {
+		if (strings.HasPrefix(query, "c=")){
+			content = query[strings.Index(query, "c=")+2:]
 		}
-		content := ""
-		for _, query := range queries {
-			if (strings.HasPrefix(query, "c=")){
-				content = query[strings.Index(query, "c=")+2:]
-			}
-		}
-		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigationList[0], content)
-		if err != nil {
-			return Response{}, err
-		}
+	}
+	preMitigationRespList, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, preMitigationList, content)
+	if err != nil {
+		return Response{}, err
 	}
 	preMitigation := messages.TelemetryPreMitigationResp{}
-	preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
-	telePreMitigationResp.TelemetryPreMitigation = &preMitigation
-	res = Response{
-		Type: common.NonConfirmable,
-		Code: common.Content,
-		Body: telePreMitigationResp,
-	}
-	return res, nil
-}
-
-// Handle get all telemetry pre-mitigation
-func handleGetAllTelemetryPreMitigation(customer *models.Customer, cuid string, queries []string) (res Response, err error) {
-	var errMsg string
-	telePreMitigationResp := messages.TelemetryPreMitigationResponse{}
-	preMitigationResp := messages.PreOrOngoingMitigationResponse{}
-	preMitigation := messages.TelemetryPreMitigationResp{}
-	if len(queries) < 1 {
-		// Handle get 7.2 and 7.3 when get all without uri-query
-		telePreMitigationList, err := models.GetTelemetryPreMitigationByCustomerIdAndCuid(customer.Id, cuid)
-		if err != nil {
-			return Response{}, err
-		}
-		ufPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, nil, nil)
-		if err != nil {
-			return Response{}, err
-		}
-		if len(telePreMitigationList) < 1 && len(ufPreMitigation) < 1 {
-			errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v", cuid)
-			log.Error(errMsg)
-			res = Response{
-				Type: common.NonConfirmable,
-				Code: common.NotFound,
-				Body: errMsg,
-			}
-			return res, nil
-		}
-		if len(telePreMitigationList) >= 1 {
-			log.Debugf("Get telemetry pre-mitigation aggregated by client")
-			for _, telePreMitigation := range telePreMitigationList {
-				log.Debugf("Get telemetry pre-mitigation with id = %+v", telePreMitigation.Id)
-				tmpPreMitigation, err := models.GetTelemetryPreMitigationAttributes(customer.Id, cuid, telePreMitigation.Id)
-				if err != nil {
-					return Response{}, err
-				}
-				preMitigationResp, err := convertToTelemetryPreMitigationRespone(customer.Id, cuid, telePreMitigation.Tmid, tmpPreMitigation, "")
-				if err != nil {
-					return Response{}, err
-				}
-				preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
-			}
-		}
-		if len(ufPreMitigation) >= 1 {
-			log.Debugf("Get telemetry pre-mitigation aggregated by server")
-			preMitigationList, err := models.GetUriFilteringTelemetryPreMitigationAttributes(customer.Id, cuid, ufPreMitigation)
-			if err != nil {
-				return Response{}, err
-			}
-			for _, v := range preMitigationList {
-				preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, v.Tmid, v, "")
-				if err != nil {
-					return Response{}, err
-				}
-				preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
-			}
-		}
-	} else {
-		log.Warnf("In the current, Dots server doesn't support the Get all with uri-query")
-	}
+	preMitigation.PreOrOngoingMitigation = preMitigationRespList
 	telePreMitigationResp.TelemetryPreMitigation = &preMitigation
 	res = Response{
 		Type: common.NonConfirmable,
@@ -458,46 +367,50 @@ func handleGetAllTelemetryPreMitigation(customer *models.Customer, cuid string, 
 }
 
 // Covert telemetryPreMitigation to PreMitigationResponse
-func convertToTelemetryPreMitigationRespone(customerId int, cuid string, tmid int, preMitigation models.TelemetryPreMitigation, content string) (preMitigationResp messages.PreOrOngoingMitigationResponse, err error) {
-	preMitigationResp = messages.PreOrOngoingMitigationResponse{}
-	preMitigationResp.Tmid = tmid
-	// 'c' query is null, all or config
-	if content == "" || content == string(messages.ALL) || content == string(messages.CONFIG) {
-		// targets response
-		preMitigationResp.Target = convertToTargetResponse(preMitigation.Targets)
-	}
-	// 'c' query is null, all or non-config
-	if content == "" || content == string(messages.ALL) || content == string(messages.NON_CONFIG) {
-		// total traffic response
-		preMitigationResp.TotalTraffic = convertToTrafficResponse(preMitigation.TotalTraffic)
-		// total traffic protocol response
-		preMitigationResp.TotalTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalTrafficProtocol)
-		// total traffic port response
-		preMitigationResp.TotalTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalTrafficPort)
-		// total attack traffic response
-		preMitigationResp.TotalAttackTraffic = convertToTrafficResponse(preMitigation.TotalAttackTraffic)
-		// total attack traffic protocol response
-		preMitigationResp.TotalAttackTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalAttackTrafficProtocol)
-		// total attack traffic port response
-		preMitigationResp.TotalAttackTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalAttackTrafficPort)
-		// total attack connection response
-		if len(preMitigation.TotalAttackConnection.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnection.MidPercentileL) > 0 ||
-		len(preMitigation.TotalAttackConnection.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnection.PeakL) > 0 {
-			preMitigationResp.TotalAttackConnection = convertToTotalAttackConnectionResponse(preMitigation.TotalAttackConnection)
-		} else {
-			preMitigationResp.TotalAttackConnection = nil
+func convertToTelemetryPreMitigationRespone(customerId int, cuid string, preMitigationList []models.TelemetryPreMitigation, content string) (preMitigationRespList []messages.PreOrOngoingMitigationResponse, err error) {
+	preMitigationRespList = []messages.PreOrOngoingMitigationResponse{}
+	for _, preMitigation := range preMitigationList {
+		preMitigationResp := messages.PreOrOngoingMitigationResponse{}
+		preMitigationResp.Tmid = preMitigation.Tmid
+		// 'c' query is null, all or config
+		if content == "" || content == string(messages.ALL) || content == string(messages.CONFIG) {
+			// targets response
+			preMitigationResp.Target = convertToTargetResponse(preMitigation.Targets)
 		}
-		// total attack connection port response
-		if len(preMitigation.TotalAttackConnectionPort.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.MidPercentileL) > 0 ||
-		len(preMitigation.TotalAttackConnectionPort.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.PeakL) > 0 {
-			preMitigationResp.TotalAttackConnectionPort = convertToTotalAttackConnectionPortResponse(preMitigation.TotalAttackConnectionPort)
-		} else {
-			preMitigationResp.TotalAttackConnection = nil
+		// 'c' query is null, all or non-config
+		if content == "" || content == string(messages.ALL) || content == string(messages.NON_CONFIG) {
+			// total traffic response
+			preMitigationResp.TotalTraffic = convertToTrafficResponse(preMitigation.TotalTraffic)
+			// total traffic protocol response
+			preMitigationResp.TotalTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalTrafficProtocol)
+			// total traffic port response
+			preMitigationResp.TotalTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalTrafficPort)
+			// total attack traffic response
+			preMitigationResp.TotalAttackTraffic = convertToTrafficResponse(preMitigation.TotalAttackTraffic)
+			// total attack traffic protocol response
+			preMitigationResp.TotalAttackTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalAttackTrafficProtocol)
+			// total attack traffic port response
+			preMitigationResp.TotalAttackTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalAttackTrafficPort)
+			// total attack connection response
+			if len(preMitigation.TotalAttackConnection.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnection.MidPercentileL) > 0 ||
+			len(preMitigation.TotalAttackConnection.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnection.PeakL) > 0 {
+				preMitigationResp.TotalAttackConnection = convertToTotalAttackConnectionResponse(preMitigation.TotalAttackConnection)
+			} else {
+				preMitigationResp.TotalAttackConnection = nil
+			}
+			// total attack connection port response
+			if len(preMitigation.TotalAttackConnectionPort.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.MidPercentileL) > 0 ||
+			len(preMitigation.TotalAttackConnectionPort.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.PeakL) > 0 {
+				preMitigationResp.TotalAttackConnectionPort = convertToTotalAttackConnectionPortResponse(preMitigation.TotalAttackConnectionPort)
+			} else {
+				preMitigationResp.TotalAttackConnection = nil
+			}
+			// Get attack detail response
+			preMitigationResp.AttackDetail = convertToAttackDetailResponse(preMitigation.AttackDetail)
 		}
-		// Get attack detail response
-		preMitigationResp.AttackDetail = convertToAttackDetailResponse(preMitigation.AttackDetail)
+		preMitigationRespList = append(preMitigationRespList, preMitigationResp)
 	}
-	return preMitigationResp, nil
+	return preMitigationRespList, nil
 }
 
 // Convert targets to TargetResponse(target_prefix, target_port_range, target_fqdn, target_uri, alias_name)
