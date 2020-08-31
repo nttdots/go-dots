@@ -140,7 +140,8 @@ func main() {
 func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 	for _, resource := range libcoap.GetAllResource() {
         if resource.GetRemovableResource() == true && (resource.GetIsBlockwiseInProgress() == false || !resource.IsObserved()) {
-			_, cuid, mid, err := messages.ParseURIPath(strings.Split(resource.UriPath(), "/"))
+			path := strings.Split(resource.UriPath(), "?")
+			_, cuid, mid, err := messages.ParseURIPath(strings.Split(path[0], "/"))
 			if err != nil {
 				log.Warnf("Failed to parse Uri-Path, error: %s", err)
 			}
@@ -155,10 +156,11 @@ func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 				if resourceAll != nil {
 					resourceAll.SetIsBlockwiseInProgress(false)
 				}
+				libcoap.DeleteUriFilterMitigationByValue(*mid)
 			}
 
 			log.Debugf("Delete the sub-resource (uri-path=%+v)", resource.UriPath())
-            context.DeleteResource(resource)
+			context.DeleteResource(resource)
         }
     }
 }

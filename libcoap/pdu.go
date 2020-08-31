@@ -401,6 +401,21 @@ func (pdu *Pdu) AsMapKey() string {
     // return fmt.Sprintf("%d", pdu.MessageID)
 }
 
+// Checking uri-query is exist
+func IsExistedUriQuery(queryParams []string) bool {
+    for _, s := range queryParams {
+        if 0 < len(s) {
+            if strings.Contains(s,string(TargetPrefix)) || strings.Contains(s,string(TargetPort)) || strings.Contains(s,string(TargetProtocol)) ||
+               strings.Contains(s,string(TargetFqdn)) || strings.Contains(s,string(TargetUri)) || strings.Contains(s,string(AliasName)) ||
+               strings.Contains(s,string(SourcePrefix)) || strings.Contains(s,string(SourcePort)) || strings.Contains(s,string(SourceIcmpType)) ||
+               strings.Contains(s,string(Content)) {
+                return true
+            }
+        }
+    }
+    return false
+}
+
 /*
  * The response data is an message (not an object data) in case the response code is different:
  *   1. Created

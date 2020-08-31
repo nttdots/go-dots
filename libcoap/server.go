@@ -23,24 +23,6 @@ type EndPoint struct {
     ptr *C.coap_endpoint_t
 }
 
-// Mitigation map between uri-path (mitigation) and bool (is notify telemetry attributes)
-var mitigationMap = make(map[string]bool)
-
-// Set mitigation map
-func SetMitigationMap(key string, value bool) {
-    mitigationMap[key] = value
-}
-
-// Get mitigation map by key
-func GetMitigationMapByKey(key string) bool {
-    return mitigationMap[key]
-}
-
-// Delete mitigation map by key
-func DeleteMitigationMapByKey(key string) {
-    delete(mitigationMap, key)
-}
-
 type Event int
 const (
     EventSessionDisconnected Event = C.COAP_EVENT_DTLS_CLOSED

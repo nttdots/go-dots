@@ -169,7 +169,8 @@ func (r *Request) CreateRequest() {
 					r.env.AddRequestQuery(string(r.pdu.Token), &reqQuery)
 				}
 			} else {
-				if token != nil {
+				isExist := libcoap.IsExistedUriQuery(r.queryParams)
+				if token != nil && !isExist {
 					r.pdu.Token = token
 					r.env.RemoveRequestQuery(string(token))
 				}

@@ -2,11 +2,11 @@ package models
 
 import (
 	"time"
+	"errors"
 	"strconv"
 	"github.com/go-xorm/xorm"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_common/types/data"
@@ -49,7 +49,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer, i
 			// If existing mitigation is still 'alive', update on it.
 			// Otherwise, leave it for lifetime thread to handle, just create new one
 			mitigationScope.MitigationScopeId = dbMitigationScope.Id
-			err = UpdateMitigationScope(mitigationScope, customer, isIfMatchOption)
+			err = UpdateMitigationScope(mitigationScope, customer, isIfMatchOption, false)
 			return
 		}
 	}
@@ -187,7 +187,7 @@ func UpdateMitigationScopeStatus(mitigationScopeId int64, status int) (err error
  * return:
  *  err error
  */
-func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer, isIfMatchOption bool) (err error) {
+func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer, isIfMatchOption bool, isDeleteFunc bool) (err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -228,8 +228,10 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer, i
 	updMitigationScope := db_models.MitigationScope{
 		Lifetime: mitigationScope.Lifetime,
 		Status:   mitigationScope.Status,
-		AttackStatus: mitigationScope.AttackStatus,
 		TriggerMitigation: mitigationScope.TriggerMitigation,
+	}
+	if isIfMatchOption {
+		updMitigationScope.AttackStatus = mitigationScope.AttackStatus
 	}
 	_, err = session.Id(dbMitigationScope.Id).Update(&updMitigationScope)
 	if err != nil {
@@ -283,6 +285,16 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer, i
 			return
 		}
 
+		if !isDeleteFunc {
+			// Delete telemetry attributes
+			err = deleteTelemetryAttributes(session, dbMitigationScope.Id)
+			if err != nil {
+				session.Rollback()
+				log.Errorf("Telemetry attributes delete err(MitigationScope.id:%d): %s", dbMitigationScope.Id, err)
+				return
+			}
+		}
+
 		// Registered FQDN, URI, alias-name and target_protocol
 		err = createMitigationScopeParameterValue(session, mitigationScope, dbMitigationScope.Id)
 		if err != nil {
@@ -307,19 +319,6 @@ func UpdateMitigationScope(mitigationScope MitigationScope, customer Customer, i
 		err = createControlFiltering(session, mitigationScope, dbMitigationScope.Id)
 		if err != nil {
 			return
-		}
-		// Update telemetry attributes when DOTS client sent efficacy update request
-		if isIfMatchOption {
-			err = UpdateTelemetryTotalAttackTraffic(engine, session, mitigationScope.MitigationScopeId, mitigationScope.TelemetryTotalAttackTraffic)
-			if err != nil {
-				session.Rollback()
-				return
-			}
-			err = UpdateTelemetryAttackDetail(engine, session, mitigationScope.MitigationScopeId, mitigationScope.TelemetryAttackDetail)
-			if err != nil {
-				session.Rollback()
-				return
-			}
 		}
 	}
 
@@ -502,7 +501,7 @@ func createMitigationScopePortRange(session *xorm.Session, mitigationScope Mitig
  *  mitigationIds list of mitigation id
  *  error error
  */
-func GetMitigationIds(customerId int, clientIdentifier string, queries []string) (mitigationIds []int, err error) {
+func GetMitigationIds(customerId int, clientIdentifier string) (mitigationIds []int, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -517,14 +516,7 @@ func GetMitigationIds(customerId int, clientIdentifier string, queries []string)
 		return
 	}
 	for _, v := range mitigationList {
-		// Check targets queries match or mot match with targets of mitigation
-		isFound, err := IsFoundTargetQueries(engine, v.Id, queries, false)
-		if err != nil {
-			return nil, err
-		}
-		if isFound {
-			mitigationIds = append(mitigationIds, v.MitigationId)
-		}
+		mitigationIds = append(mitigationIds, v.MitigationId)
 	}
 	return
 }
@@ -544,34 +536,6 @@ func GetMitigationByCustomerIdAndCuid(customerId int, cuid string) (mitigationLi
 		return
 	}
 	return
-}
-
-// Get mitigationId by customerId, cuid, mid, queries
-func GetMitigationId(customerId int, cuid string, mid int, queries []string) (mitigationId *int, err error) {
-	// database connection create
-	engine, err := ConnectDB()
-	if err != nil {
-		log.Printf("database connect error: %s", err)
-		return nil, err
-	}
-	mitigation := db_models.MitigationScope{}
-	// Get mitigation data
-	_, err = engine.Where("customer_id = ? AND client_identifier = ? AND mitigation_id=?", customerId, cuid, mid).Get(&mitigation)
-	if err != nil {
-		log.Printf("find mitigation error: %s\n", err)
-		return nil, err
-	}
-	// Check targets queries match or mot match with targets of mitigation
-	isFound, err := IsFoundTargetQueries(engine, mitigation.Id, queries, false)
-	if err != nil {
-		return nil, err
-	}
-	if isFound {
-		mitigationId = &mitigation.MitigationId
-	} else {
-		mitigationId = nil
-	}
-	return mitigationId, nil
 }
 
 /*
@@ -650,7 +614,7 @@ func GetMitigationId(customerId int, cuid string, mid int, queries []string) (mi
  *  mitigationScope mitigation-scope
  *  error error
  */
-func GetMitigationScope(customerId int, clientIdentifier string, mitigationId int, mitigationScopeId int64) (mitigationScope *MitigationScope, err error) {
+func GetMitigationScope(customerId int, clientIdentifier string, mitigationId int, mitigationScopeId int64, queries []string) (mitigationScope *MitigationScope, err error) {
 	// database connection create
 	engine, err := ConnectDB()
 	if err != nil {
@@ -685,7 +649,16 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 		// no data
 		return
 	}
-
+	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, _, _, _,_, errMsg := GetQueriesFromUriQuery(queries)
+	if errMsg != "" {
+		return nil, errors.New(errMsg)
+	}
+	isFoundTargetPrefix := false
+	isFoundTargetPort := false
+	isFoundTargetProtocol := false
+	isFoundTargetFqdn := false
+	isFoundTargetUri := false
+	isFoundAliasName := false
 	// default value setting
 	mitigationScope = NewMitigationScope(&customer, clientIdentifier)
 
@@ -695,6 +668,7 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	mitigationScope.ClientDomainIdentifier = dbMitigationScope.ClientDomainIdentifier
 	mitigationScope.Status = dbMitigationScope.Status
 	mitigationScope.TriggerMitigation = dbMitigationScope.TriggerMitigation
+	mitigationScope.AttackStatus = dbMitigationScope.AttackStatus
 
 	// Calculate the remaining lifetime
 	currentTime := time.Now()
@@ -715,8 +689,13 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	}
 	if len(dbParameterValueFqdnList) > 0 {
 		for _, v := range dbParameterValueFqdnList {
-			mitigationScope.FQDN.Append(db_models.GetFqdnValue(&v))
+			if IsContainStringValue(targetFqdn, db_models.GetFqdnValue(&v)) {
+				isFoundTargetFqdn = true
+				mitigationScope.FQDN.Append(db_models.GetFqdnValue(&v))
+			}
 		}
+	} else {
+		isFoundTargetFqdn = true
 	}
 
 	// Get URI data
@@ -727,8 +706,13 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	}
 	if len(dbParameterValueUriList) > 0 {
 		for _, v := range dbParameterValueUriList {
-			mitigationScope.URI.Append(db_models.GetUriValue(&v))
+			if IsContainStringValue(targetUri, db_models.GetUriValue(&v)) {
+				isFoundTargetUri = true
+				mitigationScope.URI.Append(db_models.GetUriValue(&v))
+			}
 		}
+	} else {
+		isFoundTargetUri = true
 	}
 
 	// Get AliasName data
@@ -739,8 +723,13 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	}
 	if len(dbParameterValueAliasNameList) > 0 {
 		for _, v := range dbParameterValueAliasNameList {
-			mitigationScope.AliasName.Append(db_models.GetAliasNameValue(&v))
+			if IsContainStringValue(aliasName, db_models.GetAliasNameValue(&v)) {
+				isFoundAliasName = true
+				mitigationScope.AliasName.Append(db_models.GetAliasNameValue(&v))
+			}
 		}
+	} else {
+		isFoundAliasName = true
 	}
 
 	// Get TargetProtocol data
@@ -751,8 +740,13 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	}
 	if len(dbParameterValueTargetProtocolList) > 0 {
 		for _, v := range dbParameterValueTargetProtocolList {
-			mitigationScope.TargetProtocol.Append(db_models.GetTargetProtocolValue(&v))
+			if IsContainIntValue(targetProtocol, db_models.GetTargetProtocolValue(&v)) {
+				isFoundTargetProtocol = true
+				mitigationScope.TargetProtocol.Append(db_models.GetTargetProtocolValue(&v))
+			}
 		}
+	} else {
+		isFoundTargetProtocol = true
 	}
 
 	// Get TargetIP data
@@ -779,12 +773,17 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	}
 	if len(dbPrefixTargetPrefixList) > 0 {
 		for _, v := range dbPrefixTargetPrefixList {
-			loadPrefix, err := NewPrefix(db_models.CreateIpAddress(v.Addr, v.PrefixLen))
-			if err != nil {
-				continue
+			if IsContainStringValue(targetPrefix, db_models.CreateIpAddress(v.Addr, v.PrefixLen)) {
+				isFoundTargetPrefix = true
+				loadPrefix, err := NewPrefix(db_models.CreateIpAddress(v.Addr, v.PrefixLen))
+				if err != nil {
+					continue
+				}
+				mitigationScope.TargetPrefix = append(mitigationScope.TargetPrefix, loadPrefix)
 			}
-			mitigationScope.TargetPrefix = append(mitigationScope.TargetPrefix, loadPrefix)
 		}
+	} else {
+		isFoundTargetPrefix = true
 	}
 
 	// Get TargetPortRange data
@@ -795,8 +794,13 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	}
 	if len(dbPrefixTargetPortRangeList) > 0 {
 		for _, v := range dbPrefixTargetPortRangeList {
-			mitigationScope.TargetPortRange = append(mitigationScope.TargetPortRange, PortRange{LowerPort: v.LowerPort, UpperPort: v.UpperPort})
+			if IsContainRangeValue(targetPort, v.LowerPort, v.UpperPort) {
+				isFoundTargetPort = true
+				mitigationScope.TargetPortRange = append(mitigationScope.TargetPortRange, PortRange{LowerPort: v.LowerPort, UpperPort: v.UpperPort})
+			}
 		}
+	} else {
+		isFoundTargetPort = true
 	}
 
 	// Get SourcePrefix data
@@ -845,40 +849,31 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 		return
 	}
 	mitigationScope.ControlFilteringList = controlFilteringList
-	// Handle get telemetry attributes when 'attack-detail' is change
-	uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
-	var mitigationMapKey string
-	if mitigationScope.ClientDomainIdentifier == "" {
-		mitigationMapKey = uriPath + "/cuid=" + mitigationScope.ClientIdentifier + "/mid=" + strconv.Itoa(mitigationScope.MitigationId)
-	} else {
-		mitigationMapKey = uriPath + "/cdid="+ mitigationScope.ClientDomainIdentifier + "/cuid=" + mitigationScope.ClientIdentifier + "/mid=" + strconv.Itoa(mitigationScope.MitigationId)
+
+	// Get telemetry total-traffic
+	mitigationScope.TelemetryTotalTraffic, err = GetTelemetryTraffic(engine, string(TARGET_PREFIX), dbMitigationScope.Id, string(TOTAL_TRAFFIC))
+	if err != nil {
+		return
 	}
-	isNotifyTelemetryAttributes := false
-	isNotifyTelemetryAttributes = libcoap.GetMitigationMapByKey(mitigationMapKey)
-	if isNotifyTelemetryAttributes {
-		libcoap.DeleteMitigationMapByKey(mitigationMapKey)
-		// Get telemetry total-traffic
-		mitigationScope.TelemetryTotalTraffic, err = GetTelemetryTraffic(engine, string(TARGET_PREFIX), dbMitigationScope.Id, string(TOTAL_TRAFFIC))
-		if err != nil {
-			return
-		}
-		// Get telemetry total-attack-traffic
-		mitigationScope.TelemetryTotalAttackTraffic, err = GetTelemetryTraffic(engine, string(TARGET_PREFIX), dbMitigationScope.Id, string(TOTAL_ATTACK_TRAFFIC))
-		if err != nil {
-			return
-		}
-		// Get telemetry total-attack-connection
-		mitigationScope.TelemetryTotalAttackConnection, err = GetTelemetryTotalAttackConnection(engine, string(TARGET_PREFIX), dbMitigationScope.Id)
-		if err != nil {
-			return
-		}
-		// Get telemetry attack-detail
-		mitigationScope.TelemetryAttackDetail, err = GetTelemetryAttackDetail(engine, dbMitigationScope.Id)
-		if err != nil {
-			return
-		}
+	// Get telemetry total-attack-traffic
+	mitigationScope.TelemetryTotalAttackTraffic, err = GetTelemetryTraffic(engine, string(TARGET_PREFIX), dbMitigationScope.Id, string(TOTAL_ATTACK_TRAFFIC))
+	if err != nil {
+		return
 	}
-	return
+	// Get telemetry total-attack-connection
+	mitigationScope.TelemetryTotalAttackConnection, err = GetTelemetryTotalAttackConnection(engine, string(TARGET_PREFIX), dbMitigationScope.Id)
+	if err != nil {
+		return
+	}
+	// Get telemetry attack-detail
+	mitigationScope.TelemetryAttackDetail, err = GetTelemetryAttackDetail(engine, dbMitigationScope.Id)
+	if err != nil {
+		return
+	}
+	if isFoundTargetPrefix && isFoundTargetPort && isFoundTargetProtocol && isFoundTargetFqdn && isFoundTargetUri && isFoundAliasName {
+		return mitigationScope, nil
+	}
+	return nil, nil
 }
 
 // Get mitigation scope by id
@@ -1055,15 +1050,29 @@ func DeleteMitigationScope(customerId int, clientIdentifier string, mitigationId
 		log.Errorf("delete mitigationScope error: %s", err)
 		return
 	}
+	// Delete telemetry total traffic
+	err = db_models.DeleteTelemetryTraffic(session, string(TARGET_PREFIX), dbMitigationScope.Id, string(TOTAL_TRAFFIC))
+	if err != nil {
+		session.Rollback()
+		log.Errorf("Failed to delete telemetry total-traffic. Error: %+v", err)
+		return
+	}
+	// Delete telemetry total-attack-connection
+	err = db_models.DeleteTelemetryTotalAttackConnection(session, string(TARGET_PREFIX), dbMitigationScope.Id)
+	if err != nil {
+		session.Rollback()
+		log.Errorf("Failed to delete telemetry total-attack-connection. Error: %+v", err)
+		return err
+	}
 	// Delete telemetry total attack-traffic
 	err = db_models.DeleteTelemetryTraffic(session, string(TARGET_PREFIX), dbMitigationScope.Id, string(TOTAL_ATTACK_TRAFFIC))
 	if err != nil {
 		session.Rollback()
-		log.Errorf("Failed to delete total-attack-traffic. Error: %+v", err)
+		log.Errorf("Failed to delete telemetry total-attack-traffic. Error: %+v", err)
 		return
 	}
 	// Delete telemetry attack-detail
-	err = DeleteTelemetryAttackDetail(engine, session, dbMitigationScope.Id, nil)
+	err = DeleteTelemetryAttackDetail(engine, session, dbMitigationScope.Id)
 	if err != nil {
 		session.Rollback()
 		return
@@ -1297,66 +1306,30 @@ func createMitigationScopeCallHome(session *xorm.Session, mitigationScope Mitiga
 	return
 }
 
-// Get target mitigation
-func GetTargetMitigation(engine *xorm.Engine, mitigationId int64) (targetPrefixs []string, targetPorts []PortRange, targetProtocols []int, targetFqdns []string, targetUris []string, aliasNames []string, err error) {
-	// Get TargetPrefix data
-	dbPrefixTargetPrefixList := []db_models.Prefix{}
-	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.PrefixTypeTargetPrefix).OrderBy("id ASC").Find(&dbPrefixTargetPrefixList)
+// Delete telemetry attributes
+func deleteTelemetryAttributes(session *xorm.Session, mitigationScopeId int64) (err error) {
+	// Delete total-traffic
+	err = db_models.DeleteTelemetryTraffic(session, string(TARGET_PREFIX), mitigationScopeId, string(TOTAL_TRAFFIC))
 	if err != nil {
+		log.Errorf("Failed to delete total-traffic. Error: %+v", err)
 		return
 	}
-	for _, v := range dbPrefixTargetPrefixList {
-		targetPrefixs = append(targetPrefixs, v.Addr+"/"+strconv.Itoa(v.PrefixLen))
-	}
-
-	// Get TargetPortRange data
-	dbPrefixTargetPortRangeList := []db_models.PortRange{}
-	err = engine.Where("mitigation_scope_id = ? AND type=?", mitigationId, db_models.PortRangeTypeTargetPort).OrderBy("id ASC").Find(&dbPrefixTargetPortRangeList)
+	// Delete total attack connection
+	err = db_models.DeleteTelemetryTotalAttackConnection(session, string(TARGET_PREFIX), mitigationScopeId)
 	if err != nil {
+		log.Errorf("Failed to delete telemetry total-attack-connection. Error: %+v", err)
+		return err
+	}
+	// Delete total-attack-traffic with prefix_type is target-prefix
+	err = db_models.DeleteTelemetryTraffic(session, string(TARGET_PREFIX), mitigationScopeId, string(TOTAL_ATTACK_TRAFFIC))
+	if err != nil {
+		log.Errorf("Failed to delete total-attack-traffic. Error: %+v", err)
 		return
 	}
-	for _, v := range dbPrefixTargetPortRangeList {
-		targetPorts = append(targetPorts, PortRange{v.LowerPort, v.UpperPort})
-	}
-
-	// Get TargetProtocol data
-	dbParameterValueTargetProtocolList := []db_models.ParameterValue{}
-	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.ParameterValueTypeTargetProtocol).OrderBy("id ASC").Find(&dbParameterValueTargetProtocolList)
+	// Delete telemetry attack-detail
+	err = DeleteTelemetryAttackDetail(engine, session, mitigationScopeId)
 	if err != nil {
 		return
-	}
-	for _, v := range dbParameterValueTargetProtocolList {
-		targetProtocols = append(targetProtocols, v.IntValue)
-	}
-
-	// Get FQDN data
-	dbParameterValueFqdnList := []db_models.ParameterValue{}
-	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.ParameterValueTypeFqdn).OrderBy("id ASC").Find(&dbParameterValueFqdnList)
-	if err != nil {
-		return
-	}
-	for _, v := range dbParameterValueFqdnList {
-		targetFqdns = append(targetFqdns, v.StringValue)
-	}
-
-	// Get URI data
-	dbParameterValueUriList := []db_models.ParameterValue{}
-	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.ParameterValueTypeUri).OrderBy("id ASC").Find(&dbParameterValueUriList)
-	if err != nil {
-		return
-	}
-	for _, v := range dbParameterValueUriList {
-		targetUris = append(targetUris, v.StringValue)
-	}
-
-	// Get AliasName data
-	dbParameterValueAliasNameList := []db_models.ParameterValue{}
-	err = engine.Where("mitigation_scope_id = ? AND type = ?", mitigationId, db_models.ParameterValueTypeAliasName).OrderBy("id ASC").Find(&dbParameterValueAliasNameList)
-	if err != nil {
-		return
-	}
-	for _, v := range dbParameterValueAliasNameList {
-		aliasNames = append(aliasNames, v.StringValue)
 	}
 	return
 }

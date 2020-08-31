@@ -279,51 +279,6 @@ func updateTelemetryPreMitigation(engine *xorm.Engine, session *xorm.Session, cu
 	return nil
 }
 
-// Update telemetry total-attack-traffic
-func UpdateTelemetryTotalAttackTraffic(engine *xorm.Engine, session *xorm.Session, mitigationScopeId int64, totalAttackTraffic []Traffic) (err error) {
-	trafficList, err := db_models.GetTelemetryTraffic(engine, string(TARGET_PREFIX), mitigationScopeId, string(TOTAL_ATTACK_TRAFFIC))
-	if err != nil {
-		return err
-	}
-	// If existed telemetry total-attack-traffic in DB, DOTS server will delete current telemetry total-attack-traffic and insert new telemetry total-attack-traffic
-	// Else DOTS server will insert new telemetry total-attack-traffic
-	if len(trafficList) > 0 {
-		log.Debugf("Delete telemetry attributes as total-attack-traffic")
-		// Delete total-attack-traffic with prefix_type is target-prefix
-		err = db_models.DeleteTelemetryTraffic(session, string(TARGET_PREFIX), mitigationScopeId, string(TOTAL_ATTACK_TRAFFIC))
-		if err != nil {
-			log.Errorf("Failed to delete total-attack-traffic. Error: %+v", err)
-			return
-		}
-	}
-	// Register telemetry total-attack-traffic
-	if len(totalAttackTraffic) > 0 {
-		log.Debugf("Create new telemetry attributes as total-attack-traffic")
-		err = RegisterTelemetryTraffic(session, string(TARGET_PREFIX), mitigationScopeId, string(TOTAL_ATTACK_TRAFFIC), totalAttackTraffic)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
-// Update telemetry attack-detail
-func UpdateTelemetryAttackDetail(engine *xorm.Engine, session *xorm.Session, mitigationScopeId int64, attackDetailList []TelemetryAttackDetail) (err error) {
-	// Delete telemetry attack-detail
-	err = DeleteTelemetryAttackDetail(engine, session, mitigationScopeId, attackDetailList)
-	if err != nil {
-		return
-	}
-	// Register telemetry attack-detail
-	if len(attackDetailList) > 0 {
-		err = CreateTelemetryAttackDetail(session, mitigationScopeId, attackDetailList)
-		if err != nil {
-			return
-		}
-	}
-	return
-}
-
 // Registered telemetry pre-mitigation
 func RegisterTelemetryPreMitigation(session *xorm.Session, customerId int, cuid string, cdid string, tmid int) (*db_models.TelemetryPreMitigation, error) {
 	newTelemetryPreMitigation := db_models.TelemetryPreMitigation{
@@ -491,103 +446,6 @@ func CreateTopTalker(session *xorm.Session, adId int64, topTalkers []TopTalker) 
 	return nil
 }
 
-// Create telemetry attack detail
-func CreateTelemetryAttackDetail(session *xorm.Session, mitigationScopeId int64, attackDetailList []TelemetryAttackDetail) error {
-	log.Debugf("Create new telemetry attributes as attack-detail")
-	for _, attackDetail := range attackDetailList {
-		// Register attack-detail
-		newAttackDetail, err := RegisterTelemetryAttackDetail(session, mitigationScopeId, attackDetail)
-		if err != nil {
-			return err
-		}
-		// Register telemetry source-count
-		if !reflect.DeepEqual(GetModelsSourceCount(&attackDetail.SourceCount), GetModelsSourceCount(nil)) {
-			err := RegisterTelemetrySourceCount(session, newAttackDetail.Id, attackDetail.SourceCount)
-			if err != nil {
-				return err
-			}
-		}
-		// Create telemetry top-talker
-		if len(attackDetail.TopTalker) > 0 {
-			err := CreateTelemetryTopTalker(session, newAttackDetail.Id, attackDetail.TopTalker)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-// Create telemetry top talker
-func CreateTelemetryTopTalker(session *xorm.Session, adId int64, topTalkers []TelemetryTopTalker) error {
-	for _, topTalker := range topTalkers {
-		// Register telemetry top-talker
-		newTopTalker, err := RegisterTelemetryTopTalker(session, adId, topTalker.SpoofedStatus)
-		if err != nil {
-			return err
-		}
-		// Register telemetry-source-prefix
-		err = RegisterTelemetrySourcePrefix(session, newTopTalker.Id, topTalker.SourcePrefix)
-		if err != nil {
-			return err
-		}
-		// Register telemetry source port range
-		err = RegisterTelemetrySourcePortRange(session, newTopTalker.Id, topTalker.SourcePortRange)
-		if err != nil {
-			return err
-		}
-		// Register telemetry source icmp type range
-		err = RegisterTelemetrySourceIcmpTypeRange(session, newTopTalker.Id, topTalker.SourceIcmpTypeRange)
-		if err != nil {
-			return err
-		}
-		// Register telemetry total-attack-traffic
-		err = RegisterTelemetryTraffic(session, string(SOURCE_PREFIX), newTopTalker.Id, string(TOTAL_ATTACK_TRAFFIC), topTalker.TotalAttackTraffic)
-		if err != nil {
-			return err
-		}
-		// Register telemetry total-attack-connection
-		err = CreateTelemetryTotalAttackConnection(session, string(SOURCE_PREFIX), newTopTalker.Id, topTalker.TotalAttackConnection)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Create telemetry total attack connection
-func CreateTelemetryTotalAttackConnection(session *xorm.Session, prefixType string, prefixId int64, tac TelemetryTotalAttackConnection) error {
-	// Register low-precentile-c
-	if !reflect.DeepEqual(GetModelsTelemetryConnectionPercentile(&tac.LowPercentileC), GetModelsTelemetryConnectionPercentile(nil)) {
-		err := RegisterTelemetryTotalAttackConnection(session, prefixType, prefixId, string(LOW_PERCENTILE_C), tac.LowPercentileC)
-		if err != nil {
-			return err
-		}
-	}
-	// Register mid-precentile-c
-	if !reflect.DeepEqual(GetModelsTelemetryConnectionPercentile(&tac.MidPercentileC), GetModelsTelemetryConnectionPercentile(nil)) {
-		err := RegisterTelemetryTotalAttackConnection(session, prefixType, prefixId, string(MID_PERCENTILE_C), tac.MidPercentileC)
-		if err != nil {
-			return err
-		}
-	}
-	// Register high-precentile-c
-	if !reflect.DeepEqual(GetModelsTelemetryConnectionPercentile(&tac.HighPercentileC), GetModelsTelemetryConnectionPercentile(nil)) {
-		err := RegisterTelemetryTotalAttackConnection(session, prefixType, prefixId, string(HIGH_PERCENTILE_C), tac.HighPercentileC)
-		if err != nil {
-			return err
-		}
-	}
-	// Register peak-c
-	if !reflect.DeepEqual(GetModelsTelemetryConnectionPercentile(&tac.PeakC), GetModelsTelemetryConnectionPercentile(nil)) {
-		err := RegisterTelemetryTotalAttackConnection(session, prefixType, prefixId, string(PEAK_C), tac.PeakC)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // Registered total attack connection
 func RegisterTotalAttackConnection(session *xorm.Session, prefixType string, prefixId int64, percentileType string, cpps []ConnectionProtocolPercentile) error {
 	tacList := []db_models.TotalAttackConnection{}
@@ -709,159 +567,6 @@ func RegisterTelemetryIcmpTypeRange(session *xorm.Session, teleTopTalkerId int64
 			log.Errorf("telemetry icmp type range insert err: %s", err)
 			return err
 		}
-	}
-	return nil
-}
-
-// Registered telemetry traffic to DB
-func RegisterTelemetryTraffic(session *xorm.Session, prefixType string, prefixTypeId int64, trafficType string, traffics []Traffic) error {
-	newTrafficList := []db_models.TelemetryTraffic{}
-	for _, vTraffic := range traffics {
-		newTraffic := db_models.TelemetryTraffic{
-			PrefixType:      prefixType,
-			PrefixTypeId:    prefixTypeId,
-			TrafficType:     trafficType,
-			Unit:            ConvertUnitToString(vTraffic.Unit),
-			LowPercentileG:  vTraffic.LowPercentileG,
-			MidPercentileG:  vTraffic.MidPercentileG,
-			HighPercentileG: vTraffic.HighPercentileG,
-			PeakG:           vTraffic.PeakG,
-		}
-		newTrafficList = append(newTrafficList, newTraffic)
-	}
-	if len(newTrafficList) > 0 {
-		_, err := session.Insert(&newTrafficList)
-		if err != nil {
-			log.Errorf("telemetry traffic insert err: %s", err)
-			return err
-		}
-	}
-	return nil
-}
-
-// Registered telemetry attack detail
-func RegisterTelemetryAttackDetail(session *xorm.Session, mitigationScopeId int64, attackDetail TelemetryAttackDetail) (*db_models.TelemetryAttackDetail, error) {
-	newTelemetryAttackDetail := db_models.TelemetryAttackDetail{
-		MitigationScopeId: mitigationScopeId,
-		VendorId:          attackDetail.VendorId,
-		AttackId:          attackDetail.AttackId,
-		AttackDescription: attackDetail.AttackDescription,
-		AttackSeverity:    ConvertAttackSeverityToString(attackDetail.AttackSeverity),
-		StartTime:         attackDetail.StartTime,
-		EndTime:           attackDetail.EndTime,
-	}
-	_, err := session.Insert(&newTelemetryAttackDetail)
-	if err != nil {
-		log.Errorf("telemetry attack detail insert err: %s", err)
-		return nil, err
-	}
-	return &newTelemetryAttackDetail, nil
-}
-
-// Registered telemetry source count
-func RegisterTelemetrySourceCount(session *xorm.Session, adId int64, sourceCount SourceCount) error {
-	newSourceCount := db_models.TelemetrySourceCount{
-		TeleAttackDetailId: adId,
-		LowPercentileG:     sourceCount.LowPercentileG,
-		MidPercentileG:     sourceCount.MidPercentileG,
-		HighPercentileG:    sourceCount.HighPercentileG,
-		PeakG:              sourceCount.PeakG,
-	}
-	_, err := session.Insert(&newSourceCount)
-	if err != nil {
-		log.Errorf("telemetry source count insert err: %s", err)
-		return err
-	}
-	return nil
-}
-
-// Registered telemetry top talker
-func RegisterTelemetryTopTalker(session *xorm.Session, adId int64, spoofedStatus bool) (*db_models.TelemetryTopTalker, error) {
-	newTopTalker := db_models.TelemetryTopTalker{
-		TeleAttackDetailId: adId,
-		SpoofedStatus:      spoofedStatus,
-	}
-	_, err := session.Insert(&newTopTalker)
-	if err != nil {
-		log.Errorf("telemetry top talker insert err: %s", err)
-		return nil, err
-	}
-	return &newTopTalker, nil
-}
-
-// Registered telemetry source prefix to DB
-func RegisterTelemetrySourcePrefix(session *xorm.Session, teleTopTalkerId int64, prefix Prefix) error {
-	newTelemetrySourcePrefix := db_models.TelemetrySourcePrefix{
-		TeleTopTalkerId: teleTopTalkerId,
-		Addr:             prefix.Addr,
-		PrefixLen:        prefix.PrefixLen,
-	}
-	_, err := session.Insert(&newTelemetrySourcePrefix)
-	if err != nil {
-		log.Errorf("telemetry source prefix insert err: %s", err)
-		return err
-	}
-	return nil
-}
-
-// Registed telemetry source port range to DB
-func RegisterTelemetrySourcePortRange(session *xorm.Session, teleTopTalkerId int64, portRanges []PortRange) error {
-	newTelemetrySourcePortRangeList := []db_models.TelemetrySourcePortRange{}
-	for _, portRange := range portRanges {
-		newTelemetrySourcePortRange := db_models.TelemetrySourcePortRange{
-			TeleTopTalkerId: teleTopTalkerId,
-			LowerPort:       portRange.LowerPort,
-			UpperPort:       portRange.UpperPort,
-		}
-		newTelemetrySourcePortRangeList = append(newTelemetrySourcePortRangeList, newTelemetrySourcePortRange)
-	}
-	if len(newTelemetrySourcePortRangeList) > 0 {
-		_, err := session.Insert(&newTelemetrySourcePortRangeList)
-		if err != nil {
-			log.Errorf("telemetry source port range insert err: %s", err)
-			return err
-		}
-	}
-	return nil
-}
-
-// Registed telemetry source icmp type range to DB
-func RegisterTelemetrySourceIcmpTypeRange(session *xorm.Session, teleTopTalkerId int64, typeRanges []ICMPTypeRange) error {
-	newTelemetrySourceIcmpTypeRangeList := []db_models.TelemetrySourceIcmpTypeRange{}
-	for _, typeRange := range typeRanges {
-		newTelemetrySourceIcmpTypeRange := db_models.TelemetrySourceIcmpTypeRange{
-			TeleTopTalkerId: teleTopTalkerId,
-			LowerType:       typeRange.LowerType,
-			UpperType:       typeRange.UpperType,
-		}
-		newTelemetrySourceIcmpTypeRangeList = append(newTelemetrySourceIcmpTypeRangeList, newTelemetrySourceIcmpTypeRange)
-	}
-	if len(newTelemetrySourceIcmpTypeRangeList) > 0 {
-		_, err := session.Insert(&newTelemetrySourceIcmpTypeRangeList)
-		if err != nil {
-			log.Errorf("telemetry source icmp type range insert err: %s", err)
-			return err
-		}
-	}
-	return nil
-}
-
-// Registered telemetry total attack connection
-func RegisterTelemetryTotalAttackConnection(session *xorm.Session, prefixType string, prefixId int64, percentileType string, cp ConnectionPercentile) error {
-	tac := db_models.TelemetryTotalAttackConnection{
-		PrefixType:       prefixType,
-		PrefixTypeId:     prefixId,
-		PercentileType:   percentileType,
-		Connection:       cp.Connection,
-		Embryonic:        cp.Embryonic,
-		ConnectionPs:     cp.ConnectionPs,
-		RequestPs:        cp.RequestPs,
-		PartialRequestPs: cp.PartialRequestPs,
-	}
-	_, err := session.Insert(&tac)
-	if err != nil {
-		log.Errorf("telemetry total attack connection insert err: %s", err)
-		return err
 	}
 	return nil
 }
@@ -1044,61 +749,6 @@ func GetTelemetryPreMitigationByTmid(customerId int, cuid string, tmid int) (*db
 		return nil, err
 	}
 	return telePreMitigation, nil
-}
-
-/*
- * Check existed mitigation contains targets queries
- * response:
- *    true: if existed mitigation contains targets queries
- *    false: if mitigation doesn't contain targets queries
- */
-func IsFoundTargetQueries(engine *xorm.Engine, id int64, queries []string, isPreMitigation bool) (bool, error) {
-	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, _, _, _,_, errMsg := GetQueriesFromUriQuery(queries)
-	if errMsg != "" {
-		log.Errorf(errMsg)
-		return false, nil
-	}
-	dbTargetPrefixs, dbTargetPorts, dbTargetProtocols, dbTargetFqdns, dbTargetUris, dbAliasNames, err := GetTargetMitigation(engine, id)
-	if err != nil {
-		return false, err
-	}
-	// target-prefix
-	for _, v := range dbTargetPrefixs {
-		if !IsContainStringValue(targetPrefix, v) {
-			return false, nil
-		}
-	}
-	// target-port
-	for _, v := range dbTargetPorts {
-		if !IsContainRangeValue(targetPort, v.LowerPort, v.UpperPort) {
-			return false, nil
-		}
-	}
-	// target-protocl
-	for _, v := range dbTargetProtocols {
-		if !IsContainIntValue(targetProtocol, v) {
-			return false, nil
-		}
-	}
-	// target-fqdn
-	for _, v := range dbTargetFqdns {
-		if !IsContainStringValue(targetFqdn, v) {
-			return false, nil
-		}
-	}
-	// target-uri
-	for _, v := range dbTargetUris {
-		if !IsContainStringValue(targetUri, v) {
-			return false, nil
-		}
-	}
-	// alias-name
-	for _, v := range dbAliasNames {
-		if !IsContainStringValue(aliasName, v) {
-			return false, nil
-		}
-	}
-	return true, nil
 }
 
 // Check contain string value between uri-query and target-value 
@@ -1583,6 +1233,42 @@ func GetTopTalkerById(id int64) (dbTopTalker db_models.TopTalker, err error) {
 	if err != nil {
 		log.Errorf("Failed to get top talker by id. Error: %+v", err)
 		return
+	}
+	return
+}
+
+// Get telemetry attack detail by Id
+func GetTelemetryAttackDetailById(id int64) (dbAttackDetail db_models.TelemetryAttackDetail, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("Database connect error: %s", err)
+		return
+	}
+	dbAttackDetail = db_models.TelemetryAttackDetail{}
+	_, err = engine.Where("id = ?", id).Get(&dbAttackDetail)
+	if err != nil {
+		log.Errorf("Failed to get telemetry_attack_detail by id. Error: %+v", err)
+		return
+
+	}
+	return
+}
+
+// Get telemetry top talker by Id
+func GetTelemetryTopTalkerById(id int64) (dbTopTalker db_models.TelemetryTopTalker, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Errorf("Database connect error: %s", err)
+		return
+	}
+	dbTopTalker = db_models.TelemetryTopTalker{}
+	_, err = engine.Where("id = ?", id).Get(&dbTopTalker)
+	if err != nil {
+		log.Errorf("Failed to get telemetry_top_talker by id. Error: %+v", err)
+		return
+
 	}
 	return
 }
@@ -2789,7 +2475,7 @@ func DeleteAttackDetail(engine *xorm.Engine, session *xorm.Session, preMitigatio
 }
 
 // Delete telemetry attack_detail
-func DeleteTelemetryAttackDetail(engine *xorm.Engine, session *xorm.Session, mitigationScopeId int64, newAttackDetailList []TelemetryAttackDetail) error {
+func DeleteTelemetryAttackDetail(engine *xorm.Engine, session *xorm.Session, mitigationScopeId int64) error {
 	dbAttackDetailList, err := db_models.GetTelemetryAttackDetailByMitigationScopeId(engine, mitigationScopeId)
 	if err != nil {
 		log.Errorf("Failed to get attack-detail. Error: %+v", err)
@@ -2797,23 +2483,6 @@ func DeleteTelemetryAttackDetail(engine *xorm.Engine, session *xorm.Session, mit
 		return err
 	}
 	if len(dbAttackDetailList) > 0 {
-		log.Debugf("Delete telemetry attributes as attack-detail")
-		currentAttackDetailList, err := GetTelemetryAttackDetail(engine, mitigationScopeId)
-		if err != nil {
-			log.Errorf("Failed to get telemetry attack-detail. Error: %+v", err)
-			return err
-		}
-		// If Existed attack-detail in body request that different from current attack-detail, DOTS server will update attack-detail
-		// Else if attack-detail in body request doesn't exist, DOTS server will delete attack-detail
-		if len(newAttackDetailList) > 0 && len(currentAttackDetailList) > 0 && !reflect.DeepEqual(GetModelsTelemetryAttackDetail(newAttackDetailList), GetModelsTelemetryAttackDetail(currentAttackDetailList)) {
-			attackDetail := dbAttackDetailList[0]
-			// Update attack detail
-			_, err = session.Id(attackDetail.Id).Update(attackDetail)
-			if err != nil {
-				log.Errorf("attack_detail update err: %s", err)
-				return err
-			}
-		}
 		for _, dbAttackDetail := range dbAttackDetailList {
 			err = db_models.DeleteTelemetryAttackDetailById(session, dbAttackDetail.Id)
 			if err != nil {
@@ -3166,56 +2835,6 @@ func GetModelsConnectionProtocolPercentile(cpps []ConnectionProtocolPercentile) 
 	for _, v := range cpps {
 		cpp := ConnectionProtocolPercentile{v.Protocol, v.Connection, v.Embryonic, v.ConnectionPs, v.RequestPs, v.PartialRequestPs}
 		cppList = append(cppList, cpp)
-	}
-	return
-}
-
-// Get attack-detail with type TelemetryAttackDetail
-func GetModelsTelemetryAttackDetail(values []TelemetryAttackDetail) (attackDetailList []TelemetryAttackDetail) {
-	attackDetailList = []TelemetryAttackDetail{}
-	for _, value := range values {
-		attackDetail := TelemetryAttackDetail {
-			VendorId:          value.VendorId,
-			AttackId:          value.AttackId,
-			AttackDescription: value.AttackDescription,
-			AttackSeverity:    value.AttackSeverity,
-			StartTime:         value.StartTime,
-			EndTime:           value.EndTime,
-		}
-		if !reflect.DeepEqual(GetModelsSourceCount(&value.SourceCount), GetModelsSourceCount(nil)) {
-			attackDetail.SourceCount = GetModelsSourceCount(&value.SourceCount)
-		} else {
-			attackDetail.SourceCount = GetModelsSourceCount(nil)
-		}
-		if len(value.TopTalker) <= 0 {
-			attackDetail.TopTalker = []TelemetryTopTalker{}
-		} else {
-			attackDetail.TopTalker = GetModelsTelemetryTopTalker(value.TopTalker)
-		}
-		attackDetailList = append(attackDetailList, attackDetail)
-	}
-	return
-}
-
-// Get top-talker with type is TelemetryTopTalker
-func GetModelsTelemetryTopTalker(topTalkers []TelemetryTopTalker) (topTalkerList []TelemetryTopTalker) {
-	topTalkerList = []TelemetryTopTalker{}
-	for _, v := range topTalkers {
-		sourcePrefix    := Prefix{nil, v.SourcePrefix.Addr, v.SourcePrefix.PrefixLen}
-		sourcePortRangeList := []PortRange{}
-		for _, portRange := range v.SourcePortRange {
-			sourcePortRange := PortRange{portRange.LowerPort, portRange.UpperPort}
-			sourcePortRangeList = append(sourcePortRangeList, sourcePortRange)
-		}
-		sourceIcmpTypeRangeList := []ICMPTypeRange{}
-		for _, typeRange := range v.SourceIcmpTypeRange {
-			sourceIcmpTypeRange := ICMPTypeRange{typeRange.LowerType, typeRange.UpperType}
-			sourceIcmpTypeRangeList = append(sourceIcmpTypeRangeList, sourceIcmpTypeRange)
-		}
-		trafficList   := GetModelsTraffic(v.TotalAttackTraffic)
-		tac           := GetModelsTelemetryTotalAttackConnection(&v.TotalAttackConnection)
-		topTalker     := TelemetryTopTalker{v.SpoofedStatus, sourcePrefix, sourcePortRangeList, sourceIcmpTypeRangeList, trafficList, tac}
-		topTalkerList = append(topTalkerList, topTalker)
 	}
 	return
 }

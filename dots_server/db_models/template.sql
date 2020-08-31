@@ -962,6 +962,20 @@ INSERT INTO `telemetry_traffic` (`id`, `prefix_type`, `prefix_type_id`, `traffic
 VALUES
   (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'PACKETS_PS', 0, 100, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
+# telemetry_traffic trigger when any attribute of telemetry_traffic change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_traffic_trigger AFTER UPDATE ON telemetry_traffic
+FOR EACH ROW
+BEGIN
+  IF NEW.unit <> OLD.unit OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g
+     OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    SELECT MySQLNotification('telemetry_traffic', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
 # telemetry_total_attack_connection
 # ------------------------------------------------------------
 
@@ -986,6 +1000,20 @@ INSERT INTO `telemetry_total_attack_connection` (`id`, `prefix_type`, `prefix_ty
 VALUES
   (1, 'TARGET_PREFIX', 1, 'LOW_PERCENTILE_C', 200, 201, 202, 203, 204, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
+# telemetry_total_attack_connection trigger when any attribute of telemetry_total_attack_connection change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_total_attack_connection_trigger AFTER UPDATE ON telemetry_total_attack_connection
+FOR EACH ROW
+BEGIN
+  IF NEW.connection <> OLD.connection OR NEW.embryonic <> OLD.embryonic OR NEW.connection_ps <> OLD.connection_ps
+     OR NEW.request_ps <> OLD.request_ps OR NEW.partial_request_ps <> OLD.partial_request_ps THEN
+    SELECT MySQLNotification('telemetry_total_attack_connection', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
 # telemetry_attack_detail
 # ------------------------------------------------------------
 
@@ -996,7 +1024,7 @@ CREATE TABLE `telemetry_attack_detail` (
   `mitigation_scope_id` bigint(20) NOT NULL,
   `vendor_id`           int(11)    NOT NULL,
   `attack_id`           int(11)    NOT NULL,
-  `attack_description`         varchar(255),
+  `attack_description`  varchar(255),
   `attack_severity`     enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') NOT NULL,
   `start_time`          int(11),
   `end_time`            int(11),
@@ -1012,7 +1040,8 @@ DELIMITER @@
 CREATE TRIGGER telemetry_attack_detail_trigger AFTER UPDATE ON telemetry_attack_detail
 FOR EACH ROW
 BEGIN
-  IF NEW.updated <> OLD.updated THEN
+  IF NEW.vendor_id <> OLD.vendor_id OR NEW.attack_id <> OLD.attack_id OR NEW.attack_description <> OLD.attack_description OR NEW.attack_severity <> OLD.attack_severity
+     OR NEW.start_time <> OLD.start_time OR NEW.end_time <> OLD.end_time THEN
     SELECT MySQLNotification('telemetry_attack_detail', NEW.mitigation_scope_id) INTO @x;
   END IF;
 END@@
@@ -1035,6 +1064,19 @@ CREATE TABLE `telemetry_source_count` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+# telemetry_source_count trigger when any attribute of telemetry_source_count change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_source_count_trigger AFTER UPDATE ON telemetry_source_count
+FOR EACH ROW
+BEGIN
+  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    SELECT MySQLNotification('telemetry_source_count', NEW.tele_attack_detail_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
 # telemetry_top_talker
 # ------------------------------------------------------------
 
@@ -1048,6 +1090,19 @@ CREATE TABLE `telemetry_top_talker` (
   `updated`               datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# telemetry_top_talker trigger when any attribute of telemetry_top_talker change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_top_talker_trigger AFTER UPDATE ON telemetry_top_talker
+FOR EACH ROW
+BEGIN
+  IF NEW.spoofed_status <> OLD.spoofed_status THEN
+    SELECT MySQLNotification('telemetry_top_talker', NEW.tele_attack_detail_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
 
 # telemetry_source_prefix
 # ------------------------------------------------------------
@@ -1064,6 +1119,18 @@ CREATE TABLE `telemetry_source_prefix` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8;
 
+# telemetry_source_prefix trigger when any attribute of telemetry_source_prefix change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_source_prefix_trigger AFTER UPDATE ON telemetry_source_prefix
+FOR EACH ROW
+BEGIN
+  IF NEW.addr <> OLD.addr OR NEW.prefix_len <> OLD.prefix_len THEN
+    SELECT MySQLNotification('telemetry_source_prefix', NEW.tele_top_talker_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
 
 # telemetry_source_port_range
 # ------------------------------------------------------------
@@ -1080,6 +1147,19 @@ CREATE TABLE `telemetry_source_port_range` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+# telemetry_source_port_range trigger when any attribute of telemetry_source_port_range change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_source_port_range_trigger AFTER UPDATE ON telemetry_source_port_range
+FOR EACH ROW
+BEGIN
+  IF NEW.lower_port <> OLD.lower_port OR NEW.upper_port <> OLD.upper_port THEN
+    SELECT MySQLNotification('telemetry_source_port_range', NEW.tele_top_talker_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
 # telemetry_source_icmp_type_range
 # ------------------------------------------------------------
 
@@ -1094,6 +1174,19 @@ CREATE TABLE `telemetry_source_icmp_type_range` (
   `updated`            datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# telemetry_source_icmp_type_range trigger when any attribute of telemetry_source_icmp_type_range change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_source_icmp_type_range_trigger AFTER UPDATE ON telemetry_source_icmp_type_range
+FOR EACH ROW
+BEGIN
+  IF NEW.lower_type <> OLD.lower_type OR NEW.upper_type <> OLD.upper_type THEN
+    SELECT MySQLNotification('telemetry_source_icmp_type_range', NEW.tele_top_talker_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
 
 # uri_filtering_telemetry_pre_mitigation
 # ------------------------------------------------------------

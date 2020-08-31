@@ -28,7 +28,15 @@ const (
 	PREFIX_ADDRESS_RANGE     TableName = "prefix"
 	DATA_ACLS                TableName = "data_acls"
 	TELEMETRY_PRE_MITIGATION TableName = "telemetry_pre_mitigation"
-	TELEMETRY_ATTACK_DETAIL  TableName = "telemetry_attack_detail"
+
+	TELEMETRY_TRAFFIC                 TableName = "telemetry_traffic"
+	TELEMETRY_TOTAL_ATTACK_CONNECTION TableName = "telemetry_total_attack_connection"
+	TELEMETRY_ATTACK_DETAIL           TableName = "telemetry_attack_detail"
+	TELEMETRY_SOURCE_COUNT            TableName = "telemetry_source_count"
+	TELEMETRY_TOP_TALKER              TableName = "telemetry_top_talker"
+	TELEMETRY_SOURCE_PREFIX           TableName = "telemetry_source_prefix"
+	TELEMETRY_SOURCE_PORT_RANGE       TableName = "telemetry_source_port_range"
+	TELEMETRY_SOURCE_ICMP_TYPE_RANGE  TableName = "telemetry_source_icmp_type_range"
 
 	URI_FILTERING_TRAFFIC                      TableName = "uri_filtering_traffic"
 	URI_FILTERING_TRAFFIC_PROTOCOL             TableName = "uri_filtering_traffic_per_protocol"
@@ -153,26 +161,18 @@ ILOOP:
 				handleNotifyACL(mapData["aclId"].(string), context)
 			} else if mapData["table_trigger"].(string) == string(TELEMETRY_PRE_MITIGATION) {
 				handleNotifyTelemetryPreMitigation(mapData, context)
-			} else if mapData["table_trigger"].(string) == string(TELEMETRY_ATTACK_DETAIL) {
-				mitigationScopeId, err := strconv.Atoi(mapData["mitigation_scope_id"].(string))
-				if err != nil {
-					log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
-					return
-				}
-				mitigationScope, err := models.GetMitigationScopeById(int64(mitigationScopeId))
-				if err != nil {
-					log.Errorf("[MySQL-Notification]: Failed to get mitigation scope")
-					return
-				}
-				handleNotifyMitigation(int64(mitigationScopeId), mitigationScope.CustomerId, mitigationScope.ClientIdentifier, 
-					                mitigationScope.ClientDomainIdentifier, mitigationScope.MitigationId, mitigationScope.Status, context, true)
+			} else if mapData["table_trigger"].(string) == string(TELEMETRY_TRAFFIC) || mapData["table_trigger"].(string) == string(TELEMETRY_TOTAL_ATTACK_CONNECTION) ||
+				mapData["table_trigger"].(string) == string(TELEMETRY_ATTACK_DETAIL) || mapData["table_trigger"].(string) == string(TELEMETRY_SOURCE_COUNT) ||
+				mapData["table_trigger"].(string) == string(TELEMETRY_TOP_TALKER) || mapData["table_trigger"].(string) == string(TELEMETRY_SOURCE_PREFIX) ||
+				mapData["table_trigger"].(string) == string(TELEMETRY_SOURCE_PORT_RANGE) || mapData["table_trigger"].(string) == string(TELEMETRY_SOURCE_ICMP_TYPE_RANGE) {
+				handleNotifyTelemetryMitigationStatusUpdate(mapData, context)
 			} else if mapData["table_trigger"].(string) == string(URI_FILTERING_TRAFFIC) || mapData["table_trigger"].(string) == string(URI_FILTERING_TRAFFIC_PROTOCOL) ||
 				mapData["table_trigger"].(string) == string(URI_FILTERING_TRAFFIC_PORT) || mapData["table_trigger"].(string) == string(URI_FILTERING_TOTAL_ATTACK_CONNECTION) ||
 				mapData["table_trigger"].(string) == string(URI_FILTERING_TOTAL_ATTACK_CONNECTION_PORT) || mapData["table_trigger"].(string) == string(URI_FILTERING_ATTACK_DETAIL) ||
 				mapData["table_trigger"].(string) == string(URI_FILTERING_SOURCE_COUNT) || mapData["table_trigger"].(string) == string(URI_FILTERING_TOP_TALKER) ||
 				mapData["table_trigger"].(string) == string(URI_FILTERING_SOURCE_PREFIX) || mapData["table_trigger"].(string) == string(URI_FILTERING_SOURCE_PORT_RANGE) ||
 				mapData["table_trigger"].(string) == string(URI_FILTERING_ICMP_TYPE_RANGE) {
-				// Handle notification telemetry pre-mitigation aggregated by server
+				// Handle notification telemetry pre-mitigation
 				handleNotifyUriFilteringTelemetryPreMitigation(mapData, context)
 			}
 		default:
@@ -210,15 +210,32 @@ func isDuplicateMitigation(mids []int, mid int) bool {
 // Hanlde notify mitigation
 func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int, status int, context *libcoap.Context, isNotifyTelemetryAttributes bool) {
 	uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
-	var query string
-	if cdid == "" {
-		query = uriPath + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
+	var queryPaths []string
+	uriQueryPaths := libcoap.GetUriFilterMitigationByValue(mid)
+	if len(uriQueryPaths) > 0 {
+		// Enable uri-query resource
+		for _, v := range uriQueryPaths {
+			uriQueryPath := strings.Split(v, "?")
+			queries := strings.Split(uriQueryPath[1], "&")
+			s, err := models.GetMitigationScope(0, "", 0, id, queries)
+			if err != nil {
+				log.Errorf("[MySQL-Notification]: Failed to get mitigation scope")
+				return
+			}
+			if s != nil {
+				queryPaths = append(queryPaths, v)
+			}
+		}
 	} else {
-		query = uriPath + "/cdid="+ cdid + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid)
+		if cdid == "" {
+			queryPaths = append(queryPaths, uriPath + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid))
+		} else {
+			queryPaths = append(queryPaths, uriPath + "/cdid="+ cdid + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid))
+		}
 	}
 
 	// Check duplicate mitigation when PUT a new mitigation before delete an expired mitigation
-	mids, err := models.GetMitigationIds(cid, cuid, nil)
+	mids, err := models.GetMitigationIds(cid, cuid)
 	if err != nil {
 		log.Errorf("[MySQL-Notification]: Error: %+v", err)
 		return
@@ -233,7 +250,6 @@ func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int
 	} else {
 		// Set mitigation map for notification mitigation telemetry attributes
 		if isNotifyTelemetryAttributes {
-			libcoap.SetMitigationMap(query, isNotifyTelemetryAttributes)
 			isServerOriginatedTelemetry, err := getServerOriginatedTelemetry(cid, cuid)
 			if err != nil {
 				log.Error("[MySQL-Notification]: Failed to get server-originated-telemetry")
@@ -242,38 +258,36 @@ func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int
 			// If the 'server-originated-telemetry' set to false, DOTS server will not notify
 			if !isServerOriginatedTelemetry {
 				log.Debug("[MySQL-Notification]: DOTS server will not notify to DOST client due to 'server-originated-telemetry' set to false")
-				libcoap.DeleteMitigationMapByKey(query)
 				return
 			}
 		}
 		// Notify status changed to those clients who are observing this mitigation request
 		log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-		resource := context.EnableResourceDirty(query)
-
-		// If mitigation status was changed to Terminated and resource is not being observed => set resource status to removable
-		var isObserved bool
-		if resource != nil {
-			isObserved = resource.IsObserved()
-		} else {
-			log.Warnf("[MySQL-Notification]: Not found any resource with query: %+v", query)
-		}
-		if isNotifyTelemetryAttributes && !isObserved {
-			libcoap.DeleteMitigationMapByKey(query)
-		}
-
-		if status == models.Terminated && !isObserved {
-			controllers.DeleteMitigation(cid, cuid, mid, id)
-			// Keep resource when there is a duplication
-			if !dup && resource != nil {
-				resource.ToRemovableResource()
+		for _, query := range queryPaths {
+			resource := context.EnableResourceDirty(query)
+			// If mitigation status was changed to Terminated and resource is not being observed => set resource status to removable
+			var isObserved bool
+			if resource != nil {
+				isObserved = resource.IsObserved()
+			} else {
+				log.Warnf("[MySQL-Notification]: Not found any resource with query: %+v", query)
 			}
-			// If the last mitigation is expired, the server will remove the resource all
-			if len(mids) == 1 && mids[0] == mid && resource != nil {
-				uriPathSplit := strings.Split(resource.UriPath(), "/mid")
-				resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
-				if resourceAll != nil {
-					resourceAll.ToRemovableResource()
+
+			if status == models.Terminated && !isObserved {
+				controllers.DeleteMitigation(cid, cuid, mid, id)
+				// Keep resource when there is a duplication
+				if !dup && resource != nil {
+					resource.ToRemovableResource()
 				}
+				// If the last mitigation is expired, the server will remove the resource all
+				if len(mids) == 1 && mids[0] == mid && resource != nil {
+					uriPathSplit := strings.Split(resource.UriPath(), "/mid")
+					resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
+					if resourceAll != nil {
+						resourceAll.ToRemovableResource()
+					}
+				}
+				break
 			}
 		}
 	}
@@ -315,7 +329,7 @@ func handleNotifyACL(aclIDString string, context *libcoap.Context) {
 		uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
 		for _, ctrlFiltering := range controlFilteringList {
 			// get mitigation scope by mitigation scope id
-			mitigation, err := models.GetMitigationScope(0, "", 0, ctrlFiltering.MitigationScopeId)
+			mitigation, err := models.GetMitigationScope(0, "", 0, ctrlFiltering.MitigationScopeId, nil)
 			if err != nil || mitigation == nil {
 				log.Error("Failed to get mitigation scope")
 				return
@@ -466,6 +480,62 @@ func handleNotifyUriFilteringTelemetryPreMitigation(mapData map[string]interface
 	}
 }
 
+// Handle notify telemetry mitigation status update
+func handleNotifyTelemetryMitigationStatusUpdate(mapData map[string]interface{}, context *libcoap.Context) {
+	var mitigation db_models.MitigationScope
+	if mapData["table_trigger"].(string) == string(TELEMETRY_TRAFFIC) || mapData["table_trigger"].(string) == string(TELEMETRY_TOTAL_ATTACK_CONNECTION) {
+		prefixType := mapData["prefix_type"].(string)
+		prefixTypeId, err := strconv.Atoi(mapData["prefix_type_id"].(string))
+		if err != nil {
+			log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+			return
+		}
+		if prefixType == string(models.TARGET_PREFIX) {
+			mitigation, err = getMitigationFromTelemetryAttributes(int64(prefixTypeId), 0, 0)
+			if err != nil {
+				return
+			}
+		} else {
+			mitigation, err = getMitigationFromTelemetryAttributes(0, 0, int64(prefixTypeId))
+			if err != nil {
+				return
+			}
+		}
+	} else if mapData["table_trigger"].(string) == string(TELEMETRY_ATTACK_DETAIL) {
+		mitigationId, err := strconv.Atoi(mapData["mitigation_scope_id"].(string))
+		if err != nil {
+			log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+			return
+		}
+		mitigation, err = getMitigationFromTelemetryAttributes(int64(mitigationId), 0, 0)
+		if err != nil {
+			return
+		}
+	} else if mapData["table_trigger"].(string) == string(TELEMETRY_SOURCE_COUNT) || mapData["table_trigger"].(string) == string(TELEMETRY_TOP_TALKER) {
+		attackDetailId, err := strconv.Atoi(mapData["tele_attack_detail_id"].(string))
+		if err != nil {
+			log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+			return
+		}
+		mitigation, err = getMitigationFromTelemetryAttributes(0, int64(attackDetailId), 0)
+		if err != nil {
+			return
+		}
+	} else {
+		topTalkerId, err := strconv.Atoi(mapData["tele_top_talker_id"].(string))
+		if err != nil {
+			log.Errorf("[MySQL-Notification]: Failed to parse string to integer")
+			return
+		}
+		mitigation, err = getMitigationFromTelemetryAttributes(0, 0, int64(topTalkerId))
+		if err != nil {
+			return
+		}
+	}
+	handleNotifyMitigation(mitigation.Id, mitigation.CustomerId, mitigation.ClientIdentifier, mitigation.ClientDomainIdentifier,
+		mitigation.MitigationId, mitigation.Status, context, true)
+}
+
 // Get server originated telemetry from telemetry configuration
 func getServerOriginatedTelemetry(customerId int, cuid string) (bool, error) {
 	isServerOriginatedTelemetry := false
@@ -518,4 +588,34 @@ func getTelemetryPreMitigation(telemetryPreMitigationId int64, attackDetailId in
 		preMitigation = tmpPreMitigation
 	}
 	return preMitigation, nil
+}
+
+// Get mitigation from telemetry attributes
+func getMitigationFromTelemetryAttributes(mitigationId int64, attackDetailId int64, topTalkerId int64) (db_models.MitigationScope, error) {
+	mitigation := db_models.MitigationScope{}
+	if topTalkerId > 0 {
+		// Get uri_filtering_top_talker
+		topTalker, err := models.GetTelemetryTopTalkerById(int64(topTalkerId))
+		if err != nil {
+			return mitigation, err
+		}
+		attackDetailId = topTalker.TeleAttackDetailId
+	}
+	if attackDetailId > 0 {
+		// Get uri_filtering_attack-detail
+		attackDetail, err := models.GetTelemetryAttackDetailById(attackDetailId)
+		if err != nil {
+			return mitigation, err
+		}
+		mitigationId = attackDetail.MitigationScopeId
+	}
+	if mitigationId > 0 {
+		// Get uri_filtering_telemetry_pre_mitigation
+		tmpMitigation, err := models.GetMitigationScopeById(mitigationId)
+		if err != nil {
+			return mitigation, err
+		}
+		mitigation = *tmpMitigation
+	}
+	return mitigation, nil
 }

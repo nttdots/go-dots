@@ -432,15 +432,10 @@ func NewTopTalker(ttRequest messages.TopTalker) (talkerList []TopTalker, err err
 }
 
 // New telemetry total-attack-traffic
-func NewTelemetryTotalAttackTraffic(teleTraffics []messages.Traffic) (trafficList []Traffic, err error) {
+func NewTelemetryTotalAttackTraffic(teleTraffics []messages.Traffic) (trafficList []Traffic) {
 	trafficList = make([]Traffic, len(teleTraffics))
 	for k, v := range teleTraffics {
 		traffic := Traffic{}
-		_, errMsg := ValidateUnit(v.Unit)
-		if errMsg != "" {
-			log.Errorf(errMsg)
-			return nil, errors.New(errMsg)
-		}
 		traffic.Unit = *v.Unit
 		if v.LowPercentileG != nil {
 			traffic.LowPercentileG = int(*v.LowPercentileG)
@@ -456,7 +451,7 @@ func NewTelemetryTotalAttackTraffic(teleTraffics []messages.Traffic) (trafficLis
 		}
 		trafficList[k] = traffic
 	}
-	return trafficList, nil
+	return trafficList
 }
 
 // New telemetry attack-detail
@@ -464,30 +459,12 @@ func NewTelemetryAttackDetail(adRequests []messages.TelemetryAttackDetail) (atta
 	attackDetailList = []TelemetryAttackDetail{}
 	for _, adRequest := range adRequests {
 		attackDetail := TelemetryAttackDetail{}
-		if adRequest.VendorId != nil {
-			attackDetail.VendorId = int(*adRequest.VendorId)
-		} else {
-			errMsg := "Missing required 'vendor-id' attribute"
-			log.Error(errMsg)
-			return nil, errors.New(errMsg)
-		}
-		if adRequest.AttackId != nil {
-			attackDetail.AttackId = int(*adRequest.AttackId)
-		} else {
-			errMsg := "Missing required 'attack-id' attribute"
-			log.Error(errMsg)
-			return nil, errors.New(errMsg)
-		}
+		attackDetail.VendorId = int(*adRequest.VendorId)
+		attackDetail.AttackId = int(*adRequest.AttackId)
 		if adRequest.AttackDescription != nil {
 			attackDetail.AttackDescription = *adRequest.AttackDescription
 		}
 		if adRequest.AttackSeverity != nil {
-			if adRequest.AttackSeverity != nil && *adRequest.AttackSeverity != int(None) && *adRequest.AttackSeverity != int(Low) && *adRequest.AttackSeverity != int(Medium) &&
-			*adRequest.AttackSeverity != int(High) && *adRequest.AttackSeverity != int(Unknown) {
-				errMsg := fmt.Sprintf("Invalid 'attack-severity' value %+v. Expected values include 1:None, 2:Low, 3:Medium, 4:High, 5:Unknown", *adRequest.AttackSeverity)
-				log.Error(errMsg)
-				return nil, errors.New(errMsg)
-			}
 			attackDetail.AttackSeverity = int(*adRequest.AttackSeverity)
 		} else {
 			attackDetail.AttackSeverity = int(None)
@@ -531,44 +508,23 @@ func NewTelemetryTopTalker(ttRequest messages.TelemetryTopTalker) (talkerList []
 			return nil, errors.New(errMsg)
 		}
 		for _, portRange := range v.SourcePortRange {
-			if portRange.LowerPort == nil {
-				errMsg := "Missing required 'lower-port' attribute"
-				log.Error(errMsg)
-				return nil, errors.New(errMsg)
-			}
 			lowerPort := *portRange.LowerPort
 			upperPort := *portRange.LowerPort
-			if portRange.UpperPort != nil && *portRange.LowerPort > *portRange.UpperPort {
-				errMsg := "'upper-port' MUST greater than 'lower-port'"
-				log.Error(errMsg)
-				return nil, errors.New(errMsg)
-			} else if portRange.UpperPort != nil && *portRange.LowerPort <= *portRange.UpperPort {
+			if portRange.UpperPort != nil && *portRange.LowerPort <= *portRange.UpperPort {
 				upperPort = *portRange.UpperPort
 			}
 			talker.SourcePortRange = append(talker.SourcePortRange, PortRange{LowerPort: lowerPort, UpperPort: upperPort})
 		}
 		for _, icmpTypeRange := range v.SourceIcmpTypeRange {
-			if icmpTypeRange.LowerType == nil {
-				errMsg := "Missing required 'lower-type' attribute"
-				log.Error(errMsg)
-				return nil, errors.New(errMsg)
-			}
 			lowerType := *icmpTypeRange.LowerType
 			upperType := *icmpTypeRange.LowerType
-			if icmpTypeRange.UpperType != nil && *icmpTypeRange.LowerType > *icmpTypeRange.UpperType {
-				errMsg := "'upper-type' MUST greater than 'lower-type'"
-				log.Error(errMsg)
-				return nil, errors.New(errMsg)
-			} else if icmpTypeRange.UpperType != nil && *icmpTypeRange.LowerType < *icmpTypeRange.UpperType {
+			if icmpTypeRange.UpperType != nil && *icmpTypeRange.LowerType < *icmpTypeRange.UpperType {
 				upperType = *icmpTypeRange.UpperType
 			}
 			talker.SourceIcmpTypeRange = append(talker.SourceIcmpTypeRange, ICMPTypeRange{LowerType: lowerType, UpperType: upperType})
 		}
 		if v.TotalAttackTraffic != nil {
-			talker.TotalAttackTraffic, err = NewTelemetryTotalAttackTraffic(v.TotalAttackTraffic)
-			if err != nil {
-				return nil, err
-			}
+			talker.TotalAttackTraffic = NewTelemetryTotalAttackTraffic(v.TotalAttackTraffic)
 		}
 		if v.TotalAttackConnection != nil {
 			tac := TelemetryTotalAttackConnection{}

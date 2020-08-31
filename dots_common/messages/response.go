@@ -31,7 +31,7 @@ type ICMPTypeRangeResponse struct {
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mid"    codec:"5"`
-	MitigationStart uint64 `json:"mitigation-start" codec:"15,omitempty"`
+	MitigationStart *uint64 `json:"mitigation-start" codec:"15,omitempty"`
 	TargetPrefix    []string `json:"target-prefix" codec:"6,omitempty"`
 	TargetPortRange []PortRangeResponse `json:"target-port-range" codec:"7,omitempty"`
 	TargetProtocol  []int  `json:"target-protocol"   codec:"10,omitempty"`
@@ -41,14 +41,15 @@ type ScopeStatus struct {
 	SourcePrefix    []string `json:"ietf-dots-call-home:source-prefix" codec:"32768,omitempty"`
 	SourcePortRange []PortRangeResponse`json:"ietf-dots-call-home:source-port-range" codec:"32769,omitempty"`
 	SourceICMPTypeRange []ICMPTypeRangeResponse`json:"ietf-dots-call-home:source-icmp-type-range" codec:"32770,omitempty"`
-	AclList         []ACL    `json:"ietf-dots-signal-control:acl-list" codec:"53,omitempty"`
-	TriggerMitigation bool `json:"trigger-mitigation" codec:"45,omitempty"`
-	Lifetime        int   `json:"lifetime"         codec:"14"`
-	Status          int   `json:"status"           codec:"16"`
-	BytesDropped    int   `json:"bytes-dropped"    codec:"25"`
-	BpsDropped      int   `json:"bps-dropped"      codec:"26"`
-	PktsDropped     int   `json:"pkts-dropped"     codec:"27"`
-	PpsDropped      int   `json:"pps-dropped"      codec:"28"`
+	AclList           []ACL `json:"ietf-dots-signal-control:acl-list" codec:"53,omitempty"`
+	TriggerMitigation *bool `json:"trigger-mitigation" codec:"45,omitempty"`
+	Lifetime          *int  `json:"lifetime"         codec:"14"`
+	Status            *int  `json:"status"           codec:"16"`
+	BytesDropped      *int  `json:"bytes-dropped"    codec:"25"`
+	BpsDropped        *int  `json:"bps-dropped"      codec:"26"`
+	PktsDropped       *int  `json:"pkts-dropped"     codec:"27"`
+	PpsDropped        *int  `json:"pps-dropped"      codec:"28"`
+	AttackStatus      *int  `json:"attack-status" codec:"29,omitempty"`
 	TotalTraffic          []TrafficResponse                       `json:"ietf-dots-telemetry:total-traffic" codec:"32881,omitempty"`
 	TotalAttackTraffic    []TrafficResponse                       `json:"ietf-dots-telemetry:total-attack-traffic" codec:"32882,omitempty"`
 	TotalAttackConnection *TelemetryTotalAttackConnectionResponse `json:"ietf-dots-telemetry:total-attack-connection" codec:"32883,omitempty"`
@@ -220,7 +221,9 @@ func (m *MitigationResponse) String() (result string) {
 	for key, scope := range m.MitigationScope.Scopes {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces3, "scope", key+1)
 		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "mid", scope.MitigationId)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "mitigation-start", scope.MitigationStart)
+		if scope.MitigationStart != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "mitigation-start", *scope.MitigationStart)
+		}
 		for k, v := range scope.TargetPrefix {
 			result += fmt.Sprintf("%s\"%s[%d]\": %s\n", spaces6, "target-prefix", k+1, v)
 		}
@@ -261,14 +264,29 @@ func (m *MitigationResponse) String() (result string) {
 				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "activation-type", *v.ActivationType)
 			}
 		}
-		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "lifetime", scope.Lifetime)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "status", scope.Status)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "bytes-dropped", scope.BytesDropped)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "bps-dropped", scope.BpsDropped)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "pkts-dropped", scope.PktsDropped)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "pps-dropped", scope.PpsDropped)
+		if scope.Lifetime != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "lifetime", *scope.Lifetime)
+		}
+		if scope.Status != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "status", *scope.Status)
+		}
+		if scope.BytesDropped != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "bytes-dropped", *scope.BytesDropped)
+		}
+		if scope.BpsDropped != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "bps-dropped", *scope.BpsDropped)
+		}
+		if scope.PktsDropped != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "pkts-dropped", *scope.PktsDropped)
+		}
+		if scope.PpsDropped != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "pps-dropped", *scope.PpsDropped)
+		}
+		if scope.AttackStatus != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "attack-status", *scope.AttackStatus)
+		}
 		if scope.TotalTraffic != nil {
-			for k, v := range scope.TotalAttackTraffic {
+			for k, v := range scope.TotalTraffic {
 				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-telemetry:total-traffic", k+1)
 				result += v.String(spaces6)
 			}
@@ -280,6 +298,7 @@ func (m *MitigationResponse) String() (result string) {
 			}
 		}
 		if scope.TotalAttackConnection != nil {
+			result += fmt.Sprintf("%s\"%s\":\n", spaces6, "ietf-dots-telemetry:total-attack-connection")
 			result += scope.TotalAttackConnection.String(spaces6)
 		}
 		for k, v := range scope.AttackDetail {
@@ -1278,6 +1297,7 @@ func (t TelemetryTalkerResponse) String(spacesn string) (result string) {
 		result += v.String(spacesn3)
 	}
 	if t.TotalAttackConnection != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "total-attack-connection")
 		result += t.TotalAttackConnection.String(spacesn3)
 	}
 	return
@@ -1287,7 +1307,6 @@ func (t TelemetryTalkerResponse) String(spacesn string) (result string) {
 func (tac *TelemetryTotalAttackConnectionResponse) String(spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
-	result += fmt.Sprintf("%s\"%s\":\n", spacesn, "total-attack-connection")
 	if tac.LowPercentileC != nil {
 		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "low-percentile-c")
 		result += tac.LowPercentileC.String(spacesn3)

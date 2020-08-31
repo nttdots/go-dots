@@ -237,7 +237,7 @@ func QueryParamsToString(queryParams []string) (str string) {
 	str = ""
 	for _, query := range queryParams {
         if strings.Contains(query, string(libcoap.TargetPrefix)) || strings.Contains(query, string(libcoap.TargetPort)) || strings.Contains(query, string(libcoap.TargetProtocol)) ||
-           strings.Contains(query, string(libcoap.TargetFqdn)) || strings.Contains(query, string(libcoap.TargetUri)) || strings.Contains(query, string(libcoap.AliasName)) {
+           strings.Contains(query, string(libcoap.TargetFqdn)) || strings.Contains(query, string(libcoap.TargetUri)) || strings.Contains(query, string(libcoap.AliasName)) || strings.Contains(query, string(libcoap.Content)) {
                continue
         }
         str += "/" + query
@@ -406,7 +406,7 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
 
     // check mitigation status from notification to count the number of mitigations that are being observed
     tokenReq, queryReq := env.GetTokenAndRequestQuery(query)
-    if tokenReq != nil && queryReq != nil && scopes[0].Status == 6 {
+    if tokenReq != nil && queryReq != nil && *scopes[0].Status == 6 {
         // The notification indicate that a mitigation is expired
         if *queryReq.CountMitigation >= 1 {
             lenScopeReq := *queryReq.CountMitigation - 1
@@ -418,7 +418,7 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
             env.RemoveRequestQuery(string(tokenReq))
         }
 
-    } else if tokenReq != nil && queryReq != nil && scopes[0].Status == 2 {
+    } else if tokenReq != nil && queryReq != nil && *scopes[0].Status == 2 {
         // The notification indicate that a mitigation is created
         lenScopeReq := *queryReq.CountMitigation + 1
         queryReq.CountMitigation = &lenScopeReq

@@ -27,6 +27,7 @@ type Attr struct {
 }
 
 var uriFilter = make(map[string]int)
+var uriFilterMitigation = make(map[string]int)
 var resources = make(map[*C.coap_resource_t] *Resource)
 
 func GetAllResource() map[*C.coap_resource_t] *Resource {
@@ -250,6 +251,40 @@ func DeleteUriFilterByKey(key string) {
     for k, _:= range uriFilter {
         if k == key {
             delete(uriFilter, k)
+        }
+    }
+}
+
+// Set uri filter mitigation
+func SetUriFilterMitigation(key string, value int) {
+    uriFilterMitigation[key] = value
+}
+
+// Get uri filter mitigation by value
+func GetUriFilterMitigationByValue(value int) []string {
+    var keys []string
+    for k, v:= range uriFilterMitigation {
+        if v == value {
+            keys = append(keys, k)
+        }
+    }
+    return keys
+}
+
+// Delete uri filter mitigation by value
+func DeleteUriFilterMitigationByValue(value int) {
+    for k, v:= range uriFilterMitigation {
+        if v == value {
+            delete(uriFilterMitigation, k)
+        }
+    }
+}
+
+// Delete uri filter mitigation by key
+func DeleteUriFilterMitigationByKey(key string) {
+    for k, _:= range uriFilterMitigation {
+        if k == key {
+            delete(uriFilterMitigation, k)
         }
     }
 }
