@@ -307,6 +307,7 @@ func handleNotifyACL(aclIDString string, context *libcoap.Context) {
 	acl, err := data_models.FindACLByID(aclID)
 	if err != nil {
 		log.Errorf("[MySQL-Notification]: Failed to get Acl from DB")
+		return
 	}
 
 	// Get data client by id
@@ -319,11 +320,12 @@ func handleNotifyACL(aclIDString string, context *libcoap.Context) {
 	// Get control filtering by acl name
 	controlFilteringList, err := models.GetControlFilteringByACLName(acl.Name)
 	// If the acl's activation-type is not-type(the acl is deleted or expired) and the control filtering doesn't exist, remove acl from DB
-	if len(controlFilteringList) == 0 && *acl.ACL.ActivationType == data_types.ActivationType_NotType {
+	if len(controlFilteringList) == 0 && acl.Id > 0 && *acl.ACL.ActivationType == data_types.ActivationType_NotType {
 		log.Debug("[MySQL-Notification]: Remove ACL from DB")
 		err = models.RemoveACLByID(aclID, acl)
 		if err != nil {
 			log.Errorf("Failed to remove Acl from DB")
+			return
 		}
 	} else {
 		uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
@@ -344,11 +346,13 @@ func handleNotifyACL(aclIDString string, context *libcoap.Context) {
 				err = models.RemoveACLByID(aclID, acl)
 				if err != nil {
 					log.Errorf("Failed to remove Acl from DB")
+					return
 				}
 
 				err = models.RemoveControlFilteringByID(ctrlFiltering.Id, ctrlFiltering)
 				if err != nil {
 					log.Errorf("Failed to remove control filtering from DB")
+					return
 				}
 			}
 		}

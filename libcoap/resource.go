@@ -76,17 +76,6 @@ func (context *Context) DeleteResource(resource *Resource) {
     C.coap_delete_resource(context.ptr, ptr)
 }
 
-func (context *Context) DeleteAllResources() {
-
-    deleted := make(map[*C.coap_resource_t] *Resource)
-
-    resources, deleted = deleted, resources
-    for _, r := range deleted {
-        r.ptr = nil
-    }
-    C.coap_delete_all_resources(context.ptr)
-}
-
 func (resource *Resource) AddAttr(name string, value *string) *Attr {
 
     cvalue, valuelen := cstringOrNil(value)

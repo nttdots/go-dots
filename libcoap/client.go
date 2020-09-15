@@ -211,5 +211,5 @@ func (context *Context) RegisterNackHandler(handler NackHandler) {
 
 func (resource *Resource) RegisterServerHandler(method Code, handler MethodHandler) {
     resource.handlers[method] = handler
-    C.coap_register_handler(resource.ptr, C.uchar(method), C.coap_method_handler_t(C.method_from_server_handler))
+    C.coap_register_handler(resource.ptr, C.coap_request_t(method), C.coap_method_handler_t(C.method_from_server_handler))
 }

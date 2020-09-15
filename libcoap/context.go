@@ -215,7 +215,7 @@ func (context *Context) CanExit() bool {
 }
 
 func (context *Context) RunOnce(timeout time.Duration) time.Duration {
-    d := C.coap_run_once(context.ptr, C.uint(timeout / time.Millisecond))
+    d := C.coap_io_process(context.ptr, C.uint(timeout / time.Millisecond))
     return time.Duration(d) * time.Millisecond
 }
 

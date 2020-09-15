@@ -201,7 +201,7 @@ func export_event_handler(ctx *C.coap_context_t,
 
 func (resource *Resource) RegisterHandler(method Code, handler MethodHandler) {
     resource.handlers[method] = handler
-    C.coap_register_handler(resource.ptr, C.uchar(method), C.coap_method_handler_t(C.method_handler))
+    C.coap_register_handler(resource.ptr, C.coap_request_t(method), C.coap_method_handler_t(C.method_handler))
 }
 
 // Register event handler to libcoap
