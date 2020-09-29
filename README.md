@@ -13,7 +13,7 @@
 * draft-ietf-dots-use-cases-21
 * draft-ietf-dots-signal-filter-control-07
 * draft-ietf-dots-signal-call-home-08
-* draft-ietf-dots-telemetry-11
+* draft-ietf-dots-telemetry-12
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
