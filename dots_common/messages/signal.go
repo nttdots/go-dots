@@ -11,8 +11,8 @@ type PortRange struct {
 
 type ICMPTypeRange struct {
 	_struct   bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowerType *int `json:"ietf-dots-call-home:lower-type" codec:"32771,omitempty"`
-	UpperType *int `json:"ietf-dots-call-home:upper-type" codec:"32772,omitempty"`
+	LowerType *int `json:"lower-type" codec:"32771,omitempty"`
+	UpperType *int `json:"upper-type" codec:"32772,omitempty"`
 }
 
 type ACL struct {
@@ -217,10 +217,10 @@ func (m *MitigationRequest) String() (result string) {
 			for k, v := range scope.SourceICMPTypeRange {
 				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-call-home:source-icmp-type-range", k+1)
 				if v.LowerType != nil {
-					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "ietf-dots-call-home:lower-type", *v.LowerType)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "lower-type", *v.LowerType)
 				}
 				if v.UpperType != nil {
-					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "ietf-dots-call-home:upper-type", *v.UpperType)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-type", *v.UpperType)
 				}
 			}
 		}

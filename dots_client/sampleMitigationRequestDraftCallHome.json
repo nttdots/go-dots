@@ -32,12 +32,12 @@
              ],
              "ietf-dots-call-home:source-icmp-type-range":[
                 {
-                   "ietf-dots-call-home:lower-type":1,
-                   "ietf-dots-call-home:upper-type":2
+                   "lower-type":1,
+                   "upper-type":2
                 },
                 {
-                   "ietf-dots-call-home:lower-type":3,
-                   "ietf-dots-call-home:upper-type":4
+                   "lower-type":3,
+                   "upper-type":4
                 }
              ],
              "lifetime":50
