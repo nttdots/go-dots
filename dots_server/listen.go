@@ -112,20 +112,6 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
             uri := request.Path()
             for i := range uri {
-                if strings.HasPrefix(uri[i], "mitigate") || strings.HasPrefix(uri[i], "tm") {
-                    badReqMsg, err := handlePreMitigationMessageInterval(session, customer, request.Path())
-                    if badReqMsg != "" {
-                        response.Code = libcoap.ResponseBadRequest
-                        response.Type = responseType(request.Type)
-                        response.Data = []byte(badReqMsg)
-                        return
-                    } else if err != nil {
-                        response.Code = libcoap.ResponseUnauthorized
-                        response.Type = responseType(request.Type)
-                        response.Data = []byte(fmt.Sprint(err))
-                        return
-                    }
-                }
                 if strings.HasPrefix(uri[i], "mitigate") {
                     log.Debug("Request path includes 'mitigate'. Cbor decode with type MitigationRequest")
                     body, resourcePath, err = registerResourceMitigation(request, typ, controller, session, context, is_unknown)
@@ -144,6 +130,18 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                     break;
                 } else if strings.HasPrefix(uri[i], "tm") {
                     log.Debug("Request path includes 'tm'. Cbor decode with type TelemetryPreMitigationRequest")
+                    badReqMsg, err := handlePreMitigationMessageInterval(session, customer, request.Path())
+                    if badReqMsg != "" {
+                        response.Code = libcoap.ResponseBadRequest
+                        response.Type = responseType(request.Type)
+                        response.Data = []byte(badReqMsg)
+                        return
+                    } else if err != nil {
+                        response.Code = libcoap.ResponseUnauthorized
+                        response.Type = responseType(request.Type)
+                        response.Data = []byte(fmt.Sprint(err))
+                        return
+                    }
                     body, resourcePath, err = registerResourceTelemetryPreMitigation(request, typ, controller, session, context, is_unknown)
                     isTelemetryRequest = true
                     break;
@@ -698,8 +696,7 @@ func registerResourceTelemetryPreMitigation(request *libcoap.Pdu, typ reflect.Ty
 // Handle telemetry pre-mitigation message interval
 func handlePreMitigationMessageInterval(session *libcoap.Session, customer *models.Customer, path []string) (string, error) {
     // DOTS agents MUST NOT sent pre-mitigation telemetry messages to the same peer more frequently than once every 'telemetry-notify-interval'
-    if (!session.GetIsNotification() && session.GetIsReceivedPreMitigation()) ||
-       (session.GetIsNotification() && session.GetIsSentNotification()) {
+    if !session.GetIsNotification() && session.GetIsReceivedPreMitigation() {
         errMessage := fmt.Sprint("DOTS agents MUST NOT sent pre-mitigation telemetry messages to the same peer more frequently than once every 'telemetry-notify-interval'")
         log.Warn(errMessage)
         return errMessage, nil
@@ -711,31 +708,12 @@ func handlePreMitigationMessageInterval(session *libcoap.Session, customer *mode
             cuid = v[strings.Index(v, "cuid=")+5:]
         }
     }
-    setupList, err := models.GetTelemetrySetupByCuidAndSetupType(customer.Id, cuid, string(models.TELEMETRY_CONFIGURATION))
+    interval, err := getTelemeytryNotifyInterval(customer.Id, cuid)
     if err != nil {
         return "", err
     }
-    // Get telemetry_notify_interval from telemetry configuration
-    // If telemetry_notify_interval doesn't exist, it will be set to default value
-    if len(setupList) > 0 {
-        teleConfig, err := models.GetTelemetryConfiguration(setupList[0].Id)
-        if err != nil {
-            return "", err
-        }
-        interval = teleConfig.TelemetryNotifyInterval
-    } else {
-        defaultValue := dots_config.GetServerSystemConfig().DefaultTelemetryConfiguration
-        interval = defaultValue.TelemetryNotifyInterval
-    }
     if session.GetIsNotification() {
-        // handle telemetry-notify-interval when DOTS server notify to DOTS client
         session.SetIsNotification(false)
-        go func() {
-            session.SetIsSentNotification(true)
-            time.Sleep(time.Duration(interval) * time.Second)
-            session.SetIsSentNotification(false)
-            return
-        }()
     } else {
         // handle telemetry-notify-interval when DOTS server receive request from DOTS client
         go func() {
@@ -798,4 +776,25 @@ func deleteUriQueryResource(context *libcoap.Context, tmid int) {
         }
     }
     libcoap.DeleteUriFilterByValue(tmid)
+}
+
+// Get telemetry-notify-interval
+func getTelemeytryNotifyInterval(customerId int, cuid string) (interval int, err error) {
+    setupList, err := models.GetTelemetrySetupByCuidAndSetupType(customerId, cuid, string(models.TELEMETRY_CONFIGURATION))
+    if err != nil {
+        return 0, err
+    }
+    // Get telemetry_notify_interval from telemetry configuration
+    // If telemetry_notify_interval doesn't exist, it will be set to default value
+    if len(setupList) > 0 {
+        teleConfig, err := models.GetTelemetryConfiguration(setupList[0].Id)
+        if err != nil {
+            return 0, err
+        }
+        interval = teleConfig.TelemetryNotifyInterval
+    } else {
+        defaultValue := dots_config.GetServerSystemConfig().DefaultTelemetryConfiguration
+        interval = defaultValue.TelemetryNotifyInterval
+    }
+    return interval, nil
 }

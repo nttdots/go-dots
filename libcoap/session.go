@@ -25,7 +25,7 @@ type SessionConfig struct {
     isSentHeartBeat          bool
     isReceivedPreMitigation  bool
     isNotification           bool
-    isSentNotification       bool
+    isWaitNotification       bool
     missing_hb_allowed       int
     current_missing_hb       int
 }
@@ -251,20 +251,20 @@ func (session *Session) SetIsNotification(isNotification bool) {
 }
 
 /*
- * Get session is sent notitication
- * return: isSentNotification
+ * Get session is wait notitication
+ * return: isWaitNotification
  */
- func (session *Session) GetIsSentNotification() bool {
-    return session.sessionConfig.isSentNotification
+ func (session *Session) IsWaitNotification() bool {
+    return session.sessionConfig.isWaitNotification
 }
 
 /*
- * Set session is sent notification
+ * Set session is wait notification
  * parameter:
- *  isSentNotification
+ *  isWaitNotification
  */
-func (session *Session) SetIsSentNotification(isSentNotification bool) {
-    session.sessionConfig.isSentNotification = isSentNotification
+func (session *Session) SetIsWaitNotification(isWaitNotification bool) {
+    session.sessionConfig.isWaitNotification = isWaitNotification
 }
 
 
@@ -323,4 +323,13 @@ func (session *Session) HandleForgetNotification(pdu *Pdu) {
     if err == nil {
         C.coap_send_rst(session.ptr, pdut)
     }
+}
+
+// Get session from resource
+func GetSessionFromResource(resource *Resource) *Session {
+    if resource != nil {
+        sessiontr := C.coap_get_session_from_resource(resource.ptr)
+        return sessions[sessiontr]
+    }
+    return nil
 }

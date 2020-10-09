@@ -259,3 +259,11 @@ void coap_session_handle_release(coap_session_t *session) {
     session->context->handle_event = NULL;
     coap_session_release(session);
 }
+
+// Get session from resource
+coap_session_t* coap_get_session_from_resource(coap_resource_t *resource) {
+    if (resource->subscribers == NULL) {
+        return NULL;
+    }
+    return resource->subscribers->session;
+}

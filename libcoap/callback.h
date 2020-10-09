@@ -129,3 +129,4 @@ coap_block_t coap_create_block(unsigned int num, unsigned int m, unsigned int si
 coap_strlist_t* coap_common_name(coap_strlist_t* head, coap_strlist_t* tail, char* str);
 
 void coap_session_handle_release(coap_session_t *session);
+coap_session_t* coap_get_session_from_resource(coap_resource_t *resource);

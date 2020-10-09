@@ -5,6 +5,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"time"
 	"strconv"
 	"strings"
 	"encoding/json"
@@ -50,6 +51,8 @@ const (
 	URI_FILTERING_SOURCE_PORT_RANGE            TableName = "uri_filtering_source_port_range"
 	URI_FILTERING_ICMP_TYPE_RANGE              TableName = "uri_filtering_icmp_type_range"
 )
+
+var notificationList = make(map[*libcoap.Session] string)
 
 /*
  * Listen for notification from DB
@@ -390,7 +393,8 @@ func handleNotifyTelemetryPreMitigation(mapData map[string]interface{}, context 
 		query = uriPath + "/cuid=" + preMitigation.Cuid + "cdid=" + preMitigation.Cdid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
 	}
 	log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-	context.EnableResourceDirty(query)
+	// handle telemetry-notify-interval when DOTS server notify to DOTS client
+	enableResourceDirtyTelemetryPreMitigation(context, query, preMitigation.CustomerId, preMitigation.Cuid)
 }
 
 // Handle notification telemetry pre-mitigation aggregated by server
@@ -456,6 +460,7 @@ func handleNotifyUriFilteringTelemetryPreMitigation(mapData map[string]interface
 		log.Debug("[MySQL-Notification]: DOTS server will not notify to DOST client due to 'server-originated-telemetry' set to false")
 		return
 	}
+	var query string
 	uriQueryPaths := libcoap.GetUriFilterByValue(preMitigation.Tmid)
 	log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
 	if len(uriQueryPaths) > 0 {
@@ -468,19 +473,58 @@ func handleNotifyUriFilteringTelemetryPreMitigation(mapData map[string]interface
 				return
 			}
 			if isExist {
-				context.EnableResourceDirty(v)
+				query = v
+				break
 			}
 		}
 	} else {
 		// Enable resource
 		uriPath := messages.MessageTypes[messages.TELEMETRY_PRE_MITIGATION_REQUEST].Path
-		var query string
 		if preMitigation.Cdid == "" {
 			query = uriPath + "/cuid=" + preMitigation.Cuid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
 		} else {
 			query = uriPath + "/cuid=" + preMitigation.Cuid + "cdid=" + preMitigation.Cdid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
 		}
-		context.EnableResourceDirty(query)
+	}
+	// handle telemetry-notify-interval when DOTS server notify to DOTS client
+	enableResourceDirtyTelemetryPreMitigation(context, query, preMitigation.CustomerId, preMitigation.Cuid)
+}
+
+// Enable resource dirty of telemetry pre-mitigation
+func enableResourceDirtyTelemetryPreMitigation(context *libcoap.Context, query string, customerId int, cuid string) {
+	if query != "" {
+		resource := context.GetResourceByQuery(&query)
+		session := libcoap.GetSessionFromResource(resource)
+		if session != nil {
+			if session.IsWaitNotification() {
+				log.Debugf("Session(%+v).Waiting the telemetry-notify-interval pass...", session.String())
+				notificationList[session] = query
+			} else {
+				context.EnableResourceDirty(query)
+				session.SetIsWaitNotification(true)
+				go handleTelemetryNotifyIntreval(context, session, customerId, cuid)
+			}
+		}
+	}
+}
+
+// Thread telemetry notify interval
+func handleTelemetryNotifyIntreval(context *libcoap.Context, session *libcoap.Session, customerId int, cuid string) {
+	for {
+		interval, err := getTelemeytryNotifyInterval(customerId, cuid)
+		if err != nil {
+			log.Warnf("Failed to get telemetry-notify-interval. Doesn't send notification.")
+			return
+		}
+		time.Sleep(time.Duration(interval) * time.Second)
+		query := notificationList[session]
+		if query != "" {
+			context.EnableResourceDirty(query)
+			session.SetIsWaitNotification(false)
+			notificationList[session] = ""
+		} else {
+			return
+		}
 	}
 }
 
