@@ -668,7 +668,6 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 	mitigationScope.ClientDomainIdentifier = dbMitigationScope.ClientDomainIdentifier
 	mitigationScope.Status = dbMitigationScope.Status
 	mitigationScope.TriggerMitigation = dbMitigationScope.TriggerMitigation
-	mitigationScope.AttackStatus = dbMitigationScope.AttackStatus
 
 	// Calculate the remaining lifetime
 	currentTime := time.Now()

@@ -119,11 +119,6 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			scopeStates.TargetProtocol = mp.mitigation.TargetProtocol.List()
 			scopeStates.FQDN = mp.mitigation.FQDN.List()
 			scopeStates.URI = mp.mitigation.URI.List()
-			if mp.mitigation.AttackStatus == int(models.UnderAttack) || mp.mitigation.AttackStatus == int(models.AttackSuccessfullyMitigated) {
-				scopeStates.AttackStatus = &mp.mitigation.AttackStatus
-			} else {
-				scopeStates.AttackStatus = nil
-			}
 			// Set TargetPrefix, TargetPortRange
 			scopeStates.TargetPrefix = make([]string, 0, len(mp.mitigation.TargetPrefix))
 			scopeStates.TargetPortRange = make([]messages.PortRangeResponse, 0, len(mp.mitigation.TargetPortRange))

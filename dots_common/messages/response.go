@@ -49,7 +49,6 @@ type ScopeStatus struct {
 	BpsDropped        *int  `json:"bps-dropped"      codec:"26"`
 	PktsDropped       *int  `json:"pkts-dropped"     codec:"27"`
 	PpsDropped        *int  `json:"pps-dropped"      codec:"28"`
-	AttackStatus      *int  `json:"attack-status" codec:"29,omitempty"`
 	TotalTraffic          []TrafficResponse                       `json:"ietf-dots-telemetry:total-traffic" codec:"32881,omitempty"`
 	TotalAttackTraffic    []TrafficResponse                       `json:"ietf-dots-telemetry:total-attack-traffic" codec:"32882,omitempty"`
 	TotalAttackConnection *TelemetryTotalAttackConnectionResponse `json:"ietf-dots-telemetry:total-attack-connection" codec:"32883,omitempty"`
@@ -282,9 +281,6 @@ func (m *MitigationResponse) String() (result string) {
 		if scope.PpsDropped != nil {
 			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "pps-dropped", *scope.PpsDropped)
 		}
-		if scope.AttackStatus != nil {
-			result += fmt.Sprintf("%s\"%s\": %d\n", spaces6, "attack-status", *scope.AttackStatus)
-		}
 		if scope.TotalTraffic != nil {
 			for k, v := range scope.TotalTraffic {
 				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-telemetry:total-traffic", k+1)
@@ -320,7 +316,6 @@ func (m *MitigationResponsePut) String() (result string) {
 	for key, scope := range m.MitigationScope.Scopes {
 		result += fmt.Sprintf("   \"%s[%d]\":\n", "scope", key+1)
 		result += fmt.Sprintf("     \"%s\": %d\n", "mid", scope.MitigationId)
-		result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
 		if scope.ConflictInformation != nil {
 			result += fmt.Sprintf("     \"%s\":\n", "conflict-information")
 			result += fmt.Sprintf("       \"%s\": %d\n", "conflict-status", scope.ConflictInformation.ConflictStatus)
@@ -355,6 +350,8 @@ func (m *MitigationResponsePut) String() (result string) {
 				}
 				result += fmt.Sprintf("       \"%s\": %d\n", "mid", scope.ConflictInformation.ConflictScope.MitigationId)
 			}
+		} else {
+			result += fmt.Sprintf("     \"%s\": %d\n", "lifetime", scope.Lifetime)
 		}
 	}
 	return
