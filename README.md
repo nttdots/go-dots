@@ -27,7 +27,7 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.13.5 or later is required. (for the latest GoBGP - v2.17.0)
+  * go 1.13.5 or later is required. (for the latest GoBGP - v2.20.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.1g or higher (for libcoap)
