@@ -64,7 +64,7 @@ type TelemetryAttackDetailResponse struct {
 	StartTime         *int                        `json:"start-time" codec:"32840,omitempty"`
 	EndTime           *int                        `json:"end-time" codec:"32841,omitempty"`
 	SourceCount       *SourceCountResponse        `json:"source-count" codec:"32842,omitempty"`
-	TopTalKer         *TelemetryTopTalkerResponse `json:"ietf-dots-telemetry:top-talker" codec:"32843,omitempty"`
+	TopTalKer         *TelemetryTopTalkerResponse `json:"top-talker" codec:"32843,omitempty"`
 }
 
 type TelemetryTopTalkerResponse struct {
