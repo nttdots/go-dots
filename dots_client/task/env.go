@@ -34,6 +34,9 @@ type Env struct {
     replacingSession *libcoap.Session
 
     isServerStopped bool
+
+    // the token of the deleted resource
+    tokenOfDeletedResource []string
 }
 
 type RequestQuery struct {
@@ -59,6 +62,7 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         nil,
         nil,
         false,
+        nil,
     }
 }
 
@@ -219,6 +223,28 @@ func (env *Env) GetTokenAndRequestQuery(query string) ([]byte, *RequestQuery) {
         }
     }
     return nil, nil
+}
+
+func (env *Env) AddTokenOfDeletedResource(token string) {
+    env.tokenOfDeletedResource = append(env.tokenOfDeletedResource, token)
+}
+
+func (env *Env) IsDeletedResource(token string) bool {
+    for _, value := range env.tokenOfDeletedResource {
+        if value == token {
+            return true
+        }
+    }
+    return false
+}
+
+func (env *Env) DeleteTokenOfDeletedResource(token string) {
+    for k, v := range env.tokenOfDeletedResource {
+        if v == token {
+            env.tokenOfDeletedResource = append(env.tokenOfDeletedResource[:k], env.tokenOfDeletedResource[k+1:]...)
+            return
+        }
+    }
 }
 
 func (env *Env) RemoveRequestQuery(token string) {
@@ -406,7 +432,7 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
 
     // check mitigation status from notification to count the number of mitigations that are being observed
     tokenReq, queryReq := env.GetTokenAndRequestQuery(query)
-    if tokenReq != nil && queryReq != nil && *scopes[0].Status == 6 {
+    if tokenReq != nil && queryReq != nil && scopes!= nil && *scopes[0].Status == 6 {
         // The notification indicate that a mitigation is expired
         if *queryReq.CountMitigation >= 1 {
             lenScopeReq := *queryReq.CountMitigation - 1
@@ -418,7 +444,7 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
             env.RemoveRequestQuery(string(tokenReq))
         }
 
-    } else if tokenReq != nil && queryReq != nil && *scopes[0].Status == 2 {
+    } else if tokenReq != nil && queryReq != nil && scopes !=nil && *scopes[0].Status == 2 {
         // The notification indicate that a mitigation is created
         lenScopeReq := *queryReq.CountMitigation + 1
         queryReq.CountMitigation = &lenScopeReq

@@ -445,7 +445,13 @@ func handleResponse(env *task.Env, pdu *libcoap.Pdu) {
 				log.Debug("Handle forget notification")
 				env.CoapSession().HandleForgetNotification(pdu)
 			} else {
-				log.Debugf("Unexpected incoming PDU: %+v", pdu)
+				// Resource is deleted, then dots-client receive the response message from libcoap
+				if pdu.Type == libcoap.TypeNon && pdu.Code == libcoap.ResponseNotFound && env.IsDeletedResource(string(pdu.Token)) {
+					log.Debugf("Resource is deleted. Incoming PDU: %+v", pdu)
+					env.DeleteTokenOfDeletedResource(string(pdu.Token))
+				} else {
+					log.Debugf("Unexpected incoming PDU: %+v", pdu)
+				}
 			}
         }
     } else if !t.IsStop() {

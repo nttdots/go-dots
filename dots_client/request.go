@@ -636,7 +636,14 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
         err = dec.Decode(&v)
         logStr = v.String()
         env.UpdateCountMitigation(req, v, string(pdu.Token))
-        log.Debugf("Request query with token as key in map: %+v", env.GetAllRequestQuery())
+		log.Debugf("Request query with token as key in map: %+v", env.GetAllRequestQuery())
+		// if status is 6, add token of the deleted resource
+		if err == nil {
+			scopes := v.MitigationScope.Scopes
+			if scopes != nil && *scopes[0].Status == 6 {
+				env.AddTokenOfDeletedResource(string(pdu.Token))
+			}
+		}
     } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
         var v messages.ConfigurationResponse
         err = dec.Decode(&v)
@@ -685,10 +692,13 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
         if eTag != nil && block.NUM > 0 {
             pdu = env.GetBlockData(blockKey)
             delete(env.Blocks(), blockKey)
-        }
-
-        log.Debugf("Success incoming PDU (NotificationResponse): %+v", pdu)
-        logNotification(env, messageTask, pdu)
+		}
+		if pdu.Code == libcoap.ResponseNotFound {
+			log.Debugf("Resource is deleted. Incoming PDU: %+v", pdu)
+		} else {
+			log.Debugf("Success incoming PDU (NotificationResponse): %+v", pdu)
+			logNotification(env, messageTask, pdu)
+		}
     } else if isMoreBlock {
         // Re-create request for block-wise transfer
         req := &libcoap.Pdu{}
@@ -715,7 +725,7 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
             req.SetPathString(path)
 
             // Renew token value to re-request remaining blocks
-            req.Token = dots_common.RandStringBytes(8)
+            req.Token = pdu.Token
             if eTag != nil {
                 delete(env.Blocks(), blockKey)
                 newBlockKey := strconv.Itoa(*eTag) + string(req.Token)
