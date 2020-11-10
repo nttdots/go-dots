@@ -12,7 +12,7 @@ type Capabilities struct {
   UDP                *Capabilities_UDP  `yang:"nonconfig" json:"udp"`
   ICMP               *Capabilities_ICMP `yang:"nonconfig" json:"icmp"`
 
-  VendorMappingEnabled *bool `yang:"nonconfig" json:"vendor_mapping_enabled"`
+  VendorMappingEnabled *bool `yang:"nonconfig" json:"ietf-dots-mapping:vendor-mapping-enabled"`
 }
 
 type Capabilities_IPv4 struct {
