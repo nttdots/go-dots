@@ -184,7 +184,7 @@ SKIP_OBSERVE:
 	}
 
 	// Block 2 option
-	if (r.requestName == "mitigation_request") && (r.method == "GET") {
+	if (r.requestName == "mitigation_request" || r.requestName == "telemetry_pre_mitigation_request") && (r.method == "GET") {
 		blockSize := r.env.InitialRequestBlockSize()
 		if blockSize != nil {
 			block := &libcoap.Block{}
@@ -661,7 +661,7 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
         err = dec.Decode(&v)
         logStr = v.String()
         log.Debug("Receive telemetry pre-mitigation notification.")
-    }else {
+    } else {
         log.Warnf("Unknown notification is received.")
     }
 
@@ -713,6 +713,7 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
 
             req.Type = pdu.Type
             req.Code = libcoap.RequestGet
+            path  := ""
 
             // Create uri-path for block-wise transfer request from observation request query
             reqQuery := env.GetRequestQuery(string(pdu.Token))
@@ -720,8 +721,14 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
                 log.Error("Failed to get query param for re-request notification blocks")
                 return
             }
-            messageCode := messages.MITIGATION_REQUEST
-            path := messageCode.PathString() + reqQuery.Query
+            hex := hex.Dump(pdu.Data)
+            if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
+                messageCode := messages.MITIGATION_REQUEST
+                path = messageCode.PathString() + reqQuery.Query
+            } else if strings.Contains(hex, string(libcoap.IETF_TELEMETRY_PRE_MITIGATION)) {
+                messageCode := messages.TELEMETRY_PRE_MITIGATION_REQUEST
+                path = messageCode.PathString() + reqQuery.Query
+            }
             req.SetPathString(path)
 
             // Renew token value to re-request remaining blocks
