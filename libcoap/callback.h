@@ -130,3 +130,4 @@ coap_strlist_t* coap_common_name(coap_strlist_t* head, coap_strlist_t* tail, cha
 
 void coap_session_handle_release(coap_session_t *session);
 coap_session_t* coap_get_session_from_resource(coap_resource_t *resource);
+size_t coap_handle_add_option(coap_pdu_t *pdu, uint16_t type, unsigned int val);
