@@ -3,6 +3,7 @@ package libcoap
 /*
 #cgo LDFLAGS: -lcoap-2-openssl
 #include <coap2/coap.h>
+#include "callback.h"
 */
 import "C"
 import "fmt"
@@ -242,12 +243,20 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
                     return
                 }
             } else {
-                if 0 == C.coap_add_option(p,
+                if o.Key == OptionObserve || o.Key == OptionEtag || o.Key == OptionBlock2 {
+                    value, _ := o.Uint()
+                    if 0 == C.coap_handle_add_option(p, C.uint16_t(o.Key), C.uint(value)) {
+                        err = errors.New("coap_add_option() failed.")
+                        return
+                    }
+                } else {
+                    if 0 == C.coap_add_option(p,
                                         C.uint16_t(o.Key),
                                         C.size_t(len(o.Value)),
                                         (*C.uint8_t)(unsafe.Pointer(&o.Value[0]))) {
-                    err = errors.New("coap_add_option() failed.")
-                    return
+                        err = errors.New("coap_add_option() failed.")
+                        return
+                    }
                 }
             }
         }

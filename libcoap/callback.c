@@ -267,3 +267,11 @@ coap_session_t* coap_get_session_from_resource(coap_resource_t *resource) {
     }
     return resource->subscribers->session;
 }
+
+// Handle add option
+size_t coap_handle_add_option(coap_pdu_t *pdu, uint16_t type, unsigned int val) {
+    unsigned char buf[4];
+    size_t t;
+    t = coap_add_option(pdu, type, coap_encode_var_safe(buf, sizeof(buf), val), buf);
+    return t;
+}
