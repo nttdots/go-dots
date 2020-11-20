@@ -34,7 +34,7 @@ func (c *ACLsController) GetAll(customer *models.Customer, r *http.Request, p ht
   // Check missing 'cuid'
  if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'", false)
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
@@ -70,28 +70,29 @@ func (c *ACLsController) Get(customer *models.Customer, r *http.Request, p httpr
   cuid := p.ByName("cuid")
   name := p.ByName("acl")
   log.WithField("cuid", cuid).WithField("acl", name).Info("[ACLsController] GET")
-
+  isAfterTransaction := false
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'", isAfterTransaction)
   }
 
   // Check missing alias 'name'
   if name == "" {
     log.Error("Missing required acl 'name' attribute.")
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : acl 'name'")
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : acl 'name'", isAfterTransaction)
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
+      isAfterTransaction = true
       acl, err := data_models.FindACLByName(tx, client, name, now)
       if err != nil {
         return
       }
       if acl == nil {
         errMsg := fmt.Sprintf("Not Found acl by specified name (%v)", name)
-        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg, isAfterTransaction)
       }
 
       ta, err := acl.ToTypesACL(now)
@@ -122,32 +123,34 @@ func (c *ACLsController) Delete(customer *models.Customer, r *http.Request, p ht
   cuid := p.ByName("cuid")
   name := p.ByName("acl")
   log.WithField("cuid", cuid).WithField("acl", name).Info("[ACLsController] DELETE")
+  isAfterTransaction := false
 
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'", isAfterTransaction)
   }
 
   // Check missing alc 'name'
   if name == "" {
     log.Error("Missing required acl 'name' attribute.")
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : acl 'name'")
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : acl 'name'", isAfterTransaction)
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
+      isAfterTransaction = true
       deleted, err := data_models.DeleteACLByName(tx, client.Id, name, now)
       if err != nil {
         errMsg := fmt.Sprintf("Failed to delete acl with name = %+v", name)
-        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
       }
 
       if deleted == true {
         return EmptyResponse(http.StatusNoContent)
       } else {
         errMsg := fmt.Sprintf("Not Found acl by specified name (%v)", name)
-        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
+        return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg, isAfterTransaction)
       }
     })
   })
@@ -160,31 +163,32 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
   name := p.ByName("acl")
   errMsg := ""
   log.WithField("cuid", cuid).WithField("acl", name).Info("[ACLsController] PUT")
+  isAfterTransaction := false
 
   // Check missing 'cuid'
   if cuid == "" {
     log.Error("Missing required path 'cuid' value.")
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'")
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : 'cuid'", isAfterTransaction)
   }
 
   // Check missing alias 'name'
   if name == "" {
     log.Error("Missing required path 'name' value.")
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : alias 'name'")
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Missing_Attribute, "Missing a mandatory attribute : alias 'name'", isAfterTransaction)
   }
 
   req := messages.ACLsRequest{}
   err := Unmarshal(r, &req)
   if err != nil {
     errMsg = fmt.Sprintf("Invalid body data format: %+v", err)
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errMsg)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errMsg, isAfterTransaction)
   }
   log.Infof("[ACLsController] Put request=%#+v", req)
 
   // Get blocker configuration by customerId and target_type in table blocker_configuration
 	blockerConfig, err := models.GetBlockerConfiguration(customer.Id, string(messages_common.DATACHANNEL_ACL))
 	if err != nil {
-		return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Get blocker configuration failed")
+		return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Get blocker configuration failed", isAfterTransaction)
 	}
 	log.WithFields(log.Fields{
 		"blocker_type": blockerConfig.BlockerType,
@@ -194,36 +198,37 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
   validator := messages.GetAclValidator(blockerConfig.BlockerType)
   if validator == nil {
     errMsg := fmt.Sprintf("Unknown blocker type: %+v", models.BLOCKER_TYPE_GO_ARISTA)
-    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Invalid_Value, errMsg)
+    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Invalid_Value, errMsg, isAfterTransaction)
   }
   bValid, errMsg := validator.ValidateWithName(&req, customer, name)
   if !bValid {
-    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+    return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg, isAfterTransaction)
   }
 
   return WithTransaction(func (tx *db.Tx) (Response, error) {
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (Response, error) {
+      isAfterTransaction = true
       // If the request contains 'cuid' and 'cdid' but DOTS server doesn't maintain 'cdid' for this 'cuid', DOTS server will response 403 Forbidden
       if cdid != "" && (client.Cdid == nil || ( client.Cdid != nil && cdid != *client.Cdid)) {
         errMsg := fmt.Sprintf("Dots server does not maintain a 'cdid' for client with cuid = %+v", client.Cuid)
         log.Error(errMsg)
-        return ErrorResponse(http.StatusForbidden, ErrorTag_Access_Denied, errMsg)
+        return ErrorResponse(http.StatusForbidden, ErrorTag_Access_Denied, errMsg, isAfterTransaction)
       }
       // Get insert and point parameters from uri-query
       insert, point, errMsg := getUriQuery(r.URL.RawQuery)
       if errMsg != "" {
-        return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+        return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg, isAfterTransaction)
       }
       // Vidate uri-query
       errMsg = validUriQuery(insert, point)
       if errMsg != "" {
-        return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+        return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg, isAfterTransaction)
       }
       acl := req.ACLs.ACL[0]
       e, err := data_models.FindACLByName(tx, client, acl.Name, now)
       if err != nil {
         errMsg = fmt.Sprintf("Failed to get acl with name = %+v", acl.Name)
-        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
       }
       setDefaultValue(&acl)
       status := http.StatusCreated
@@ -233,18 +238,18 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
         priority, err := handleInsertAclWithinAcls(tx, client, now, insert, point, 1)
         if err != nil {
           errMsg = fmt.Sprintf("Failed to insert acl within acls set. Err: %+v", err.Error())
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
         }
         if priority == 0 {
           errMsg := fmt.Sprintf("Not Found acl by specified point (%v)", point)
-          return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg)
+          return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg, isAfterTransaction)
         }
         t.Priority = priority
         e = &t
       } else {
         if insert != "" {
           errMsg = fmt.Sprintf("Existed acl is %+v. Dots server MUST NOT insert acl", acl.Name)
-          return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg)
+          return ErrorResponse(http.StatusBadRequest, ErrorTag_Bad_Attribute, errMsg, isAfterTransaction)
         }
         oldActivateType = *e.ACL.ActivationType
         e.ACL = types.ACL(acl)
@@ -254,7 +259,7 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       err = e.Save(tx)
       if err != nil {
         errMsg = fmt.Sprintf("Failed to save acl with name = %+v", acl.Name)
-        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
       }
 
       // Handle ACL activate type
@@ -262,12 +267,12 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
       isCurrentActive, err := data_models.IsActive(customer.Id, cuid, oldActivateType)
       if err != nil {
         errMsg = fmt.Sprintf("Failed to check acl status with name = %+v", acl.Name)
-        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
       }
       isNewActive, err := e.IsActive()
       if err != nil {
         errMsg = fmt.Sprintf("Failed to check acl status with name = %+v", e.ACL.Name)
-        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
       }
 
       // If client PUT to create new ACL
@@ -279,7 +284,7 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
         p, err := models.GetActiveProtectionByTargetIDAndTargetType(e.Id, string(messages_common.DATACHANNEL_ACL))
         if err != nil {
           errMsg = fmt.Sprintf("Failed to get acl protection with acl 'name' = %+v", e.ACL.Name)
-          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+          return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
         }
         if p != nil {
           // Cancel blocker
@@ -287,7 +292,7 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
           if err != nil {
             log.Errorf("Signal channel Control Filtering. CancelBlocker is error: %s\n", err)
             errMsg = fmt.Sprintf("Failed to cancel blocker with acl 'name' = %+v", e.ACL.Name)
-            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+            return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
           }
         }
       }
@@ -302,7 +307,7 @@ func (c *ACLsController) Put(customer *models.Customer, r *http.Request, p httpr
         log.Errorf("Data channel PUT ACL. CallBlocker is error: %s\n", err)
         data_models.DeleteACLByName(tx, client.Id, e.ACL.Name, now)
         errMsg = fmt.Sprintf("Failed to call blocker with acl 'name' = %+v", e.ACL.Name)
-        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg)
+        return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
       }
 
       // Add acl to check expired
@@ -331,17 +336,18 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
 
   res, err = WithTransaction(func (tx *db.Tx) (Response, error) {
     return WithClient(tx, customer, cuid, func (client *data_models.Client) (Response, error) {
+      isAfterTransaction := true
       for _, controlFiltering := range controlFilteringList {
         aclName := controlFiltering.ACLName
         acl, err := data_models.FindACLByName(tx, client, aclName, now)
         if err != nil {
           errMsg = fmt.Sprintf("Failed to get acl with name = %+v", aclName)
-          res, err = ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
+          res, err = ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
           break
         }
         if acl == nil {
           errMsg = fmt.Sprintf("Acl " + controlFiltering.ACLName + " has not found")
-          res, err = ErrorResponse(http.StatusNotFound, ErrorTag_Data_Missing, errMsg)
+          res, err = ErrorResponse(http.StatusNotFound, ErrorTag_Data_Missing, errMsg, isAfterTransaction)
           break
         }
         oldACLList = append(oldACLList, *acl)
@@ -351,7 +357,7 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
         activationType := data_models.ToActivationType(*controlFiltering.ActivationType)
         if activationType == "" {
           errMsg = fmt.Sprintf("[Control Filtering]: Activation types is invalid: %+v", controlFiltering.ActivationType)
-          res, err = ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errMsg)
+          res, err = ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errMsg, isAfterTransaction)
           break
         }
         newActivateTypeMap[acl.Id] = activationType
@@ -362,14 +368,14 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
         err = acl.Save(tx)
         if err != nil {
           errMsg = fmt.Sprintf("Failed to save acl with name = %+v", aclName)
-          res, err = ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
+          res, err = ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
           break
         }
 
         // Call bocker or cancel blocker
         errMsg = HandleCallBlockerOrCancelBlocker(acl, customer, cuid, oldActivateType)
         if errMsg != "" {
-          res, err = ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
+          res, err = ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
           break
         }
         log.Debugf("[Control Filtering]: Update ACL (name=%+v) activation-type from: %+v to: %+v", acl.ACL.Name, oldActivateType, acl.ACL.ActivationType)
@@ -382,7 +388,7 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
           if err != nil {
             errMsg = fmt.Sprintf("Failed to save acl with name = %+v", oldACL.ACL.Name)
             log.Error(errMsg)
-            return ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
+            return ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
           }
 
           // Call bocker or cancel blocker
@@ -390,7 +396,7 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
           if errMsgRollBack != "" {
             errMsg = errMsgRollBack
             log.Error(errMsg)
-            return ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg)
+            return ErrorResponse(http.StatusServiceUnavailable, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
           }
           log.Debugf("[Rollback Control Filtering]: Update ACL (name=%+v) activation-type from: %+v to: %+v", oldACL.ACL.Name, newActivateTypeMap[oldACL.Id], oldACL.ACL.ActivationType)
         }
