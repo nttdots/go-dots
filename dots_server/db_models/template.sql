@@ -1568,7 +1568,7 @@ CREATE TABLE `vendor_mapping` (
   `data_client_id` bigint(20) NOT NULL,
   `vendor_id`      int(11)    NOT NULL,
   `vendor_name`    varchar(255),
-  `last_updated`   int(11)    NOT NULL,
+  `last_updated`   bigint(20) NOT NULL,
   `created`        datetime   DEFAULT NULL,
   `updated`        datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)

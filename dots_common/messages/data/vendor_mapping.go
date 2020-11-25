@@ -2,6 +2,7 @@ package data_messages
 
 import (
 	"fmt"
+	"strconv"
 	types "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
@@ -20,7 +21,7 @@ func ValidateWithVendorId(vendorId int, req *VendorMappingRequest) (errMsg strin
 		return
 	}
 	vendor := req.VendorMapping.Vendor[0]
-	if int(*vendor.VendorId) != vendorId {
+	if vendor.VendorId != nil && int(*vendor.VendorId) != vendorId {
 		errMsg = fmt.Sprintf("Request/URI vendor-id mismatch : (%v) / (%v)", int(*vendor.VendorId), vendorId)
 		return
 	}
@@ -36,6 +37,10 @@ func ValidateVendorMapping(req *VendorMappingRequest) (errMsg string) {
 		}
 		if vendor.LastUpdated == nil {
 			errMsg = fmt.Sprintf("Missing 'last-updated' required attribute")
+			return
+		}
+		if _, err := strconv.ParseUint(*vendor.LastUpdated, 10, 64); err != nil {
+			errMsg = fmt.Sprintf("The type of 'last-updated' is not uint")
 			return
 		}
 		for _, attack := range vendor.AttackMapping {

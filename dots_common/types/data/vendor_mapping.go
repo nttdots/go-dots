@@ -7,7 +7,7 @@ type VendorMapping struct {
 type Vendor struct {
 	VendorId      *uint32         `yang:"config" json:"vendor-id"`
 	VendorName    *string         `yang:"config" json:"vendor-name"`
-	LastUpdated   *uint64         `yang:"config" json:"last-updated"`
+	LastUpdated   *string         `yang:"config" json:"last-updated"`
 	AttackMapping []AttackMapping `yang:"config" json:"attack-mapping"`
 }
 

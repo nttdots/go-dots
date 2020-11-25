@@ -4,7 +4,7 @@
             {
                 "vendor-id":345,
                 "vendor-name":"mitigator-c",
-                "last-updated":1576812345,
+                "last-updated":"1576812345",
                 "attack-mapping":[
                     {
                         "attack-id":1,

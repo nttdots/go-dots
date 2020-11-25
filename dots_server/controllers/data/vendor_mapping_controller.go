@@ -109,7 +109,8 @@ func (vc *VendorMappingController) Put(customer *models.Customer, r *http.Reques
 			}
 			// Save attack-detail
 			e.VendorName  = *req.VendorMapping.Vendor[0].VendorName
-			e.LastUpdated = int(*req.VendorMapping.Vendor[0].LastUpdated)
+			lastUpdated, _ := strconv.ParseUint(*req.VendorMapping.Vendor[0].LastUpdated, 10, 64)
+			e.LastUpdated = lastUpdated
 			e.AttackMapping = nil
 			for _, am := range req.VendorMapping.Vendor[0].AttackMapping {
 				attackMapping := data_models.AttackMapping{}

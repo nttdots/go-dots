@@ -1,6 +1,7 @@
 package data_models
 
 import (
+	"strconv"
 	"github.com/nttdots/go-dots/dots_server/db"
 	"github.com/nttdots/go-dots/dots_server/db_models/data"
 	log "github.com/sirupsen/logrus"
@@ -12,7 +13,7 @@ type Vendor struct {
 	ClientId      int64
 	VendorId      int
 	VendorName    string
-	LastUpdated   int
+	LastUpdated   uint64
 	AttackMapping []AttackMapping
 }
 
@@ -27,10 +28,11 @@ type Vendors []Vendor
 // New vendor-mapping
 func NewVendorMapping(clientId int64, bodyData types.Vendor) Vendor {
 	vendor := Vendor{}
+	lastUpdated, _ := strconv.ParseUint(*bodyData.LastUpdated, 10, 64)
 	vendor.ClientId    = clientId
 	vendor.VendorId    = int(*bodyData.VendorId)
 	vendor.VendorName  = *bodyData.VendorName
-	vendor.LastUpdated = int(*bodyData.LastUpdated)
+	vendor.LastUpdated = lastUpdated
 	for _, v := range bodyData.AttackMapping {
 		attackMapping := AttackMapping{}
 		attackMapping.AttackId          = int(*v.AttackId)
@@ -167,7 +169,7 @@ func (vendors Vendors) ToTypesVendorMapping(depth *int) (*types.VendorMapping) {
 		for _, v := range vendors {
 			vendor := types.Vendor{}
 			vendorId := uint32(v.VendorId)
-			lastUpdated := uint64(v.LastUpdated)
+			lastUpdated := strconv.FormatUint(v.LastUpdated, 10)
 			vendor.VendorId    = &vendorId
 			vendor.VendorName  = &v.VendorName
 			vendor.LastUpdated = &lastUpdated
