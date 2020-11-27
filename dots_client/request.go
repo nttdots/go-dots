@@ -222,7 +222,7 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 	if isMoreBlock {
 		r.pdu.MessageID = r.env.CoapSession().NewMessageID()
 		r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
-		r.pdu.SetOption(libcoap.OptionEtag, uint32(*eTag))
+		r.pdu.SetOption(libcoap.OptionEtag, *eTag)
 
 		// Add block2 option for waiting for response
 		r.options[messages.BLOCK2] = block.ToString()
@@ -230,7 +230,7 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 		r.env.Run(task)
 	} else {
 		if eTag != nil && block.NUM > 0 {
-			blockKey := strconv.Itoa(*eTag) + string(response.Token)
+			blockKey := *eTag + string(response.Token)
 			response = r.env.GetBlockData(blockKey)
 			delete(r.env.Blocks(), blockKey)
 		}
@@ -685,7 +685,7 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
     isMoreBlock, eTag, block := env.CheckBlock(pdu)
     var blockKey string
     if eTag != nil {
-        blockKey = strconv.Itoa(*eTag) + string(pdu.Token)
+        blockKey = *eTag + string(pdu.Token)
     }
 
     if !isMoreBlock || pdu.Type != libcoap.TypeNon {
@@ -735,13 +735,13 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
             req.Token = pdu.Token
             if eTag != nil {
                 delete(env.Blocks(), blockKey)
-                newBlockKey := strconv.Itoa(*eTag) + string(req.Token)
+                newBlockKey := *eTag + string(req.Token)
                 env.Blocks()[newBlockKey] = pdu
             }
         }
 
         req.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
-        req.SetOption(libcoap.OptionEtag, uint32(*eTag))
+        req.SetOption(libcoap.OptionEtag, *eTag)
 
         // Run new message task for re-request remaining blocks of notification
         newTask := task.NewMessageTask(

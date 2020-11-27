@@ -5,6 +5,7 @@ package libcoap
 #include <coap2/coap.h>
 */
 import "C"
+import "encoding/hex"
 import "encoding/binary"
 import "bytes"
 
@@ -84,4 +85,13 @@ func (opt Option) Uint() (res uint32, err error) {
 		return 0, err
 	}
 	return
+}
+
+// Add option with type is opaque
+func (key OptionKey) Opaque(value string) (Option, error) {
+    buf, err := hex.DecodeString(string(value))
+    if err != nil {
+        return Option{}, err
+    }
+    return Option{ key, buf}, nil
 }

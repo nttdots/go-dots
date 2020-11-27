@@ -10,6 +10,7 @@ import "fmt"
 import "errors"
 import "sort"
 import "strings"
+import "encoding/hex"
 import "unsafe"
 import "reflect"
 import "net/http"
@@ -354,6 +355,17 @@ func (pdu *Pdu) GetOptionStringValue(key OptionKey) (value string) {
     return ""
 }
 
+// Get value of option with type is opaque
+func (pdu *Pdu) GetOptionOpaqueValue(key OptionKey) (opaqueValue string) {
+    for _, option := range pdu.Options {
+        if key == option.Key {
+            opaqueValue = strings.ToUpper(hex.EncodeToString(option.Value))
+            return
+        }
+    }
+    return ""
+}
+
 // Options gets all the values for the given option.
 func (pdu *Pdu) OptionValues(o OptionKey) []interface{} {
 	var rv []interface{}
@@ -379,7 +391,14 @@ func (pdu *Pdu) AddOption(key OptionKey, val interface{}) {
     var err error
 	iv := reflect.ValueOf(val)
 	if iv.Kind() == reflect.String {
-		option = key.String(val.(string))
+        if key == C.COAP_OPTION_ETAG {
+            option, err = key.Opaque(val.(string))
+            if err != nil {
+                log.Errorf("Binary read data failed: %+v", err)
+            }
+        } else {
+            option = key.String(val.(string))
+        }
 	} else if iv.Kind() == reflect.Uint8 || iv.Kind() == reflect.Uint16 || iv.Kind() == reflect.Uint32 {
         option, err = key.Uint(val)
         if err != nil {

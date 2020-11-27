@@ -9,7 +9,6 @@ import "C"
 import "errors"
 import "unsafe"
 import "strings"
-import "strconv"
 import log "github.com/sirupsen/logrus"
 import cache "github.com/patrickmn/go-cache"
 
@@ -115,12 +114,8 @@ func export_method_handler(ctx   *C.coap_context_t,
 
     handler, ok := resource.handlers[request.Code]
     if ok {
-        etag, err := request.GetOptionIntegerValue(OptionEtag)
-        if err != nil {
-            log.WithError(err).Warn("Get Etag option value failed.")
-            return
-        }
-        itemKey := strconv.Itoa(etag)
+        etag := request.GetOptionOpaqueValue(OptionEtag)
+        itemKey := etag
         if isObserveOne {
             itemKey = itemKey + mid
         }
@@ -158,7 +153,7 @@ func export_method_handler(ctx   *C.coap_context_t,
             if is_observe {
                 req = nil
             }
-            C.coap_add_data_blocked_response(resource.ptr, session.ptr, req, resp, coapToken, C.COAP_MEDIATYPE_APPLICATION_CBOR, C.int(maxAge),
+            C.coap_add_data_blocked_response(resource.ptr, session.ptr, req, resp, coapToken, C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR, C.int(maxAge),
                                             C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])))
             resPdu,_ := resp.toGo()
 
@@ -248,10 +243,9 @@ func SetBlockOptionFirstRequest(request *Pdu) {
 func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, isObserveOne bool, mid string) error {
     blockValue,_ := resp.GetOptionIntegerValue(OptionBlock2)
     block := IntToBlock(int(blockValue))
-    etag, err := resp.GetOptionIntegerValue(OptionEtag)
-    if err != nil { return err }
+    etag := resp.GetOptionOpaqueValue(OptionEtag)
 
-    keyItem := strconv.Itoa(etag)
+    keyItem := etag
     if isObserveOne {
         keyItem = keyItem + mid
     }

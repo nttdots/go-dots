@@ -4,7 +4,6 @@ import (
     "time"
     "reflect"
     "strings"
-    "strconv"
     "github.com/shopspring/decimal"
     "github.com/nttdots/go-dots/libcoap"
     "github.com/nttdots/go-dots/dots_common/messages"
@@ -320,7 +319,7 @@ func (env *Env) CheckSessionReplacement() (bool) {
  *   etag(*int): etag option received from server
  *   block(Block): block option sent to server
  */
-func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *int, *libcoap.Block) {
+func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *string, *libcoap.Block) {
     blockValue, err := pdu.GetOptionIntegerValue(libcoap.OptionBlock2)
     if err != nil {
         log.WithError(err).Warn("Get block2 option value failed.")
@@ -334,15 +333,11 @@ func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *int, *libcoap.Block) {
         return false, nil, nil
     }
 
-    eTag, err := pdu.GetOptionIntegerValue(libcoap.OptionEtag)
-    if err != nil {
-        log.WithError(err).Warn("Get Etag option value failed.")
-        return false, nil, nil
-    }
+    eTag := pdu.GetOptionOpaqueValue(libcoap.OptionEtag)
 
     if block != nil {
         isMoreBlock := true
-        blockKey := strconv.Itoa(eTag) + string(pdu.Token)
+        blockKey := eTag + string(pdu.Token)
         // If block.M = 1, block is more block. If block.M = 0, block is last block
         if block.M == libcoap.MORE_BLOCK {
             log.Debugf("Response block is comming (eTag=%+v, block=%+v, size2=%+v) for request (token=%+v), waiting for the next block.", eTag, block.ToString(), size2Value, pdu.Token)
