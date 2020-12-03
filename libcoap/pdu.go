@@ -244,6 +244,9 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
                     return
                 }
             } else {
+                if src.Type == TypeAck {
+                    continue
+                }
                 if o.Key == OptionObserve || o.Key == OptionEtag || o.Key == OptionBlock2 {
                     value, _ := o.Uint()
                     if 0 == C.coap_handle_add_option(p, C.uint16_t(o.Key), C.uint(value)) {
@@ -263,7 +266,7 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
         }
     }
 
-    if (src.Code != ResponseContent || src.Type != TypeNon) && 0 < len(src.Data) {
+    if src.Code != ResponseContent && 0 < len(src.Data) {
         if 0 == C.coap_add_data(p,
                                 C.size_t(len(src.Data)),
                                 (*C.uint8_t)(unsafe.Pointer(&src.Data[0]))) {

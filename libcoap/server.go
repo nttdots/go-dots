@@ -132,13 +132,8 @@ func export_method_handler(ctx   *C.coap_context_t,
             response.Token = request.Token
         }
 
-        // add observe option value to notification header
-        if is_observe && response.Type != TypeNon {
-            response.SetOption(OptionObserve, rsrc.observe)
-        }
-
         response.fillC(resp)
-        if request.Code == RequestGet && response.Code == ResponseContent && response.Type == TypeNon {
+        if request.Code == RequestGet && response.Code == ResponseContent {
             // handle max-age option
             maxAge, err := response.GetOptionIntegerValue(OptionMaxage)
             if err != nil || maxAge < 0 {

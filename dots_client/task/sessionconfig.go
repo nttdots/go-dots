@@ -33,6 +33,10 @@ func NewSessionConfigTask(message  *libcoap.Pdu, interval time.Duration, respons
 }
 
 func (t *SessionConfigTask) run(out chan Event) {
+    if t.interval == 0 {
+        out <- &SessionConfigEvent{ EventBase{ t } }
+        return
+    }
     for {
         select {
         case <- t.stopChan:{
@@ -71,7 +75,6 @@ func (e *SessionConfigEvent) Handle(env *Env) {
         })
     env.Run(newTask)
     task.current_sessionconfig_id = fmt.Sprintf("%d", newTask.message.MessageID)
-    log.Debugf ("Sent new session message (id = %+v)", task.current_sessionconfig_id )
 }
 
 func (t *SessionConfigTask) MessageTask() *libcoap.Pdu {

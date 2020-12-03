@@ -119,7 +119,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
 
                 } else if strings.HasPrefix(uri[i], "config") {
                     log.Debug("Request path includes 'config'. Cbor decode with type SignalConfigRequest")
-                    body, resourcePath, err, is_unknown = registerResourceSignalConfig(request, typ, controller, session, context, is_unknown, customer.Id, observe, token)
+                    body, resourcePath, err, is_unknown = registerResourceSignalConfig(request, typ, controller, session, context, is_unknown, customer.Id, observe, token, block2Value)
                     break;
                 } else if strings.HasPrefix(uri[i], "hb") {
                     isHeartBeatMechanism = true
@@ -262,7 +262,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
            response.Code != libcoap.ResponseConflict {
             // add content text/plain for error case
             response.SetOption(libcoap.OptionContentFormat, uint16(libcoap.TextPlain))
-        } else if response.Type != libcoap.TypeNon || response.Code != libcoap.ResponseContent {
+        } else if response.Code != libcoap.ResponseContent {
             // add content type dots+cbor
             response.SetOption(libcoap.OptionContentFormat, uint16(libcoap.AppDotsCbor))
         }
@@ -467,7 +467,7 @@ func registerResourceMitigation(request *libcoap.Pdu, typ reflect.Type, controll
   * Register resource for siganal configuration
   */
 func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
-                                   context  *libcoap.Context, is_unknown bool, customerID int, observe int, token *[]byte) (interface{}, string, error, bool) {
+                                   context  *libcoap.Context, is_unknown bool, customerID int, observe int, token *[]byte, block2Value int) (interface{}, string, error, bool) {
 
     body, err := messages.UnmarshalCbor(request, reflect.TypeOf(messages.SignalConfigRequest{}))
     if err != nil {
@@ -502,7 +502,7 @@ func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, contro
         // Create observer in sub resource to handle observation in case session configuration change
         resource := context.GetResourceByQuery(&resourcePath)
         if resource != nil {
-            AddOrDeleteObserve(resource ,session, &p, *token, observe, nil, nil, nil)
+            AddOrDeleteObserve(resource ,session, &p, *token, observe, &block2Value, nil, nil)
         }
     }
     return body, resourcePath, nil, is_unknown

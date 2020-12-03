@@ -184,7 +184,7 @@ SKIP_OBSERVE:
 	}
 
 	// Block 2 option
-	if (r.requestName == "mitigation_request" || r.requestName == "telemetry_pre_mitigation_request") && (r.method == "GET") {
+	if r.method == "GET" {
 		blockSize := r.env.InitialRequestBlockSize()
 		if blockSize != nil {
 			block := &libcoap.Block{}
@@ -234,33 +234,30 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 			response = r.env.GetBlockData(blockKey)
 			delete(r.env.Blocks(), blockKey)
 		}
-		if response.Type == libcoap.TypeNon {
-			log.Debugf("Success incoming PDU(HandleResponse): %+v", response)
-		}
+		log.Debugf("Success incoming PDU(HandleResponse): %+v", response)
 
 		// Skip set analyze response data if it is the ping response
 		if response.Code != 0 {
 			task.AddResponse(response)
 		}
-	}
-
-	// Handle Session config task and ping task after receive response message 
-	// If this is response of Get session config without abnormal, restart ping task with latest parameters
-	// Check if the request does not contains sid option -> if not, does not restart ping task when receive response
-	// Else if this is response of Put session config with code Created -> stop the current session config task
-	// Else if this is response of Delete session config with code Deleted -> stop the current session config task
-	log.Debugf("r.queryParam=%v", r.queryParams)
-	if (r.requestName == "session_configuration") {
-		if (r.method == "GET") && (response.Code == libcoap.ResponseContent) && len(r.queryParams) > 0 {
-			log.Debug("Get with sid - Client update new values to system session configuration and restart ping task.")
-			RestartHeartBeatTask(response, r.env)
-			RefreshSessionConfig(response, r.env, r.pdu)
-		} else if (r.method == "PUT") && (response.Code == libcoap.ResponseCreated) {
-			log.Debug("The new session configuration has been created. Stop the current session config task")
-			RefreshSessionConfig(response, r.env, r.pdu)
-		} else if (r.method == "DELETE") && (response.Code == libcoap.ResponseDeleted) {
-			log.Debug("The current session configuration has been deleted. Stop the current session config task")
-			RefreshSessionConfig(response, r.env, r.pdu)
+		// Handle Session config task and ping task after receive response message
+		// If this is response of Get session config without abnormal, restart ping task with latest parameters
+		// Check if the request does not contains sid option -> if not, does not restart ping task when receive response
+		// Else if this is response of Put session config with code Created -> stop the current session config task
+		// Else if this is response of Delete session config with code Deleted -> stop the current session config task
+		log.Debugf("r.queryParam=%v", r.queryParams)
+		if (r.requestName == "session_configuration") {
+			if (r.method == "GET") && (response.Code == libcoap.ResponseContent) && len(r.queryParams) > 0 {
+				log.Debug("Get with sid - Client update new values to system session configuration and restart ping task.")
+				RestartHeartBeatTask(response, r.env)
+				RefreshSessionConfig(response, r.env, r.pdu)
+			} else if (r.method == "PUT") && (response.Code == libcoap.ResponseCreated) {
+				log.Debug("The new session configuration has been created. Stop the current session config task")
+				RefreshSessionConfig(response, r.env, r.pdu)
+			} else if (r.method == "DELETE") && (response.Code == libcoap.ResponseDeleted) {
+				log.Debug("The current session configuration has been deleted. Stop the current session config task")
+				RefreshSessionConfig(response, r.env, r.pdu)
+			}
 		}
 	}
 }
@@ -524,6 +521,15 @@ func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu)
 	env.StopSessionConfig()
 	maxAgeRes, _ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
 	timeFresh := maxAgeRes - env.IntervalBeforeMaxAge()
+	// Block 2 option
+	blockSize := env.InitialRequestBlockSize()
+	if blockSize != nil {
+		block := &libcoap.Block{}
+		block.NUM = 0
+		block.M   = 0
+		block.SZX = *blockSize
+		message.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+	}
 	if timeFresh > 0 {
 		env.Run(task.NewSessionConfigTask(
 			message,
@@ -546,28 +552,71 @@ func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu)
  *    env: env session config
  */
 func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, env *task.Env) {
-	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
-	maxAgeRes, _ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
-	log.Infof("Max-Age Option: %v", maxAgeRes)
-	log.Infof("        Raw payload: %s", pdu.Data)
-	log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
-
 	// Check if the response body data is a string message (not an object)
 	if pdu.IsMessageResponse() {
 		return
 	}
+    isMoreBlock, eTag, block := env.CheckBlock(pdu)
+    var blockKey string
+    if eTag != nil {
+        blockKey = *eTag + string(pdu.Token)
+    }
 
-	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
-	var v messages.ConfigurationResponse
-	err := dec.Decode(&v)
-	if err != nil {
-		log.WithError(err).Warn("CBOR Decode failed.")
-		return
-	}
-	log.Infof("        CBOR decoded: %+v", v.String())
-	if pdu.Code == libcoap.ResponseContent {
-		RestartHeartBeatTask(pdu, env)
-		RefreshSessionConfig(pdu, env, t.MessageTask())
+    if !isMoreBlock {
+        if eTag != nil && block.NUM > 0 {
+            pdu = env.GetBlockData(blockKey)
+            delete(env.Blocks(), blockKey)
+		}
+		if pdu.Code == libcoap.ResponseNotFound {
+			log.Debugf("Resource is deleted. Incoming PDU: %+v", pdu)
+		} else {
+			log.Debugf("Success incoming PDU(HandleResponse): %+v", pdu)
+			log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
+			maxAgeRes, _ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
+			log.Infof("Max-Age Option: %v", maxAgeRes)
+			log.Infof("        Raw payload: %s", pdu.Data)
+			log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
+
+			dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
+			var v messages.ConfigurationResponse
+			err := dec.Decode(&v)
+			if err != nil {
+				log.WithError(err).Warn("CBOR Decode failed.")
+				return
+			}
+			log.Infof("        CBOR decoded: %+v", v.String())
+			if pdu.Code == libcoap.ResponseContent {
+				RestartHeartBeatTask(pdu, env)
+			}
+		}
+	} else {
+		// Re-create request for block-wise transfer
+		req := &libcoap.Pdu{}
+		req.MessageID = env.CoapSession().NewMessageID()
+
+		req.Type = libcoap.TypeCon
+		req.Code = libcoap.RequestGet
+
+		// Create uri-path for block-wise transfer request from observation request query
+		reqQuery := env.GetRequestQuery(string(pdu.Token))
+		if reqQuery == nil {
+			log.Error("Failed to get query param for re-request notification blocks")
+			return
+		}
+		messageCode := messages.SESSION_CONFIGURATION
+		path := messageCode.PathString() + reqQuery.Query
+		req.SetPathString(path)
+
+		// Renew token value to re-request remaining blocks
+		req.Token = pdu.Token
+		req.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+		req.SetOption(libcoap.OptionEtag, *eTag)
+		// Run new message task for re-request remaining blocks of notification
+		env.Run(task.NewSessionConfigTask(
+			req,
+			time.Duration(0) * time.Second,
+			sessionConfigResponseHandler,
+			sessionConfigTimeoutHandler))
 	}
 }
 
@@ -688,7 +737,7 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
         blockKey = *eTag + string(pdu.Token)
     }
 
-    if !isMoreBlock || pdu.Type != libcoap.TypeNon {
+    if !isMoreBlock {
         if eTag != nil && block.NUM > 0 {
             pdu = env.GetBlockData(blockKey)
             delete(env.Blocks(), blockKey)
@@ -710,8 +759,11 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
             req = messageTask.GetMessage()
         } else {
             log.Debug("Success incoming PDU notification of first block. Re-request to retrieve remaining blocks of notification")
-
-            req.Type = pdu.Type
+            if pdu.Type == libcoap.TypeAck {
+                req.Type = libcoap.TypeCon
+            } else {
+                req.Type = pdu.Type
+            }
             req.Code = libcoap.RequestGet
             path  := ""
 
@@ -727,6 +779,9 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
                 path = messageCode.PathString() + reqQuery.Query
             } else if strings.Contains(hex, string(libcoap.IETF_TELEMETRY_PRE_MITIGATION)) {
                 messageCode := messages.TELEMETRY_PRE_MITIGATION_REQUEST
+                path = messageCode.PathString() + reqQuery.Query
+            } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
+                messageCode := messages.SESSION_CONFIGURATION
                 path = messageCode.PathString() + reqQuery.Query
             }
             req.SetPathString(path)

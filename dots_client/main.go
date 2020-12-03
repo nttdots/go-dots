@@ -455,9 +455,6 @@ func handleResponse(env *task.Env, pdu *libcoap.Pdu) {
 			}
         }
     } else if !t.IsStop() {
-        if pdu.Type != libcoap.TypeNon {
-            log.Debugf("Success incoming PDU (HandleResponse): %+v", pdu)
-		}
 		delete(env.Requests(), key)
         t.Stop()
         t.GetResponseHandler()(t, pdu, env)
