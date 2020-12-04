@@ -119,7 +119,28 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		if isPresent {
 			// Handle freshness mechanism -> refresh active session configuration whenever response with Max-age option
 			models.RefreshActiveSessionConfiguration(customer.Id, *sid, maxAge)
-			request.Options = append(request.Options, libcoap.OptionMaxage.String(strconv.FormatUint(uint64(maxAge), 10)))
+			var maxAgeOption libcoap.Option
+			var err error
+			if maxAge > 0 && maxAge < 1<<8 {
+				maxAgeOption, err = libcoap.OptionMaxage.Uint(uint8(maxAge))
+			} else if maxAge < 1<<16 {
+				maxAgeOption, err = libcoap.OptionMaxage.Uint(uint16(maxAge))
+			} else if maxAge < 1<<32 {
+				maxAgeOption, err = libcoap.OptionMaxage.Uint(uint32(maxAge))
+			} else {
+				maxAgeOption, err = libcoap.OptionMaxage.Uint(uint64(maxAge))
+			}
+			if err != nil {
+				errMessage := fmt.Sprintf("Failed to add option Max-Age")
+				log.Error(errMessage)
+				res = Response{
+					Type: common.Acknowledgement,
+					Code: common.InternalServerError,
+					Body: errMessage,
+				}
+				return res, err
+			}
+			request.Options = append(request.Options, maxAgeOption)
 		}
 	}
 

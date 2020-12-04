@@ -176,6 +176,10 @@ func (r *Request) CreateRequest() {
 				}
 			}
 		}
+	} else if r.requestName == "session_configuration" && code == libcoap.RequestGet {
+		queryString := task.QueryParamsToString(r.queryParams)
+		reqQuery := task.RequestQuery{ queryString, nil }
+		r.env.AddRequestQuery(string(r.pdu.Token), &reqQuery)
 	}
 
 SKIP_OBSERVE:
@@ -346,8 +350,12 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 	}
 
 	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
-	maxAgeRes := pdu.GetOptionStringValue(libcoap.OptionMaxage)
-	if maxAgeRes != "" {
+	maxAgeRes, err := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
+	if err != nil {
+		log.WithError(err).Warn("Get max-age option value failed.")
+		return
+	}
+	if maxAgeRes > 0 {
 		log.Infof("Max-Age Option: %v", maxAgeRes)
 	}
 
@@ -519,7 +527,7 @@ func RestartHeartBeatTask(pdu *libcoap.Pdu, env *task.Env) {
  */
 func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu) {
 	env.StopSessionConfig()
-	maxAgeRes, _ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
+	maxAgeRes, _ := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
 	timeFresh := maxAgeRes - env.IntervalBeforeMaxAge()
 	// Block 2 option
 	blockSize := env.InitialRequestBlockSize()
@@ -538,6 +546,13 @@ func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu)
 			sessionConfigTimeoutHandler))
 	} else {
 		log.Infof("Max-Age Option has value %+v <= %+v value of intervalBeforeMaxAge. Don't refresh session config", maxAgeRes, env.IntervalBeforeMaxAge())
+		reqQuery := env.GetRequestQuery(string(message.Token))
+		if reqQuery != nil {
+			tokenReq, _ := env.GetTokenAndRequestQuery(reqQuery.Query)
+			if len(tokenReq) > 0 {
+				env.RemoveRequestQuery(string(tokenReq))
+			}
+		}
 	}
 }
 
@@ -572,14 +587,18 @@ func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, e
 		} else {
 			log.Debugf("Success incoming PDU(HandleResponse): %+v", pdu)
 			log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
-			maxAgeRes, _ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
+			maxAgeRes, err := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
+			if err != nil {
+				log.WithError(err).Warn("Get max-age option value failed.")
+				return
+			}
 			log.Infof("Max-Age Option: %v", maxAgeRes)
 			log.Infof("        Raw payload: %s", pdu.Data)
 			log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
 
 			dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
 			var v messages.ConfigurationResponse
-			err := dec.Decode(&v)
+			err = dec.Decode(&v)
 			if err != nil {
 				log.WithError(err).Warn("CBOR Decode failed.")
 				return
@@ -662,8 +681,12 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
     }
     log.WithField("Observe Value:", observe).Info("Notification Message")
 
-	maxAgeRes := pdu.GetOptionStringValue(libcoap.OptionMaxage)
-	if maxAgeRes != "" {
+	maxAgeRes, err := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
+	if err != nil {
+		log.WithError(err).Warn("Get max-age option value failed.")
+		return
+	}
+	if maxAgeRes > 0 {
 		log.Infof("Max-Age Option: %v", maxAgeRes)
 	}
 

@@ -71,7 +71,7 @@ func (opt Option) Uint() (res uint32, err error) {
             err = binary.Read(buf, binary.BigEndian, &temp)
             res = uint32(temp)
         case 3:
-            res = uint32(uint(opt.Value[0]) | uint(opt.Value[1])<<8 | uint(opt.Value[2])<<16)
+            res = uint32(uint(opt.Value[2]) | uint(opt.Value[1])<<8 | uint(opt.Value[0])<<16)
         case 4:
             var temp uint32
             err = binary.Read(buf, binary.BigEndian, &temp)
