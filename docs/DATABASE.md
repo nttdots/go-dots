@@ -87,3 +87,17 @@ The types of parameters for the validation use are below.
 
 The 'prefix' table is to store the IP address information. If the mitigation scopes in the mitigation requests includes the IP address prefixes, the message validator validates the messages by checking whether the database has the entries which has the 'type' field is 'ADDRESS_RANGE' and the CIDR block specified by the 'addr' field and the 'prefix_len' matches to the IP address block specified by the mitigation scope of the message.
 
+## Vendor attack mapping
+
+Vendor attack mapping includes the client's vendor mapping and the server's vendor mapping.
+
+* The client's vendor mapping data is sent from dots client.
+* The server's vendor mapping data: we manual insert data in mysql as follows:
+
+    INSERT INTO `vendor_mapping` (`id`, `data_client_id`, `vendor_id`, `vendor_name`, `last_updated`,`created`, `updated`)
+    VALUES (1, 0, 345, 'mitigator-c', 1576812345, '2020-05-18 16:44:34', '2020-05-18 16:44:34');
+
+    INSERT INTO `attack_mapping` (`id`, `vendor_mapping_id`, `attack_id`, `attack_description`,`created`, `updated`)
+    VALUES (1, 1, 1, 'attack-description 1', '2020-05-18 16:44:34', '2020-05-18 16:44:34'),
+           (2, 1, 2, 'attack-description 2', '2020-05-18 16:44:34', '2020-05-18 16:44:34');
+
