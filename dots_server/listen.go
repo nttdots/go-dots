@@ -189,19 +189,10 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             return
         }
         // Get telemetry pre-mitigation list to remove resource
-        telemetryPreMitigationList := []db_models.TelemetryPreMitigation{}
         uriFilterPreMitigationList := []db_models.UriFilteringTelemetryPreMitigation{}
         if isTelemetryRequest && request.Code == libcoap.RequestDelete {
             cuid, tmid, _, _ := messages.ParseTelemetryPreMitigationUriPath(request.Path())
             if cuid != "" && tmid == nil {
-                telemetryPreMitigationList, err = models.GetTelemetryPreMitigationListByCuid(customer.Id, cuid)
-                if err != nil {
-                    log.WithError(err).Error("Failed to get telemetry pre-mitigation.")
-                    response.Code = libcoap.ResponseInternalServerError
-                    response.Type = responseType(request.Type)
-                    response.Data = []byte(fmt.Sprint(err))
-                    return
-                }
                 uriFilterPreMitigationList, err = models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, nil, nil)
                 if err != nil {
                     log.WithError(err).Error("Failed to get uri filtering telemetry pre-mitigation.")
@@ -272,7 +263,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             response.SetOption(libcoap.OptionObserve, uint16(messages.Register))
         }
 
-        if request.Code == libcoap.RequestGet && response.Type == libcoap.TypeNon && response.Code == libcoap.ResponseContent {
+        if (observe == int(messages.Register) || observe == int(messages.Deregister)) && request.Code == libcoap.RequestGet && response.Type == libcoap.TypeNon && response.Code == libcoap.ResponseContent {
             if isTelemetryRequest {
                 // Register observer for resources of telemetry pre-mitigation
                 responses := res.Body.(messages.TelemetryPreMitigationResponse).TelemetryPreMitigation.PreOrOngoingMitigation
@@ -286,7 +277,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
 
         // Remove resource of telemetry pre-mitigation
         if isTelemetryRequest && request.Code == libcoap.RequestDelete && response.Code == libcoap.ResponseDeleted {
-            handleRemoveTelemetryPreMitigationResource(request, context, telemetryPreMitigationList, uriFilterPreMitigationList)
+            handleRemoveTelemetryPreMitigationResource(request, context, uriFilterPreMitigationList)
         }
 
         // Set resource status to removable and delete the mitigation when it is terminated
@@ -532,7 +523,7 @@ func registerResourceAllMitigation(responses []messages.ScopeStatus, request *li
 }
 
 /*
- * Register resource for all telemetry pre-mitigation
+ * Register/De-register resource for all telemetry pre-mitigation
  * Get all telemetry pre-mitigation
  *     observe = 0, add observe resource for each telemetry pre-mitigation with token of resource all
  *     observe = 1, delete observe resource for each telemetry pre-mitigation  with token of resource all
@@ -727,7 +718,7 @@ func handlePreMitigationMessageInterval(session *libcoap.Session, customer *mode
 }
 
 // Handle remove telemetry pre-mitigation resource
-func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *libcoap.Context, telemetryPreMitigationList []db_models.TelemetryPreMitigation, uriFilterPreMitigationList []db_models.UriFilteringTelemetryPreMitigation) {
+func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *libcoap.Context, uriFilterPreMitigationList []db_models.UriFilteringTelemetryPreMitigation) {
     uriPathSplit := strings.Split(request.PathString(), "/tmid=")
     query := request.PathString()
     resource := context.GetResourceByQuery(&query)
@@ -744,15 +735,7 @@ func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *l
             tmid, _ := strconv.Atoi(uriPathSplit[1])
             deleteUriQueryResource(context, tmid)
         } else {
-            // Delete resource one of telemetry pre-mitigation aggregated by client
-            for _, v := range telemetryPreMitigationList {
-                queryOne := resource.UriPath()+"/tmid="+strconv.Itoa(v.Tmid)
-                resourceOne := context.GetResourceByQuery(&queryOne)
-                if resourceOne != nil {
-                    resourceOne.ToRemovableResource()
-                }
-            }
-            // Delete resource one of telemetry pre-mitigation aggregated by server
+            // Delete resource one of telemetry pre-mitigation
             for _, v := range uriFilterPreMitigationList {
                 queryOne := resource.UriPath()+"/tmid="+strconv.Itoa(v.Tmid)
                 resourceOne := context.GetResourceByQuery(&queryOne)

@@ -250,17 +250,26 @@ func findVendorMapping(tx *db.Tx, clientId *int64, cuid string, r *http.Request,
 // Get vendor-mapping by cuid
 func GetVendorMappingByCuid(customer *models.Customer, cuid string) (res *types.VendorMapping, err error) {
 	_, err = WithTransaction(func (tx *db.Tx) (Response, error) {
-		return WithClient(tx, customer, cuid, func (client *data_models.Client) (_ Response, err error) {
-			// Find vendor-mapping by client_id
-			vendorList, err := data_models.FindVendorMappingByClientId(tx, &client.Id)
-			if err != nil {
-				return
-			}
-			res = vendorList.ToTypesVendorMapping(nil)
-			return
-		})
+		// Find client by cuid
+		client, err := data_models.FindClientByCuid(tx, customer, cuid)
+		if err != nil {
+		  return Response{}, err
+		}
+		if client == nil {
+			return Response{}, nil
+		}
+		// Find vendor-mapping by client_id
+		vendorList, err := data_models.FindVendorMappingByClientId(tx, &client.Id)
+		if err != nil {
+			return Response{}, err
+		}
+		res = vendorList.ToTypesVendorMapping(nil)
+		return Response{}, nil
 	})
-	return
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 // Delete a vendor attack mapping
