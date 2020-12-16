@@ -384,9 +384,9 @@ func GetTelemetryAttackDetail(engine *xorm.Engine, mitigationScopeId int64) ([]T
 		attackDetail.VendorId = dbAd.VendorId
 		attackDetail.AttackId = dbAd.AttackId
 		attackDetail.AttackDescription = dbAd.AttackDescription
-		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
-		attackDetail.StartTime = dbAd.StartTime
-		attackDetail.EndTime = dbAd.EndTime
+		attackDetail.AttackSeverity = messages.ConvertAttackSeverityToInt(dbAd.AttackSeverity)
+		attackDetail.StartTime = messages.Uint64String(dbAd.StartTime)
+		attackDetail.EndTime = messages.Uint64String(dbAd.EndTime)
 		// Get telemetry source-count
 		attackDetail.SourceCount, err = GetTelemetrySourceCount(engine, dbAd.Id)
 		if err != nil {
@@ -411,10 +411,10 @@ func GetTelemetrySourceCount(engine *xorm.Engine, adId int64) (SourceCount, erro
 		return sourceCount, err
 	}
 	if dbSc != nil {
-		sourceCount.LowPercentileG  = dbSc.LowPercentileG
-		sourceCount.MidPercentileG  = dbSc.MidPercentileG
-		sourceCount.HighPercentileG = dbSc.HighPercentileG
-		sourceCount.PeakG           = dbSc.PeakG
+		sourceCount.LowPercentileG  = messages.Uint64String(dbSc.LowPercentileG)
+		sourceCount.MidPercentileG  = messages.Uint64String(dbSc.MidPercentileG)
+		sourceCount.HighPercentileG = messages.Uint64String(dbSc.HighPercentileG)
+		sourceCount.PeakG           = messages.Uint64String(dbSc.PeakG)
 	}
 	return sourceCount, nil
 }
@@ -471,11 +471,11 @@ func GetTelemetryTraffic(engine *xorm.Engine, prefixType string, prefixTypeId in
 	trafficList = []Traffic{}
 	for _, vTraffic := range traffics {
 		traffic := Traffic{}
-		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
-		traffic.LowPercentileG  = vTraffic.LowPercentileG
-		traffic.MidPercentileG  = vTraffic.MidPercentileG
-		traffic.HighPercentileG = vTraffic.HighPercentileG
-		traffic.PeakG           = vTraffic.PeakG
+		traffic.Unit            = messages.ConvertUnitToInt(vTraffic.Unit)
+		traffic.LowPercentileG  = messages.Uint64String(vTraffic.LowPercentileG)
+		traffic.MidPercentileG  = messages.Uint64String(vTraffic.MidPercentileG)
+		traffic.HighPercentileG = messages.Uint64String(vTraffic.HighPercentileG)
+		traffic.PeakG           = messages.Uint64String(vTraffic.PeakG)
 		trafficList             = append(trafficList, traffic)
 	}
 	return trafficList, nil
@@ -515,11 +515,11 @@ func GetConnectionPercentile(engine *xorm.Engine, prefixType string, prefixTypeI
 		log.Errorf("Failed to get telemetry total attack connection. Error: %+v", err)
 		return
 	}
-	cp.Connection       = dbTac.Connection
-	cp.Embryonic        = dbTac.Embryonic
-	cp.ConnectionPs     = dbTac.ConnectionPs
-	cp.RequestPs        = dbTac.RequestPs
-	cp.PartialRequestPs = dbTac.PartialRequestPs
+	cp.Connection       = messages.Uint64String(dbTac.Connection)
+	cp.Embryonic        = messages.Uint64String(dbTac.Embryonic)
+	cp.ConnectionPs     = messages.Uint64String(dbTac.ConnectionPs)
+	cp.RequestPs        = messages.Uint64String(dbTac.RequestPs)
+	cp.PartialRequestPs = messages.Uint64String(dbTac.PartialRequestPs)
 	return
 }
 
@@ -820,11 +820,11 @@ func GetUriFilteringTraffic(engine *xorm.Engine, prefixType string, preMitigatio
 	trafficList = []Traffic{}
 	for _, vTraffic := range traffics {
 		traffic := Traffic{}
-		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
-		traffic.LowPercentileG  = vTraffic.LowPercentileG
-		traffic.MidPercentileG  = vTraffic.MidPercentileG
-		traffic.HighPercentileG = vTraffic.HighPercentileG
-		traffic.PeakG           = vTraffic.PeakG
+		traffic.Unit            = messages.ConvertUnitToInt(vTraffic.Unit)
+		traffic.LowPercentileG  = messages.Uint64String(vTraffic.LowPercentileG)
+		traffic.MidPercentileG  = messages.Uint64String(vTraffic.MidPercentileG)
+		traffic.HighPercentileG = messages.Uint64String(vTraffic.HighPercentileG)
+		traffic.PeakG           = messages.Uint64String(vTraffic.PeakG)
 		trafficList             = append(trafficList, traffic)
 	}
 	return trafficList, nil
@@ -840,12 +840,12 @@ func GetUriFilteringTrafficPerProtocol(engine *xorm.Engine, preMitigationId int6
 	trafficList = []TrafficPerProtocol{}
 	for _, vTraffic := range traffics {
 		traffic := TrafficPerProtocol{}
-		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
+		traffic.Unit            = messages.ConvertUnitToInt(vTraffic.Unit)
 		traffic.Protocol        = vTraffic.Protocol
-		traffic.LowPercentileG  = vTraffic.LowPercentileG
-		traffic.MidPercentileG  = vTraffic.MidPercentileG
-		traffic.HighPercentileG = vTraffic.HighPercentileG
-		traffic.PeakG           = vTraffic.PeakG
+		traffic.LowPercentileG  = messages.Uint64String(vTraffic.LowPercentileG)
+		traffic.MidPercentileG  = messages.Uint64String(vTraffic.MidPercentileG)
+		traffic.HighPercentileG = messages.Uint64String(vTraffic.HighPercentileG)
+		traffic.PeakG           = messages.Uint64String(vTraffic.PeakG)
 		trafficList             = append(trafficList, traffic)
 	}
 	return trafficList, nil
@@ -861,12 +861,12 @@ func GetUriFilteringTrafficPerPort(engine *xorm.Engine, preMitigationId int64, t
 	trafficList = []TrafficPerPort{}
 	for _, vTraffic := range traffics {
 		traffic := TrafficPerPort{}
-		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
+		traffic.Unit            = messages.UnitString(messages.ConvertUnitToInt(vTraffic.Unit))
 		traffic.Port            = vTraffic.Port
-		traffic.LowPercentileG  = vTraffic.LowPercentileG
-		traffic.MidPercentileG  = vTraffic.MidPercentileG
-		traffic.HighPercentileG = vTraffic.HighPercentileG
-		traffic.PeakG           = vTraffic.PeakG
+		traffic.LowPercentileG  = messages.Uint64String(vTraffic.LowPercentileG)
+		traffic.MidPercentileG  = messages.Uint64String(vTraffic.MidPercentileG)
+		traffic.HighPercentileG = messages.Uint64String(vTraffic.HighPercentileG)
+		traffic.PeakG           = messages.Uint64String(vTraffic.PeakG)
 		trafficList             = append(trafficList, traffic)
 	}
 	return trafficList, nil
@@ -935,11 +935,11 @@ func GetUriFilteringConnectionProtocolPercentile(engine *xorm.Engine, prefixType
 	for _, v := range cpps {
 		cpp := ConnectionProtocolPercentile{}
 		cpp.Protocol         = v.Protocol
-		cpp.Connection       = v.Connection
-		cpp.Embryonic        = v.Embryonic
-		cpp.ConnectionPs     = v.ConnectionPs
-		cpp.RequestPs        = v.RequestPs
-		cpp.PartialRequestPs = v.PartialRequestPs
+		cpp.Connection       = messages.Uint64String(v.Connection)
+		cpp.Embryonic        = messages.Uint64String(v.Embryonic)
+		cpp.ConnectionPs     = messages.Uint64String(v.ConnectionPs)
+		cpp.RequestPs        = messages.Uint64String(v.RequestPs)
+		cpp.PartialRequestPs = messages.Uint64String(v.PartialRequestPs)
 		cppList = append(cppList, cpp)
 	}
 	return
@@ -957,11 +957,11 @@ func GetUriFilteringConnectionProtocolPortPercentile(engine *xorm.Engine, telePr
 		cpp := ConnectionProtocolPortPercentile{}
 		cpp.Protocol         = v.Protocol
 		cpp.Port             = v.Port
-		cpp.Connection       = v.Connection
-		cpp.Embryonic        = v.Embryonic
-		cpp.ConnectionPs     = v.ConnectionPs
-		cpp.RequestPs        = v.RequestPs
-		cpp.PartialRequestPs = v.PartialRequestPs
+		cpp.Connection       = messages.Uint64String(v.Connection)
+		cpp.Embryonic        = messages.Uint64String(v.Embryonic)
+		cpp.ConnectionPs     = messages.Uint64String(v.ConnectionPs)
+		cpp.RequestPs        = messages.Uint64String(v.RequestPs)
+		cpp.PartialRequestPs = messages.Uint64String(v.PartialRequestPs)
 		cppList = append(cppList, cpp)
 	}
 	return
@@ -996,9 +996,9 @@ func GetUriFilteringAttackDetail(engine *xorm.Engine, customerId int, cuid strin
 		} else {
 			attackDetail.AttackDescription = dbAd.AttackDescription
 		}
-		attackDetail.AttackSeverity = ConvertAttackSeverityToInt(dbAd.AttackSeverity)
-		attackDetail.StartTime = dbAd.StartTime
-		attackDetail.EndTime = dbAd.EndTime
+		attackDetail.AttackSeverity = messages.ConvertAttackSeverityToInt(dbAd.AttackSeverity)
+		attackDetail.StartTime = messages.Uint64String(dbAd.StartTime)
+		attackDetail.EndTime = messages.Uint64String(dbAd.EndTime)
 		// Get source-count
 		attackDetail.SourceCount, err = GetUriFilteringSourceCount(engine, dbAd.Id)
 		if err != nil {
@@ -1023,10 +1023,10 @@ func GetUriFilteringSourceCount(engine *xorm.Engine, adId int64) (SourceCount, e
 		return sourceCount, err
 	}
 	if dbSc != nil {
-		sourceCount.LowPercentileG  = dbSc.LowPercentileG
-		sourceCount.MidPercentileG  = dbSc.MidPercentileG
-		sourceCount.HighPercentileG = dbSc.HighPercentileG
-		sourceCount.PeakG           = dbSc.PeakG
+		sourceCount.LowPercentileG  = messages.Uint64String(dbSc.LowPercentileG)
+		sourceCount.MidPercentileG  = messages.Uint64String(dbSc.MidPercentileG)
+		sourceCount.HighPercentileG = messages.Uint64String(dbSc.HighPercentileG)
+		sourceCount.PeakG           = messages.Uint64String(dbSc.PeakG)
 	}
 	return sourceCount, nil
 }
@@ -1625,30 +1625,6 @@ func GetModelsTelemetryConnectionPercentile(v *ConnectionPercentile) (cp Connect
 	cp = ConnectionPercentile{}
 	if v != nil {
 		cp = ConnectionPercentile{v.Connection, v.Embryonic, v.ConnectionPs, v.RequestPs, v.PartialRequestPs}
-	}
-	return
-}
-
-// Convert attack-severity to string
-func ConvertAttackSeverityToString(attackSeverity int) (attackSeverityString string) {
-	switch attackSeverity {
-	case int(None):    attackSeverityString = string(messages.NONE)
-	case int(Low):     attackSeverityString = string(messages.LOW)
-	case int(Medium):  attackSeverityString = string(messages.MEDIUM)
-	case int(High):    attackSeverityString = string(messages.HIGH)
-	case int(Unknown): attackSeverityString = string(messages.UNKNOWN)
-	}
-	return
-}
-
-// Convert attack-severity to int
-func ConvertAttackSeverityToInt(attackSeverity string) (attackSeverityInt int) {
-	switch attackSeverity {
-	case string(messages.NONE):    attackSeverityInt = int(None)
-	case string(messages.LOW):     attackSeverityInt = int(Low)
-	case string(messages.MEDIUM):  attackSeverityInt = int(Medium)
-	case string(messages.HIGH):    attackSeverityInt = int(High)
-	case string(messages.UNKNOWN): attackSeverityInt = int(Unknown)
 	}
 	return
 }

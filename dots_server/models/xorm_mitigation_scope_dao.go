@@ -921,7 +921,7 @@ func GetControlFilteringByMitigationScopeID(engine *xorm.Engine, customerID int,
 		}
 
 		if has {
-			activateType := ActivationTypeToInt(*acl.ACL.ActivationType)
+			activateType := messages.ConvertActivateTypeToInt(string(*acl.ACL.ActivationType))
 			controlFilteringList = append(controlFilteringList, ControlFiltering{ACLName: ctr.AclName, ActivationType: &activateType})
 		}
 	}

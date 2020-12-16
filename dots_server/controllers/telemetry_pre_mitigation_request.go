@@ -722,7 +722,7 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 			attackDetailResp.AttackDescription = &attackDescription
 		}
 		if attackDetail.AttackSeverity > 0 {
-			attackDetailResp.AttackSeverity = attackDetail.AttackSeverity
+			attackDetailResp.AttackSeverity = messages.AttackSeverityString(attackDetail.AttackSeverity)
 		}
 		if attackDetail.StartTime > 0 {
 			startTime := attackDetail.StartTime
@@ -840,7 +840,7 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 			attackDetailResp.AttackDescription = &attackDescription
 		}
 		if attackDetail.AttackSeverity > 0 {
-			attackDetailResp.AttackSeverity = attackDetail.AttackSeverity
+			attackDetailResp.AttackSeverity = messages.AttackSeverityString(attackDetail.AttackSeverity)
 		}
 		if attackDetail.StartTime > 0 {
 			startTime := attackDetail.StartTime

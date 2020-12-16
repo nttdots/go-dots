@@ -8,11 +8,11 @@ type TelemetryTraffic struct {
 	PrefixType      string    `xorm:"'prefix_type' enum('TARGET_PREFIX','SOURCE_PREFIX') not null"`
 	PrefixTypeId    int64     `xorm:"'prefix_type_id' not null"`
 	TrafficType     string    `xorm:"'traffic_type' enum('TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') not null"`
-	Unit            string    `xorm:"'unit' enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') not null"`
-	LowPercentileG  int       `xorm:"'low_percentile_g'"`
-	MidPercentileG  int       `xorm:"'mid_percentile_g'"`
-	HighPercentileG int       `xorm:"'high_percentile_g'"`
-	PeakG           int       `xorm:"'peak_g'"`
+	Unit            string    `xorm:"'unit' enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') not null"`
+	LowPercentileG  uint64    `xorm:"'low_percentile_g'"`
+	MidPercentileG  uint64    `xorm:"'mid_percentile_g'"`
+	HighPercentileG uint64    `xorm:"'high_percentile_g'"`
+	PeakG           uint64    `xorm:"'peak_g'"`
 	Created         time.Time `xorm:"created"`
 	Updated         time.Time `xorm:"updated"`
 }

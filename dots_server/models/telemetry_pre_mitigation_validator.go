@@ -219,7 +219,7 @@ func ValidateAttackDetail(ads []messages.AttackDetail) (isUnprocessableEntity bo
 			return
 		}
 		// Validate attack-severity
-		if ad.AttackSeverity != nil && *ad.AttackSeverity != int(None) && *ad.AttackSeverity != int(Low) && *ad.AttackSeverity != int(Medium) && *ad.AttackSeverity != int(High) && *ad.AttackSeverity != int(Unknown) {
+		if ad.AttackSeverity != nil && (*ad.AttackSeverity < messages.None || *ad.AttackSeverity > messages.Unknown) {
 			errMsg = fmt.Sprintf("Invalid 'attack-severity' value %+v. Expected values include 1:None, 2:Low, 3:Medium, 4:High, 5:Unknown", *ad.AttackSeverity)
 			isUnprocessableEntity = true
 			return

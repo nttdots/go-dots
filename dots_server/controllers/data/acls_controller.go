@@ -354,9 +354,9 @@ func UpdateACLActivationType(customer *models.Customer, cuid string, controlFilt
 
         // Parse activation type from string to acl_activation_type
         oldActivateType := *acl.ACL.ActivationType
-        activationType := data_models.ToActivationType(*controlFiltering.ActivationType)
+        activationType := data_models.ToActivationType(int(*controlFiltering.ActivationType))
         if activationType == "" {
-          errMsg = fmt.Sprintf("[Control Filtering]: Activation types is invalid: %+v", controlFiltering.ActivationType)
+          errMsg = fmt.Sprintf("[Control Filtering]: Activation types is invalid: %+v", *controlFiltering.ActivationType)
           res, err = ErrorResponse(http.StatusBadRequest, ErrorTag_Invalid_Value, errMsg, isAfterTransaction)
           break
         }

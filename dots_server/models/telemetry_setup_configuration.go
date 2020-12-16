@@ -21,8 +21,8 @@ type TelemetrySetUpConfiguration struct {
 }
 
 type TelemetryConfiguration struct {
-	MeasurementInterval       int
-	MeasurementSample         int
+	MeasurementInterval       messages.IntervalString
+	MeasurementSample         messages.SampleString
 	LowPercentile             float64
 	MidPercentile             float64
 	HighPercentile            float64
@@ -32,14 +32,14 @@ type TelemetryConfiguration struct {
 }
 
 type UnitConfig struct {
-	Unit       int
+	Unit       messages.UnitString
 	UnitStatus bool
 }
 
 type TotalPipeCapacity struct {
 	LinkId   string
-	Capacity int
-	Unit     int
+	Capacity messages.Uint64String
+	Unit     messages.UnitString
 }
 
 type Baseline struct {
@@ -61,104 +61,62 @@ type Baseline struct {
 
 type Traffic struct {
 	TrafficId       int64
-	Unit            int
-	LowPercentileG  int
-	MidPercentileG  int
-	HighPercentileG int
-	PeakG           int
+	Unit            messages.UnitString
+	LowPercentileG  messages.Uint64String
+	MidPercentileG  messages.Uint64String
+	HighPercentileG messages.Uint64String
+	PeakG           messages.Uint64String
 }
 
 type TrafficPerProtocol struct {
 	TrafficId       int64
-	Unit            int
+	Unit            messages.UnitString
 	Protocol        int
-	LowPercentileG  int
-	MidPercentileG  int
-	HighPercentileG int
-	PeakG           int
+	LowPercentileG  messages.Uint64String
+	MidPercentileG  messages.Uint64String
+	HighPercentileG messages.Uint64String
+	PeakG           messages.Uint64String
 }
 
 type TrafficPerPort struct {
 	TrafficId       int64
-	Unit            int
+	Unit            messages.UnitString
 	Port            int
-	LowPercentileG  int
-	MidPercentileG  int
-	HighPercentileG int
-	PeakG           int
+	LowPercentileG  messages.Uint64String
+	MidPercentileG  messages.Uint64String
+	HighPercentileG messages.Uint64String
+	PeakG           messages.Uint64String
 }
 type TotalConnectionCapacity struct {
 	TotalConnectionCapacityId int64
 	Protocol               int
-	Connection             int
-	ConnectionClient       int
-	Embryonic              int
-	EmbryonicClient        int
-	ConnectionPs           int
-	ConnectionClientPs     int
-	RequestPs              int
-	RequestClientPs        int
-	PartialRequestPs       int
-	PartialRequestClientPs int
+	Connection             messages.Uint64String
+	ConnectionClient       messages.Uint64String
+	Embryonic              messages.Uint64String
+	EmbryonicClient        messages.Uint64String
+	ConnectionPs           messages.Uint64String
+	ConnectionClientPs     messages.Uint64String
+	RequestPs              messages.Uint64String
+	RequestClientPs        messages.Uint64String
+	PartialRequestPs       messages.Uint64String
+	PartialRequestClientPs messages.Uint64String
 }
 
 type TotalConnectionCapacityPerPort struct {
 	TotalConnectionCapacityId int64
 	Protocol               int
 	Port                   int
-	Connection             int
-	ConnectionClient       int
-	Embryonic              int
-	EmbryonicClient        int
-	ConnectionPs           int
-	ConnectionClientPs     int
-	RequestPs              int
-	RequestClientPs        int
-	PartialRequestPs       int
-	PartialRequestClientPs int
+	Connection             messages.Uint64String
+	ConnectionClient       messages.Uint64String
+	Embryonic              messages.Uint64String
+	EmbryonicClient        messages.Uint64String
+	ConnectionPs           messages.Uint64String
+	ConnectionClientPs     messages.Uint64String
+	RequestPs              messages.Uint64String
+	RequestClientPs        messages.Uint64String
+	PartialRequestPs       messages.Uint64String
+	PartialRequestClientPs messages.Uint64String
 }
-
-type Unit int
-
-const (
-	PacketsPerSecond Unit = iota + 1
-	BitsPerSecond
-	BytesPerSecond
-	KiloPacketsPerSecond
-	KiloBitsPerSecond
-	KiloBytesPerSecond
-	MegaPacketsPerSecond
-	MegaBitsPerSecond
-	MegaBytesPerSecond
-	GigaPacketsPerSecond
-	GigaBitsPerSecond
-	GigaBytesPerSecond
-	TeraPacketsPerSecond
-	TeraBitsPerSecond
-	TeraBytesPerSecond
-)
-
-type Interval int
-
-const (
-	Hour Interval = iota + 1
-	Day
-	Week
-	Month
-)
-
-type Sample int
-
-const (
-	Second Sample = iota + 1
-	FiveSeconds
-	ThirtySeconds
-	OneMinute
-	FiveMinutes
-	TenMinutes
-	ThirtyMinutes
-	OneHour
-)
 
 type TelemetryConfigurationParameter struct {
 	MeasurementInterval     ConfigurationParameterRange
@@ -231,12 +189,12 @@ func NewTelemetryConfiguration(telemetryConfig *messages.TelemetryConfigurationC
 	if telemetryConfig.MeasurementInterval != nil {
 		t.MeasurementInterval = *telemetryConfig.MeasurementInterval
 	} else {
-		t.MeasurementInterval = defaultValue.MeasurementInterval
+		t.MeasurementInterval = messages.IntervalString(defaultValue.MeasurementInterval)
 	}
 	if telemetryConfig.MeasurementSample != nil {
 		t.MeasurementSample = *telemetryConfig.MeasurementSample
 	} else {
-		t.MeasurementSample = defaultValue.MeasurementSample
+		t.MeasurementSample = messages.SampleString(defaultValue.MeasurementSample)
 	}
 	if telemetryConfig.ServerOriginatedTelemetry != nil {
 		t.ServerOriginatedTelemetry = *telemetryConfig.ServerOriginatedTelemetry
@@ -336,16 +294,16 @@ func NewTraffic(traffics []messages.Traffic) (trafficList []Traffic) {
 			traffic.Unit = *v.Unit
 		}
 		if v.LowPercentileG != nil {
-			traffic.LowPercentileG = int(*v.LowPercentileG)
+			traffic.LowPercentileG = *v.LowPercentileG
 		}
 		if v.MidPercentileG != nil {
-			traffic.MidPercentileG = int(*v.MidPercentileG)
+			traffic.MidPercentileG = *v.MidPercentileG
 		}
 		if v.HighPercentileG != nil {
-			traffic.HighPercentileG = int(*v.HighPercentileG)
+			traffic.HighPercentileG = *v.HighPercentileG
 		}
 		if v.PeakG != nil {
-			traffic.PeakG = int(*v.PeakG)
+			traffic.PeakG = *v.PeakG
 		}
 		trafficList[k] = traffic
 	}
@@ -364,16 +322,16 @@ func NewTrafficPerProtocol(traffics []messages.TrafficPerProtocol) (trafficList 
 			traffic.Protocol = int(*v.Protocol)
 		}
 		if v.LowPercentileG != nil {
-			traffic.LowPercentileG = int(*v.LowPercentileG)
+			traffic.LowPercentileG = *v.LowPercentileG
 		}
 		if v.MidPercentileG != nil {
-			traffic.MidPercentileG = int(*v.MidPercentileG)
+			traffic.MidPercentileG = *v.MidPercentileG
 		}
 		if v.HighPercentileG != nil {
-			traffic.HighPercentileG = int(*v.HighPercentileG)
+			traffic.HighPercentileG = *v.HighPercentileG
 		}
 		if v.PeakG != nil {
-			traffic.PeakG = int(*v.PeakG)
+			traffic.PeakG = *v.PeakG
 		}
 		trafficList[k] = traffic
 	}
@@ -392,16 +350,16 @@ func NewTrafficPerPort(traffics []messages.TrafficPerPort) (trafficList []Traffi
 			traffic.Port = *v.Port
 		}
 		if v.LowPercentileG != nil {
-			traffic.LowPercentileG = int(*v.LowPercentileG)
+			traffic.LowPercentileG = *v.LowPercentileG
 		}
 		if v.MidPercentileG != nil {
-			traffic.MidPercentileG = int(*v.MidPercentileG)
+			traffic.MidPercentileG = *v.MidPercentileG
 		}
 		if v.HighPercentileG != nil {
-			traffic.HighPercentileG = int(*v.HighPercentileG)
+			traffic.HighPercentileG = *v.HighPercentileG
 		}
 		if v.PeakG != nil {
-			traffic.PeakG = int(*v.PeakG)
+			traffic.PeakG = *v.PeakG
 		}
 		trafficList[k] = traffic
 	}
@@ -417,34 +375,34 @@ func NewTotalConnectionCapacity(totalConnectionCapacities []messages.TotalConnec
 			connectionCapacity.Protocol = int(*v.Protocol)
 		}
 		if v.Connection != nil {
-			connectionCapacity.Connection = int(*v.Connection)
+			connectionCapacity.Connection = *v.Connection
 		}
 		if v.ConnectionClient != nil {
-			connectionCapacity.ConnectionClient = int(*v.ConnectionClient)
+			connectionCapacity.ConnectionClient = *v.ConnectionClient
 		}
 		if v.Embryonic != nil {
-			connectionCapacity.Embryonic = int(*v.Embryonic)
+			connectionCapacity.Embryonic = *v.Embryonic
 		}
 		if v.EmbryonicClient != nil {
-			connectionCapacity.EmbryonicClient = int(*v.EmbryonicClient)
+			connectionCapacity.EmbryonicClient = *v.EmbryonicClient
 		}
 		if v.ConnectionPs != nil {
-			connectionCapacity.ConnectionPs = int(*v.ConnectionPs)
+			connectionCapacity.ConnectionPs = *v.ConnectionPs
 		}
 		if v.ConnectionClientPs != nil {
-			connectionCapacity.ConnectionClientPs = int(*v.ConnectionClientPs)
+			connectionCapacity.ConnectionClientPs = *v.ConnectionClientPs
 		}
 		if v.RequestPs != nil {
-			connectionCapacity.RequestPs = int(*v.RequestPs)
+			connectionCapacity.RequestPs = *v.RequestPs
 		}
 		if v.RequestClientPs != nil {
-			connectionCapacity.RequestClientPs = int(*v.RequestClientPs)
+			connectionCapacity.RequestClientPs = *v.RequestClientPs
 		}
 		if v.PartialRequestPs != nil {
-			connectionCapacity.PartialRequestPs = int(*v.PartialRequestPs)
+			connectionCapacity.PartialRequestPs = *v.PartialRequestPs
 		}
 		if v.PartialRequestClientPs != nil {
-			connectionCapacity.PartialRequestClientPs = int(*v.PartialRequestClientPs)
+			connectionCapacity.PartialRequestClientPs = *v.PartialRequestClientPs
 		}
 		totalConnectionCapacityList[k] = connectionCapacity
 	}
@@ -463,34 +421,34 @@ func NewTotalConnectionCapacityPerPort(totalConnectionCapacities []messages.Tota
 			connectionCapacity.Port = *v.Port
 		}
 		if v.Connection != nil {
-			connectionCapacity.Connection = int(*v.Connection)
+			connectionCapacity.Connection = *v.Connection
 		}
 		if v.ConnectionClient != nil {
-			connectionCapacity.ConnectionClient = int(*v.ConnectionClient)
+			connectionCapacity.ConnectionClient = *v.ConnectionClient
 		}
 		if v.Embryonic != nil {
-			connectionCapacity.Embryonic = int(*v.Embryonic)
+			connectionCapacity.Embryonic = *v.Embryonic
 		}
 		if v.EmbryonicClient != nil {
-			connectionCapacity.EmbryonicClient = int(*v.EmbryonicClient)
+			connectionCapacity.EmbryonicClient = *v.EmbryonicClient
 		}
 		if v.ConnectionPs != nil {
-			connectionCapacity.ConnectionPs = int(*v.ConnectionPs)
+			connectionCapacity.ConnectionPs = *v.ConnectionPs
 		}
 		if v.ConnectionClientPs != nil {
-			connectionCapacity.ConnectionClientPs = int(*v.ConnectionClientPs)
+			connectionCapacity.ConnectionClientPs = *v.ConnectionClientPs
 		}
 		if v.RequestPs != nil {
-			connectionCapacity.RequestPs = int(*v.RequestPs)
+			connectionCapacity.RequestPs = *v.RequestPs
 		}
 		if v.RequestClientPs != nil {
-			connectionCapacity.RequestClientPs = int(*v.RequestClientPs)
+			connectionCapacity.RequestClientPs = *v.RequestClientPs
 		}
 		if v.PartialRequestPs != nil {
-			connectionCapacity.PartialRequestPs = int(*v.PartialRequestPs)
+			connectionCapacity.PartialRequestPs = *v.PartialRequestPs
 		}
 		if v.PartialRequestClientPs != nil {
-			connectionCapacity.PartialRequestClientPs = int(*v.PartialRequestClientPs)
+			connectionCapacity.PartialRequestClientPs = *v.PartialRequestClientPs
 		}
 		totalConnectionCapacityList[k] = connectionCapacity
 	}

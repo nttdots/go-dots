@@ -59,37 +59,37 @@ type AttackDetail struct {
 	VendorId          int
 	AttackId          int
 	AttackDescription string
-	AttackSeverity    int
-	StartTime         int
-	EndTime           int
+	AttackSeverity    messages.AttackSeverityString
+	StartTime         messages.Uint64String
+	EndTime           messages.Uint64String
 	SourceCount       SourceCount
 	TopTalker         []TopTalker
 }
 
 type ConnectionProtocolPercentile struct {
 	Protocol         int
-	Connection       int
-	Embryonic        int
-	ConnectionPs     int
-	RequestPs        int
-	PartialRequestPs int
+	Connection       messages.Uint64String
+	Embryonic        messages.Uint64String
+	ConnectionPs     messages.Uint64String
+	RequestPs        messages.Uint64String
+	PartialRequestPs messages.Uint64String
 }
 
 type ConnectionProtocolPortPercentile struct {
 	Protocol         int
 	Port             int
-	Connection       int
-	Embryonic        int
-	ConnectionPs     int
-	RequestPs        int
-	PartialRequestPs int
+	Connection       messages.Uint64String
+	Embryonic        messages.Uint64String
+	ConnectionPs     messages.Uint64String
+	RequestPs        messages.Uint64String
+	PartialRequestPs messages.Uint64String
 }
 
 type SourceCount struct {
-	LowPercentileG  int
-	MidPercentileG  int
-	HighPercentileG int
-	PeakG           int
+	LowPercentileG  messages.Uint64String
+	MidPercentileG  messages.Uint64String
+	HighPercentileG messages.Uint64String
+	PeakG           messages.Uint64String
 }
 
 type TopTalker struct {
@@ -109,20 +109,20 @@ type TelemetryTotalAttackConnection struct {
 }
 
 type ConnectionPercentile struct {
-	Connection       int
-	Embryonic        int
-	ConnectionPs     int
-	RequestPs        int
-	PartialRequestPs int
+	Connection       messages.Uint64String
+	Embryonic        messages.Uint64String
+	ConnectionPs     messages.Uint64String
+	RequestPs        messages.Uint64String
+	PartialRequestPs messages.Uint64String
 }
 
 type TelemetryAttackDetail struct {
 	VendorId          int
 	AttackId          int
 	AttackDescription string
-	AttackSeverity    int
-	StartTime         int
-	EndTime           int
+	AttackSeverity    messages.AttackSeverityString
+	StartTime         messages.Uint64String
+	EndTime           messages.Uint64String
 	SourceCount       SourceCount
 	TopTalker         []TelemetryTopTalker
 }
@@ -135,15 +135,6 @@ type TelemetryTopTalker struct {
 	TotalAttackTraffic    []Traffic
 	TotalAttackConnection TelemetryTotalAttackConnection
 }
-
-type AttackSeverity int
-const (
-	None AttackSeverity = iota + 1
-	Low
-	Medium
-	High
-	Unknown
-)
 
 type QueryType int
 const (
@@ -295,15 +286,15 @@ func NewAttackDetail(adRequests []messages.AttackDetail) (attackDetailList []Att
 			attackDetail.AttackDescription = *adRequest.AttackDescription
 		}
 		if adRequest.AttackSeverity != nil {
-			attackDetail.AttackSeverity = int(*adRequest.AttackSeverity)
+			attackDetail.AttackSeverity = *adRequest.AttackSeverity
 		} else {
-			attackDetail.AttackSeverity = int(None)
+			attackDetail.AttackSeverity = messages.None
 		}
 		if adRequest.StartTime != nil {
-			attackDetail.StartTime = int(*adRequest.StartTime)
+			attackDetail.StartTime = *adRequest.StartTime
 		}
 		if adRequest.EndTime != nil {
-			attackDetail.EndTime = int(*adRequest.EndTime)
+			attackDetail.EndTime = *adRequest.EndTime
 		}
 		// Create new top talker
 		if adRequest.TopTalKer != nil {
@@ -324,19 +315,19 @@ func NewConnectionProtocolPercentile(cppRequest []messages.ConnectionProtocolPer
 		cpp := ConnectionProtocolPercentile{}
 		cpp.Protocol = int(*v.Protocol)
 		if v.Connection != nil {
-			cpp.Connection = int(*v.Connection)
+			cpp.Connection = *v.Connection
 		}
 		if v.Embryonic != nil {
-			cpp.Embryonic = int(*v.Embryonic)
+			cpp.Embryonic = *v.Embryonic
 		}
 		if v.ConnectionPs != nil {
-			cpp.ConnectionPs = int(*v.ConnectionPs)
+			cpp.ConnectionPs = *v.ConnectionPs
 		}
 		if v.RequestPs != nil {
-			cpp.RequestPs = int(*v.RequestPs)
+			cpp.RequestPs = *v.RequestPs
 		}
 		if v.PartialRequestPs != nil {
-			cpp.PartialRequestPs = int(*v.PartialRequestPs)
+			cpp.PartialRequestPs = *v.PartialRequestPs
 		}
 		cppList = append(cppList, cpp)
 	}
@@ -351,19 +342,19 @@ func NewConnectionProtocolPortPercentile(cppRequest []messages.ConnectionProtoco
 		cpp.Protocol = int(*v.Protocol)
 		cpp.Port = *v.Port
 		if v.Connection != nil {
-			cpp.Connection = int(*v.Connection)
+			cpp.Connection = *v.Connection
 		}
 		if v.Embryonic != nil {
-			cpp.Embryonic = int(*v.Embryonic)
+			cpp.Embryonic = *v.Embryonic
 		}
 		if v.ConnectionPs != nil {
-			cpp.ConnectionPs = int(*v.ConnectionPs)
+			cpp.ConnectionPs = *v.ConnectionPs
 		}
 		if v.RequestPs != nil {
-			cpp.RequestPs = int(*v.RequestPs)
+			cpp.RequestPs = *v.RequestPs
 		}
 		if v.PartialRequestPs != nil {
-			cpp.PartialRequestPs = int(*v.PartialRequestPs)
+			cpp.PartialRequestPs = *v.PartialRequestPs
 		}
 		cppList = append(cppList, cpp)
 	}
@@ -374,16 +365,16 @@ func NewConnectionProtocolPortPercentile(cppRequest []messages.ConnectionProtoco
 func NewSourceCount(scRequest messages.SourceCount) (sourceCount SourceCount) {
 	sourceCount = SourceCount{}
 	if scRequest.LowPercentileG != nil {
-		sourceCount.LowPercentileG = int(*scRequest.LowPercentileG)
+		sourceCount.LowPercentileG = *scRequest.LowPercentileG
 	}
 	if scRequest.MidPercentileG != nil {
-		sourceCount.MidPercentileG = int(*scRequest.MidPercentileG)
+		sourceCount.MidPercentileG = *scRequest.MidPercentileG
 	}
 	if scRequest.HighPercentileG != nil {
-		sourceCount.HighPercentileG = int(*scRequest.HighPercentileG)
+		sourceCount.HighPercentileG = *scRequest.HighPercentileG
 	}
 	if scRequest.PeakG != nil {
-		sourceCount.PeakG = int(*scRequest.PeakG)
+		sourceCount.PeakG = *scRequest.PeakG
 	}
 	return
 }
@@ -438,16 +429,16 @@ func NewTelemetryTotalAttackTraffic(teleTraffics []messages.Traffic) (trafficLis
 		traffic := Traffic{}
 		traffic.Unit = *v.Unit
 		if v.LowPercentileG != nil {
-			traffic.LowPercentileG = int(*v.LowPercentileG)
+			traffic.LowPercentileG = *v.LowPercentileG
 		}
 		if v.MidPercentileG != nil {
-			traffic.MidPercentileG = int(*v.MidPercentileG)
+			traffic.MidPercentileG = *v.MidPercentileG
 		}
 		if v.HighPercentileG != nil {
-			traffic.HighPercentileG = int(*v.HighPercentileG)
+			traffic.HighPercentileG = *v.HighPercentileG
 		}
 		if v.PeakG != nil {
-			traffic.PeakG = int(*v.PeakG)
+			traffic.PeakG = *v.PeakG
 		}
 		trafficList[k] = traffic
 	}
@@ -465,15 +456,15 @@ func NewTelemetryAttackDetail(adRequests []messages.TelemetryAttackDetail) (atta
 			attackDetail.AttackDescription = *adRequest.AttackDescription
 		}
 		if adRequest.AttackSeverity != nil {
-			attackDetail.AttackSeverity = int(*adRequest.AttackSeverity)
+			attackDetail.AttackSeverity = *adRequest.AttackSeverity
 		} else {
-			attackDetail.AttackSeverity = int(None)
+			attackDetail.AttackSeverity = messages.None
 		}
 		if adRequest.StartTime != nil {
-			attackDetail.StartTime = int(*adRequest.StartTime)
+			attackDetail.StartTime = *adRequest.StartTime
 		}
 		if adRequest.EndTime != nil {
-			attackDetail.EndTime = int(*adRequest.EndTime)
+			attackDetail.EndTime = *adRequest.EndTime
 		}
 		// Create new source count
 		if adRequest.SourceCount != nil {
@@ -551,19 +542,19 @@ func NewTelemetryTopTalker(ttRequest messages.TelemetryTopTalker) (talkerList []
 func NewConnectionPercentile(cpRequest messages.ConnectionPercentile) (cp ConnectionPercentile) {
 	cp = ConnectionPercentile{}
 	if cpRequest.Connection != nil {
-		cp.Connection = int(*cpRequest.Connection)
+		cp.Connection = *cpRequest.Connection
 	}
 	if cpRequest.Embryonic != nil {
-		cp.Embryonic = int(*cpRequest.Embryonic)
+		cp.Embryonic = *cpRequest.Embryonic
 	}
 	if cpRequest.ConnectionPs != nil {
-		cp.ConnectionPs = int(*cpRequest.ConnectionPs)
+		cp.ConnectionPs = *cpRequest.ConnectionPs
 	}
 	if cpRequest.RequestPs != nil {
-		cp.RequestPs = int(*cpRequest.RequestPs)
+		cp.RequestPs = *cpRequest.RequestPs
 	}
 	if cpRequest.PartialRequestPs != nil {
-		cp.PartialRequestPs = int(*cpRequest.PartialRequestPs)
+		cp.PartialRequestPs = *cpRequest.PartialRequestPs
 	}
 	return
 }

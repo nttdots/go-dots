@@ -84,16 +84,13 @@ func ValidateTelemetryConfiguration(customerID int, cuid string, tsid int, data 
 	if data.HighPercentile != nil {
 		highPercentile, _ = data.HighPercentile.Float64()
 	}
-	if data.MeasurementInterval != nil && *data.MeasurementInterval != int(Hour) && *data.MeasurementInterval != int(Day) &&
-	  * data.MeasurementInterval != int(Week) && *data.MeasurementInterval != int(Month) {
+	if data.MeasurementInterval != nil && (*data.MeasurementInterval < messages.Hour || *data.MeasurementInterval > messages.Month) {
 		errMsg = fmt.Sprintf("Invalid measurement-interval value: %+v. Expected values include 1:hour, 2:day, 3:week, 4:month", *data.MeasurementInterval)
 		log.Error(errMsg)
 		isUnprocessableEntity = true
 		return
 	}
-	if data.MeasurementSample != nil && *data.MeasurementSample != int(Second) && *data.MeasurementSample != int(FiveSeconds) &&
-	  *data.MeasurementSample != int(ThirtySeconds) && *data.MeasurementSample != int(OneMinute) && *data.MeasurementSample != int(FiveMinutes) &&
-	  *data.MeasurementSample != int(TenMinutes) && *data.MeasurementSample != int(ThirtyMinutes) && *data.MeasurementSample != int(OneHour) {
+	if data.MeasurementSample != nil && (*data.MeasurementSample < messages.Second || *data.MeasurementSample > messages.OneHour) {
 		errMsg = fmt.Sprintf("Invalid measurement-sample value: %+v. Expected values include 1:Second, 2:5-seconds, 3:30-seconds, 4:minute, 5:5-minutes, 6:10-minutes, 7:30-minutes, 8:hour", *data.MeasurementSample)
 		log.Error(errMsg)
 		isUnprocessableEntity = true
@@ -119,7 +116,7 @@ func ValidateTelemetryConfiguration(customerID int, cuid string, tsid int, data 
 			log.Error(errMsg)
 			return
 		}
-		if *config.Unit != int(PacketsPerSecond) && *config.Unit != int(BitsPerSecond) && *config.Unit != int(BytesPerSecond) {
+		if config.Unit != nil && (*config.Unit < messages.PacketsPerSecond || *config.Unit > messages.BytesPerSecond) {
 			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps", *config.Unit)
 			log.Error(errMsg)
 			isUnprocessableEntity = true
@@ -192,12 +189,8 @@ func ValidateTotalPipeCapacity(customerID int, cuid string, tsid int, data []mes
 		if *v.Capacity == 0 {
 			zeroValueCount ++
 		}
-		if *v.Unit != int(PacketsPerSecond) && *v.Unit != int(BitsPerSecond) && *v.Unit != int(BytesPerSecond) &&
-			*v.Unit != int(KiloPacketsPerSecond) && *v.Unit != int(KiloBitsPerSecond) && *v.Unit != int(KiloBytesPerSecond) &&
-			*v.Unit != int(MegaPacketsPerSecond) && *v.Unit != int(MegaBitsPerSecond) && *v.Unit != int(MegaBytesPerSecond) &&
-			*v.Unit != int(GigaPacketsPerSecond) && *v.Unit != int(GigaBitsPerSecond) && *v.Unit != int(GigaBytesPerSecond) &&
-			*v.Unit != int(TeraPacketsPerSecond) && *v.Unit != int(TeraBitsPerSecond) && *v.Unit != int(TeraBytesPerSecond) {
-			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps, 4:kilopackets-ps, 5:kilobits-ps, 6:kilobytes-ps, 7:megapackets-ps, 8:megabits-ps, 9:megabytes-ps, 10:gigapackets-ps, 11:gigabits-ps, 12:gigabyte-ps, 13:terapackets-ps, 14:terabits-ps, 15:terabytes-ps", *v.Unit)
+		if v.Unit!= nil && (*v.Unit < messages.PacketsPerSecond || *v.Unit > messages.TeraBytesPerSecond) {
+			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packet-ps, 2:bit-ps, 3:byte-ps, 4:kilopacket-ps, 5:kilobit-ps, 6:kilobyte-ps, 7:megapacket-ps, 8:megabit-ps, 9:megabyte-ps, 10:gigapacket-ps, 11:gigabit-ps, 12:gigabyte-ps, 13:terapacket-ps, 14:terabit-ps, 15:terabyte-ps", *v.Unit)
 			log.Error(errMsg)
 			isUnprocessableEntity = true
 			return
@@ -378,18 +371,14 @@ func ValidateProtocolList(protocolList []int) (errMsg string) {
 }
 
 // Validate unit
-func ValidateUnit(unit *int) (isUnprocessableEntity bool, errMsg string) {
+func ValidateUnit(unit *messages.UnitString) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
 	if unit == nil {
 		errMsg = "Missing required 'unit' attribute"
 		return
 	}
-	if *unit != int(PacketsPerSecond) && *unit != int(BitsPerSecond) && *unit != int(BytesPerSecond) &&
-		*unit != int(KiloPacketsPerSecond) && *unit != int(KiloBitsPerSecond) && *unit != int(KiloBytesPerSecond) &&
-		*unit != int(MegaPacketsPerSecond) && *unit != int(MegaBitsPerSecond) && *unit != int(MegaBytesPerSecond) &&
-		*unit != int(GigaPacketsPerSecond) && *unit != int(GigaBitsPerSecond) && *unit != int(GigaBytesPerSecond) &&
-		*unit != int(TeraPacketsPerSecond) && *unit != int(TeraBitsPerSecond) && *unit != int(TeraBytesPerSecond) {
-		errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps, 4:kilopackets-ps, 5:kilobits-ps, 6:kilobytes-ps, 7:megapackets-ps, 8:megabits-ps, 9:megabytes-ps, 10:gigapackets-ps, 11:gigabits-ps, 12:gigabyte-ps, 13:terapackets-ps, 14:terabits-ps, 15:terabytes-ps", *unit)
+	if *unit < messages.PacketsPerSecond || *unit > messages.TeraBytesPerSecond {
+		errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packet-ps, 2:bit-ps, 3:byte-ps, 4:kilopacket-ps, 5:kilobit-ps, 6:kilobyte-ps, 7:megapacket-ps, 8:megabit-ps, 9:megabyte-ps, 10:gigapacket-ps, 11:gigabit-ps, 12:gigabyte-ps, 13:terapacket-ps, 14:terabit-ps, 15:terabyte-ps", *unit)
 		isUnprocessableEntity = true
 		return
 	}

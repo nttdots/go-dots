@@ -31,7 +31,7 @@ type ICMPTypeRangeResponse struct {
 type ScopeStatus struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
 	MitigationId    int   `json:"mid"    codec:"5"`
-	MitigationStart *uint64 `json:"mitigation-start" codec:"15,omitempty"`
+	MitigationStart *Uint64String `json:"mitigation-start" codec:"15,omitempty"`
 	TargetPrefix    []string `json:"target-prefix" codec:"6,omitempty"`
 	TargetPortRange []PortRangeResponse `json:"target-port-range" codec:"7,omitempty"`
 	TargetProtocol  []int  `json:"target-protocol"   codec:"10,omitempty"`
@@ -60,9 +60,9 @@ type TelemetryAttackDetailResponse struct {
 	VendorId          int                         `json:"vendor-id" codec:"32879,omitempty"`
 	AttackId          int                         `json:"attack-id" codec:"32837,omitempty"`
 	AttackDescription *string                     `json:"attack-description" codec:"32838,omitempty"`
-	AttackSeverity    int                         `json:"attack-severity" codec:"32839,omitempty"`
-	StartTime         *int                        `json:"start-time" codec:"32840,omitempty"`
-	EndTime           *int                        `json:"end-time" codec:"32841,omitempty"`
+	AttackSeverity    AttackSeverityString        `json:"attack-severity" codec:"32839,omitempty"`
+	StartTime         *Uint64String               `json:"start-time" codec:"32840,omitempty"`
+	EndTime           *Uint64String               `json:"end-time" codec:"32841,omitempty"`
 	SourceCount       *SourceCountResponse        `json:"source-count" codec:"32842,omitempty"`
 	TopTalKer         *TelemetryTopTalkerResponse `json:"top-talker" codec:"32843,omitempty"`
 }
@@ -91,12 +91,12 @@ type TelemetryTotalAttackConnectionResponse struct {
 }
 
 type TelemetryConnectionPercentileResponse struct {
-	_struct          bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Connection       *int `json:"connection" codec:"32820,omitempty"`
-	Embryonic        *int `json:"embryonic" codec:"32822,omitempty"`
-	ConnectionPs     *int `json:"connection-ps" codec:"32824,omitempty"`
-	RequestPs        *int `json:"request-ps" codec:"32826,omitempty"`
-	PartialRequestPs *int `json:"partial-request-ps" codec:"32828,omitempty"`
+	_struct          bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Connection       *Uint64String `json:"connection" codec:"32820,omitempty"`
+	Embryonic        *Uint64String `json:"embryonic" codec:"32822,omitempty"`
+	ConnectionPs     *Uint64String `json:"connection-ps" codec:"32824,omitempty"`
+	RequestPs        *Uint64String `json:"request-ps" codec:"32826,omitempty"`
+	PartialRequestPs *Uint64String `json:"partial-request-ps" codec:"32828,omitempty"`
 }
 
 type IntCurrentMinMax struct {
@@ -492,8 +492,8 @@ type TelemetryResponse struct {
 
 type TelemetryConfigurationResponse struct {
 	_struct                   bool                 `codec:",uint"` //encode struct with "unsigned integer" keys
-	MeasurementInterval       int                  `json:"measurement-interval" codec:"32857,omitempty"`
-	MeasurementSample         int                  `json:"measurement-sample" codec:"32858,omitempty"`
+	MeasurementInterval       IntervalString       `json:"measurement-interval" codec:"32857,omitempty"`
+	MeasurementSample         SampleString         `json:"measurement-sample" codec:"32858,omitempty"`
 	LowPercentile             decimal.Decimal      `json:"low-percentile" codec:"32803,omitempty"`
 	MidPercentile             decimal.Decimal      `json:"mid-percentile" codec:"32804,omitempty"`
 	HighPercentile            decimal.Decimal      `json:"high-percentile" codec:"32805,omitempty"`
@@ -508,16 +508,16 @@ type SupportedUnitResponse struct {
 }
 
 type  UnitConfigResponse struct {
-	_struct    bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit       int  `json:"unit" codec:"32807,omitempty"`
-	UnitStatus bool `json:"unit-status" codec:"32808,omitempty"`
+	_struct    bool       `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit       UnitString `json:"unit" codec:"32807,omitempty"`
+	UnitStatus bool       `json:"unit-status" codec:"32808,omitempty"`
 }
 
 type TotalPipeCapacityResponse struct {
-	_struct  bool   `codec:",uint"`                           //encode struct with "unsigned integer" keys
-	LinkId   string `json:"link-id" codec:"32810,omitempty"`
-	Capacity int    `json:"capacity" codec:"32867,omitempty"`
-	Unit     int    `json:"unit" codec:"32807,omitempty"`
+	_struct  bool         `codec:",uint"`                           //encode struct with "unsigned integer" keys
+	LinkId   string       `json:"link-id" codec:"32810,omitempty"`
+	Capacity Uint64String `json:"capacity" codec:"32867,omitempty"`
+	Unit     UnitString   `json:"unit" codec:"32807,omitempty"`
 }
 
 type BaselineResponse struct {
@@ -537,63 +537,63 @@ type BaselineResponse struct {
 }
 
 type TrafficResponse struct {
-	_struct         bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit            int  `json:"unit" codec:"32807,omitempty"`
-	LowPercentileG  *int `json:"low-percentile-g" codec:"32813,omitempty"`
-	MidPercentileG  *int `json:"mid-percentile-g" codec:"32814,omitempty"`
-	HighPercentileG *int `json:"high-percentile-g" codec:"32815,omitempty"`
-	PeakG           *int `json:"peak-g" codec:"32816,omitempty"`
+	_struct         bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit            UnitString    `json:"unit" codec:"32807,omitempty"`
+	LowPercentileG  *Uint64String `json:"low-percentile-g" codec:"32813,omitempty"`
+	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
+	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
+	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
 }
 
 type TrafficPerProtocolResponse struct {
-	_struct         bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit            int  `json:"unit" codec:"32807,omitempty"`
-	Protocol        int  `json:"protocol" codec:"32868,omitempty"`
-	LowPercentileG  *int `json:"low-percentile-g" codec:"32813,omitempty"`
-	MidPercentileG  *int `json:"mid-percentile-g" codec:"32814,omitempty"`
-	HighPercentileG *int `json:"high-percentile-g" codec:"32815,omitempty"`
-	PeakG           *int `json:"peak-g" codec:"32816,omitempty"`
+	_struct         bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit            UnitString    `json:"unit" codec:"32807,omitempty"`
+	Protocol        int           `json:"protocol" codec:"32868,omitempty"`
+	LowPercentileG  *Uint64String `json:"low-percentile-g" codec:"32813,omitempty"`
+	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
+	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
+	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
 }
 
 type TrafficPerPortResponse struct {
-	_struct         bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit            int  `json:"unit" codec:"32807,omitempty"`
-	Port            int  `json:"port" codec:"32877,omitempty"`
-	LowPercentileG  *int `json:"low-percentile-g" codec:"32813,omitempty"`
-	MidPercentileG  *int `json:"mid-percentile-g" codec:"32814,omitempty"`
-	HighPercentileG *int `json:"high-percentile-g" codec:"32815,omitempty"`
-	PeakG           *int `json:"peak-g" codec:"32816,omitempty"`
+	_struct         bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit            UnitString    `json:"unit" codec:"32807,omitempty"`
+	Port            int           `json:"port" codec:"32877,omitempty"`
+	LowPercentileG  *Uint64String `json:"low-percentile-g" codec:"32813,omitempty"`
+	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
+	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
+	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
 }
 
 type TotalConnectionCapacityResponse struct {
-	_struct                bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol               int  `json:"protocol" codec:"32868,omitempty"`
-	Connection             *int `json:"connection" codec:"32820,omitempty"`
-	ConnectionClient       *int `json:"connection-client" codec:"32821,omitempty"`
-	Embryonic              *int `json:"embryonic" codec:"32822,omitempty"`
-	EmbryonicClient        *int `json:"embryonic-client" codec:"32823,omitempty"`
-	ConnectionPs           *int `json:"connection-ps" codec:"32824,omitempty"`
-	ConnectionClientPs     *int `json:"connection-client-ps" codec:"32825,omitempty"`
-	RequestPs              *int `json:"request-ps" codec:"32826,omitempty"`
-	RequestClientPs        *int `json:"request-client-ps" codec:"32827,omitempty"`
-	PartialRequestPs       *int `json:"partial-request-ps" codec:"32828,omitempty"`
-	PartialRequestClientPs *int `json:"partial-request-client-ps" codec:"32829,omitempty"`
+	_struct                bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol               int           `json:"protocol" codec:"32868,omitempty"`
+	Connection             *Uint64String `json:"connection" codec:"32820,omitempty"`
+	ConnectionClient       *Uint64String `json:"connection-client" codec:"32821,omitempty"`
+	Embryonic              *Uint64String `json:"embryonic" codec:"32822,omitempty"`
+	EmbryonicClient        *Uint64String `json:"embryonic-client" codec:"32823,omitempty"`
+	ConnectionPs           *Uint64String `json:"connection-ps" codec:"32824,omitempty"`
+	ConnectionClientPs     *Uint64String `json:"connection-client-ps" codec:"32825,omitempty"`
+	RequestPs              *Uint64String `json:"request-ps" codec:"32826,omitempty"`
+	RequestClientPs        *Uint64String `json:"request-client-ps" codec:"32827,omitempty"`
+	PartialRequestPs       *Uint64String `json:"partial-request-ps" codec:"32828,omitempty"`
+	PartialRequestClientPs *Uint64String `json:"partial-request-client-ps" codec:"32829,omitempty"`
 }
 
 type TotalConnectionCapacityPerPortResponse struct {
-	_struct                bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol               int  `json:"protocol" codec:"32868,omitempty"`
-	Port                   int  `json:"port" codec:"32877,omitempty"`
-	Connection             *int `json:"connection" codec:"32820,omitempty"`
-	ConnectionClient       *int `json:"connection-client" codec:"32821,omitempty"`
-	Embryonic              *int `json:"embryonic" codec:"32822,omitempty"`
-	EmbryonicClient        *int `json:"embryonic-client" codec:"32823,omitempty"`
-	ConnectionPs           *int `json:"connection-ps" codec:"32824,omitempty"`
-	ConnectionClientPs     *int `json:"connection-client-ps" codec:"32825,omitempty"`
-	RequestPs              *int `json:"request-ps" codec:"32826,omitempty"`
-	RequestClientPs        *int `json:"request-client-ps" codec:"32827,omitempty"`
-	PartialRequestPs       *int `json:"partial-request-ps" codec:"32828,omitempty"`
-	PartialRequestClientPs *int `json:"partial-request-client-ps" codec:"32829,omitempty"`
+	_struct                bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol               int           `json:"protocol" codec:"32868,omitempty"`
+	Port                   int           `json:"port" codec:"32877,omitempty"`
+	Connection             *Uint64String `json:"connection" codec:"32820,omitempty"`
+	ConnectionClient       *Uint64String `json:"connection-client" codec:"32821,omitempty"`
+	Embryonic              *Uint64String `json:"embryonic" codec:"32822,omitempty"`
+	EmbryonicClient        *Uint64String `json:"embryonic-client" codec:"32823,omitempty"`
+	ConnectionPs           *Uint64String `json:"connection-ps" codec:"32824,omitempty"`
+	ConnectionClientPs     *Uint64String `json:"connection-client-ps" codec:"32825,omitempty"`
+	RequestPs              *Uint64String `json:"request-ps" codec:"32826,omitempty"`
+	RequestClientPs        *Uint64String `json:"request-client-ps" codec:"32827,omitempty"`
+	PartialRequestPs       *Uint64String `json:"partial-request-ps" codec:"32828,omitempty"`
+	PartialRequestClientPs *Uint64String `json:"partial-request-client-ps" codec:"32829,omitempty"`
 }
 
 /*
@@ -958,40 +958,40 @@ type AttackDetailResponse struct {
 	VendorId          int                  `json:"vendor-id" codec:"32879,omitempty"`
 	AttackId          int                  `json:"attack-id" codec:"32837,omitempty"`
 	AttackDescription *string              `json:"attack-description" codec:"32838,omitempty"`
-	AttackSeverity    int                  `json:"attack-severity" codec:"32839,omitempty"`
-	StartTime         *int                 `json:"start-time" codec:"32840,omitempty"`
-	EndTime           *int                 `json:"end-time" codec:"32841,omitempty"`
+	AttackSeverity    AttackSeverityString `json:"attack-severity" codec:"32839,omitempty"`
+	StartTime         *Uint64String        `json:"start-time" codec:"32840,omitempty"`
+	EndTime           *Uint64String        `json:"end-time" codec:"32841,omitempty"`
 	SourceCount       *SourceCountResponse `json:"source-count" codec:"32842,omitempty"`
 	TopTalKer         *TopTalkerResponse   `json:"top-talker" codec:"32843,omitempty"`
 }
 
 type ConnectionProtocolPercentileResponse struct {
-	_struct          bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol         int  `json:"protocol" codec:"32868,omitempty"`
-	Connection       *int `json:"connection" codec:"32820,omitempty"`
-	Embryonic        *int `json:"embryonic" codec:"32822,omitempty"`
-	ConnectionPs     *int `json:"connection-ps" codec:"32824,omitempty"`
-	RequestPs        *int `json:"request-ps" codec:"32826,omitempty"`
-	PartialRequestPs *int `json:"partial-request-ps" codec:"32828,omitempty"`
+	_struct          bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol         int           `json:"protocol" codec:"32868,omitempty"`
+	Connection       *Uint64String `json:"connection" codec:"32820,omitempty"`
+	Embryonic        *Uint64String `json:"embryonic" codec:"32822,omitempty"`
+	ConnectionPs     *Uint64String `json:"connection-ps" codec:"32824,omitempty"`
+	RequestPs        *Uint64String `json:"request-ps" codec:"32826,omitempty"`
+	PartialRequestPs *Uint64String `json:"partial-request-ps" codec:"32828,omitempty"`
 }
 
 type ConnectionProtocolPortPercentileResponse struct {
-	_struct          bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol         int  `json:"protocol" codec:"32868,omitempty"`
-	Port             int  `json:"port" codec:"32877,omitempty"`
-	Connection       *int `json:"connection" codec:"32820,omitempty"`
-	Embryonic        *int `json:"embryonic" codec:"32822,omitempty"`
-	ConnectionPs     *int `json:"connection-ps" codec:"32824,omitempty"`
-	RequestPs        *int `json:"request-ps" codec:"32826,omitempty"`
-	PartialRequestPs *int `json:"partial-request-ps" codec:"32828,omitempty"`
+	_struct          bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol         int           `json:"protocol" codec:"32868,omitempty"`
+	Port             int           `json:"port" codec:"32877,omitempty"`
+	Connection       *Uint64String `json:"connection" codec:"32820,omitempty"`
+	Embryonic        *Uint64String `json:"embryonic" codec:"32822,omitempty"`
+	ConnectionPs     *Uint64String `json:"connection-ps" codec:"32824,omitempty"`
+	RequestPs        *Uint64String `json:"request-ps" codec:"32826,omitempty"`
+	PartialRequestPs *Uint64String `json:"partial-request-ps" codec:"32828,omitempty"`
 }
 
 type SourceCountResponse struct {
-	_struct         bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowPercentileG  *int `json:"low-percentile-g" codec:"32813,omitempty"`
-	MidPercentileG  *int `json:"mid-percentile-g" codec:"32814,omitempty"`
-	HighPercentileG *int `json:"high-percentile-g" codec:"32815,omitempty"`
-	PeakG           *int `json:"peak-g" codec:"32816,omitempty"`
+	_struct         bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	LowPercentileG  *Uint64String `json:"low-percentile-g" codec:"32813,omitempty"`
+	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
+	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
+	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
 }
 
 type TopTalkerResponse struct {

@@ -6,8 +6,8 @@ import "github.com/go-xorm/xorm"
 type TelemetryConfiguration struct {
 	Id                        int64     `xorm:"'id' pk autoincr"`
 	TeleSetupId               int64     `xorm:"'tele_setup_id' not null"`
-	MeasurementInterval       string    `xorm:"'measurement_interval' enum('HOUR','DAY','WEEK','MONTH') not null"`
-	MeasurementSample         string    `xorm:"'measurement_sample' enum('SECOND','5_SECONDS','30_SECONDS','ONE_MINUTE','5_MINUTES','10_MINUTES','30_MINUTES','ONE_HOUR') not null"`
+	MeasurementInterval       string    `xorm:"'measurement_interval' enum('hour','day','week','month') not null"`
+	MeasurementSample         string    `xorm:"'measurement_sample' enum('second','5-seconds','30-seconds','minute','5-minutes','10-minutes','30-minutes','hour') not null"`
 	LowPercentile             float64   `xorm:"'low_percentile'"`
 	MidPercentile             float64   `xorm:"'mid_percentile'"`
 	HighPercentile            float64   `xorm:"'high_percentile'"`

@@ -8,11 +8,11 @@ type TelemetryTotalAttackConnection struct {
 	PrefixType       string    `xorm:"'prefix_type' enum('TARGET_PREFIX','SOURCE_PREFIX') not null"`
 	PrefixTypeId     int64     `xorm:"'prefix_type_id' not null"`
 	PercentileType   string    `xorm:"'percentile_type' enum('LOW_PERCENTILE_C','MID_PERCENTILE_C','HIGH_PERCENTILE_C','PEAK_C') not null"`
-	Connection       int       `xorm:"connection"`
-	Embryonic        int       `xorm:"embryonic"`
-	ConnectionPs     int       `xorm:"connection_ps"`
-	RequestPs        int       `xorm:"request_ps"`
-	PartialRequestPs int       `xorm:"partial_request_ps"`
+	Connection       uint64    `xorm:"connection"`
+	Embryonic        uint64    `xorm:"embryonic"`
+	ConnectionPs     uint64    `xorm:"connection_ps"`
+	RequestPs        uint64    `xorm:"request_ps"`
+	PartialRequestPs uint64    `xorm:"partial_request_ps"`
 	Created          time.Time `xorm:"created"`
 	Updated          time.Time `xorm:"updated"`
 }

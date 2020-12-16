@@ -1,33 +1,26 @@
 {
-  "ietf-dots-signal-channel:mitigation-scope": {
-    "scope": [
+  "ietf-dots-signal-channel:mitigation-scope":{
+    "scope":[
       {
-        "target-prefix": [
-            "2001:db8:6401::1/128",
-            "2001:db8:6401::2/128"
+        "target-prefix":[
+          "1.1.2.10/32"
         ],
-        "target-port-range": [
+        "target-port-range":[
           {
-            "lower-port": 80
-          },
-          {
-            "lower-port": 443
-          },
-          {
-           "lower-port": 8080
+            "lower-port":80
           }
         ],
-        "target-protocol": [
-         6
+        "target-protocol":[
+          6
         ],
-        "ietf-dots-signal-control:acl-list": [
+        "ietf-dots-signal-control:acl-list":[
           {
-              "acl-name": "sample-ipv6-acl",
-              "activation-type": 3
+            "acl-name":"sample-ipv4-acl",
+            "activation-type":"deactivate"
           }
         ],
-        "lifetime": 100,
-        "trigger-mitigation": true
+        "lifetime":500,
+        "trigger-mitigation":true
       }
     ]
   }

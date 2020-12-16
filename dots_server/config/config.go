@@ -340,10 +340,10 @@ func (dtn DefaultTargetNode) Convert() (interface{}, error) {
 func (dttnbn DefaultTotalTrafficNormalBaselineNode) Convert() (interface{}, error) {
 	unit            := parseIntegerValue(dttnbn.Unit)
 	protocol        := parseIntegerValue(dttnbn.Protocol)
-	lowPercentileG  := parseIntegerValue(dttnbn.LowPercrentileG)
-	midPercentileG  := parseIntegerValue(dttnbn.MidPercrentileG)
-	highPercentileG := parseIntegerValue(dttnbn.HighPercrentileG)
-	peakG           := parseIntegerValue(dttnbn.PeakG)
+	lowPercentileG  := parseUint64Value(dttnbn.LowPercrentileG)
+	midPercentileG  := parseUint64Value(dttnbn.MidPercrentileG)
+	highPercentileG := parseUint64Value(dttnbn.HighPercrentileG)
+	peakG           := parseUint64Value(dttnbn.PeakG)
 	if unit < 1 || unit > 15 {
 		return nil, errors.New("'unit' MUST be between 1 and 15")
 	}
@@ -376,16 +376,16 @@ func (dtccn DefaultTotalConnectionCapacityNode) Convert() (interface{}, error) {
 	}
 	return &DefaultTotalConnectionCapacity{
 		Protocol:               protocol,
-		Connection:             parseIntegerValue(dtccn.Connection),
-		ConnectionClient:       parseIntegerValue(dtccn.ConnectionClient),
-		EmbryOnic:              parseIntegerValue(dtccn.EmbryOnic),
-		EmbryOnicClient:        parseIntegerValue(dtccn.EmbryOnicClient),
-		ConnectionPs:           parseIntegerValue(dtccn.ConnectionPs),
-		ConnectionClientPs:     parseIntegerValue(dtccn.ConnectionClientPs),
-		RequestPs:              parseIntegerValue(dtccn.RequestPs),
-		RequestClientPs:        parseIntegerValue(dtccn.RequestClientPs),
-		PartialRequestPs:       parseIntegerValue(dtccn.PartialRequestPs),
-		PartialRequestClientPs: parseIntegerValue(dtccn.PartialRequestClientPs),
+		Connection:             parseUint64Value(dtccn.Connection),
+		ConnectionClient:       parseUint64Value(dtccn.ConnectionClient),
+		EmbryOnic:              parseUint64Value(dtccn.EmbryOnic),
+		EmbryOnicClient:        parseUint64Value(dtccn.EmbryOnicClient),
+		ConnectionPs:           parseUint64Value(dtccn.ConnectionPs),
+		ConnectionClientPs:     parseUint64Value(dtccn.ConnectionClientPs),
+		RequestPs:              parseUint64Value(dtccn.RequestPs),
+		RequestClientPs:        parseUint64Value(dtccn.RequestClientPs),
+		PartialRequestPs:       parseUint64Value(dtccn.PartialRequestPs),
+		PartialRequestClientPs: parseUint64Value(dtccn.PartialRequestClientPs),
 	}, nil
 }
 
@@ -1109,6 +1109,18 @@ func parseIntegerValue(input string) (res int) {
 	return
 }
 
+// Parse value to string to uint64
+func parseUint64Value(input string) (res uint64) {
+	var err error
+
+	res, err = strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		// negative values must be dropped here
+		return
+	}
+	return
+}
+
 // input format examples: "1.5"
 // error input examples:  "-1.5"
 // return 0 on the parseServerConfig failures
@@ -1195,24 +1207,24 @@ type DefaultTarget struct {
 type DefaultTotalTrafficNormalBaseline struct {
 	Unit            int
 	Protocol        int
-	LowPercentileG  int
-	MidPercentileG  int
-	HighPercentileG int
-	PeakG           int
+	LowPercentileG  uint64
+	MidPercentileG  uint64
+	HighPercentileG uint64
+	PeakG           uint64
 }
 
 type DefaultTotalConnectionCapacity struct {
 	Protocol               int
-	Connection             int
-	ConnectionClient       int
-	EmbryOnic              int
-	EmbryOnicClient        int
-	ConnectionPs           int
-	ConnectionClientPs     int
-	RequestPs              int
-	RequestClientPs        int
-	PartialRequestPs       int
-	PartialRequestClientPs int
+	Connection             uint64
+	ConnectionClient       uint64
+	EmbryOnic              uint64
+	EmbryOnicClient        uint64
+	ConnectionPs           uint64
+	ConnectionClientPs     uint64
+	RequestPs              uint64
+	RequestClientPs        uint64
+	PartialRequestPs       uint64
+	PartialRequestClientPs uint64
 }
 
 

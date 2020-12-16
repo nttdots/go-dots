@@ -98,11 +98,11 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			continue
 		}
 
-		var startedAt uint64
+		var startedAt messages.Uint64String
 		var bytesDropped, pktsDropped, bpsDropped, ppsDropped int
 		log.WithField("protection", mp.protection).Debug("Protection: ")
 		if mp.protection != nil {
-			startedAt = uint64(mp.protection.StartedAt().Unix())
+			startedAt = messages.Uint64String(mp.protection.StartedAt().Unix())
 			bytesDropped = mp.protection.DroppedDataInfo().BytesDropped()
 			bpsDropped = mp.protection.DroppedDataInfo().BpsDropped()
 			pktsDropped = mp.protection.DroppedDataInfo().PacketDropped()
@@ -149,7 +149,8 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			// Set Acl list into response
 			scopeStates.AclList = make([]messages.ACL, 0, len(mp.mitigation.ControlFilteringList))
 			for _, item := range mp.mitigation.ControlFilteringList {
-				aclList := messages.ACL{AclName: item.ACLName, ActivationType: item.ActivationType}
+				activationType := messages.ActivationTypeString(*item.ActivationType)
+				aclList := messages.ACL{AclName: item.ACLName, ActivationType: &activationType }
 				scopeStates.AclList = append(scopeStates.AclList, aclList)
 			}
 		}
@@ -1336,8 +1337,7 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 			log.Error(errMessage)
 			return false, errMessage
 		}
-		if v.AttackSeverity != nil && *v.AttackSeverity != int(models.None) && *v.AttackSeverity != int(models.Low) && *v.AttackSeverity != int(models.Medium) &&
-		*v.AttackSeverity != int(models.High) && *v.AttackSeverity != int(models.Unknown) {
+		if v.AttackSeverity != nil && (*v.AttackSeverity < messages.None || *v.AttackSeverity > messages.Unknown) {
 			errMessage = fmt.Sprintf("Invalid 'attack-severity' value %+v. Expected values include 1:None, 2:Low, 3:Medium, 4:High, 5:Unknown", *v.AttackSeverity)
 			log.Error(errMessage)
 			return false, errMessage
@@ -1861,7 +1861,7 @@ func HandleControlFiltering(customer *models.Customer, cuid string, mid *int, ac
 	for i, acl := range aclList {
 		if acl.AclName != "" {
 			if acl.ActivationType == nil {
-				actType := int(models.ActiveWhenMitigating)
+				actType := messages.ActivateWhenMitigating
 				acl.ActivationType = &actType
 			}
 			controlFiltering := models.ControlFiltering{ ACLName: acl.AclName, ActivationType: acl.ActivationType }

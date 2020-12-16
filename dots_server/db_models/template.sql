@@ -581,8 +581,8 @@ DROP TABLE IF EXISTS `telemetry_configuration`;
 CREATE TABLE `telemetry_configuration` (
   `id`                           bigint(20)   NOT NULL AUTO_INCREMENT,
   `tele_setup_id`                bigint(20)   NOT NULL,
-  `measurement_interval`         enum('HOUR','DAY','WEEK','MONTH') NOT NULL,
-  `measurement_sample`           enum('SECOND','5_SECONDS','30_SECONDS','ONE_MINUTE','5_MINUTES','10_MINUTES','30_MINUTES','ONE_HOUR') NOT NULL,
+  `measurement_interval`         enum('hour','day','week','month') NOT NULL,
+  `measurement_sample`           enum('second','5-seconds','30-seconds','minute','5-minutes','10-minutes','30-minutes','hour') NOT NULL,
   `low_percentile`               double       DEFAULT NULL,
   `mid_percentile`               double       DEFAULT NULL,
   `high_percentile`              double       DEFAULT NULL,
@@ -601,7 +601,7 @@ DROP TABLE IF EXISTS `unit_configuration`;
 CREATE TABLE `unit_configuration` (
   `id`             bigint(20) NOT NULL AUTO_INCREMENT,
   `tele_config_id` bigint(20) NOT NULL,
-  `unit`           enum('PACKETS_PS','BITS_PS','BYTES_PS') NOT NULL,
+  `unit`           enum('packet-ps','bit-ps','byte-ps') NOT NULL,
   `unit_status`    tinyint(1) DEFAULT NULL,
   `created`        datetime   DEFAULT NULL,
   `updated`        datetime   DEFAULT NULL,
@@ -617,8 +617,8 @@ CREATE TABLE `total_pipe_capacity` (
   `id`            bigint(20)   NOT NULL AUTO_INCREMENT,
   `tele_setup_id` bigint(20)   NOT NULL,
   `link_id`       varchar(255) DEFAULT NULL,
-  `capacity`      int(11)      DEFAULT NULL,
-  `unit`          enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
+  `capacity`      bigint(20)   DEFAULT NULL,
+  `unit`          enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
   `created`       datetime     DEFAULT NULL,
   `updated`       datetime     DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -700,13 +700,13 @@ CREATE TABLE `traffic` (
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `type_id`           bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -720,14 +720,14 @@ CREATE TABLE `traffic_per_protocol` (
   `type`              enum('TELEMETRY','TELEMETRY_SETUP') NOT NULL,
   `type_id`           bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
   `protocol`          int(11)     NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -741,14 +741,14 @@ CREATE TABLE `traffic_per_port` (
   `type`              enum('TELEMETRY','TELEMETRY_SETUP') NOT NULL,
   `type_id`           bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
   `port`              int(11)     NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -758,21 +758,21 @@ CREATE TABLE `traffic_per_port` (
 DROP TABLE IF EXISTS `total_connection_capacity`;
 
 CREATE TABLE `total_connection_capacity` (
-  `id`                        bigint(20)   NOT NULL AUTO_INCREMENT,
-  `tele_baseline_id`          bigint(20)   NOT NULL,
-  `protocol`                  int(11)      NOT NULL,
-  `connection`                int(11)      DEFAULT NULL,
-  `connection_client`         int(11)      DEFAULT NULL,
-  `embryonic`                 int(11)      DEFAULT NULL,
-  `embryonic_client`          int(11)      DEFAULT NULL,
-  `connection_ps`             int(11)      DEFAULT NULL,
-  `connection_client_ps`      int(11)      DEFAULT NULL,
-  `request_ps`                int(11)      DEFAULT NULL,
-  `request_client_ps`         int(11)      DEFAULT NULL,
-  `partial_request_ps`        int(11)      DEFAULT NULL,
-  `partial_request_client_ps` int(11)      DEFAULT NULL,
-  `created`                   datetime     DEFAULT NULL,
-  `updated`                   datetime     DEFAULT NULL,
+  `id`                        bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_baseline_id`          bigint(20) NOT NULL,
+  `protocol`                  int(11)    NOT NULL,
+  `connection`                bigint(20) DEFAULT NULL,
+  `connection_client`         bigint(20) DEFAULT NULL,
+  `embryonic`                 bigint(20) DEFAULT NULL,
+  `embryonic_client`          bigint(20) DEFAULT NULL,
+  `connection_ps`             bigint(20) DEFAULT NULL,
+  `connection_client_ps`      bigint(20) DEFAULT NULL,
+  `request_ps`                bigint(20) DEFAULT NULL,
+  `request_client_ps`         bigint(20) DEFAULT NULL,
+  `partial_request_ps`        bigint(20) DEFAULT NULL,
+  `partial_request_client_ps` bigint(20) DEFAULT NULL,
+  `created`                   datetime   DEFAULT NULL,
+  `updated`                   datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -782,22 +782,22 @@ CREATE TABLE `total_connection_capacity` (
 DROP TABLE IF EXISTS `total_connection_capacity_per_port`;
 
 CREATE TABLE `total_connection_capacity_per_port` (
-  `id`                        bigint(20)   NOT NULL AUTO_INCREMENT,
-  `tele_baseline_id`          bigint(20)   NOT NULL,
-  `protocol`                  int(11)      NOT NULL,
-  `port`                      int(11)      NOT NULL,
-  `connection`                int(11)      DEFAULT NULL,
-  `connection_client`         int(11)      DEFAULT NULL,
-  `embryonic`                 int(11)      DEFAULT NULL,
-  `embryonic_client`          int(11)      DEFAULT NULL,
-  `connection_ps`             int(11)      DEFAULT NULL,
-  `connection_client_ps`      int(11)      DEFAULT NULL,
-  `request_ps`                int(11)      DEFAULT NULL,
-  `request_client_ps`         int(11)      DEFAULT NULL,
-  `partial_request_ps`        int(11)      DEFAULT NULL,
-  `partial_request_client_ps` int(11)      DEFAULT NULL,
-  `created`                   datetime     DEFAULT NULL,
-  `updated`                   datetime     DEFAULT NULL,
+  `id`                        bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_baseline_id`          bigint(20) NOT NULL,
+  `protocol`                  int(11)    NOT NULL,
+  `port`                      int(11)    NOT NULL,
+  `connection`                bigint(20) DEFAULT NULL,
+  `connection_client`         bigint(20) DEFAULT NULL,
+  `embryonic`                 bigint(20) DEFAULT NULL,
+  `embryonic_client`          bigint(20) DEFAULT NULL,
+  `connection_ps`             bigint(20) DEFAULT NULL,
+  `connection_client_ps`      bigint(20) DEFAULT NULL,
+  `request_ps`                bigint(20) DEFAULT NULL,
+  `request_client_ps`         bigint(20) DEFAULT NULL,
+  `partial_request_ps`        bigint(20) DEFAULT NULL,
+  `partial_request_client_ps` bigint(20) DEFAULT NULL,
+  `created`                   datetime   DEFAULT NULL,
+  `updated`                   datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -811,19 +811,19 @@ CREATE TABLE `telemetry_traffic` (
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `prefix_type_id`    bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 INSERT INTO `telemetry_traffic` (`id`, `prefix_type`, `prefix_type_id`, `traffic_type`, `unit`, `low_percentile_g`, `mid_percentile_g`, `high_percentile_g`, `peak_g`, `created`, `updated`)
 VALUES
-  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'PACKETS_PS', 0, 100, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'packet-ps', 0, 100, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 # telemetry_traffic trigger when any attribute of telemetry_traffic change
 # ------------------------------------------------------------------------------
@@ -849,11 +849,11 @@ CREATE TABLE `telemetry_total_attack_connection` (
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `prefix_type_id`    bigint(20) NOT NULL,
   `percentile_type`   enum('LOW_PERCENTILE_C','MID_PERCENTILE_C','HIGH_PERCENTILE_C','PEAK_C') NOT NULL,
-  `connection`        int(11)  DEFAULT NULL,
-  `embryonic`         int(11)  DEFAULT NULL,
-  `connection_ps`     int(11)  DEFAULT NULL,
-  `request_ps`        int(11)  DEFAULT NULL,
-  `partial_request_ps`int(11)  DEFAULT NULL,
+  `connection`        bigint(20) DEFAULT NULL,
+  `embryonic`         bigint(20) DEFAULT NULL,
+  `connection_ps`     bigint(20) DEFAULT NULL,
+  `request_ps`        bigint(20) DEFAULT NULL,
+  `partial_request_ps`bigint(20) DEFAULT NULL,
   `created`           datetime DEFAULT NULL,
   `updated`           datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -888,9 +888,9 @@ CREATE TABLE `telemetry_attack_detail` (
   `vendor_id`           int(11)    NOT NULL,
   `attack_id`           int(11)    NOT NULL,
   `attack_description`  varchar(255),
-  `attack_severity`     enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') NOT NULL,
-  `start_time`          int(11),
-  `end_time`            int(11),
+  `attack_severity`     enum('none','low','medium','high','unknown') NOT NULL,
+  `start_time`          bigint(20),
+  `end_time`            bigint(20),
   `created`             datetime DEFAULT NULL,
   `updated`             datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -918,10 +918,10 @@ DROP TABLE IF EXISTS `telemetry_source_count`;
 CREATE TABLE `telemetry_source_count` (
   `id`                    bigint(20) NOT NULL AUTO_INCREMENT,
   `tele_attack_detail_id` bigint(20) NOT NULL,
-  `low_percentile_g`      int(11),
-  `mid_percentile_g`      int(11),
-  `high_percentile_g`     int(11),
-  `peak_g`                int(11),
+  `low_percentile_g`      bigint(20),
+  `mid_percentile_g`      bigint(20),
+  `high_percentile_g`     bigint(20),
+  `peak_g`                bigint(20),
   `created`               datetime DEFAULT NULL,
   `updated`               datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1083,13 +1083,13 @@ CREATE TABLE `uri_filtering_traffic` (
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `prefix_type_id`    bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1117,14 +1117,14 @@ CREATE TABLE `uri_filtering_traffic_per_protocol` (
   `id`                     bigint(20)   NOT NULL AUTO_INCREMENT,
   `tele_pre_mitigation_id` bigint(20)   NOT NULL,
   `traffic_type`           enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`                   enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `protocol`               int(11)     NOT NULL,
-  `low_percentile_g`       int(11)     DEFAULT NULL,
-  `mid_percentile_g`       int(11)     DEFAULT NULL,
-  `high_percentile_g`      int(11)     DEFAULT NULL,
-  `peak_g`                 int(11)     DEFAULT NULL,
-  `created`                datetime    DEFAULT NULL,
-  `updated`                datetime    DEFAULT NULL,
+  `unit`                   enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `protocol`               int(11)    NOT NULL,
+  `low_percentile_g`       bigint(20) DEFAULT NULL,
+  `mid_percentile_g`       bigint(20) DEFAULT NULL,
+  `high_percentile_g`      bigint(20) DEFAULT NULL,
+  `peak_g`                 bigint(20) DEFAULT NULL,
+  `created`                datetime   DEFAULT NULL,
+  `updated`                datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1151,14 +1151,14 @@ CREATE TABLE `uri_filtering_traffic_per_port` (
   `id`                     bigint(20)   NOT NULL AUTO_INCREMENT,
   `tele_pre_mitigation_id` bigint(20)   NOT NULL,
   `traffic_type`           enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`                   enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `port`                   int(11)     NOT NULL,
-  `low_percentile_g`       int(11)     DEFAULT NULL,
-  `mid_percentile_g`       int(11)     DEFAULT NULL,
-  `high_percentile_g`      int(11)     DEFAULT NULL,
-  `peak_g`                 int(11)     DEFAULT NULL,
-  `created`                datetime    DEFAULT NULL,
-  `updated`                datetime    DEFAULT NULL,
+  `unit`                   enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `port`                   int(11)    NOT NULL,
+  `low_percentile_g`       bigint(20) DEFAULT NULL,
+  `mid_percentile_g`       bigint(20) DEFAULT NULL,
+  `high_percentile_g`      bigint(20) DEFAULT NULL,
+  `peak_g`                 bigint(20) DEFAULT NULL,
+  `created`                datetime   DEFAULT NULL,
+  `updated`                datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1182,18 +1182,18 @@ DELIMITER ;
 DROP TABLE IF EXISTS `uri_filtering_total_attack_connection`;
 
 CREATE TABLE `uri_filtering_total_attack_connection` (
-  `id`                bigint(20) NOT NULL AUTO_INCREMENT,
-  `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
-  `prefix_type_id`    bigint(20) NOT NULL,
-  `percentile_type`   enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
-  `protocol`          int(11)  NOT NULL,
-  `connection`        int(11)  DEFAULT NULL,
-  `embryonic`         int(11)  DEFAULT NULL,
-  `connection_ps`     int(11)  DEFAULT NULL,
-  `request_ps`        int(11)  DEFAULT NULL,
-  `partial_request_ps`int(11)  DEFAULT NULL,
-  `created`           datetime DEFAULT NULL,
-  `updated`           datetime DEFAULT NULL,
+  `id`                 bigint(20) NOT NULL AUTO_INCREMENT,
+  `prefix_type`        enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
+  `prefix_type_id`     bigint(20) NOT NULL,
+  `percentile_type`    enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
+  `protocol`           int(11)  NOT NULL,
+  `connection`         bigint(20) DEFAULT NULL,
+  `embryonic`          bigint(20) DEFAULT NULL,
+  `connection_ps`      bigint(20) DEFAULT NULL,
+  `request_ps`         bigint(20) DEFAULT NULL,
+  `partial_request_ps` bigint(20) DEFAULT NULL,
+  `created`            datetime   DEFAULT NULL,
+  `updated`            datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1222,13 +1222,13 @@ CREATE TABLE `uri_filtering_total_attack_connection_port` (
   `percentile_type`        enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
   `protocol`               int(11)  NOT NULL,
   `port`                   int(11)  NOT NULL,
-  `connection`             int(11)  DEFAULT NULL,
-  `embryonic`              int(11)  DEFAULT NULL,
-  `connection_ps`          int(11)  DEFAULT NULL,
-  `request_ps`             int(11)  DEFAULT NULL,
-  `partial_request_ps`     int(11)  DEFAULT NULL,
-  `created`                datetime DEFAULT NULL,
-  `updated`                datetime DEFAULT NULL,
+  `connection`             bigint(20) DEFAULT NULL,
+  `embryonic`              bigint(20) DEFAULT NULL,
+  `connection_ps`          bigint(20) DEFAULT NULL,
+  `request_ps`             bigint(20) DEFAULT NULL,
+  `partial_request_ps`     bigint(20) DEFAULT NULL,
+  `created`                datetime   DEFAULT NULL,
+  `updated`                datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1256,10 +1256,10 @@ CREATE TABLE `uri_filtering_attack_detail` (
   `tele_pre_mitigation_id` bigint(20),
   `vendor_id`              int(11)      NOT NULL,
   `attack_id`              int(11)      NOT NULL,
-  `attack_description`            varchar(255),
-  `attack_severity`        enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') NOT NULL,
-  `start_time`             int(11),
-  `end_time`               int(11),
+  `attack_description`     varchar(255),
+  `attack_severity`        enum('none','low','medium','high','unknown') NOT NULL,
+  `start_time`             bigint(20),
+  `end_time`               bigint(20),
   `created`                datetime DEFAULT NULL,
   `updated`                datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1287,10 +1287,10 @@ DROP TABLE IF EXISTS `uri_filtering_source_count`;
 CREATE TABLE `uri_filtering_source_count` (
   `id`                    bigint(20) NOT NULL AUTO_INCREMENT,
   `tele_attack_detail_id` bigint(20) NOT NULL,
-  `low_percentile_g`      int(11),
-  `mid_percentile_g`      int(11),
-  `high_percentile_g`     int(11),
-  `peak_g`                int(11),
+  `low_percentile_g`      bigint(20),
+  `mid_percentile_g`      bigint(20),
+  `high_percentile_g`     bigint(20),
+  `peak_g`                bigint(20),
   `created`               datetime DEFAULT NULL,
   `updated`               datetime DEFAULT NULL,
   PRIMARY KEY (`id`)

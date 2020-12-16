@@ -93,7 +93,7 @@ type ACL struct {
 
 type ControlFiltering struct {
 	ACLName        string
-	ActivationType *int
+	ActivationType *messages.ActivationTypeString
 }
 
 type ActivationType int
