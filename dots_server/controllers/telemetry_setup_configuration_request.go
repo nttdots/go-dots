@@ -559,8 +559,10 @@ func getMinMaxConfigValues()(maxConfig *messages.TelemetryConfigurationResponse,
 	config := dots_config.GetServerSystemConfig().TelemetryConfigurationParameter
 	if config != nil {
 		// Set Max of telemetry configuration from config value
-		maxConfig.MeasurementInterval       = config.MeasurementInterval.End().(messages.IntervalString)
-		maxConfig.MeasurementSample         = config.MeasurementSample.End().(messages.SampleString)
+		maxInterval := config.MeasurementInterval.End().(int)
+		maxSample   := config.MeasurementSample.End().(int)
+		maxConfig.MeasurementInterval       = messages.IntervalString(maxInterval)
+		maxConfig.MeasurementSample         = messages.SampleString(maxSample)
 		maxConfig.LowPercentile             = decimal.NewFromFloat(config.LowPercentile.End().(float64)).Round(2)
 		maxConfig.MidPercentile             = decimal.NewFromFloat(config.MidPercentile.End().(float64)).Round(2)
 		maxConfig.HighPercentile            = decimal.NewFromFloat(config.HighPercentile.End().(float64)).Round(2)
@@ -569,8 +571,10 @@ func getMinMaxConfigValues()(maxConfig *messages.TelemetryConfigurationResponse,
 		maxConfig.TelemetryNotifyInterval   = &maxTelemetryNotifyInterval
 
 		// Set Min of telemetry configuration from config value
-		minConfig.MeasurementInterval     = config.MeasurementInterval.Start().(messages.IntervalString)
-		minConfig.MeasurementSample       = config.MeasurementSample.Start().(messages.SampleString)
+		minInterval := config.MeasurementInterval.Start().(int)
+		minSample   := config.MeasurementSample.Start().(int)
+		minConfig.MeasurementInterval     = messages.IntervalString(minInterval)
+		minConfig.MeasurementSample       = messages.SampleString(minSample)
 		minConfig.LowPercentile           = decimal.NewFromFloat(config.LowPercentile.Start().(float64)).Round(2)
 		minConfig.MidPercentile           = decimal.NewFromFloat(config.MidPercentile.Start().(float64)).Round(2)
 		minConfig.HighPercentile          = decimal.NewFromFloat(config.HighPercentile.Start().(float64)).Round(2)
