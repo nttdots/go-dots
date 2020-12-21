@@ -7,7 +7,7 @@ type UriFilteringTotalAttackConnection struct {
 	Id               int64     `xorm:"'id' pk autoincr"`
 	PrefixType       string    `xorm:"'prefix_type' enum('TARGET_PREFIX','SOURCE_PREFIX') not null"`
 	PrefixTypeId     int64     `xorm:"'prefix_type_id' not null"`
-	PercentileType   string    `xorm:"'percentile_type' enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') not null"`
+	PercentileType   string    `xorm:"'percentile_type' enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L','CURRENT_L') not null"`
 	Protocol         int       `xorm:"'protocol' not null"`
 	Connection       uint64    `xorm:"connection"`
 	Embryonic        uint64    `xorm:"embryonic"`

@@ -13,6 +13,7 @@ type UriFilteringTrafficPerPort struct {
 	MidPercentileG      uint64    `xorm:"'mid_percentile_g'"`
 	HighPercentileG     uint64    `xorm:"'high_percentile_g'"`
 	PeakG               uint64    `xorm:"'peak_g'"`
+	CurrentG            uint64    `xorm:"current_g"`
 	Created             time.Time `xorm:"created"`
 	Updated             time.Time `xorm:"updated"`
 }

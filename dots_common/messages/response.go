@@ -88,6 +88,7 @@ type TelemetryTotalAttackConnectionResponse struct {
 	MidPercentileC  *TelemetryConnectionPercentileResponse `json:"mid-percentile-c" codec:"32846,omitempty"`
 	HighPercentileC *TelemetryConnectionPercentileResponse `json:"high-percentile-c" codec:"32847,omitempty"`
 	PeakC           *TelemetryConnectionPercentileResponse `json:"peak-c" codec:"32848,omitempty"`
+	CurrentC        *TelemetryConnectionPercentileResponse `json:"current-c" codec:"32888,omitempty"`
 }
 
 type TelemetryConnectionPercentileResponse struct {
@@ -477,8 +478,8 @@ type TelemetrySetupResp struct {
 	_struct       bool                            `codec:",uint"` //encode struct with "unsigned integer" keys
 	MaxConfig     *TelemetryConfigurationResponse `json:"max-config-values" codec:"32851,omitempty"`
 	MinConfig     *TelemetryConfigurationResponse `json:"min-config-values" codec:"32852,omitempty"`
-	SupportedUnit *SupportedUnitResponse          `json:"supported-units" codec:"32853,omitempty"`
-	QueryType     []int                           `json:"query-type" codec:"32878,omitempty"`
+	SupportedUnit *SupportedUnitResponse          `json:"supported-unit-classes" codec:"32853,omitempty"`
+	QueryType     QueryTypeArrayString            `json:"query-type" codec:"32878,omitempty"`
 	Telemetry     []TelemetryResponse             `json:"telemetry" codec:"32802,omitempty"`
 }
 
@@ -543,6 +544,7 @@ type TrafficResponse struct {
 	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
 	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"32886,omitempty"`
 }
 
 type TrafficPerProtocolResponse struct {
@@ -553,6 +555,7 @@ type TrafficPerProtocolResponse struct {
 	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
 	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"32886,omitempty"`
 }
 
 type TrafficPerPortResponse struct {
@@ -563,6 +566,7 @@ type TrafficPerPortResponse struct {
 	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
 	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"32886,omitempty"`
 }
 
 type TotalConnectionCapacityResponse struct {
@@ -615,7 +619,7 @@ type TotalConnectionCapacityPerPortResponse struct {
 		result += resultMinConfig
 	}
 	if ts.TelemetrySetup.SupportedUnit != nil {
-		result += fmt.Sprintf("%s\"%s\":\n", spaces3, "supported-units")
+		result += fmt.Sprintf("%s\"%s\":\n", spaces3, "supported-unit-classes")
 		for k, v := range ts.TelemetrySetup.SupportedUnit.UnitConfigList {
 			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "unit-config", k+1)
 			result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "unit", v.Unit)
@@ -741,6 +745,9 @@ func (traffic TrafficResponse) String(spacesn string) (result string) {
 	if traffic.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
 	}
+	if traffic.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *traffic.CurrentG)
+	}
 	return
 }
 
@@ -762,6 +769,9 @@ func (traffic TrafficPerProtocolResponse) String(spacesn string) (result string)
 	if traffic.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
 	}
+	if traffic.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *traffic.CurrentG)
+	}
 	return
 }
 
@@ -782,6 +792,9 @@ func (traffic TrafficPerPortResponse) String(spacesn string) (result string) {
 	}
 	if traffic.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
+	}
+	if traffic.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *traffic.CurrentG)
 	}
 	return
 }
@@ -943,6 +956,7 @@ type TotalAttackConnectionResponse struct {
 	MidPercentileL  []ConnectionProtocolPercentileResponse `json:"mid-percentile-l" codec:"32832,omitempty"`
 	HighPercentileL []ConnectionProtocolPercentileResponse `json:"high-percentile-l" codec:"32833,omitempty"`
 	PeakL           []ConnectionProtocolPercentileResponse `json:"peak-l" codec:"32834,omitempty"`
+	CurrentL        []ConnectionProtocolPercentileResponse `json:"current-l" codec:"32887,omitempty"`
 }
 
 type TotalAttackConnectionPortResponse struct {
@@ -951,6 +965,7 @@ type TotalAttackConnectionPortResponse struct {
 	MidPercentileL  []ConnectionProtocolPortPercentileResponse `json:"mid-percentile-l" codec:"32832,omitempty"`
 	HighPercentileL []ConnectionProtocolPortPercentileResponse `json:"high-percentile-l" codec:"32833,omitempty"`
 	PeakL           []ConnectionProtocolPortPercentileResponse `json:"peak-l" codec:"32834,omitempty"`
+	CurrentL        []ConnectionProtocolPortPercentileResponse `json:"current-l" codec:"32887,omitempty"`
 }
 
 type AttackDetailResponse struct {
@@ -992,6 +1007,7 @@ type SourceCountResponse struct {
 	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
 	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"32886,omitempty"`
 }
 
 type TopTalkerResponse struct {
@@ -1089,6 +1105,10 @@ func (tac *TotalAttackConnectionResponse) String(spacesn string) (result string)
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "peak-l", k+1)
 		result += v.String(spacesn3)
 	}
+	for k, v := range tac.CurrentL {
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "current-l", k+1)
+		result += v.String(spacesn3)
+	}
 	return
 }
 
@@ -1111,6 +1131,10 @@ func (tac *TotalAttackConnectionPortResponse) String(spacesn string) (result str
 	}
 	for k, v := range tac.PeakL {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "peak-l", k+1)
+		result += v.String(spacesn3)
+	}
+	for k, v := range tac.CurrentL {
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "current-l", k+1)
 		result += v.String(spacesn3)
 	}
 	return
@@ -1210,6 +1234,9 @@ func (sc SourceCountResponse) String(spacesn string) (result string) {
 	}
 	if sc.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *sc.PeakG)
+	}
+	if sc.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *sc.CurrentG)
 	}
 	return
 }
@@ -1319,6 +1346,10 @@ func (tac *TelemetryTotalAttackConnectionResponse) String(spacesn string) (resul
 	if tac.PeakC != nil {
 		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "peak-c")
 		result += tac.PeakC.String(spacesn3)
+	}
+	if tac.CurrentC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "current-c")
+		result += tac.CurrentC.String(spacesn3)
 	}
 	return
 }

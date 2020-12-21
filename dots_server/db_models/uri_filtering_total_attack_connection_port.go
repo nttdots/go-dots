@@ -6,7 +6,7 @@ import "github.com/go-xorm/xorm"
 type UriFilteringTotalAttackConnectionPort struct {
 	Id                  int64     `xorm:"'id' pk autoincr"`
 	TelePreMitigationId int64     `xorm:"'tele_pre_mitigation_id' not null"`
-	PercentileType      string    `xorm:"'percentile_type' enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') not null"`
+	PercentileType      string    `xorm:"'percentile_type' enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L','CURRENT_L') not null"`
 	Protocol            int       `xorm:"'protocol' not null"`
 	Port                int       `xorm:"'port' not null"`
 	Connection          uint64    `xorm:"connection"`

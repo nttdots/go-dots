@@ -104,6 +104,7 @@ type TelemetryTotalAttackConnection struct {
 	MidPercentileC  *ConnectionPercentile `json:"mid-percentile- c" codec:"32846,omitempty"`
 	HighPercentileC *ConnectionPercentile `json:"high-percentile-c" codec:"32847,omitempty"`
 	PeakC           *ConnectionPercentile `json:"peak-c" codec:"32848,omitempty"`
+	CurrentC        *ConnectionPercentile `json:"current-c" codec:"32888,omitempty"`
 }
 
 /*
@@ -441,6 +442,7 @@ type Traffic struct {
 	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
 	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"32886,omitempty"`
 }
 
 type TrafficPerProtocol struct {
@@ -451,6 +453,7 @@ type TrafficPerProtocol struct {
 	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
 	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"32886,omitempty"`
 }
 
 type TrafficPerPort struct {
@@ -461,6 +464,7 @@ type TrafficPerPort struct {
 	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
 	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"32886,omitempty"`
 }
 type TotalConnectionCapacity struct {
 	_struct                bool          `codec:",uint"` //encode struct with "unsigned integer" keys
@@ -635,6 +639,9 @@ func (traffic Traffic) String(spacesn string) (result string) {
 	if traffic.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
 	}
+	if traffic.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *traffic.CurrentG)
+	}
 	return
 }
 
@@ -660,6 +667,9 @@ func (traffic TrafficPerProtocol) String(spacesn string) (result string) {
 	if traffic.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
 	}
+	if traffic.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *traffic.CurrentG)
+	}
 	return
 }
 
@@ -684,6 +694,9 @@ func (traffic TrafficPerPort) String(spacesn string) (result string) {
 	}
 	if traffic.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
+	}
+	if traffic.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *traffic.CurrentG)
 	}
 	return
 }
@@ -811,6 +824,7 @@ type TotalAttackConnection struct {
 	MidPercentileL  []ConnectionProtocolPercentile `json:"mid-percentile-l" codec:"32832,omitempty"`
 	HighPercentileL []ConnectionProtocolPercentile `json:"high-percentile-l" codec:"32833,omitempty"`
 	PeakL           []ConnectionProtocolPercentile `json:"peak-l" codec:"32834,omitempty"`
+	CurrentL        []ConnectionProtocolPercentile `json:"current-l" codec:"32887,omitempty"`
 }
 
 type TotalAttackConnectionPort struct {
@@ -819,6 +833,7 @@ type TotalAttackConnectionPort struct {
 	MidPercentileL  []ConnectionProtocolPortPercentile `json:"mid-percentile-l" codec:"32832,omitempty"`
 	HighPercentileL []ConnectionProtocolPortPercentile `json:"high-percentile-l" codec:"32833,omitempty"`
 	PeakL           []ConnectionProtocolPortPercentile `json:"peak-l" codec:"32834,omitempty"`
+	CurrentL        []ConnectionProtocolPortPercentile `json:"current-l" codec:"32887,omitempty"`
 }
 
 type AttackDetail struct {
@@ -868,6 +883,7 @@ type SourceCount struct {
 	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"32814,omitempty"`
 	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"32815,omitempty"`
 	PeakG           *Uint64String `json:"peak-g" codec:"32816,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"32886,omitempty"`
 }
 
 type TopTalker struct {
@@ -962,6 +978,10 @@ func (tac *TotalAttackConnection) String(spacesn string) (result string) {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "peak-l", k+1)
 		result += v.String(spacesn3)
 	}
+	for k, v := range tac.CurrentL {
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "current-l", k+1)
+		result += v.String(spacesn3)
+	}
 	return
 }
 
@@ -984,6 +1004,10 @@ func (tac *TotalAttackConnectionPort) String(spacesn string) (result string) {
 	}
 	for k, v := range tac.PeakL {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "peak-l", k+1)
+		result += v.String(spacesn3)
+	}
+	for k, v := range tac.CurrentL {
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "current-l", k+1)
 		result += v.String(spacesn3)
 	}
 	return
@@ -1172,6 +1196,9 @@ func (sc SourceCount) String(spacesn string) (result string) {
 	if sc.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *sc.PeakG)
 	}
+	if sc.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *sc.CurrentG)
+	}
 	return
 }
 
@@ -1234,6 +1261,10 @@ func (tac *TelemetryTotalAttackConnection) String(spacesn string) (result string
 	if tac.PeakC != nil {
 		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "peak-c")
 		result += tac.PeakC.String(spacesn3)
+	}
+	if tac.CurrentC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "current-c")
+		result += tac.CurrentC.String(spacesn3)
 	}
 	return
 }

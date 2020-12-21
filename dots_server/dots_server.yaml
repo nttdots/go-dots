@@ -26,7 +26,7 @@ system:
 
 # Range min-max values of telemetry configuration
   telemetryConfigurationParameter:
-    measurementInterval: 1-5
+    measurementInterval: 1-7
     measurementSample: 1-8
     lowPercentile: 0.0-10.0
     midPercentile: 10.1-50.0

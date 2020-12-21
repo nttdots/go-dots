@@ -7,7 +7,7 @@ type TelemetryTotalAttackConnection struct {
 	Id               int64     `xorm:"'id' pk autoincr"`
 	PrefixType       string    `xorm:"'prefix_type' enum('TARGET_PREFIX','SOURCE_PREFIX') not null"`
 	PrefixTypeId     int64     `xorm:"'prefix_type_id' not null"`
-	PercentileType   string    `xorm:"'percentile_type' enum('LOW_PERCENTILE_C','MID_PERCENTILE_C','HIGH_PERCENTILE_C','PEAK_C') not null"`
+	PercentileType   string    `xorm:"'percentile_type' enum('LOW_PERCENTILE_C','MID_PERCENTILE_C','HIGH_PERCENTILE_C','PEAK_C','CURRENT_C') not null"`
 	Connection       uint64    `xorm:"connection"`
 	Embryonic        uint64    `xorm:"embryonic"`
 	ConnectionPs     uint64    `xorm:"connection_ps"`

@@ -46,6 +46,7 @@ type TotalAttackConnection struct {
 	MidPercentileL  []ConnectionProtocolPercentile
 	HighPercentileL []ConnectionProtocolPercentile
 	PeakL           []ConnectionProtocolPercentile
+	CurrentL        []ConnectionProtocolPercentile
 }
 
 type TotalAttackConnectionPort struct {
@@ -53,6 +54,7 @@ type TotalAttackConnectionPort struct {
 	MidPercentileL  []ConnectionProtocolPortPercentile
 	HighPercentileL []ConnectionProtocolPortPercentile
 	PeakL           []ConnectionProtocolPortPercentile
+	CurrentL        []ConnectionProtocolPortPercentile
 }
 
 type AttackDetail struct {
@@ -90,6 +92,7 @@ type SourceCount struct {
 	MidPercentileG  messages.Uint64String
 	HighPercentileG messages.Uint64String
 	PeakG           messages.Uint64String
+	CurrentG        messages.Uint64String
 }
 
 type TopTalker struct {
@@ -106,6 +109,7 @@ type TelemetryTotalAttackConnection struct {
 	MidPercentileC  ConnectionPercentile
 	HighPercentileC ConnectionPercentile
 	PeakC           ConnectionPercentile
+	CurrentC        ConnectionPercentile
 }
 
 type ConnectionPercentile struct {
@@ -250,6 +254,9 @@ func NewTotalAttackConnection(tacRequest messages.TotalAttackConnection) (tac To
 	if tacRequest.PeakL != nil {
 		tac.PeakL = NewConnectionProtocolPercentile(tacRequest.PeakL)
 	}
+	if tacRequest.CurrentL != nil {
+		tac.CurrentL = NewConnectionProtocolPercentile(tacRequest.CurrentL)
+	}
 	return
 }
 
@@ -267,6 +274,9 @@ func NewTotalAttackConnectionPerPort(tacRequest messages.TotalAttackConnectionPo
 	}
 	if tacRequest.PeakL != nil {
 		tac.PeakL = NewConnectionProtocolPortPercentile(tacRequest.PeakL)
+	}
+	if tacRequest.CurrentL != nil {
+		tac.CurrentL = NewConnectionProtocolPortPercentile(tacRequest.CurrentL)
 	}
 	return
 }
@@ -296,6 +306,10 @@ func NewAttackDetail(adRequests []messages.AttackDetail) (attackDetailList []Att
 		if adRequest.EndTime != nil {
 			attackDetail.EndTime = *adRequest.EndTime
 		}
+		// Create new source count
+		if adRequest.SourceCount != nil {
+			attackDetail.SourceCount = NewSourceCount(*adRequest.SourceCount)
+		}
 		// Create new top talker
 		if adRequest.TopTalKer != nil {
 			attackDetail.TopTalker, err = NewTopTalker(*adRequest.TopTalKer)
@@ -308,7 +322,7 @@ func NewAttackDetail(adRequests []messages.AttackDetail) (attackDetailList []Att
 	return
 }
 
-// New connection protocol percentile (low/mid/high-percentile-l, peak-l)
+// New connection protocol percentile (low/mid/high-percentile-l, peak-l, current-l)
 func NewConnectionProtocolPercentile(cppRequest []messages.ConnectionProtocolPercentile) (cppList []ConnectionProtocolPercentile) {
 	cppList = []ConnectionProtocolPercentile{}
 	for _, v := range cppRequest {
@@ -334,7 +348,7 @@ func NewConnectionProtocolPercentile(cppRequest []messages.ConnectionProtocolPer
 	return
 }
 
-// New connection protocol port percentile (low/mid/high-percentile-l, peak-l)
+// New connection protocol port percentile (low/mid/high-percentile-l, peak-l, current-l)
 func NewConnectionProtocolPortPercentile(cppRequest []messages.ConnectionProtocolPortPercentile) (cppList []ConnectionProtocolPortPercentile) {
 	cppList = []ConnectionProtocolPortPercentile{}
 	for _, v := range cppRequest {
@@ -375,6 +389,9 @@ func NewSourceCount(scRequest messages.SourceCount) (sourceCount SourceCount) {
 	}
 	if scRequest.PeakG != nil {
 		sourceCount.PeakG = *scRequest.PeakG
+	}
+	if scRequest.CurrentG != nil {
+		sourceCount.CurrentG = *scRequest.CurrentG
 	}
 	return
 }
@@ -439,6 +456,9 @@ func NewTelemetryTotalAttackTraffic(teleTraffics []messages.Traffic) (trafficLis
 		}
 		if v.PeakG != nil {
 			traffic.PeakG = *v.PeakG
+		}
+		if v.CurrentG != nil {
+			traffic.CurrentG = *v.CurrentG
 		}
 		trafficList[k] = traffic
 	}
@@ -531,6 +551,9 @@ func NewTelemetryTopTalker(ttRequest messages.TelemetryTopTalker) (talkerList []
 			if v.TotalAttackConnection.PeakC != nil{
 				tac.PeakC = NewConnectionPercentile(*v.TotalAttackConnection.PeakC)
 			}
+			if v.TotalAttackConnection.CurrentC != nil{
+				tac.CurrentC = NewConnectionPercentile(*v.TotalAttackConnection.CurrentC)
+			}
 			talker.TotalAttackConnection = tac
 		}
 		talkerList = append (talkerList, talker)
@@ -538,7 +561,7 @@ func NewTelemetryTopTalker(ttRequest messages.TelemetryTopTalker) (talkerList []
 	return
 }
 
-// New connection percentile (low/mid/high-percentile-c, peak-c)
+// New connection percentile (low/mid/high-percentile-c, peak-c, current-c)
 func NewConnectionPercentile(cpRequest messages.ConnectionPercentile) (cp ConnectionPercentile) {
 	cp = ConnectionPercentile{}
 	if cpRequest.Connection != nil {

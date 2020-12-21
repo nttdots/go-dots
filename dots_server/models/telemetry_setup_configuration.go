@@ -66,6 +66,7 @@ type Traffic struct {
 	MidPercentileG  messages.Uint64String
 	HighPercentileG messages.Uint64String
 	PeakG           messages.Uint64String
+	CurrentG        messages.Uint64String
 }
 
 type TrafficPerProtocol struct {
@@ -76,6 +77,7 @@ type TrafficPerProtocol struct {
 	MidPercentileG  messages.Uint64String
 	HighPercentileG messages.Uint64String
 	PeakG           messages.Uint64String
+	CurrentG        messages.Uint64String
 }
 
 type TrafficPerPort struct {
@@ -86,6 +88,7 @@ type TrafficPerPort struct {
 	MidPercentileG  messages.Uint64String
 	HighPercentileG messages.Uint64String
 	PeakG           messages.Uint64String
+	CurrentG        messages.Uint64String
 }
 type TotalConnectionCapacity struct {
 	TotalConnectionCapacityId int64
@@ -176,6 +179,9 @@ func NewTelemetryConfiguration(telemetryConfig *messages.TelemetryConfigurationC
 		}
 		if config.UnitStatus != nil {
 			unitConfig.UnitStatus = *config.UnitStatus
+		} else {
+			// Default of unit-status is true
+			unitConfig.UnitStatus = true
 		}
 		unitConfigList = append(unitConfigList, unitConfig)
 	}
@@ -199,6 +205,7 @@ func NewTelemetryConfiguration(telemetryConfig *messages.TelemetryConfigurationC
 	if telemetryConfig.ServerOriginatedTelemetry != nil {
 		t.ServerOriginatedTelemetry = *telemetryConfig.ServerOriginatedTelemetry
 	} else {
+		// Default of server-originated-telemetry is false
 		t.ServerOriginatedTelemetry = false
 	}
 	if telemetryConfig.TelemetryNotifyInterval != nil {
@@ -305,6 +312,9 @@ func NewTraffic(traffics []messages.Traffic) (trafficList []Traffic) {
 		if v.PeakG != nil {
 			traffic.PeakG = *v.PeakG
 		}
+		if v.CurrentG != nil {
+			traffic.CurrentG = *v.CurrentG
+		}
 		trafficList[k] = traffic
 	}
 	return
@@ -333,6 +343,9 @@ func NewTrafficPerProtocol(traffics []messages.TrafficPerProtocol) (trafficList 
 		if v.PeakG != nil {
 			traffic.PeakG = *v.PeakG
 		}
+		if v.CurrentG != nil {
+			traffic.CurrentG = *v.CurrentG
+		}
 		trafficList[k] = traffic
 	}
 	return
@@ -360,6 +373,9 @@ func NewTrafficPerPort(traffics []messages.TrafficPerPort) (trafficList []Traffi
 		}
 		if v.PeakG != nil {
 			traffic.PeakG = *v.PeakG
+		}
+		if v.CurrentG != nil {
+			traffic.CurrentG = *v.CurrentG
 		}
 		trafficList[k] = traffic
 	}

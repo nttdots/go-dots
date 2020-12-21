@@ -148,6 +148,11 @@ func ValidateTotalAttackConnection(tac *messages.TotalAttackConnection) (isUnpro
 	if errMsg != "" {
 		return
 	}
+	// Validate current-l
+	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPercentile(tac.CurrentL)
+	if errMsg != "" {
+		return
+	}
 	return
 }
 
@@ -170,6 +175,11 @@ func ValidateTotalAttackConnectionPort(tac *messages.TotalAttackConnectionPort) 
 	}
 	// Validate peak-l
 	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPortPercentile(tac.PeakL)
+	if errMsg != "" {
+		return
+	}
+	// Validate current-l
+	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPortPercentile(tac.CurrentL)
 	if errMsg != "" {
 		return
 	}

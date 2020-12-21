@@ -393,14 +393,16 @@ func convertToTelemetryPreMitigationRespone(customerId int, cuid string, preMiti
 			preMitigationResp.TotalAttackTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalAttackTrafficPort)
 			// total attack connection response
 			if len(preMitigation.TotalAttackConnection.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnection.MidPercentileL) > 0 ||
-			len(preMitigation.TotalAttackConnection.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnection.PeakL) > 0 {
+			len(preMitigation.TotalAttackConnection.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnection.PeakL) > 0 ||
+			len(preMitigation.TotalAttackConnection.CurrentL) > 0 {
 				preMitigationResp.TotalAttackConnection = convertToTotalAttackConnectionResponse(preMitigation.TotalAttackConnection)
 			} else {
 				preMitigationResp.TotalAttackConnection = nil
 			}
 			// total attack connection port response
 			if len(preMitigation.TotalAttackConnectionPort.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.MidPercentileL) > 0 ||
-			len(preMitigation.TotalAttackConnectionPort.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.PeakL) > 0 {
+			len(preMitigation.TotalAttackConnectionPort.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.PeakL) > 0 ||
+			len(preMitigation.TotalAttackConnectionPort.CurrentL) > 0 {
 				preMitigationResp.TotalAttackConnectionPort = convertToTotalAttackConnectionPortResponse(preMitigation.TotalAttackConnectionPort)
 			} else {
 				preMitigationResp.TotalAttackConnection = nil
@@ -459,6 +461,10 @@ func convertToTrafficResponse(traffics []models.Traffic) (trafficRespList []mess
 			peakG := v.PeakG
 			trafficResp.PeakG = &peakG
 		}
+		if v.CurrentG > 0 {
+			currentG := v.CurrentG
+			trafficResp.CurrentG = &currentG
+		}
 		trafficRespList = append(trafficRespList, trafficResp)
 	}
 	return
@@ -487,6 +493,10 @@ func convertToTrafficPerProtocolResponse(traffics []models.TrafficPerProtocol) (
 			peakG := v.PeakG
 			trafficResp.PeakG = &peakG
 		}
+		if v.CurrentG > 0 {
+			currentG := v.CurrentG
+			trafficResp.CurrentG = &currentG
+		}
 		trafficRespList = append(trafficRespList, trafficResp)
 	}
 	return
@@ -514,6 +524,10 @@ func convertToTrafficPerPortResponse(traffics []models.TrafficPerPort) (trafficR
 		if v.PeakG > 0 {
 			peakG := v.PeakG
 			trafficResp.PeakG = &peakG
+		}
+		if v.CurrentG > 0 {
+			currentG := v.CurrentG
+			trafficResp.CurrentG = &currentG
 		}
 		trafficRespList = append(trafficRespList, trafficResp)
 	}
@@ -630,6 +644,7 @@ func convertToTotalAttackConnectionResponse(tac models.TotalAttackConnection) (t
 	tacResp.MidPercentileL  = convertToConnectionProtocolPercentileResponse(tac.MidPercentileL)
 	tacResp.HighPercentileL = convertToConnectionProtocolPercentileResponse(tac.HighPercentileL)
 	tacResp.PeakL           = convertToConnectionProtocolPercentileResponse(tac.PeakL)
+	tacResp.CurrentL        = convertToConnectionProtocolPercentileResponse(tac.CurrentL)
 	return
 }
 
@@ -640,6 +655,7 @@ func convertToTotalAttackConnectionPortResponse(tac models.TotalAttackConnection
 	tacResp.MidPercentileL  = convertToConnectionProtocolPortPercentileResponse(tac.MidPercentileL)
 	tacResp.HighPercentileL = convertToConnectionProtocolPortPercentileResponse(tac.HighPercentileL)
 	tacResp.PeakL           = convertToConnectionProtocolPortPercentileResponse(tac.PeakL)
+	tacResp.CurrentL        = convertToConnectionProtocolPortPercentileResponse(tac.CurrentL)
 	return
 }
 
@@ -750,6 +766,10 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 				peakG := attackDetail.SourceCount.PeakG
 				sourceCount.PeakG = &peakG
 			}
+			if attackDetail.SourceCount.CurrentG > 0 {
+				currentG := attackDetail.SourceCount.CurrentG
+				sourceCount.CurrentG = &currentG
+			}
 			attackDetailResp.SourceCount = sourceCount
 		}
 		topTalker := &messages.TopTalkerResponse{}
@@ -766,7 +786,8 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 				}
 				talkerResp.TotalAttackTraffic = convertToTrafficResponse(v.TotalAttackTraffic)
 				if len(v.TotalAttackConnection.LowPercentileL) > 0 || len(v.TotalAttackConnection.MidPercentileL) > 0 ||
-				len(v.TotalAttackConnection.HighPercentileL) > 0 || len(v.TotalAttackConnection.PeakL) > 0 {
+				len(v.TotalAttackConnection.HighPercentileL) > 0 || len(v.TotalAttackConnection.PeakL) > 0 ||
+				len(v.TotalAttackConnection.CurrentL) > 0 {
 					talkerResp.TotalAttackConnection = convertToTotalAttackConnectionResponse(v.TotalAttackConnection)
 				}
 				topTalker.Talker = append(topTalker.Talker, talkerResp)
@@ -794,6 +815,9 @@ func convertToTelemetryTotalAttackConnectionResponse(tac models.TelemetryTotalAt
 	}
 	if !reflect.DeepEqual(models.GetModelsTelemetryConnectionPercentile(&tac.PeakC), models.GetModelsTelemetryConnectionPercentile(nil)) {
 		tacResp.PeakC  = convertToTelemetryConnectionPercentileResponse(tac.PeakC)
+	}
+	if !reflect.DeepEqual(models.GetModelsTelemetryConnectionPercentile(&tac.CurrentC), models.GetModelsTelemetryConnectionPercentile(nil)) {
+		tacResp.CurrentC  = convertToTelemetryConnectionPercentileResponse(tac.CurrentC)
 	}
 	return
 }
@@ -867,6 +891,10 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 			if attackDetail.SourceCount.PeakG > 0 {
 				peakG := attackDetail.SourceCount.PeakG
 				sourceCount.PeakG = &peakG
+			}
+			if attackDetail.SourceCount.CurrentG > 0 {
+				currentG := attackDetail.SourceCount.CurrentG
+				sourceCount.CurrentG = &currentG
 			}
 			attackDetailResp.SourceCount = sourceCount
 		}

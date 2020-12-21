@@ -540,7 +540,7 @@ DROP TABLE IF EXISTS `telemetry_configuration`;
 CREATE TABLE `telemetry_configuration` (
   `id`                           bigint(20)   NOT NULL AUTO_INCREMENT,
   `tele_setup_id`                bigint(20)   NOT NULL,
-  `measurement_interval`         enum('hour','day','week','month') NOT NULL,
+  `measurement_interval`         enum('5-minutes','10-minutes','30-minutes','hour','day','week','month') NOT NULL,
   `measurement_sample`           enum('second','5-seconds','30-seconds','minute','5-minutes','10-minutes','30-minutes','hour') NOT NULL,
   `low_percentile`               double       DEFAULT NULL,
   `mid_percentile`               double       DEFAULT NULL,
@@ -775,14 +775,15 @@ CREATE TABLE `telemetry_traffic` (
   `mid_percentile_g`  bigint(20) DEFAULT NULL,
   `high_percentile_g` bigint(20) DEFAULT NULL,
   `peak_g`            bigint(20) DEFAULT NULL,
+  `current_g`         bigint(20) DEFAULT NULL,
   `created`           datetime   DEFAULT NULL,
   `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `telemetry_traffic` (`id`, `prefix_type`, `prefix_type_id`, `traffic_type`, `unit`, `low_percentile_g`, `mid_percentile_g`, `high_percentile_g`, `peak_g`, `created`, `updated`)
+INSERT INTO `telemetry_traffic` (`id`, `prefix_type`, `prefix_type_id`, `traffic_type`, `unit`, `low_percentile_g`, `mid_percentile_g`, `high_percentile_g`, `peak_g`, `current_g`, `created`, `updated`)
 VALUES
-  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'packet-ps', 0, 100, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'packet-ps', 0, 100, 0, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 # telemetry_traffic trigger when any attribute of telemetry_traffic change
 # ------------------------------------------------------------------------------
@@ -792,7 +793,7 @@ CREATE TRIGGER telemetry_traffic_trigger AFTER UPDATE ON telemetry_traffic
 FOR EACH ROW
 BEGIN
   IF NEW.unit <> OLD.unit OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g
-     OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+     OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('telemetry_traffic', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
   END IF;
 END@@
@@ -807,7 +808,7 @@ CREATE TABLE `telemetry_total_attack_connection` (
   `id`                bigint(20) NOT NULL AUTO_INCREMENT,
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `prefix_type_id`    bigint(20) NOT NULL,
-  `percentile_type`   enum('LOW_PERCENTILE_C','MID_PERCENTILE_C','HIGH_PERCENTILE_C','PEAK_C') NOT NULL,
+  `percentile_type`   enum('LOW_PERCENTILE_C','MID_PERCENTILE_C','HIGH_PERCENTILE_C','PEAK_C','CURRENT_C') NOT NULL,
   `connection`        bigint(20) DEFAULT NULL,
   `embryonic`         bigint(20) DEFAULT NULL,
   `connection_ps`     bigint(20) DEFAULT NULL,
@@ -881,6 +882,7 @@ CREATE TABLE `telemetry_source_count` (
   `mid_percentile_g`      bigint(20),
   `high_percentile_g`     bigint(20),
   `peak_g`                bigint(20),
+  `current_g`             bigint(20),
   `created`               datetime DEFAULT NULL,
   `updated`               datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -893,7 +895,7 @@ DELIMITER @@
 CREATE TRIGGER telemetry_source_count_trigger AFTER UPDATE ON telemetry_source_count
 FOR EACH ROW
 BEGIN
-  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('telemetry_source_count', NEW.tele_attack_detail_id) INTO @x;
   END IF;
 END@@
@@ -1047,6 +1049,7 @@ CREATE TABLE `uri_filtering_traffic` (
   `mid_percentile_g`  bigint(20) DEFAULT NULL,
   `high_percentile_g` bigint(20) DEFAULT NULL,
   `peak_g`            bigint(20) DEFAULT NULL,
+  `current_g`         bigint(20) DEFAULT NULL,
   `created`           datetime   DEFAULT NULL,
   `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1060,7 +1063,7 @@ CREATE TRIGGER uri_filtering_traffic_trigger AFTER UPDATE ON uri_filtering_traff
 FOR EACH ROW
 BEGIN
   IF NEW.unit <> OLD.unit OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g
-     OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+     OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('uri_filtering_traffic', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
   END IF;
 END@@
@@ -1082,6 +1085,7 @@ CREATE TABLE `uri_filtering_traffic_per_protocol` (
   `mid_percentile_g`       bigint(20) DEFAULT NULL,
   `high_percentile_g`      bigint(20) DEFAULT NULL,
   `peak_g`                 bigint(20) DEFAULT NULL,
+  `current_g`              bigint(20) DEFAULT NULL,
   `created`                datetime   DEFAULT NULL,
   `updated`                datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1095,7 +1099,7 @@ CREATE TRIGGER uri_filtering_traffic_per_protocol_trigger AFTER UPDATE ON uri_fi
 FOR EACH ROW
 BEGIN
   IF NEW.unit <> OLD.unit OR NEW.protocol <> OLD.protocol OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g 
-    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('uri_filtering_traffic_per_protocol', NEW.tele_pre_mitigation_id) INTO @x;
   END IF;
 END@@
@@ -1116,6 +1120,7 @@ CREATE TABLE `uri_filtering_traffic_per_port` (
   `mid_percentile_g`       bigint(20) DEFAULT NULL,
   `high_percentile_g`      bigint(20) DEFAULT NULL,
   `peak_g`                 bigint(20) DEFAULT NULL,
+  `current_g`              bigint(20) DEFAULT NULL,
   `created`                datetime   DEFAULT NULL,
   `updated`                datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1129,7 +1134,7 @@ CREATE TRIGGER uri_filtering_traffic_per_port_trigger AFTER UPDATE ON uri_filter
 FOR EACH ROW
 BEGIN
   IF NEW.unit <> OLD.unit OR NEW.port <> OLD.port OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g 
-    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('uri_filtering_traffic_per_port', NEW.tele_pre_mitigation_id) INTO @x;
   END IF;
 END@@
@@ -1144,7 +1149,7 @@ CREATE TABLE `uri_filtering_total_attack_connection` (
   `id`                 bigint(20) NOT NULL AUTO_INCREMENT,
   `prefix_type`        enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `prefix_type_id`     bigint(20) NOT NULL,
-  `percentile_type`    enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
+  `percentile_type`    enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L','CURRENT_L') NOT NULL,
   `protocol`           int(11)  NOT NULL,
   `connection`         bigint(20) DEFAULT NULL,
   `embryonic`          bigint(20) DEFAULT NULL,
@@ -1178,7 +1183,7 @@ DROP TABLE IF EXISTS `uri_filtering_total_attack_connection_port`;
 CREATE TABLE `uri_filtering_total_attack_connection_port` (
   `id`                     bigint(20) NOT NULL AUTO_INCREMENT,
   `tele_pre_mitigation_id` bigint(20) NOT NULL,
-  `percentile_type`        enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
+  `percentile_type`        enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L','CURRENT_L') NOT NULL,
   `protocol`               int(11)  NOT NULL,
   `port`                   int(11)  NOT NULL,
   `connection`             bigint(20) DEFAULT NULL,
@@ -1250,6 +1255,7 @@ CREATE TABLE `uri_filtering_source_count` (
   `mid_percentile_g`      bigint(20),
   `high_percentile_g`     bigint(20),
   `peak_g`                bigint(20),
+  `current_g`             bigint(20),
   `created`               datetime DEFAULT NULL,
   `updated`               datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1263,7 +1269,7 @@ DELIMITER @@
 CREATE TRIGGER uri_filtering_source_count_trigger AFTER UPDATE ON uri_filtering_source_count
 FOR EACH ROW
 BEGIN
-  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('uri_filtering_source_count', NEW.tele_attack_detail_id) INTO @x;
   END IF;
 END@@

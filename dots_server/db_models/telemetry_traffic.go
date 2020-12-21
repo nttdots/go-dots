@@ -12,6 +12,7 @@ type TelemetryTraffic struct {
 	LowPercentileG  uint64    `xorm:"'low_percentile_g'"`
 	MidPercentileG  uint64    `xorm:"'mid_percentile_g'"`
 	HighPercentileG uint64    `xorm:"'high_percentile_g'"`
+	CurrentG        uint64    `xorm:"current_g"`
 	PeakG           uint64    `xorm:"'peak_g'"`
 	Created         time.Time `xorm:"created"`
 	Updated         time.Time `xorm:"updated"`
