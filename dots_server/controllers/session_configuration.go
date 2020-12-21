@@ -43,6 +43,8 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 	resp.SignalConfigs.IdleConfig.MaxRetransmit.SetMinMax(config.MaxRetransmitIdle)
 	resp.SignalConfigs.IdleConfig.AckTimeout.SetMinMax(config.AckTimeoutIdle)
 	resp.SignalConfigs.IdleConfig.AckRandomFactor.SetMinMax(config.AckRandomFactorIdle)
+	resp.SignalConfigs.MitigatingConfig.ProbingRate = messages.ProbingRate{}
+	resp.SignalConfigs.IdleConfig.ProbingRate       = messages.ProbingRate{}
 
 	// Check Uri-Path sid for session configuration request
 	sid, err := parseSidFromUriPath(request.PathInfo)

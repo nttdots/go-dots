@@ -132,7 +132,10 @@ type ConfigurationResponseConfig struct {
 	MaxRetransmit     IntCurrentMinMax     `json:"max-retransmit"     codec:"38"`
 	AckTimeout        DecimalCurrentMinMax `json:"ack-timeout"        codec:"39"`
 	AckRandomFactor   DecimalCurrentMinMax `json:"ack-random-factor"  codec:"40"`
+	ProbingRate       ProbingRate          `json:"probing-rate"       codec:"50"`
 }
+
+type ProbingRate struct {}
 
 func (v *IntCurrentMinMax) SetMinMax(pr *config.IntegerParameterRange) {
 	v.MinValue = pr.Start().(int)
@@ -398,6 +401,8 @@ func (m *ConfigurationResponse) String() (result string) {
 	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
 	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
 
+	result += fmt.Sprintf("     \"%s\": %+v\n", "probing-rate", m.SignalConfigs.MitigatingConfig.ProbingRate)
+
 	result += fmt.Sprintf("   \"%s\":\n", "idle-config")
 	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
 	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.MinValue)
@@ -429,6 +434,8 @@ func (m *ConfigurationResponse) String() (result string) {
 	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
 	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
 	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+
+	result += fmt.Sprintf("     \"%s\": %+v\n", "probing-rate", m.SignalConfigs.IdleConfig.ProbingRate)
 	return
 }
 
