@@ -175,7 +175,7 @@ const (
 	SOURCE_PREFIX    QueryType = "source-prefix"
 	SOURCE_PORT      QueryType = "source-port"
 	SOURCE_ICMP_TYPE QueryType = "source-icmp-type"
-	CONTENT          QueryType = "content"
+	CONTENT          QueryType = "c"
 )
 
 type Content string
