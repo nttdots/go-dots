@@ -226,7 +226,6 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 	if isMoreBlock {
 		r.pdu.MessageID = r.env.CoapSession().NewMessageID()
 		r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
-		r.pdu.SetOption(libcoap.OptionEtag, *eTag)
 
 		// Add block2 option for waiting for response
 		r.options[messages.BLOCK2] = block.ToString()
@@ -629,7 +628,6 @@ func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, e
 		// Renew token value to re-request remaining blocks
 		req.Token = pdu.Token
 		req.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
-		req.SetOption(libcoap.OptionEtag, *eTag)
 		// Run new message task for re-request remaining blocks of notification
 		env.Run(task.NewSessionConfigTask(
 			req,
@@ -819,7 +817,6 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
         }
 
         req.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
-        req.SetOption(libcoap.OptionEtag, *eTag)
 
         // Run new message task for re-request remaining blocks of notification
         newTask := task.NewMessageTask(

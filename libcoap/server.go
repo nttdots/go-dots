@@ -114,8 +114,7 @@ func export_method_handler(ctx   *C.coap_context_t,
 
     handler, ok := resource.handlers[request.Code]
     if ok {
-        etag := request.GetOptionOpaqueValue(OptionEtag)
-        itemKey := etag
+        itemKey := *tok.toString()
         if isObserveOne {
             itemKey = itemKey + mid
         }
@@ -152,7 +151,7 @@ func export_method_handler(ctx   *C.coap_context_t,
                                             C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])))
             resPdu,_ := resp.toGo()
 
-            HandleCache(resPdu, response, resource, context, isObserveOne, mid)
+            HandleCache(resPdu, response, resource, context, isObserveOne, itemKey)
         }
     }
 }
@@ -235,15 +234,9 @@ func SetBlockOptionFirstRequest(request *Pdu) {
  * Handle delete item if block is last block
  * Handle add item if item does not exist in cache
  */
-func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, isObserveOne bool, mid string) error {
+func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, isObserveOne bool, keyItem string) error {
     blockValue,_ := resp.GetOptionIntegerValue(OptionBlock2)
     block := IntToBlock(int(blockValue))
-    etag := resp.GetOptionOpaqueValue(OptionEtag)
-
-    keyItem := etag
-    if isObserveOne {
-        keyItem = keyItem + mid
-    }
 
     // Delete block in cache when block is last block
     // Set isBlockwiseInProgress = false as one of conditions to remove resource if it expired
