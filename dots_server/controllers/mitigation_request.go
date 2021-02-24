@@ -126,7 +126,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 				scopeStates.TargetPrefix = append(scopeStates.TargetPrefix, item.String())
 			}
 			for _, item := range mp.mitigation.TargetPortRange {
-				portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
+				portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: &item.UpperPort}
 				scopeStates.TargetPortRange = append(scopeStates.TargetPortRange, portRange)
 			}
 
@@ -138,11 +138,11 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 				scopeStates.SourcePrefix = append(scopeStates.SourcePrefix, item.String())
 			}
 			for _, item := range mp.mitigation.SourcePortRange {
-				portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
+				portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: &item.UpperPort}
 				scopeStates.SourcePortRange = append(scopeStates.SourcePortRange, portRange)
 			}
 			for _, item := range mp.mitigation.SourceICMPTypeRange {
-				typeRange := messages.ICMPTypeRangeResponse{LowerType: item.LowerType, UpperType: item.UpperType}
+				typeRange := messages.ICMPTypeRangeResponse{LowerType: item.LowerType, UpperType: &item.UpperType}
 				scopeStates.SourceICMPTypeRange = append(scopeStates.SourceICMPTypeRange, typeRange)
 			}
 

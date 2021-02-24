@@ -679,7 +679,7 @@ func getBaseline(customerId int, cuid string, teleSetupId int64) (baselineList [
 			baseline.TargetPrefix = append(baseline.TargetPrefix, vPrefix.String())
 		}
 		for _, vPortRange := range v.TargetPortRange {
-			baseline.TargetPortRange = append(baseline.TargetPortRange, messages.PortRangeResponse{LowerPort: vPortRange.LowerPort, UpperPort: vPortRange.UpperPort})
+			baseline.TargetPortRange = append(baseline.TargetPortRange, messages.PortRangeResponse{LowerPort: vPortRange.LowerPort, UpperPort: &vPortRange.UpperPort})
 		}
 		for _, vProtocol := range v.TargetProtocol.List() {
 			baseline.TargetProtocol = append(baseline.TargetProtocol, vProtocol)

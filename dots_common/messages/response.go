@@ -18,14 +18,14 @@ type MitigationScopeStatus struct {
 
 type PortRangeResponse struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	LowerPort int `json:"lower-port" codec:"8,omitempty"`
-	UpperPort int `json:"upper-port" codec:"9,omitempty"`
+	LowerPort int  `json:"lower-port" codec:"8,omitempty"`
+	UpperPort *int `json:"upper-port" codec:"9,omitempty"`
 }
 
 type ICMPTypeRangeResponse struct {
 	_struct bool `codec:",uint"`        //encode struct with "unsigned integer" keys
-	LowerType int `json:"lower-type" codec:"32771,omitempty"`
-	UpperType int `json:"upper-type" codec:"32772,omitempty"`
+	LowerType int  `json:"lower-type" codec:"32771,omitempty"`
+	UpperType *int `json:"upper-type" codec:"32772,omitempty"`
 }
 
 type ScopeStatus struct {
@@ -233,7 +233,9 @@ func (m *MitigationResponse) String() (result string) {
 		for k, v := range scope.TargetPortRange {
 			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "target-port-range", k+1)
 			result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "lower-port", v.LowerPort)
-			result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-port", v.UpperPort)
+			if v.UpperPort != nil {
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-port", *v.UpperPort)
+			}
 		}
 		for k, v := range scope.TargetProtocol {
 			result += fmt.Sprintf("%s\"%s[%d]\": %d\n", spaces6, "target-protocol", k+1, v)
@@ -253,12 +255,16 @@ func (m *MitigationResponse) String() (result string) {
 		for k, v := range scope.SourcePortRange {
 			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-call-home:source-port-range", k+1)
 			result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "lower-port", v.LowerPort)
-			result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-port", v.UpperPort)
+			if v.UpperPort != nil {
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-port", *v.UpperPort)
+			}
 		}
 		for k, v := range scope.SourceICMPTypeRange {
 			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-call-home:source-icmp-type-range", k+1)
 			result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "lower-type", v.LowerType)
-			result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-type", v.UpperType)
+			if v.UpperType != nil {
+				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "upper-type", *v.UpperType)
+			}
 		}
 		for k, v := range scope.AclList {
 			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-signal-control:acl-list", k+1)
@@ -333,7 +339,9 @@ func (m *MitigationResponsePut) String() (result string) {
 				for k, v := range scope.ConflictInformation.ConflictScope.TargetPortRange {
 					result += fmt.Sprintf("       \"%s[%d]\":\n", "target-port-range", k+1)
 					result += fmt.Sprintf("         \"%s\": %d\n", "lower-port", v.LowerPort)
-					result += fmt.Sprintf("         \"%s\": %d\n", "upper-port", v.UpperPort)
+					if v.UpperPort != nil {
+						result += fmt.Sprintf("         \"%s\": %d\n", "upper-port", *v.UpperPort)
+					}
 				}
 				for k, v := range scope.ConflictInformation.ConflictScope.TargetProtocol {
 					result += fmt.Sprintf("       \"%s[%d]\": %d\n", "target-protocol", k+1, v)
@@ -718,7 +726,9 @@ func ConvertTargetsResponseToStrings(prefixs []string, portRanges []PortRangeRes
 	for k, v := range portRanges {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn,"target-port-range", k+1)
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "lower-port", v.LowerPort)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "upper-port", v.UpperPort)
+		if v.UpperPort != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "upper-port", *v.UpperPort)
+		}
 	}
 	for k, v := range protocols {
 		result += fmt.Sprintf("%s\"%s[%d]\": %d\n", spacesn, "target-protocol", k+1, v)
@@ -1034,8 +1044,8 @@ type TalkerResponse struct {
 
 type SourceICMPTypeRangeResponse struct {
 	_struct   bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowerType int `json:"lower-type" codec:"32864,omitempty"`
-	UpperType int `json:"upper-type" codec:"32865,omitempty"`
+	LowerType int  `json:"lower-type" codec:"32864,omitempty"`
+	UpperType *int `json:"upper-type" codec:"32865,omitempty"`
 }
 
 /*
@@ -1258,12 +1268,16 @@ func (t TalkerResponse) String(spacesn string) (result string) {
 	for k, v := range t.SourcePortRange {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "source-port-range", k+1)
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "lower-port", v.LowerPort)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-port", v.UpperPort)
+		if v.UpperPort != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-port", *v.UpperPort)
+		}
 	}
 	for k, v := range t.SourceIcmpTypeRange {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "source-icmp-type-range", k+1)
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "lower-type", v.LowerType)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-type", v.UpperType)
+		if v.UpperType != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-type", *v.UpperType)
+		}
 	}
 	for k, v := range t.TotalAttackTraffic {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "total-attack-traffic", k+1)
@@ -1316,12 +1330,16 @@ func (t TelemetryTalkerResponse) String(spacesn string) (result string) {
 	for k, v := range t.SourcePortRange {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "source-port-range", k+1)
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "lower-port", v.LowerPort)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-port", v.UpperPort)
+		if v.UpperPort != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-port", *v.UpperPort)
+		}
 	}
 	for k, v := range t.SourceIcmpTypeRange {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "source-icmp-type-range", k+1)
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "lower-type", v.LowerType)
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-type", v.UpperType)
+		if v.UpperType != nil {
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-type", *v.UpperType)
+		}
 	}
 	for k, v := range t.TotalAttackTraffic {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "total-attack-traffic", k+1)

@@ -422,7 +422,7 @@ func convertToTargetResponse(target models.Targets) (targetResp *messages.Target
 		targetResp.TargetPrefix = append(targetResp.TargetPrefix, v.String())
 	}
 	for _, v := range target.TargetPortRange {
-		targetResp.TargetPortRange = append(targetResp.TargetPortRange, messages.PortRangeResponse{LowerPort: v.LowerPort, UpperPort: v.UpperPort})
+		targetResp.TargetPortRange = append(targetResp.TargetPortRange, messages.PortRangeResponse{LowerPort: v.LowerPort, UpperPort: &v.UpperPort})
 	}
 	for _, v := range target.TargetProtocol.List() {
 		targetResp.TargetProtocol = append(targetResp.TargetProtocol, v)
@@ -779,10 +779,10 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 				talkerResp.SpoofedStatus = v.SpoofedStatus
 				talkerResp.SourcePrefix = v.SourcePrefix.String()
 				for _, portRange := range v.SourcePortRange {
-					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.PortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort})
+					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.PortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: &portRange.UpperPort})
 				}
 				for _, typeRange := range v.SourceIcmpTypeRange {
-					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.SourceICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: typeRange.UpperType})
+					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.SourceICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: &typeRange.UpperType})
 				}
 				talkerResp.TotalAttackTraffic = convertToTrafficResponse(v.TotalAttackTraffic)
 				if len(v.TotalAttackConnection.LowPercentileL) > 0 || len(v.TotalAttackConnection.MidPercentileL) > 0 ||
@@ -905,10 +905,10 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 				talkerResp.SpoofedStatus = v.SpoofedStatus
 				talkerResp.SourcePrefix = v.SourcePrefix.String()
 				for _, portRange := range v.SourcePortRange {
-					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.PortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort})
+					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.PortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: &portRange.UpperPort})
 				}
 				for _, typeRange := range v.SourceIcmpTypeRange {
-					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.SourceICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: typeRange.UpperType})
+					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.SourceICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: &typeRange.UpperType})
 				}
 				talkerResp.TotalAttackTraffic = convertToTrafficResponse(v.TotalAttackTraffic)
 				if !reflect.DeepEqual(models.GetModelsTelemetryTotalAttackConnection(&v.TotalAttackConnection), models.GetModelsTelemetryTotalAttackConnection(nil)) {
