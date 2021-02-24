@@ -527,6 +527,10 @@ func RestartHeartBeatTask(pdu *libcoap.Pdu, env *task.Env) {
 func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu) {
 	env.StopSessionConfig()
 	maxAgeRes, _ := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
+	// If Max-Age Option is not returned in a response, the DOTS client initiates GET requests to refresh the configuration parameters each 60 seconds
+	if maxAgeRes < 0 {
+		maxAgeRes = 60
+	}
 	timeFresh := maxAgeRes - env.IntervalBeforeMaxAge()
 	// Block 2 option
 	blockSize := env.InitialRequestBlockSize()

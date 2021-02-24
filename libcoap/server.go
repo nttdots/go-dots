@@ -136,7 +136,7 @@ func export_method_handler(ctx   *C.coap_context_t,
             // handle max-age option
             maxAge, err := response.GetOptionIntegerValue(OptionMaxage)
             if err != nil || maxAge < 0 {
-                maxAge = 0
+                maxAge = -1
             }
             response.RemoveOption(OptionMaxage)
 
