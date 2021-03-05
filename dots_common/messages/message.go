@@ -377,7 +377,7 @@ func ParseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err err
 		if(strings.HasPrefix(uriPath, "cuid=")){
 			cuid = uriPath[strings.Index(uriPath, "cuid=")+5:]
 		} else if(strings.HasPrefix(uriPath, "cdid=")){
-			cuid = uriPath[strings.Index(uriPath, "cdid=")+5:]
+			cdid = uriPath[strings.Index(uriPath, "cdid=")+5:]
 		} else if(strings.HasPrefix(uriPath, "tmid=")){
 			tmidStr := uriPath[strings.Index(uriPath, "tmid=")+5:]
 			tmidValue, err := strconv.Atoi(tmidStr)

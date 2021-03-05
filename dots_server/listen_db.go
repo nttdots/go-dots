@@ -445,7 +445,7 @@ func handleNotifyUriFilteringTelemetryPreMitigation(mapData map[string]interface
 		if preMitigation.Cdid == "" {
 			query = uriPath + "/cuid=" + preMitigation.Cuid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
 		} else {
-			query = uriPath + "/cuid=" + preMitigation.Cuid + "cdid=" + preMitigation.Cdid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
+			query = uriPath + "/cdid=" + preMitigation.Cdid + "/cuid=" + preMitigation.Cuid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
 		}
 	}
 	// handle telemetry-notify-interval when DOTS server notify to DOTS client
