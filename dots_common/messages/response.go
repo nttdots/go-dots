@@ -135,7 +135,12 @@ type ConfigurationResponseConfig struct {
 	ProbingRate       ProbingRate          `json:"probing-rate"       codec:"50"`
 }
 
-type ProbingRate struct{}
+type ProbingRate struct {
+	_struct      bool `codec:",uint"` //encode struct with "unsigned integer" keys
+	CurrentValue *int  `json:"current-value" codec:"36,omitempty"`
+	MinValue     *int  `json:"min-value"     codec:"35,omitempty"`
+	MaxValue     *int  `json:"max-value"     codec:"34,omitempty"`
+}
 
 func (v *IntCurrentMinMax) SetMinMax(pr *config.IntegerParameterRange) {
 	v.MinValue = pr.Start().(int)
@@ -409,7 +414,20 @@ func (m *ConfigurationResponse) String() (result string) {
 	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
 	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
 
-	result += fmt.Sprintf("     \"%s\": %+v\n", "probing-rate", m.SignalConfigs.MitigatingConfig.ProbingRate)
+	if m.SignalConfigs.MitigatingConfig.ProbingRate.MinValue == nil && m.SignalConfigs.MitigatingConfig.ProbingRate.MaxValue == nil && m.SignalConfigs.MitigatingConfig.ProbingRate.CurrentValue == nil {
+		result += fmt.Sprintf("     \"%s\": %+v\n", "probing-rate", "{}")
+	} else {
+		result += fmt.Sprintf("     \"%s\": \n", "probing-rate")
+		if m.SignalConfigs.MitigatingConfig.ProbingRate.MinValue != nil {
+			result += fmt.Sprintf("       \"%s\": %d\n", "min-value", *m.SignalConfigs.MitigatingConfig.ProbingRate.MinValue)
+		}
+		if m.SignalConfigs.MitigatingConfig.ProbingRate.MaxValue != nil {
+			result += fmt.Sprintf("       \"%s\": %d\n", "max-value", *m.SignalConfigs.MitigatingConfig.ProbingRate.MaxValue)
+		}
+		if m.SignalConfigs.MitigatingConfig.ProbingRate.CurrentValue != nil {
+			result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.ProbingRate.CurrentValue)
+		}
+	}
 
 	result += fmt.Sprintf("   \"%s\":\n", "idle-config")
 	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
@@ -443,7 +461,20 @@ func (m *ConfigurationResponse) String() (result string) {
 	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
 	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
 
-	result += fmt.Sprintf("     \"%s\": %+v\n", "probing-rate", m.SignalConfigs.IdleConfig.ProbingRate)
+	if m.SignalConfigs.IdleConfig.ProbingRate.MinValue == nil && m.SignalConfigs.IdleConfig.ProbingRate.MaxValue == nil && m.SignalConfigs.IdleConfig.ProbingRate.CurrentValue == nil {
+		result += fmt.Sprintf("     \"%s\": %+v\n", "probing-rate", "{}")
+	} else {
+		result += fmt.Sprintf("     \"%s\": \n", "probing-rate")
+		if m.SignalConfigs.IdleConfig.ProbingRate.MinValue != nil {
+			result += fmt.Sprintf("       \"%s\": %d\n", "min-value", *m.SignalConfigs.IdleConfig.ProbingRate.MinValue)
+		}
+		if m.SignalConfigs.IdleConfig.ProbingRate.MaxValue != nil {
+			result += fmt.Sprintf("       \"%s\": %d\n", "max-value", *m.SignalConfigs.IdleConfig.ProbingRate.MaxValue)
+		}
+		if m.SignalConfigs.IdleConfig.ProbingRate.CurrentValue != nil {
+			result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.ProbingRate.CurrentValue)
+		}
+	}
 	return
 }
 
