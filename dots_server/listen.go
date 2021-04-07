@@ -447,7 +447,7 @@ func registerResourceMitigation(request *libcoap.Pdu, typ reflect.Type, controll
                 log.Debugf("Create observer in sub-resource with query: %+v", p)
                 tokenAll := resourceAll.GetTokenFromSubscribers()
                 sizeBlock2 := resourceAll.GetSizeBlock2FromSubscribers()
-                resourceOne.AddObserver(session, &p, tokenAll, &sizeBlock2)
+                resourceOne.AddObserver(session, &p, tokenAll, &sizeBlock2, uint8(request.Code))
             }
         }
     }
@@ -493,7 +493,7 @@ func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, contro
         // Create observer in sub resource to handle observation in case session configuration change
         resource := context.GetResourceByQuery(&resourcePath)
         if resource != nil {
-            AddOrDeleteObserve(resource ,session, &p, *token, observe, &block2Value, nil, nil)
+            AddOrDeleteObserve(resource ,session, &p, *token, observe, &block2Value, nil, nil, uint8(libcoap.RequestGet))
         }
     }
     return body, resourcePath, nil, is_unknown
@@ -581,7 +581,7 @@ func registerResource(query string, requestQueries []string, mid *int, tmid *int
     }
     resourceOne := context.GetResourceByQuery(&query)
     if resourceOne != nil {
-        AddOrDeleteObserve(resourceOne, session, &query, *token, observe, &block2Value, mid, tmid)
+        AddOrDeleteObserve(resourceOne, session, &query, *token, observe, &block2Value, mid, tmid, uint8(libcoap.RequestGet))
     }
 }
 
@@ -590,10 +590,10 @@ func registerResource(query string, requestQueries []string, mid *int, tmid *int
  * If observe = 0, add observer in resource
  * If observe = 1, delete observe in resource
  */
-func AddOrDeleteObserve(resource *libcoap.Resource, session *libcoap.Session, query *string, token []byte, observe int, block2Value *int, mid *int, tmid *int) {
+func AddOrDeleteObserve(resource *libcoap.Resource, session *libcoap.Session, query *string, token []byte, observe int, block2Value *int, mid *int, tmid *int, code uint8) {
     if observe == int(messages.Register) && !resource.IsObserved() {
         log.Debugf("Create observer in sub-resource with query: %+v", *query)
-        resource.AddObserver(session, query, token, block2Value)
+        resource.AddObserver(session, query, token, block2Value, code)
     } else if observe == int(messages.Deregister) && resource.IsObserved() {
         log.Debugf("Delete observer in sub-resource with query: %+v", resource.UriPath())
         resource.DeleteObserver(session, token)
@@ -677,7 +677,8 @@ func registerResourceTelemetryPreMitigation(request *libcoap.Pdu, typ reflect.Ty
                 resourceOne := context.GetResourceByQuery(&p)
                 log.Debugf("Create observer in sub-resource with query: %+v", p)
                 tokenAll := resourceAll.GetTokenFromSubscribers()
-                resourceOne.AddObserver(session, &p, tokenAll, nil)
+                sizeBlock2 := resourceAll.GetSizeBlock2FromSubscribers()
+                resourceOne.AddObserver(session, &p, tokenAll, &sizeBlock2, uint8(request.Code))
             }
         }
     }

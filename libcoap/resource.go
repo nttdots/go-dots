@@ -113,7 +113,7 @@ func (context *Context) GetResourceByQuery(query *string) (res *Resource) {
     return nil
 }
 
-func (resource *Resource) AddObserver(session *Session, query *string, token []byte, sizeBlock *int) {
+func (resource *Resource) AddObserver(session *Session, query *string, token []byte, sizeBlock *int, code uint8) {
     temp := string(token)
     tokenStr := &C.coap_binary_t{}
     tokenStr.s = (*C.uint8_t)(unsafe.Pointer(C.CString(temp)))
@@ -123,10 +123,10 @@ func (resource *Resource) AddObserver(session *Session, query *string, token []b
     queryStr := C.coap_new_string(C.size_t(clen))
     queryStr.s = (*C.uint8_t)(unsafe.Pointer(cquery))
     if sizeBlock == nil {
-        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, 0, C.coap_block_t{})
+        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, C.int(0), C.coap_block_t{}, C.uint8_t(code))
     } else {
         block2 := C.coap_create_block(0, 0, C.uint(*sizeBlock))
-        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, 1, block2)
+        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, C.int(1), block2, C.uint8_t(code))
     }
 }
 

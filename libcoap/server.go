@@ -81,42 +81,53 @@ func export_method_handler(ctx   *C.coap_context_t,
 
     // Handle observe: 
     // Set request.uri-path from resource.uri-path (so that it can by-pass uri-path check inside PrefixFilter)
+    var uri []string
+    uri_path := *(rsrc.uri_path.toString())
     if is_observe {
         request.Code = RequestGet
         request.Options = make([]Option, 0)
-
-        var uri []string
-        tmpUri := strings.Split(*(rsrc.uri_path.toString()), "?")
+        tmpUri := strings.Split(uri_path, "?")
         // Set uri-query and uri-path for handle observe
         if len(tmpUri) > 1 {
             uri = strings.Split(tmpUri[0], "/")
             queries := strings.Split(tmpUri[1], "&")
             uri = append(uri, queries...)
         } else {
-            uri = strings.Split(*(rsrc.uri_path.toString()), "/")
+            uri = strings.Split(uri_path, "/")
         }
         request.SetPath(uri)
         session.SetIsNotification(true)
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
     }
-    
-    token := tok.toBytes()
-    queryString := query.toString()
 
     // Identify the current notification progress is on resource one or resource all
     isObserveOne := false
-    mid := ""
-    resourceOneUriPaths := strings.Split(*(rsrc.uri_path.toString()), "/mid=")
-    if len(resourceOneUriPaths) > 1 && queryString == nil {
+    id := ""
+    resourceOneUriPaths := strings.Split(uri_path, "/mid=")
+    if len (resourceOneUriPaths) <= 1 {
+        resourceOneUriPaths = strings.Split(uri_path, "/tmid=")
+    }
+    if len(resourceOneUriPaths) > 1 {
         isObserveOne = true
-        mid = resourceOneUriPaths[1]
+        id = resourceOneUriPaths[1]
+    }
+    token := tok.toBytes()
+    queryString := query.toString()
+    if !is_observe && queryString != nil {
+        queryStr := "?" + *queryString
+        id += queryStr
+        uri_path += queryStr
+        resourceTmp := context.GetResourceByQuery(&uri_path)
+        if resourceTmp != nil {
+            resource = resourceTmp
+        }
     }
 
     handler, ok := resource.handlers[request.Code]
     if ok {
         itemKey := *tok.toString()
         if isObserveOne {
-            itemKey = itemKey + mid
+            itemKey = itemKey + id
         }
         response := Pdu{}
         res, isFound := caches.Get(itemKey)
@@ -131,6 +142,9 @@ func export_method_handler(ctx   *C.coap_context_t,
             response.Token = request.Token
         }
 
+        if is_observe {
+            response.SetPath(uri)
+        }
         response.fillC(resp)
         if request.Code == RequestGet && response.Code == ResponseContent {
             // handle max-age option

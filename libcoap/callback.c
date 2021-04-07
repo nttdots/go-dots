@@ -1,11 +1,56 @@
 
 #include "callback.h"
+#include "string.h"
 
-extern void export_response_handler(coap_context_t *ctx,
+/* Copied from the internal file in the libcoap */
+#define COAP_FREE_TYPE(Type, Object) coap_free(Object)
+#define LL_FOREACH(head,el)                                                                    \
+    LL_FOREACH2(head,el,next)
+
+#define LL_FOREACH2(head,el,next)                                                              \
+    for ((el) = (head); el; (el) = (el)->next)
+
+#define COAP_MALLOC_TYPE(Type) \
+  ((coap_##Type##_t *)coap_malloc(sizeof(coap_##Type##_t)))
+
+#define min(a,b) ((a) < (b) ? (a) : (b))
+
+#define LL_PREPEND(head,add)                                                                   \
+    LL_PREPEND2(head,add,next)
+
+#define LL_PREPEND2(head,add,next)                                                             \
+do {                                                                                           \
+  (add)->next = (head);                                                                        \
+  (head) = (add);                                                                              \
+} while (0)
+
+#define LL_DELETE(head,del)                                                                    \
+    LL_DELETE2(head,del,next)
+
+#define LL_DELETE2(head,del,next)                                                              \
+do {                                                                                           \
+  LDECLTYPE(head) _tmp;                                                                        \
+  if ((head) == (del)) {                                                                       \
+    (head)=(head)->next;                                                                       \
+  } else {                                                                                     \
+    _tmp = (head);                                                                             \
+    while (_tmp->next && (_tmp->next != (del))) {                                              \
+      _tmp = _tmp->next;                                                                       \
+    }                                                                                          \
+    if (_tmp->next) {                                                                          \
+      _tmp->next = (del)->next;                                                                \
+    }                                                                                          \
+  }                                                                                            \
+} while (0)
+
+#define LDECLTYPE(x) __typeof(x)
+/* End copied */
+
+extern coap_response_t export_response_handler(coap_context_t *ctx,
                             coap_session_t *sess,
                             coap_pdu_t *sent,
                             coap_pdu_t *received,
-                            coap_tid_t id);
+                            coap_mid_t id);
 
 extern void export_method_handler(coap_context_t *ctx,
                            coap_resource_t *rsrc,
@@ -26,7 +71,7 @@ extern void export_nack_handler(coap_context_t *ctx,
                     coap_session_t *sess,
                     coap_pdu_t *sent,
                     coap_nack_reason_t reason,
-                    coap_tid_t id);
+                    coap_mid_t id);
 
 extern void export_event_handler(coap_context_t *ctx,
                     coap_event_t event,
@@ -36,11 +81,11 @@ extern int export_validate_cn_call_back(const char *cn,
                         unsigned depth,
                         coap_strlist_t *cn_list);
 
-void response_handler(coap_context_t *context,
+coap_response_t response_handler(coap_context_t *context,
                       coap_session_t *session,
                       coap_pdu_t *sent,
                       coap_pdu_t *received,
-                      const coap_tid_t id) {
+                      const coap_mid_t id) {
 
     export_response_handler(context, session, sent, received, id);
 }
@@ -71,7 +116,7 @@ void nack_handler(coap_context_t *context,
                     coap_session_t *session,
                     coap_pdu_t *sent,
                     coap_nack_reason_t reason,
-                    const coap_tid_t id){
+                    const coap_mid_t id){
 
     export_nack_handler(context, session, sent, reason, id);
 }
@@ -224,7 +269,7 @@ char* coap_get_token_subscribers(coap_resource_t *resource) {
 int coap_get_size_block2_subscribers(coap_resource_t *resource) {
     coap_subscription_t *subscriber = resource->subscribers;
     if (subscriber != NULL) {
-        coap_block_t block2 = subscriber->block2;
+        coap_block_t block2 = subscriber->block;
         return block2.szx;
     }
     return 0;
@@ -275,3 +320,123 @@ size_t coap_handle_add_option(coap_pdu_t *pdu, uint16_t type, unsigned int val) 
     t = coap_add_option(pdu, type, coap_encode_var_safe(buf, sizeof(buf), val), buf);
     return t;
 }
+
+/* Copied from the internal file in the libcoap */
+coap_subscription_t *
+coap_add_observer(coap_resource_t *resource,
+                  coap_session_t *session,
+                  const coap_binary_t *token,
+                  coap_string_t *query,
+                  int has_block2,
+                  coap_block_t block,
+                  uint8_t code) {
+    coap_subscription_t *s;
+    assert( session );
+
+    /* Check if there is already a subscription for this peer. */
+    s = coap_find_observer(resource, session, token);
+    if (!s) {
+        /*
+        * Cannot allow a duplicate to be created for the same query as application
+        * may not be cleaning up duplicates.  If duplicate found, then original
+        * observer is deleted and a new one created with the new token
+        */
+        s = coap_find_observer_query(resource, session, query);
+        if (s) {
+            /* Delete old entry with old token */
+            coap_binary_t tmp_token = { s->token_length, s->token };
+            coap_delete_observer(resource, session, &tmp_token);
+            s = NULL;
+        }
+    }
+
+    /* We are done if subscription was found. */
+    if (s) {
+        if (s->query)
+            coap_delete_string(s->query);
+        s->query = query;
+        s->code = code;
+        return s;
+    }
+
+    /* Create a new subscription */
+    s = COAP_MALLOC_TYPE(subscription);
+
+    if (!s) {
+        /* query is not deleted so it can be used in the calling function
+        * which must give up ownership of query only if this function
+        * does not return NULL. */
+        return NULL;
+    }
+
+    // coap_subscription_init(s);
+    assert(s);
+    memset(s, 0, sizeof(coap_subscription_t));
+    s->session = coap_session_reference( session );
+
+    if (token && token->length) {
+        s->token_length = token->length;
+        memcpy(s->token, token->s, min(s->token_length, 8));
+    }
+
+    s->query = query;
+    s->has_block2 = has_block2;
+    s->block = block;
+    s->code = code;
+
+    /* add subscriber to resource */
+    LL_PREPEND(resource->subscribers, s);
+    coap_log(LOG_DEBUG, "create new subscription\n");
+    return s;
+}
+
+int coap_delete_observer(coap_resource_t *resource, coap_session_t *session,
+                     const coap_binary_t *token) {
+    coap_subscription_t *s;
+
+    s = coap_find_observer(resource, session, token);
+
+    if ( s && coap_get_log_level() >= LOG_DEBUG ) {
+        char outbuf[2 * 8 + 1] = "";
+        unsigned int i;
+        for ( i = 0; i < s->token_length; i++ )
+            snprintf( &outbuf[2 * i], 3, "%02x", s->token[i] );
+        coap_log(LOG_DEBUG, "removed observer with token '%s'\n", outbuf);
+    }
+
+    if (resource->subscribers && s) {
+        LL_DELETE(resource->subscribers, s);
+        coap_session_release( session );
+        if (s->query)
+            coap_delete_string(s->query);
+        coap_free(s);
+    }
+    return s != NULL;
+}
+
+coap_subscription_t * coap_find_observer(coap_resource_t *resource, coap_session_t *session, const coap_binary_t *token) {
+    coap_subscription_t *s;
+
+    assert(resource);
+    assert(session);
+
+    LL_FOREACH(resource->subscribers, s) {
+        if (s->session == session && (!token || (token->length == s->token_length && memcmp(token->s, s->token, token->length) == 0)))
+            return s;
+    }
+    return NULL;
+}
+
+coap_subscription_t * coap_find_observer_query(coap_resource_t *resource, coap_session_t *session, const coap_string_t *query) {
+    coap_subscription_t *s;
+
+    assert(resource);
+    assert(session);
+
+    LL_FOREACH(resource->subscribers, s) {
+        if (s->session == session && ((!query && !s->query) || (query && s->query && coap_string_equal(query, s->query))))
+            return s;
+    }
+    return NULL;
+}
+/* End copied */

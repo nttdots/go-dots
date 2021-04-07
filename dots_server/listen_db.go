@@ -485,6 +485,7 @@ func handleTelemetryNotifyIntreval(context *libcoap.Context, session *libcoap.Se
 			session.SetIsWaitNotification(false)
 			notificationList[session] = ""
 		} else {
+			session.SetIsWaitNotification(false)
 			return
 		}
 	}

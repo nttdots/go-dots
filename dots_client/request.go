@@ -790,7 +790,6 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
                 req.Type = pdu.Type
             }
             req.Code = libcoap.RequestGet
-            path  := ""
 
             // Create uri-path for block-wise transfer request from observation request query
             reqQuery := env.GetRequestQuery(string(pdu.Token))
@@ -798,18 +797,14 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
                 log.Error("Failed to get query param for re-request notification blocks")
                 return
             }
-            hex := hex.Dump(pdu.Data)
-            if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
-                messageCode := messages.MITIGATION_REQUEST
-                path = messageCode.PathString() + reqQuery.Query
-            } else if strings.Contains(hex, string(libcoap.IETF_TELEMETRY_PRE_MITIGATION)) {
-                messageCode := messages.TELEMETRY_PRE_MITIGATION_REQUEST
-                path = messageCode.PathString() + reqQuery.Query
-            } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
-                messageCode := messages.SESSION_CONFIGURATION
-                path = messageCode.PathString() + reqQuery.Query
-            }
-            req.SetPathString(path)
+
+			// Set uri-path and uri-query (if existed) for the get remain block
+			path := pdu.Path()
+			queries := pdu.Queries()
+			if len(queries) > 0 {
+				path = append(path, queries...)
+			}
+			req.SetPath(path)
 
             // Renew token value to re-request remaining blocks
             req.Token = pdu.Token

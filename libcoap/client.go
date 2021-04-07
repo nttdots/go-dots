@@ -88,7 +88,7 @@ func (session *Session) Send(pdu *Pdu) (err error) {
     if err != nil {
         return
     }
-    if C.COAP_INVALID_TID == C.coap_send(session.ptr, cpdu) {
+    if C.COAP_INVALID_MID == C.coap_send(session.ptr, cpdu) {
         err = errors.New("coap_session() -> COAP_INVALID_TID")
         return
     }
@@ -100,8 +100,8 @@ func export_response_handler(ctx      *C.coap_context_t,
                              sess     *C.coap_session_t,
                              sent     *C.coap_pdu_t,
                              received *C.coap_pdu_t,
-                             id       C.coap_tid_t) {
-
+                             id        C.coap_mid_t) (response C.coap_response_t) {
+    response = C.COAP_RESPONSE_FAIL
     context, ok := contexts[ctx]
     if !ok {
         return
@@ -128,7 +128,9 @@ func export_response_handler(ctx      *C.coap_context_t,
 
     if context.handler != nil {
         context.handler(context, session, req, res)
+        response = C.COAP_RESPONSE_OK
     }
+    return
 }
 
 //export export_method_from_server_handler
@@ -176,7 +178,7 @@ func export_nack_handler(ctx *C.coap_context_t,
 	sess *C.coap_session_t,
 	sent *C.coap_pdu_t,
 	reason C.coap_nack_reason_t,
-	id C.coap_tid_t) {
+	id C.coap_mid_t) {
 
 	context, ok := contexts[ctx]
 	if !ok {

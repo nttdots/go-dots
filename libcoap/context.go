@@ -116,7 +116,7 @@ func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
         setupData.version = C.COAP_DTLS_PKI_SETUP_VERSION
         setupData.pki_key.key_type = C.COAP_PKI_KEY_PEM
         setupData.verify_peer_cert        = 1
-        setupData.require_peer_cert       = 1
+        setupData.check_common_ca         = 1
         setupData.allow_self_signed       = 1
         setupData.allow_expired_certs     = 1
         setupData.cert_chain_validation   = 1

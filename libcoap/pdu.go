@@ -168,7 +168,7 @@ func (src *C.coap_pdu_t) toGo() (_ *Pdu, err error) {
     pdu := Pdu{
         Type(src._type),
         Code(src.code),
-        uint16(src.tid),
+        uint16(src.mid),
         token,
         options,
         data,
@@ -216,7 +216,7 @@ func (s *optsSorter) Minus(okey OptionKey) optsSorter {
 func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
     p._type = C.uint8_t(src.Type)
     p.code  = C.uint8_t(src.Code)
-    p.tid   = C.uint16_t(src.MessageID)
+    p.mid   = C.uint16_t(src.MessageID)
     // Set this field for coap_add_token()
     p.used_size = 0
 
