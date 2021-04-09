@@ -493,7 +493,7 @@ func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, contro
         // Create observer in sub resource to handle observation in case session configuration change
         resource := context.GetResourceByQuery(&resourcePath)
         if resource != nil {
-            AddOrDeleteObserve(resource ,session, &p, *token, observe, &block2Value, nil, nil, uint8(libcoap.RequestGet))
+            AddOrDeleteObserve(resource ,session, &resourcePath, *token, observe, &block2Value, nil, nil, uint8(libcoap.RequestGet))
         }
     }
     return body, resourcePath, nil, is_unknown

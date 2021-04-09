@@ -160,7 +160,9 @@ func (env *Env) Run(task Task) {
         env.heartbeatTask = t
 
     case *SessionConfigTask:
-        env.sessionConfigTask = t
+        if t.interval != 0 {
+            env.sessionConfigTask = t
+        }
     }
     go task.run(env.channel)
 }
