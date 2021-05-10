@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/shopspring/decimal"
 	"bytes"
 	"errors"
 	"flag"
@@ -17,6 +16,8 @@ import (
 	"time"
 	"encoding/json"
 	"encoding/hex"
+	"github.com/shopspring/decimal"
+	"github.com/ugorji/go/codec"
 
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_client/task"
@@ -199,6 +200,15 @@ func heartbeatHandler() libcoap.MethodHandler {
 	return func(ctx *libcoap.Context, rsrc *libcoap.Resource, sess *libcoap.Session, request *libcoap.Pdu, token *[]byte, query *string, response *libcoap.Pdu) {
 		log.Info("Handle receive heartbeat from server")
 		log.Debugf("request.Data=\n%s", hex.Dump(request.Data))
+		// Decode heartbeat message
+		dec := codec.NewDecoder(bytes.NewReader(request.Data), common.NewCborHandle())
+		var v messages.HeartBeatRequest
+		err := dec.Decode(&v)
+		if err != nil {
+			log.WithError(err).Warn("CBOR Decode failed.")
+			return
+		}
+		log.Infof("        CBOR decoded: %+v", v.String())
 		body, errMsg := messages.ValidateHeartBeatMechanism(request)
 		response.MessageID = request.MessageID
         response.Token     = request.Token

@@ -9,6 +9,8 @@ import (
     "strconv"
     "fmt"
     "time"
+    "bytes"
+    "github.com/ugorji/go/codec"
 
     "github.com/nttdots/go-dots/dots_common"
     "github.com/nttdots/go-dots/dots_common/messages"
@@ -155,6 +157,15 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         // handle heartbeat mechanism
         if isHeartBeatMechanism {
             log.Debug("Handle heartbeat mechanism")
+            // Decode heartbeat message
+            dec := codec.NewDecoder(bytes.NewReader(request.Data), dots_common.NewCborHandle())
+            var v messages.HeartBeatRequest
+            err := dec.Decode(&v)
+            if err != nil {
+                log.WithError(err).Warn("CBOR Decode failed.")
+                return
+            }
+            log.Infof("        CBOR decoded: %+v", v.String())
             body, errMsg := messages.ValidateHeartBeatMechanism(request)
             if body == nil && errMsg != "" {
                 log.Error(errMsg)
