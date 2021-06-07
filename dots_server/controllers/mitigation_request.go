@@ -91,13 +91,6 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	scopes := make([]messages.ScopeStatus, 0)
 
 	for _, mp := range mpp {
-
-		// Check expired mitigation
-		if mp.mitigation.Lifetime == 0 {
-			// Skip this mitigation, monitor lifetime thread will delete it later
-			continue
-		}
-
 		var startedAt messages.Uint64String
 		var bytesDropped, pktsDropped, bpsDropped, ppsDropped int
 		log.WithField("protection", mp.protection).Debug("Protection: ")
@@ -1157,6 +1150,10 @@ func UpdateMitigationStatus(customerId int, cuid string, mid int, mitigationScop
 
 		if currentScope.Status == newStatus {
 			log.Debugf("The Mitigation with id %+v have already had status: %+v.", mitigationScopeId, newStatus)
+			if newStatus == models.Terminated {
+				DeleteMitigation(customerId, cuid, mid, mitigationScopeId)
+				models.RemoveActiveMitigationRequest(currentScope.MitigationScopeId)
+			}
 			return nil
 		}
 

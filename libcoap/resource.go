@@ -1,8 +1,8 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
-#include <coap2/coap.h>
+#cgo LDFLAGS: -lcoap-3-openssl
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -11,6 +11,8 @@ import "unsafe"
 type Resource struct {
     ptr      *C.coap_resource_t
     handlers map[Code]MethodHandler
+    session  *Session
+    isObserved  bool
     isRemovable bool
     isBlockwiseInProgress bool
     customerId   *int
@@ -26,8 +28,7 @@ type Attr struct {
     ptr   *C.coap_attr_t
 }
 
-var uriFilter = make(map[string]int)
-var uriFilterMitigation = make(map[string]int)
+var uriFilter = make(map[string]string)
 var resources = make(map[*C.coap_resource_t] *Resource)
 
 func GetAllResource() map[*C.coap_resource_t] *Resource {
@@ -49,7 +50,7 @@ func ResourceInit(uri *string, flags ResourceFlags) *Resource {
     uripath := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(curi)), C.size_t(urilen))
     ptr := C.coap_resource_init(uripath, C.int(flags) | C.COAP_RESOURCE_FLAGS_RELEASE_URI)
 
-    resource := &Resource{ ptr, make(map[Code]MethodHandler), false, false, nil}
+    resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, false, false, nil}
     resources[ptr] = resource
     return resource
 }
@@ -58,7 +59,7 @@ func ResourceUnknownInit() *Resource {
 
 	ptr := C.coap_resource_unknown_init(nil)
 
-	resource := &Resource{ ptr, make(map[Code]MethodHandler), false, false, nil}
+	resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, false, false, nil}
 	resources[ptr] = resource
 	return resource
 
@@ -123,10 +124,10 @@ func (resource *Resource) AddObserver(session *Session, query *string, token []b
     queryStr := C.coap_new_string(C.size_t(clen))
     queryStr.s = (*C.uint8_t)(unsafe.Pointer(cquery))
     if sizeBlock == nil {
-        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, C.int(0), C.coap_block_t{}, C.uint8_t(code))
+        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, C.int(0), C.coap_block_t{}, C.coap_pdu_code_t(code))
     } else {
         block2 := C.coap_create_block(0, 0, C.uint(*sizeBlock))
-        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, C.int(1), block2, C.uint8_t(code))
+        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, C.int(1), block2, C.coap_pdu_code_t(code))
     }
 }
 
@@ -163,21 +164,18 @@ func (resource *Resource) UriPath() string {
     return ""
 }
 
-func (resource *Resource) IsObserved() bool {
-    isObserved := C.coap_check_subscribers(resource.ptr)
-    if isObserved == 1 {
-        return true
-    } else {
-        return false
-    }
+// Set session for resource
+func (resource *Resource) SetSession(session *Session) {
+    resource.session = session
 }
 
-func (resource *Resource) IsNotifying() bool {
-    if C.coap_check_dirty(resource.ptr) == 1 {
-        return true
-    } else {
-        return false
-    }
+// Set resource is observed
+func (resource *Resource) SetIsObserved(isObserved bool) {
+    resource.isObserved = isObserved
+}
+
+func (resource *Resource) IsObserved() bool {
+    return resource.isObserved
 }
 
 /*
@@ -211,12 +209,12 @@ func (resource *Resource) GetCustomerId() *int {
 }
 
 // Set uri filter
-func SetUriFilter(key string, value int) {
+func SetUriFilter(key string, value string) {
     uriFilter[key] = value
 }
 
 // Get uri filter by value
-func GetUriFilterByValue(value int) []string {
+func GetUriFilterByValue(value string) []string {
     var keys []string
     for k, v:= range uriFilter {
         if v == value {
@@ -227,7 +225,7 @@ func GetUriFilterByValue(value int) []string {
 }
 
 // Delete uri filter by value
-func DeleteUriFilterByValue(value int) {
+func DeleteUriFilterByValue(value string) {
     for k, v:= range uriFilter {
         if v == value {
             delete(uriFilter, k)
@@ -240,40 +238,6 @@ func DeleteUriFilterByKey(key string) {
     for k, _:= range uriFilter {
         if k == key {
             delete(uriFilter, k)
-        }
-    }
-}
-
-// Set uri filter mitigation
-func SetUriFilterMitigation(key string, value int) {
-    uriFilterMitigation[key] = value
-}
-
-// Get uri filter mitigation by value
-func GetUriFilterMitigationByValue(value int) []string {
-    var keys []string
-    for k, v:= range uriFilterMitigation {
-        if v == value {
-            keys = append(keys, k)
-        }
-    }
-    return keys
-}
-
-// Delete uri filter mitigation by value
-func DeleteUriFilterMitigationByValue(value int) {
-    for k, v:= range uriFilterMitigation {
-        if v == value {
-            delete(uriFilterMitigation, k)
-        }
-    }
-}
-
-// Delete uri filter mitigation by key
-func DeleteUriFilterMitigationByKey(key string) {
-    for k, _:= range uriFilterMitigation {
-        if k == key {
-            delete(uriFilterMitigation, k)
         }
     }
 }

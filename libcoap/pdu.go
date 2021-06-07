@@ -1,8 +1,8 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
-#include <coap2/coap.h>
+#cgo LDFLAGS: -lcoap-3-openssl
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -153,7 +153,7 @@ func (src *C.coap_pdu_t) toGo() (_ *Pdu, err error) {
             break
         }
 
-        k := OptionKey(it._type)
+        k := OptionKey(it.number)
         v := C.GoBytes(unsafe.Pointer(C.coap_opt_value(opt)), C.int(C.coap_opt_length(opt)))
         options = append(options, Option{ k, v })
     }
@@ -177,7 +177,7 @@ func (src *C.coap_pdu_t) toGo() (_ *Pdu, err error) {
 }
 
 func (src *Pdu) toC(session *Session) (_ *C.coap_pdu_t, err error) {
-    p := C.coap_new_pdu(session.ptr)
+    p := C.coap_new_pdu(C.coap_pdu_type_t(src.Type), C.coap_pdu_code_t(src.Code), session.ptr)
     if p == nil {
         err = errors.New("coap_new_pdu() failed.")
         return
@@ -214,9 +214,9 @@ func (s *optsSorter) Minus(okey OptionKey) optsSorter {
 }
 
 func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
-    p._type = C.uint8_t(src.Type)
-    p.code  = C.uint8_t(src.Code)
-    p.mid   = C.uint16_t(src.MessageID)
+    p._type = C.coap_pdu_type_t(src.Type)
+    p.code  = C.coap_pdu_code_t(src.Code)
+    p.mid   = C.int(src.MessageID)
     // Set this field for coap_add_token()
     p.used_size = 0
 

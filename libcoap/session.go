@@ -1,9 +1,9 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
+#cgo LDFLAGS: -lcoap-3-openssl
 #cgo darwin LDFLAGS: -L /usr/local/opt/openssl@1.1/lib
-#include <coap2/coap.h>
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -328,8 +328,7 @@ func (session *Session) HandleForgetNotification(pdu *Pdu) {
 // Get session from resource
 func GetSessionFromResource(resource *Resource) *Session {
     if resource != nil {
-        sessiontr := C.coap_get_session_from_resource(resource.ptr)
-        return sessions[sessiontr]
+        return resource.session
     }
     return nil
 }

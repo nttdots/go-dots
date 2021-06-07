@@ -60,8 +60,10 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             log.Warnf("Observer: %+v", err)
         } else {
             if observe == int(messages.Register) {
+                resource.SetIsObserved(true)
                 log.Debugf("Register Mitigation or Session Configuration or Telemetry Pre-Mitigation Observe.")
             } else if observe == int(messages.Deregister) {
+                resource.SetIsObserved(false)
                 log.Debugf("Deregister Mitigation or Session Configuration or Telemetry Pre-Mitigation Observe.")
             }
         }
@@ -132,7 +134,8 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                     break;
                 } else if strings.HasPrefix(uri[i], "tm") {
                     log.Debug("Request path includes 'tm'. Cbor decode with type TelemetryPreMitigationRequest")
-                    badReqMsg, err := handlePreMitigationMessageInterval(session, customer, request.Path())
+                    badReqMsg := ""
+                    badReqMsg, err = handlePreMitigationMessageInterval(session, customer, request.Path())
                     if badReqMsg != "" {
                         response.Code = libcoap.ResponseBadRequest
                         response.Type = responseType(request.Type)
@@ -278,11 +281,11 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             if isTelemetryRequest {
                 // Register observer for resources of telemetry pre-mitigation
                 responses := res.Body.(messages.TelemetryPreMitigationResponse).TelemetryPreMitigation.PreOrOngoingMitigation
-                registerResourceAllTelemetryPreMitigation(responses, request, context, observe, session, token, block2Value, resource.UriPath(), typ, controller, is_unknown)
+                registerUriPathObserve(responses, request, observe, isTelemetryRequest)
             } else {
                 // Register observer for resources of all mitigation
                 responses := res.Body.(messages.MitigationResponse).MitigationScope.Scopes
-                registerResourceAllMitigation(responses, request, context, observe, session, token, block2Value, resource.UriPath(), typ, controller, is_unknown)
+                registerUriPathObserve(responses, request, observe, isTelemetryRequest)
             }
         }
 
@@ -292,7 +295,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         }
 
         // Set resource status to removable and delete the mitigation when it is terminated
-        if resource.IsNotifying() && request.Code == libcoap.RequestGet && res.Body != nil &&
+        if request.Code == libcoap.RequestGet && res.Body != nil &&
            reflect.TypeOf(res.Body) == reflect.TypeOf(messages.MitigationResponse{}) &&
            *res.Body.(messages.MitigationResponse).MitigationScope.Scopes[0].Status == models.Terminated {
             handleExpiredMitigation(request.Path(), resource, customer, context, models.Terminated)
@@ -351,7 +354,7 @@ func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libco
         return
     }
 
-    ctx.NewEndpoint(addr, libcoap.ProtoDtls)
+    ctx.NewEndpoint(addr, libcoap.Proto(libcoap.ProtoDtls))
     return ctx, nil
 }
 
@@ -453,12 +456,6 @@ func registerResourceMitigation(request *libcoap.Pdu, typ reflect.Type, controll
                 ra.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
                 context.AddResource(ra)
                 log.Debugf("Create observer in sub-resource with query: %+v", pa[0])
-            } else if resourceAll.IsObserved() {
-                resourceOne := context.GetResourceByQuery(&p)
-                log.Debugf("Create observer in sub-resource with query: %+v", p)
-                tokenAll := resourceAll.GetTokenFromSubscribers()
-                sizeBlock2 := resourceAll.GetSizeBlock2FromSubscribers()
-                resourceOne.AddObserver(session, &p, tokenAll, &sizeBlock2, uint8(request.Code))
             }
         }
     }
@@ -504,95 +501,57 @@ func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, contro
         // Create observer in sub resource to handle observation in case session configuration change
         resource := context.GetResourceByQuery(&resourcePath)
         if resource != nil {
-            AddOrDeleteObserve(resource ,session, &resourcePath, *token, observe, &block2Value, nil, nil, uint8(libcoap.RequestGet))
+            AddOrDeleteObserve(resource ,session, &resourcePath, *token, observe, &block2Value, uint8(libcoap.RequestGet))
         }
     }
     return body, resourcePath, nil, is_unknown
 }
 
 /*
- * Register resource for all mitigation
- * Get all mitigation
- *     observe = 0, add observe resource for each mitigation with token of resource all
- *     observe = 1, delete observe resource for each mitigation with token of resource all
+ * Register uri path (contains query, uri_path get all) is observe
+ *     observe = 0, add uri_path into uriFilter list
+ *     observe = 1, delete observe from uriFilter list
  * 
  */
-func registerResourceAllMitigation(responses []messages.ScopeStatus, request *libcoap.Pdu, context *libcoap.Context, observe int,
-    session *libcoap.Session, token *[]byte, block2Value int, uriPathResource string, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) {
-    if len(responses) >= 1 {
-        var query string
-        uriPathSplit := strings.Split(request.PathString(), "/mid=")
-        for _, res := range responses {
-            if len(uriPathSplit) > 1 {
-                query = request.PathString()
-            } else {
-                query = request.PathString() + "/mid=" + strconv.Itoa(res.MitigationId)
-            }
-            registerResource(query, request.Queries(), &res.MitigationId, nil, context, observe, session, token, block2Value, typ, controller, is_unknown)
-        }
-    }
-}
-
-/*
- * Register/De-register resource for all telemetry pre-mitigation
- * Get all telemetry pre-mitigation
- *     observe = 0, add observe resource for each telemetry pre-mitigation with token of resource all
- *     observe = 1, delete observe resource for each telemetry pre-mitigation  with token of resource all
- */
-func registerResourceAllTelemetryPreMitigation(responses []messages.PreOrOngoingMitigationResponse, request *libcoap.Pdu, context *libcoap.Context, observe int,
-    session *libcoap.Session, token *[]byte, block2Value int, uriPathResource string, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) {
-    if len(responses) >= 1 {
-        var query string
-        uriPathSplit := strings.Split(request.PathString(), "/tmid=")
-        for _, res := range responses {
-            if len(uriPathSplit) > 1 {
-                query = request.PathString()
-            } else {
-                query = request.PathString() + "/tmid=" + strconv.Itoa(res.Tmid)
-            }
-            registerResource(query, request.Queries(), nil, &res.Tmid, context, observe, session, token, block2Value, typ, controller, is_unknown)
-        }
-    }
-}
-
-// Register resource
-func registerResource(query string, requestQueries []string, mid *int, tmid *int, context *libcoap.Context, observe int,
-    session *libcoap.Session, token *[]byte, block2Value int, typ reflect.Type, controller controllers.ControllerInterface, is_unknown bool) {
+func registerUriPathObserve(responses interface{}, request *libcoap.Pdu, observe int, isTelemetryRequest bool) {
+    query := ""
+    requestQueries := request.Queries()
     if len(requestQueries) > 0 {
-        var tmpUriQuery string
-        resource := context.GetResourceByQuery(&query)
         for _, v := range requestQueries {
-            if tmpUriQuery != ""{
-                tmpUriQuery += "&"
-                tmpUriQuery += v
+            if query != ""{
+                query += "&"
+                query += v
             } else {
-                tmpUriQuery += v
-            }
-        }
-        query += "?"
-        query += tmpUriQuery
-        r := libcoap.ResourceInit(&query, 0)
-        r.TurnOnResourceObservable()
-        resourceQuery := context.GetResourceByQuery(&query)
-        if resource != nil {
-            resource.DeleteObserver(session, *token)
-            if resourceQuery == nil {
-                r.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
-                context.AddResource(r)
-                log.Debugf("Create sub resource (uri-path contains uri-query) to handle observation later : uri-path=%+v", query)
-            }
-        }
-        if observe == int(messages.Register) {
-            if mid != nil {
-                libcoap.SetUriFilterMitigation(query, *mid)
-            } else if tmid != nil {
-                libcoap.SetUriFilter(query, *tmid)
+                query += "?"
+                query += v
             }
         }
     }
-    resourceOne := context.GetResourceByQuery(&query)
-    if resourceOne != nil {
-        AddOrDeleteObserve(resourceOne, session, &query, *token, observe, &block2Value, mid, tmid, uint8(libcoap.RequestGet))
+    requestPath := request.PathString()
+    requestPathSplit := strings.Split(requestPath, "/mid")
+    if len(requestPathSplit) <= 1 {
+        requestPathSplit = strings.Split(requestPath, "/tmid")
+    }
+    if observe == int(messages.Register) {
+        if len(requestPathSplit) > 1 && query != "" {
+            uriPath := requestPath + query
+            libcoap.SetUriFilter(uriPath, requestPath)
+        } else if len(requestPathSplit) <= 1 && !isTelemetryRequest {
+            resList := responses.([]messages.ScopeStatus)
+            for _, res := range resList {
+                uriPath := requestPath+"/mid="+strconv.Itoa(res.MitigationId)+query
+                libcoap.SetUriFilter(uriPath, requestPath)
+            }
+        } else if len(requestPathSplit) <= 1 && isTelemetryRequest {
+            resList := responses.([]messages.PreOrOngoingMitigationResponse)
+            for _, res := range resList {
+                uriPath := requestPath+"/tmid="+strconv.Itoa(res.Tmid)+query
+                libcoap.SetUriFilter(uriPath, requestPath)
+        }
+    } else {
+        // TODO
+        libcoap.DeleteUriFilterByKey(requestPath)
+    }
     }
 }
 
@@ -601,18 +560,13 @@ func registerResource(query string, requestQueries []string, mid *int, tmid *int
  * If observe = 0, add observer in resource
  * If observe = 1, delete observe in resource
  */
-func AddOrDeleteObserve(resource *libcoap.Resource, session *libcoap.Session, query *string, token []byte, observe int, block2Value *int, mid *int, tmid *int, code uint8) {
+func AddOrDeleteObserve(resource *libcoap.Resource, session *libcoap.Session, query *string, token []byte, observe int, block2Value *int, code uint8) {
     if observe == int(messages.Register) && !resource.IsObserved() {
         log.Debugf("Create observer in sub-resource with query: %+v", *query)
         resource.AddObserver(session, query, token, block2Value, code)
     } else if observe == int(messages.Deregister) && resource.IsObserved() {
         log.Debugf("Delete observer in sub-resource with query: %+v", resource.UriPath())
         resource.DeleteObserver(session, token)
-        if mid != nil {
-            libcoap.DeleteUriFilterMitigationByKey(*query)
-        } else if tmid != nil {
-            libcoap.DeleteUriFilterByKey(*query)
-        }
     }
 }
 
@@ -672,6 +626,7 @@ func registerResourceTelemetryPreMitigation(request *libcoap.Pdu, typ reflect.Ty
         r.RegisterHandler(libcoap.RequestPost,   toMethodHandler(controller.HandlePost, typ, controller, !is_unknown))
         r.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete, typ, controller, !is_unknown))
         context.AddResource(r)
+        r.SetSession(session)
         log.Debugf("Create sub resource to handle observation later : uri-path=%+v", p)
         // Create sub resource for handle get all with observe option
         pa := strings.Split(p, "/tmid")
@@ -683,13 +638,8 @@ func registerResourceTelemetryPreMitigation(request *libcoap.Pdu, typ reflect.Ty
                 ra.RegisterHandler(libcoap.RequestGet,    toMethodHandler(controller.HandleGet, typ, controller, !is_unknown))
                 ra.RegisterHandler(libcoap.RequestDelete, toMethodHandler(controller.HandleDelete, typ, controller, !is_unknown))
                 context.AddResource(ra)
+                ra.SetSession(session)
                 log.Debugf("Create observer in sub-resource with query: %+v", pa[0])
-            } else if resourceAll.IsObserved() {
-                resourceOne := context.GetResourceByQuery(&p)
-                log.Debugf("Create observer in sub-resource with query: %+v", p)
-                tokenAll := resourceAll.GetTokenFromSubscribers()
-                sizeBlock2 := resourceAll.GetSizeBlock2FromSubscribers()
-                resourceOne.AddObserver(session, &p, tokenAll, &sizeBlock2, uint8(request.Code))
             }
         }
     }
@@ -700,7 +650,7 @@ func registerResourceTelemetryPreMitigation(request *libcoap.Pdu, typ reflect.Ty
 func handlePreMitigationMessageInterval(session *libcoap.Session, customer *models.Customer, path []string) (string, error) {
     // DOTS agents MUST NOT sent pre-mitigation telemetry messages to the same peer more frequently than once every 'telemetry-notify-interval'
     if !session.GetIsNotification() && session.GetIsReceivedPreMitigation() {
-        errMessage := fmt.Sprint("DOTS agents MUST NOT sent pre-mitigation telemetry messages to the same peer more frequently than once every 'telemetry-notify-interval'")
+        errMessage := fmt.Sprintln("DOTS agents MUST NOT sent pre-mitigation telemetry messages to the same peer more frequently than once every 'telemetry-notify-interval'")
         log.Warn(errMessage)
         return errMessage, nil
     }
@@ -731,22 +681,13 @@ func handlePreMitigationMessageInterval(session *libcoap.Session, customer *mode
 
 // Handle remove telemetry pre-mitigation resource
 func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *libcoap.Context, uriFilterPreMitigationList []db_models.UriFilteringTelemetryPreMitigation) {
-    uriPathSplit := strings.Split(request.PathString(), "/tmid=")
-    query := request.PathString()
-    resource := context.GetResourceByQuery(&query)
+    requestPath := request.PathString()
+    requestPathSplit := strings.Split(requestPath, "/tmid=")
+    resource := context.GetResourceByQuery(&requestPath)
     if resource != nil {
         resource.ToRemovableResource()
-        if len(uriPathSplit) > 1 {
-            // Delete resource all
-            queryAll := uriPathSplit[0]
-            resourceAll := context.GetResourceByQuery(&queryAll)
-            if resourceAll != nil {
-                resourceAll.ToRemovableResource()
-            }
-            // Delete resource (uri-path contains uri-query)
-            tmid, _ := strconv.Atoi(uriPathSplit[1])
-            deleteUriQueryResource(context, tmid)
-        } else {
+        libcoap.DeleteUriFilterByKey(requestPath)
+        if len(requestPathSplit) <= 1 {
             // Delete resource one of telemetry pre-mitigation
             for _, v := range uriFilterPreMitigationList {
                 queryOne := resource.UriPath()+"/tmid="+strconv.Itoa(v.Tmid)
@@ -755,23 +696,12 @@ func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *l
                     resourceOne.ToRemovableResource()
                 }
                 // Delete resource (uri-path contains uri-query)
-                deleteUriQueryResource(context, v.Tmid)
+                libcoap.DeleteUriFilterByKey(queryOne)
             }
         }
     }
 }
 
-// Delete resource (uri-path contains uri-query)
-func deleteUriQueryResource(context *libcoap.Context, tmid int) {
-    uriQueries := libcoap.GetUriFilterByValue(tmid)
-    for _, v := range uriQueries {
-        resourceQuery := context.GetResourceByQuery(&v)
-        if resourceQuery != nil {
-            resourceQuery.ToRemovableResource()
-        }
-    }
-    libcoap.DeleteUriFilterByValue(tmid)
-}
 
 // Get telemetry-notify-interval
 func getTelemeytryNotifyInterval(customerId int, cuid string) (interval int, err error) {

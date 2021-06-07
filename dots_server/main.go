@@ -85,7 +85,7 @@ func main() {
 	libcoap.CreateNewCache(int(messages.EXCHANGE_LIFETIME), config.CacheInterval)
 
 	// Register nack handler
-    signalCtx.RegisterNackHandler(func(_ *libcoap.Context, session *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
+    signalCtx.RegisterNackHandler(func(session *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
 			// Pong message
 			env.HandleResponse(sent)
@@ -99,7 +99,7 @@ func main() {
 	})
 
 	// Register event handler
-	signalCtx.RegisterEventHandler(func(_ *libcoap.Context, event libcoap.Event, session *libcoap.Session){
+	signalCtx.RegisterEventHandler(func(session *libcoap.Session, event libcoap.Event){
 		env.SetCoapSession(session)
 		if event == libcoap.EventSessionConnected {
 			// Session connected: Add session to map
@@ -139,7 +139,7 @@ func main() {
  */
 func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 	for _, resource := range libcoap.GetAllResource() {
-        if resource.GetRemovableResource() == true && (resource.GetIsBlockwiseInProgress() == false || !resource.IsObserved()) {
+        if resource.GetRemovableResource() && (!resource.GetIsBlockwiseInProgress() || !resource.IsObserved()) {
 			path := strings.Split(resource.UriPath(), "?")
 			_, cuid, mid, err := messages.ParseURIPath(strings.Split(path[0], "/"))
 			if err != nil {
@@ -156,7 +156,8 @@ func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 				if resourceAll != nil {
 					resourceAll.SetIsBlockwiseInProgress(false)
 				}
-				libcoap.DeleteUriFilterMitigationByValue(*mid)
+				libcoap.DeleteUriFilterByKey(resource.UriPath())
+				libcoap.DeleteUriFilterByValue(resource.UriPath())
 			}
 
 			log.Debugf("Delete the sub-resource (uri-path=%+v)", resource.UriPath())

@@ -51,7 +51,7 @@ const (
 	URI_FILTERING_ICMP_TYPE_RANGE              TableName = "uri_filtering_icmp_type_range"
 )
 
-var notificationList = make(map[*libcoap.Session] string)
+var notificationList = make(map[*libcoap.Session] *libcoap.Resource)
 
 /*
  * Listen for notification from DB
@@ -129,7 +129,8 @@ ILOOP:
 				cid := mapData["cid"].(string)
 				uriPath := messages.MessageTypes[messages.SESSION_CONFIGURATION].Path
 				query := uriPath + "/customerId=" + cid
-				context.EnableResourceDirty(query)
+				resource := context.GetResourceByQuery(&query)
+				context.EnableResourceDirty(resource)
 			} else if mapData["table_trigger"].(string) == string(PREFIX_ADDRESS_RANGE) {
 
 				// re-check ip address range for each mitigation request, acl that are inactive
@@ -209,29 +210,15 @@ func isDuplicateMitigation(mids []int, mid int) bool {
 
 // Hanlde notify mitigation
 func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int, status int, context *libcoap.Context, isNotifyTelemetryAttributes bool) {
+	var queryPathAll string
+	var queryPathOne string
 	uriPath := messages.MessageTypes[messages.MITIGATION_REQUEST].Path
-	var queryPaths []string
-	uriQueryPaths := libcoap.GetUriFilterMitigationByValue(mid)
-	if len(uriQueryPaths) > 0 {
-		// Enable uri-query resource
-		for _, v := range uriQueryPaths {
-			uriQueryPath := strings.Split(v, "?")
-			queries := strings.Split(uriQueryPath[1], "&")
-			s, err := models.GetMitigationScope(0, "", 0, id, queries)
-			if err != nil {
-				log.Errorf("[MySQL-Notification]: Failed to get mitigation scope")
-				return
-			}
-			if s != nil {
-				queryPaths = append(queryPaths, v)
-			}
-		}
+	if cdid == "" {
+		queryPathAll = uriPath + "/cuid=" + cuid
+		queryPathOne = queryPathAll + "/mid=" + strconv.Itoa(mid)
 	} else {
-		if cdid == "" {
-			queryPaths = append(queryPaths, uriPath + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid))
-		} else {
-			queryPaths = append(queryPaths, uriPath + "/cdid="+ cdid + "/cuid=" + cuid + "/mid=" + strconv.Itoa(mid))
-		}
+		queryPathAll = uriPath + "/cdid="+ cdid + "/cuid=" + cuid
+		queryPathOne = queryPathAll + "/mid=" + strconv.Itoa(mid)
 	}
 
 	// Check duplicate mitigation when PUT a new mitigation before delete an expired mitigation
@@ -263,32 +250,33 @@ func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int
 		}
 		// Notify status changed to those clients who are observing this mitigation request
 		log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-		for _, query := range queryPaths {
-			resource := context.EnableResourceDirty(query)
-			// If mitigation status was changed to Terminated and resource is not being observed => set resource status to removable
-			var isObserved bool
-			if resource != nil {
-				isObserved = resource.IsObserved()
-			} else {
-				log.Warnf("[MySQL-Notification]: Not found any resource with query: %+v", query)
-			}
+		// Get sub-resource corresponding to uriPath
+		resourceOne := context.GetResourceByQuery(&queryPathOne)
+		resourceAll := context.GetResourceByQuery(&queryPathAll)
+		// If mitigation status was changed to Terminated and resource is not being observed => set resource status to removable
+		var isObserved bool
+		var resource *libcoap.Resource
+		if resourceOne != nil && !resourceOne.IsObserved() && resourceAll != nil && resourceAll.IsObserved(){
+			resource = resourceAll
+			isObserved = resourceAll.IsObserved()
+		} else if resourceOne != nil {
+			resource = resourceOne
+			isObserved = resourceOne.IsObserved()
+		}
+		context.EnableResourceDirty(resource)
 
-			if status == models.Terminated && !isObserved {
-				controllers.DeleteMitigation(cid, cuid, mid, id)
-				// Keep resource when there is a duplication
-				if !dup && resource != nil {
-					resource.ToRemovableResource()
-				}
-				// If the last mitigation is expired, the server will remove the resource all
-				if len(mids) == 1 && mids[0] == mid && resource != nil {
-					uriPathSplit := strings.Split(resource.UriPath(), "/mid")
-					resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
-					if resourceAll != nil {
-						resourceAll.ToRemovableResource()
-					}
-				}
-				break
+		if status == models.Terminated && !isObserved {
+			controllers.DeleteMitigation(cid, cuid, mid, id)
+			// Keep resource when there is a duplication
+			if !dup && resourceOne != nil {
+				resourceOne.ToRemovableResource()
 			}
+			// If the last mitigation is expired, the server will remove the resource all
+			if len(mids) == 1 && mids[0] == mid && resourceAll != nil {
+				resourceAll.ToRemovableResource()
+			}
+		} else if isObserved && resourceOne != nil {
+			resourceOne.SetIsObserved(true)
 		}
 	}
 }
@@ -319,6 +307,10 @@ func handleNotifyACL(aclIDString string, context *libcoap.Context) {
 
 	// Get control filtering by acl name
 	controlFilteringList, err := models.GetControlFilteringByACLName(acl.Name)
+	if err != nil {
+		log.Errorf("[MySQL-Notification]: Failed to Get control filtering")
+		return
+	}
 	// If the acl's activation-type is not-type(the acl is deleted or expired) and the control filtering doesn't exist, remove acl from DB
 	if len(controlFilteringList) == 0 && acl.Id > 0 && *acl.ACL.ActivationType == data_types.ActivationType_NotType {
 		log.Debug("[MySQL-Notification]: Remove ACL from DB")
@@ -339,7 +331,8 @@ func handleNotifyACL(aclIDString string, context *libcoap.Context) {
 			if mitigation.Customer.Id == client.CustomerId && mitigation.ClientIdentifier == client.Cuid {
 				query := uriPath + "/cuid=" + mitigation.ClientIdentifier + "/mid=" + strconv.Itoa(mitigation.MitigationId)
 				log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-				context.EnableResourceDirty(query)
+				resource := context.GetResourceByQuery(&query)
+				context.EnableResourceDirty(resource)
 			}
 			// If the acl's activation-type is not-type(the acl is deleted or expired), remove acl and control filtering
 			if *acl.ACL.ActivationType == data_types.ActivationType_NotType {
@@ -422,56 +415,44 @@ func handleNotifyUriFilteringTelemetryPreMitigation(mapData map[string]interface
 		log.Debug("[MySQL-Notification]: DOTS server will not notify to DOST client due to 'server-originated-telemetry' set to false")
 		return
 	}
-	var query string
-	uriQueryPaths := libcoap.GetUriFilterByValue(preMitigation.Tmid)
-	log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-	if len(uriQueryPaths) > 0 {
-		// Enable uri-query resource
-		for _, v := range uriQueryPaths {
-			uriQueryPath := strings.Split(v, "?")
-			queries := strings.Split(uriQueryPath[1], "&")
-			isExist, err := models.IsExistTelemetryPreMitigationValueByQueries(queries, preMitigation.CustomerId, preMitigation.Cuid, preMitigation)
-			if err != nil {
-				return
-			}
-			if isExist {
-				query = v
-				break
-			}
-		}
-	} else {
-		// Enable resource
-		uriPath := messages.MessageTypes[messages.TELEMETRY_PRE_MITIGATION_REQUEST].Path
-		if preMitigation.Cdid == "" {
-			query = uriPath + "/cuid=" + preMitigation.Cuid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
-		} else {
-			query = uriPath + "/cdid=" + preMitigation.Cdid + "/cuid=" + preMitigation.Cuid + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
-		}
-	}
-	// handle telemetry-notify-interval when DOTS server notify to DOTS client
-	enableResourceDirtyTelemetryPreMitigation(context, query, preMitigation.CustomerId, preMitigation.Cuid)
-}
 
-// Enable resource dirty of telemetry pre-mitigation
-func enableResourceDirtyTelemetryPreMitigation(context *libcoap.Context, query string, customerId int, cuid string) {
-	if query != "" {
-		resource := context.GetResourceByQuery(&query)
-		session := libcoap.GetSessionFromResource(resource)
-		if session != nil {
-			if session.IsWaitNotification() {
-				log.Debugf("Session(%+v).Waiting the telemetry-notify-interval pass...", session.String())
-				notificationList[session] = query
-			} else {
-				context.EnableResourceDirty(query)
-				session.SetIsWaitNotification(true)
-				go handleTelemetryNotifyIntreval(context, session, customerId, cuid)
-			}
+	var queryPathAll string
+	var queryPathOne string
+	// Enable resource
+	uriPath := messages.MessageTypes[messages.TELEMETRY_PRE_MITIGATION_REQUEST].Path
+	if preMitigation.Cdid == "" {
+		queryPathAll = uriPath + "/cuid=" + preMitigation.Cuid
+		queryPathOne = queryPathAll + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
+	} else {
+		queryPathAll = uriPath + "/cdid="+ preMitigation.Cdid + "/cuid=" + preMitigation.Cuid
+		queryPathOne = queryPathAll + "/tmid=" + strconv.Itoa(preMitigation.Tmid)
+	}
+	// Notify status changed to those clients who are observing this mitigation request
+	log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
+	// Get sub-resource corresponding to uriPath
+	resourceOne := context.GetResourceByQuery(&queryPathOne)
+	resourceAll := context.GetResourceByQuery(&queryPathAll)
+	var resource *libcoap.Resource
+	if resourceOne != nil && !resourceOne.IsObserved() && resourceAll != nil && resourceAll.IsObserved(){
+		resource = resourceAll
+	} else if resourceOne != nil {
+		resource = resourceOne
+	}
+	session := libcoap.GetSessionFromResource(resource)
+	if session != nil {
+		if session.IsWaitNotification() {
+			log.Debugf("Session(%+v).Waiting the telemetry-notify-interval pass...", session.String())
+			notificationList[session] = resource
+		} else {
+			context.EnableResourceDirty(resource)
+			session.SetIsWaitNotification(true)
+			go handleTelemetryNotifyInterval(context, session, preMitigation.CustomerId, preMitigation.Cuid)
 		}
 	}
 }
 
 // Thread telemetry notify interval
-func handleTelemetryNotifyIntreval(context *libcoap.Context, session *libcoap.Session, customerId int, cuid string) {
+func handleTelemetryNotifyInterval(context *libcoap.Context, session *libcoap.Session, customerId int, cuid string) {
 	for {
 		interval, err := getTelemeytryNotifyInterval(customerId, cuid)
 		if err != nil {
@@ -479,11 +460,11 @@ func handleTelemetryNotifyIntreval(context *libcoap.Context, session *libcoap.Se
 			return
 		}
 		time.Sleep(time.Duration(interval) * time.Second)
-		query := notificationList[session]
-		if query != "" {
-			context.EnableResourceDirty(query)
+		resource := notificationList[session]
+		if resource != nil {
+			context.EnableResourceDirty(resource)
 			session.SetIsWaitNotification(false)
-			notificationList[session] = ""
+			notificationList[session] = nil
 		} else {
 			session.SetIsWaitNotification(false)
 			return

@@ -1,10 +1,10 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
+#cgo LDFLAGS: -lcoap-3-openssl
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#include <coap2/coap.h>
+#include <coap3/coap.h>
 
 void set_sockaddr_in(struct sockaddr_in* sa, char* ip, int port) {
     sa->sin_family = AF_INET;

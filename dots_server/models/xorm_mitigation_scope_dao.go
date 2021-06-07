@@ -671,7 +671,12 @@ func GetMitigationScope(customerId int, clientIdentifier string, mitigationId in
 
 	// Calculate the remaining lifetime
 	currentTime := time.Now()
-	remainingLifetime := dbMitigationScope.Lifetime - int(currentTime.Sub(dbMitigationScope.Updated).Seconds())
+	var remainingLifetime int
+	if dbMitigationScope.Status == Terminated {
+		remainingLifetime = 0
+	} else {
+		remainingLifetime = dbMitigationScope.Lifetime - int(currentTime.Sub(dbMitigationScope.Updated).Seconds())
+	}
 	if remainingLifetime > 0 {
 		mitigationScope.Lifetime = remainingLifetime
 	} else if dbMitigationScope.Lifetime == int(messages.INDEFINITE_LIFETIME) {

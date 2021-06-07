@@ -1,8 +1,8 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
-#include <coap2/coap.h>
+#cgo LDFLAGS: -lcoap-3-openssl
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -12,11 +12,10 @@ import "strings"
 import log "github.com/sirupsen/logrus"
 import cache "github.com/patrickmn/go-cache"
 
-
 // across invocations, sessions are not 'eq'
 type MethodHandler func(*Context, *Resource, *Session, *Pdu, *[]byte, *string, *Pdu)
 
-type EventHandler func(*Context, Event, *Session)
+type EventHandler func(*Session, Event)
 
 type EndPoint struct {
     ptr *C.coap_endpoint_t
@@ -41,19 +40,19 @@ func (context *Context) ContextSetPSK(identity string, key []byte) {
 }
 
 //export export_method_handler
-func export_method_handler(ctx   *C.coap_context_t,
-                           rsrc  *C.coap_resource_t,
+func export_method_handler(rsrc  *C.coap_resource_t,
                            sess  *C.coap_session_t,
                            req   *C.coap_pdu_t,
-                           tok   *C.coap_string_t,
                            query *C.coap_string_t,
                            resp  *C.coap_pdu_t) {
-
+    ctx := C.coap_session_get_context(sess)
+    if ctx == nil {
+        return
+    }
     context, ok := contexts[ctx]
     if !ok {
         return
     }
-
     resource, ok := resources[rsrc]
     if !ok {
         return
@@ -68,6 +67,7 @@ func export_method_handler(ctx   *C.coap_context_t,
         is_observe = true
         req = resp
     }
+    tok := C.coap_get_token_from_request_pdu(req)
 
     session, ok := sessions[sess]
     if !ok {
@@ -82,8 +82,24 @@ func export_method_handler(ctx   *C.coap_context_t,
     // Handle observe: 
     // Set request.uri-path from resource.uri-path (so that it can by-pass uri-path check inside PrefixFilter)
     var uri []string
-    uri_path := *(rsrc.uri_path.toString())
+    uri_path := resource.UriPath()
     if is_observe {
+        uriFilterList := GetUriFilterByValue(uri_path)
+        for _, uriFilter := range uriFilterList {
+            uriFilterSplit := strings.Split(uriFilter, "?")
+            if len(uriFilterList) > 1 {
+                uriFilter = uriFilterSplit[0]
+            }
+            resourceTmp := context.GetResourceByQuery(&uriFilter)
+            if resourceTmp != nil && resource.IsObserved() {
+                if !strings.Contains(uri_path, "/mid") && !strings.Contains(uri_path, "/tmid") {
+                    resourceTmp.SetIsObserved(false)
+                }
+                resource = resourceTmp
+                uri_path = uriFilter
+                break
+            }
+        }
         request.Code = RequestGet
         request.Options = make([]Option, 0)
         tmpUri := strings.Split(uri_path, "?")
@@ -153,15 +169,11 @@ func export_method_handler(ctx   *C.coap_context_t,
                 maxAge = -1
             }
             response.RemoveOption(OptionMaxage)
-
-            coapToken := &C.coap_binary_t{}
-            coapToken.s = req.token
-            coapToken.length = C.size_t(len(string(*token)))
             // If the process is observation, request is nil
             if is_observe {
                 req = nil
             }
-            C.coap_add_data_blocked_response(resource.ptr, session.ptr, req, resp, coapToken, C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR, C.int(maxAge),
+            C.coap_add_data_blocked_response(req, resp, C.uint16_t(C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR), C.int(maxAge),
                                             C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])))
             resPdu,_ := resp.toGo()
 
@@ -182,10 +194,11 @@ func newEvent (ev C.coap_event_t) Event {
 }
 
 //export export_event_handler
-func export_event_handler(ctx *C.coap_context_t,
-	event C.coap_event_t,
-	sess *C.coap_session_t) {
-
+func export_event_handler(sess *C.coap_session_t, event C.coap_event_t) {
+    ctx := C.coap_session_get_context(sess)
+    if ctx == nil {
+        return
+    }
     context, ok := contexts[ctx]
 	if !ok {
 		return
@@ -198,7 +211,7 @@ func export_event_handler(ctx *C.coap_context_t,
     
     // Run event handler when session is connected or disconnected
 	if context.eventHandler != nil {
-		context.eventHandler(context, newEvent(event), session)
+		context.eventHandler(session, newEvent(event))
 	}
 }
 

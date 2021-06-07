@@ -232,6 +232,7 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 	// else display data received from server
 	if isMoreBlock {
 		r.pdu.MessageID = r.env.CoapSession().NewMessageID()
+		r.pdu.RemoveOption(libcoap.OptionObserve)
 		r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
 
 		// Add block2 option for waiting for response

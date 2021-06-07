@@ -145,7 +145,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 		env = orgEnv
 	}
 
-	ctx.RegisterEventHandler(func(_ *libcoap.Context, event libcoap.Event, session *libcoap.Session){
+	ctx.RegisterEventHandler(func( session *libcoap.Session, event libcoap.Event){
 		if event == libcoap.EventSessionConnected {
 			if orgEnv != nil {
 				orgEnv.SetReplacingSession(session)
@@ -176,7 +176,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 		}
 	})
 
-	ctx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
+	ctx.RegisterNackHandler(func(_ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
 			// Pong message
 			handleResponse(env, sent)

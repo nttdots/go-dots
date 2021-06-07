@@ -1,11 +1,9 @@
 package libcoap
 
-import "C"
-
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
+#cgo LDFLAGS: -lcoap-3-openssl
 #cgo darwin LDFLAGS: -L /usr/local/opt/openssl@1.1/lib
-#include <coap2/coap.h>
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -222,11 +220,7 @@ func (context *Context) RunOnce(timeout time.Duration) time.Duration {
 /*
  * Enable resource dirty and return the resource
  */
-func (context *Context) EnableResourceDirty(query string) (resource *Resource) {
-    log.Debugf("[EnableDirty]: Enable resource dirty: query: %+v", query)
-
-    // Get sub-resource corresponding to uriPath
-    resource = context.GetResourceByQuery(&query)
+func (context *Context) EnableResourceDirty(resource *Resource) {
     if (resource != nil) {
         log.Debugf("[EnableDirty]: Found resource to notify (uriPath=%+v)", resource.UriPath())
         // Mark resource as dirty and do notifying
@@ -235,7 +229,6 @@ func (context *Context) EnableResourceDirty(query string) (resource *Resource) {
     } else {
         log.Warn("[EnableDirty]: Not found any resource to set dirty.")
     }
-    return
 }
 
 /*
