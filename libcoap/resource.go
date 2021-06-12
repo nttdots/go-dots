@@ -13,9 +13,12 @@ type Resource struct {
     handlers map[Code]MethodHandler
     session  *Session
     isObserved  bool
+    observe     int
     isRemovable bool
+    blockSize   *int
     isBlockwiseInProgress bool
     customerId   *int
+    checkDeleted bool
 }
 
 type ResourceFlags int
@@ -50,7 +53,7 @@ func ResourceInit(uri *string, flags ResourceFlags) *Resource {
     uripath := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(curi)), C.size_t(urilen))
     ptr := C.coap_resource_init(uripath, C.int(flags) | C.COAP_RESOURCE_FLAGS_RELEASE_URI)
 
-    resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, false, false, nil}
+    resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, 0, false, nil, false, nil, false}
     resources[ptr] = resource
     return resource
 }
@@ -59,7 +62,7 @@ func ResourceUnknownInit() *Resource {
 
 	ptr := C.coap_resource_unknown_init(nil)
 
-	resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, false, false, nil}
+	resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, 0, false, nil, false, nil, false}
 	resources[ptr] = resource
 	return resource
 
@@ -112,31 +115,6 @@ func (context *Context) GetResourceByQuery(query *string) (res *Resource) {
         return
     }
     return nil
-}
-
-func (resource *Resource) AddObserver(session *Session, query *string, token []byte, sizeBlock *int, code uint8) {
-    temp := string(token)
-    tokenStr := &C.coap_binary_t{}
-    tokenStr.s = (*C.uint8_t)(unsafe.Pointer(C.CString(temp)))
-    tokenStr.length = C.size_t(len(temp))
-    cquery, clen := cstringOrNil(query)
-    if cquery == nil { return }
-    queryStr := C.coap_new_string(C.size_t(clen))
-    queryStr.s = (*C.uint8_t)(unsafe.Pointer(cquery))
-    if sizeBlock == nil {
-        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, C.int(0), C.coap_block_t{}, C.coap_pdu_code_t(code))
-    } else {
-        block2 := C.coap_create_block(0, 0, C.uint(*sizeBlock))
-        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, C.int(1), block2, C.coap_pdu_code_t(code))
-    }
-}
-
-func (resource *Resource) DeleteObserver(session *Session, token []byte) {
-    temp := string(token)
-    tokenStr := &C.coap_binary_t{}
-    tokenStr.s = (*C.uint8_t)(unsafe.Pointer(C.CString(temp)))
-    tokenStr.length = C.size_t(len(temp))
-    C.coap_delete_observer(resource.ptr, session.ptr, tokenStr)
 }
 
 func (resource *Resource) ToRemovableResource() {
@@ -213,15 +191,14 @@ func SetUriFilter(key string, value string) {
     uriFilter[key] = value
 }
 
-// Get uri filter by value
-func GetUriFilterByValue(value string) []string {
-    var keys []string
-    for k, v:= range uriFilter {
-        if v == value {
-            keys = append(keys, k)
+// Get uri filter by key
+func GetUriFilterByKey(key string) (values []string) {
+    for k, value:= range uriFilter {
+        if k == key {
+            values = append(values, value)
         }
     }
-    return keys
+    return
 }
 
 // Delete uri filter by value
@@ -240,4 +217,33 @@ func DeleteUriFilterByKey(key string) {
             delete(uriFilter, k)
         }
     }
+}
+
+// Set block size
+func (resource *Resource) SetBlockSize(blockSize *int) {
+    resource.blockSize = blockSize
+}
+
+// Get block size
+func (resource *Resource) GetBlockSize() *int {
+    return resource.blockSize
+}
+
+// Increase observe number
+func (resource *Resource) IncreaseObserveNumber() {
+    resource.observe ++
+}
+
+// Get observe number
+func (resource *Resource) GetObserveNumber() int {
+    return resource.observe
+}
+// Set check deleted
+func (resource *Resource) SetCheckDeleted(checkDeleted bool) {
+    resource.checkDeleted = checkDeleted
+}
+
+// Get check deleted
+func (resource *Resource) CheckDeleted() bool {
+    return resource.checkDeleted
 }

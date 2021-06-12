@@ -254,20 +254,16 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 		// Handle Session config task and ping task after receive response message
 		// If this is response of Get session config without abnormal, restart ping task with latest parameters
 		// Check if the request does not contains sid option -> if not, does not restart ping task when receive response
-		// Else if this is response of Put session config with code Created -> stop the current session config task
 		// Else if this is response of Delete session config with code Deleted -> stop the current session config task
 		log.Debugf("r.queryParam=%v", r.queryParams)
 		if (r.requestName == "session_configuration") {
 			if (r.method == "GET") && (response.Code == libcoap.ResponseContent) && len(r.queryParams) > 0 {
 				log.Debug("Get with sid - Client update new values to system session configuration and restart ping task.")
 				RestartHeartBeatTask(response, r.env)
+				env.StopSessionConfig()
 				RefreshSessionConfig(response, r.env, r.pdu, true)
-			} else if (r.method == "PUT") && (response.Code == libcoap.ResponseCreated) {
-				log.Debug("The new session configuration has been created. Stop the current session config task")
-				RefreshSessionConfig(response, r.env, r.pdu, false)
-			} else if (r.method == "DELETE") && (response.Code == libcoap.ResponseDeleted) {
-				log.Debug("The current session configuration has been deleted. Stop the current session config task")
-				RefreshSessionConfig(response, r.env, r.pdu, false)
+			} else if r.method == "DELETE" && response.Code == libcoap.ResponseDeleted {
+				env.StopSessionConfig()
 			}
 		}
 	}
@@ -523,8 +519,7 @@ func RestartHeartBeatTask(pdu *libcoap.Pdu, env *task.Env) {
 
 /*
  * Refresh session config
- * 1. Stop current session config task
- * 2. Check timeFresh = 'maxAgeOption' - 'intervalBeforeMaxAge'
+ * Check timeFresh = 'maxAgeOption' - 'intervalBeforeMaxAge'
  *    If timeFresh > 0, Run new session config task
  *    Else, Not run new session config task
  * parameter:
@@ -533,7 +528,6 @@ func RestartHeartBeatTask(pdu *libcoap.Pdu, env *task.Env) {
  *    message: request message
  */
 func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu, isGet bool) {
-	env.StopSessionConfig()
 	maxAgeRes, _ := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
 	// If Max-Age Option is not returned in a response, the DOTS client initiates GET requests to refresh the configuration parameters each 60 seconds
 	if maxAgeRes < 0 && isGet {
@@ -736,6 +730,7 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
 		// Not refresh session config in case session config task is nil (server send notification after reset by expired Max-age)
 		sessionTask := env.SessionConfigTask()
 		if sessionTask != nil {
+			env.StopSessionConfig()
 			RefreshSessionConfig(pdu, env, sessionTask.MessageTask(), true)
 		}
 	} else if strings.Contains(hex, string(libcoap.IETF_TELEMETRY_PRE_MITIGATION)) {

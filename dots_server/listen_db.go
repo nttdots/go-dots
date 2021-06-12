@@ -123,14 +123,20 @@ ILOOP:
 				}
 				handleNotifyMitigation(id, cid, cuid, cdid, mid, status, context, false)
 			} else if mapData["table_trigger"].(string) == string(SESSION_CONFIGURATION) {
-
-				// Notify session configuration changed to those clients who are observing this mitigation request
-				log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
-				cid := mapData["cid"].(string)
-				uriPath := messages.MessageTypes[messages.SESSION_CONFIGURATION].Path
-				query := uriPath + "/customerId=" + cid
-				resource := context.GetResourceByQuery(&query)
-				context.EnableResourceDirty(resource)
+				sidStr := mapData["sid"].(string)
+				sid, err := strconv.Atoi(sidStr)
+				if err != nil {
+					log.Errorf("[MySQL-Notification]:Failed to parse string to integer")
+					return
+				}
+				if sid > 0 {
+					// Notify session configuration changed to those clients who are observing this mitigation request
+					log.Debug("[MySQL-Notification]: Send notification if obsevers exists")
+					uriPath := messages.MessageTypes[messages.SESSION_CONFIGURATION].Path
+					query := uriPath + "/sid=" + sidStr
+					resource := context.GetResourceByQuery(&query)
+					context.EnableResourceDirty(resource)
+				}
 			} else if mapData["table_trigger"].(string) == string(PREFIX_ADDRESS_RANGE) {
 
 				// re-check ip address range for each mitigation request, acl that are inactive
@@ -258,18 +264,22 @@ func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int
 		var resource *libcoap.Resource
 		if resourceOne != nil && !resourceOne.IsObserved() && resourceAll != nil && resourceAll.IsObserved(){
 			resource = resourceAll
-			isObserved = resourceAll.IsObserved()
 		} else if resourceOne != nil {
 			resource = resourceOne
-			isObserved = resourceOne.IsObserved()
 		}
-		context.EnableResourceDirty(resource)
+		dirty:= context.EnableResourceDirty(resource)
+		if dirty == 0 {
+			isObserved = false
+		} else {
+			isObserved = true
+		}
 
 		if status == models.Terminated && !isObserved {
 			controllers.DeleteMitigation(cid, cuid, mid, id)
 			// Keep resource when there is a duplication
 			if !dup && resourceOne != nil {
 				resourceOne.ToRemovableResource()
+				resourceOne.SetIsBlockwiseInProgress(false)
 			}
 			// If the last mitigation is expired, the server will remove the resource all
 			if len(mids) == 1 && mids[0] == mid && resourceAll != nil {

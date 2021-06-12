@@ -57,6 +57,7 @@ func export_method_handler(rsrc  *C.coap_resource_t,
     if !ok {
         return
     }
+    blockSize := resource.GetBlockSize()
     
     // Handle observe : 
     // In case of observation response (or notification), original 'request' from libcoap is NULL
@@ -83,14 +84,19 @@ func export_method_handler(rsrc  *C.coap_resource_t,
     // Set request.uri-path from resource.uri-path (so that it can by-pass uri-path check inside PrefixFilter)
     var uri []string
     uri_path := resource.UriPath()
+    hb_uri_path := request.PathString()
+    if strings.Contains(hb_uri_path, "/hb") {
+        uri_path = hb_uri_path
+    }
     if is_observe {
-        uriFilterList := GetUriFilterByValue(uri_path)
+        uriFilterList := GetUriFilterByKey(uri_path)
         for _, uriFilter := range uriFilterList {
+            uriQuery := uriFilter
             uriFilterSplit := strings.Split(uriFilter, "?")
             if len(uriFilterList) > 1 {
-                uriFilter = uriFilterSplit[0]
+                uriQuery = uriFilterSplit[0]
             }
-            resourceTmp := context.GetResourceByQuery(&uriFilter)
+            resourceTmp := context.GetResourceByQuery(&uriQuery)
             if resourceTmp != nil && resource.IsObserved() {
                 if !strings.Contains(uri_path, "/mid") && !strings.Contains(uri_path, "/tmid") {
                     resourceTmp.SetIsObserved(false)
@@ -116,15 +122,12 @@ func export_method_handler(rsrc  *C.coap_resource_t,
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
     }
 
-    // Identify the current notification progress is on resource one or resource all
-    isObserveOne := false
     id := ""
     resourceOneUriPaths := strings.Split(uri_path, "/mid=")
     if len (resourceOneUriPaths) <= 1 {
         resourceOneUriPaths = strings.Split(uri_path, "/tmid=")
     }
     if len(resourceOneUriPaths) > 1 {
-        isObserveOne = true
         id = resourceOneUriPaths[1]
     }
     token := tok.toBytes()
@@ -141,10 +144,7 @@ func export_method_handler(rsrc  *C.coap_resource_t,
 
     handler, ok := resource.handlers[request.Code]
     if ok {
-        itemKey := *tok.toString()
-        if isObserveOne {
-            itemKey = itemKey + id
-        }
+        itemKey := *tok.toString() + id
         response := Pdu{}
         res, isFound := caches.Get(itemKey)
 
@@ -157,11 +157,12 @@ func export_method_handler(rsrc  *C.coap_resource_t,
             response.MessageID = request.MessageID
             response.Token = request.Token
         }
-
         if is_observe {
             response.SetPath(uri)
+        } else {
+            response.SetPath(strings.Split(uri_path, "/"))
         }
-        response.fillC(resp)
+        response.fillC(resp, false)
         if request.Code == RequestGet && response.Code == ResponseContent {
             // handle max-age option
             maxAge, err := response.GetOptionIntegerValue(OptionMaxage)
@@ -169,15 +170,29 @@ func export_method_handler(rsrc  *C.coap_resource_t,
                 maxAge = -1
             }
             response.RemoveOption(OptionMaxage)
-            // If the process is observation, request is nil
+            // If request is observe and resource contains block 2 option, set block 2 for request
             if is_observe {
-                req = nil
+                if blockSize != nil {
+                    block := &Block{}
+                    block.NUM = 0
+                    block.M   = 1
+                    block.SZX = *blockSize
+                    request.SetOption(OptionBlock2, uint32(block.ToInt()))
+                    request.fillC(req, false)
+                }
             }
             C.coap_add_data_blocked_response(req, resp, C.uint16_t(C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR), C.int(maxAge),
                                             C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])))
             resPdu,_ := resp.toGo()
-
-            HandleCache(resPdu, response, resource, context, isObserveOne, itemKey)
+            // In case observe, server will increase observe number and send to client
+            // If existed two block2 options in pdu, server will remove one block2 option
+            if is_observe {
+                resPdu.RemoveOptionFirstBlock(OptionBlock2)
+                resource.IncreaseObserveNumber()
+                resPdu.SetOption(OptionObserve, uint32(resource.GetObserveNumber()))
+                resPdu.fillC(resp, true)
+            }
+            HandleCache(resPdu, response, resource, context, itemKey)
         }
     }
 }
@@ -261,10 +276,9 @@ func SetBlockOptionFirstRequest(request *Pdu) {
  * Handle delete item if block is last block
  * Handle add item if item does not exist in cache
  */
-func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, isObserveOne bool, keyItem string) error {
+func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, keyItem string) error {
     blockValue,_ := resp.GetOptionIntegerValue(OptionBlock2)
     block := IntToBlock(int(blockValue))
-
     // Delete block in cache when block is last block
     // Set isBlockwiseInProgress = false as one of conditions to remove resource if it expired
     if block != nil && block.NUM > 0 && block.M == LAST_BLOCK {
@@ -278,9 +292,7 @@ func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, 
     if block != nil && block.NUM == 0 && block.M == MORE_BLOCK {
         log.Debug("Create item cache with key = ", keyItem)
         caches.Set(keyItem, response, cache.DefaultExpiration)
-        if isObserveOne {
-            resource.isBlockwiseInProgress = true
-        }
+        resource.isBlockwiseInProgress = true
     }
     return nil
 }

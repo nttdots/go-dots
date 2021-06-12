@@ -220,15 +220,23 @@ func (context *Context) RunOnce(timeout time.Duration) time.Duration {
 /*
  * Enable resource dirty and return the resource
  */
-func (context *Context) EnableResourceDirty(resource *Resource) {
+func (context *Context) EnableResourceDirty(resource *Resource) int {
     if (resource != nil) {
         log.Debugf("[EnableDirty]: Found resource to notify (uriPath=%+v)", resource.UriPath())
         // Mark resource as dirty and do notifying
         log.Debug("[EnableDirty]: Set resource dirty.")
-        C.coap_set_dirty(resource.ptr, C.CString(""), 0)
+        dirty := C.coap_set_dirty(resource.ptr, C.CString(""), 0)
+        return int(dirty)
     } else {
         log.Warn("[EnableDirty]: Not found any resource to set dirty.")
+        return 0
     }
+}
+
+// Check dirty of resource
+func (context *Context) CheckResourceDirty(resource *Resource) bool {
+    dirty := int(C.coap_set_dirty(resource.ptr, C.CString(""), 0))
+    return dirty == 1
 }
 
 /*

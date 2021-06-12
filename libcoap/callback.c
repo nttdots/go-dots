@@ -220,14 +220,14 @@ int coap_dtls_get_peer_common_name(coap_session_t *session,
 
 }
 
-void coap_set_dirty(coap_resource_t *resource, char *key, int length) {
+int coap_set_dirty(coap_resource_t *resource, char *key, int length) {
     if (*key == '\0' && length == 0) {
-        coap_resource_notify_observers(resource, NULL);
+        return coap_resource_notify_observers(resource, NULL);
     } else {
         coap_string_t *query = coap_new_string(length);
         query->s = (uint8_t*)key;
         query->length = (size_t)length;
-        coap_resource_notify_observers(resource, query);
+        return coap_resource_notify_observers(resource, query);
     }
 }
 
@@ -308,123 +308,3 @@ coap_string_t * coap_get_token_from_request_pdu (coap_pdu_t *pdu) {
     str->s = pdu->token;
     return str;
 }
-
-/* Copied from the internal file in the libcoap */
-coap_subscription_t *
-coap_add_observer(coap_resource_t *resource,
-                  coap_session_t *session,
-                  const coap_binary_t *token,
-                  coap_string_t *query,
-                  int has_block2,
-                  coap_block_t block,
-                  coap_pdu_code_t code) {
-    coap_subscription_t *s;
-    assert( session );
-
-    /* Check if there is already a subscription for this peer. */
-    s = coap_find_observer(resource, session, token);
-    if (!s) {
-        /*
-        * Cannot allow a duplicate to be created for the same query as application
-        * may not be cleaning up duplicates.  If duplicate found, then original
-        * observer is deleted and a new one created with the new token
-        */
-        s = coap_find_observer_query(resource, session, query);
-        if (s) {
-            /* Delete old entry with old token */
-            coap_binary_t tmp_token = { s->token_length, s->token };
-            coap_delete_observer(resource, session, &tmp_token);
-            s = NULL;
-        }
-    }
-
-    /* We are done if subscription was found. */
-    if (s) {
-        if (s->query)
-            coap_delete_string(s->query);
-        s->query = query;
-        s->code = code;
-        return s;
-    }
-
-    /* Create a new subscription */
-    s = COAP_MALLOC_TYPE(subscription);
-
-    if (!s) {
-        /* query is not deleted so it can be used in the calling function
-        * which must give up ownership of query only if this function
-        * does not return NULL. */
-        return NULL;
-    }
-
-    // coap_subscription_init(s);
-    assert(s);
-    memset(s, 0, sizeof(coap_subscription_t));
-    s->session = coap_session_reference( session );
-
-    if (token && token->length) {
-        s->token_length = token->length;
-        memcpy(s->token, token->s, min(s->token_length, 8));
-    }
-
-    s->query = query;
-    s->has_block2 = has_block2;
-    s->block = block;
-    s->code = code;
-
-    /* add subscriber to resource */
-    LL_PREPEND(resource->subscribers, s);
-    coap_log(LOG_DEBUG, "create new subscription\n");
-    return s;
-}
-
-int coap_delete_observer(coap_resource_t *resource, coap_session_t *session,
-                     const coap_binary_t *token) {
-    coap_subscription_t *s;
-
-    s = coap_find_observer(resource, session, token);
-
-    if ( s && coap_get_log_level() >= LOG_DEBUG ) {
-        char outbuf[2 * 8 + 1] = "";
-        unsigned int i;
-        for ( i = 0; i < s->token_length; i++ )
-            snprintf( &outbuf[2 * i], 3, "%02x", s->token[i] );
-        coap_log(LOG_DEBUG, "removed observer with token '%s'\n", outbuf);
-    }
-
-    if (resource->subscribers && s) {
-        LL_DELETE(resource->subscribers, s);
-        coap_session_release( session );
-        if (s->query)
-            coap_delete_string(s->query);
-        coap_free(s);
-    }
-    return s != NULL;
-}
-
-coap_subscription_t * coap_find_observer(coap_resource_t *resource, coap_session_t *session, const coap_binary_t *token) {
-    coap_subscription_t *s;
-
-    assert(resource);
-    assert(session);
-
-    LL_FOREACH(resource->subscribers, s) {
-        if (s->session == session && (!token || (token->length == s->token_length && memcmp(token->s, s->token, token->length) == 0)))
-            return s;
-    }
-    return NULL;
-}
-
-coap_subscription_t * coap_find_observer_query(coap_resource_t *resource, coap_session_t *session, const coap_string_t *query) {
-    coap_subscription_t *s;
-
-    assert(resource);
-    assert(session);
-
-    LL_FOREACH(resource->subscribers, s) {
-        if (s->session == session && ((!query && !s->query) || (query && s->query && coap_string_equal(query, s->query))))
-            return s;
-    }
-    return NULL;
-}
-/* End copied */

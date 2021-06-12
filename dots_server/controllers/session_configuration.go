@@ -493,7 +493,7 @@ func DefaultSessionConfiguration() (sessionConfig models.SignalSessionConfigurat
  *  Params:
  *    lifetimeInterval   the interval time for checking session configuration
  */
-func ManageExpiredSessionMaxAge(lifetimeInterval int) {
+func ManageExpiredSessionMaxAge(context *libcoap.Context, lifetimeInterval int) {
     // Manage expired Session Congiguration
     for {
         for customerId, asc := range models.GetFreshSessionMap() {
@@ -519,6 +519,13 @@ func ManageExpiredSessionMaxAge(lifetimeInterval int) {
 
 					// Rmove active session configuration after reset it to default values
 					models.RemoveActiveSessionConfiguration(customerId)
+					// Remove resource
+					uriPath := messages.MessageTypes[messages.SESSION_CONFIGURATION].Path
+					query := uriPath + "/sid=" + strconv.Itoa(asc.SessionId)
+					resource := context.GetResourceByQuery(&query)
+					if resource != nil {
+						resource.ToRemovableResource()
+					}
                 }
             }
         }

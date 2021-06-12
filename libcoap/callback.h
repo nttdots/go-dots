@@ -111,7 +111,7 @@ struct coap_subscription_t {
   struct coap_string_t *query; /**< query string used for subscription, if any */
 };
 
-void coap_set_dirty(coap_resource_t *resource, char *query, int length);
+int coap_set_dirty(coap_resource_t *resource, char *query, int length);
 
 int coap_check_subscribers(coap_resource_t *resource);
 int coap_check_dirty(coap_resource_t *resource);
@@ -127,18 +127,6 @@ coap_string_t * coap_get_token_from_request_pdu (coap_pdu_t *pdu);
 
 
 /* Copied from the internal file in the libcoap */
-coap_subscription_t *
-coap_add_observer(coap_resource_t *resource,
-                  coap_session_t *session,
-                  const coap_binary_t *token,
-                  coap_string_t *query,
-                  int has_block2,
-                  coap_block_t block,
-                  coap_pdu_code_t code);
-int coap_delete_observer(coap_resource_t *resource,
-                         coap_session_t *session,
-                         const coap_binary_t *token);
-
 struct coap_resource_t {
   unsigned int dirty:1;          /**< set to 1 if resource has changed */
   unsigned int partiallydirty:1; /**< set to 1 if some subscribers have not yet
@@ -199,8 +187,6 @@ struct coap_resource_t {
   void *user_data;
 
 };
-coap_subscription_t * coap_find_observer(coap_resource_t *resource, coap_session_t *session, const coap_binary_t *token);
-coap_subscription_t * coap_find_observer_query(coap_resource_t *resource, coap_session_t *session, const coap_string_t *query);
 
 typedef struct UT_hash_bucket {
    struct UT_hash_handle *hh_head;

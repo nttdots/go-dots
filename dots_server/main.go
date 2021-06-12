@@ -51,9 +51,6 @@ func main() {
 	// Thread for monitoring remaining lifetime of mitigation requests
 	go controllers.ManageExpiredMitigation(config.LifetimeConfiguration.ManageLifetimeInterval)
 
-	// Thread for monitoring remaining max-age of signal session configuration
-	go controllers.ManageExpiredSessionMaxAge(config.LifetimeConfiguration.ManageLifetimeInterval)
-
 	// Thread for monitoring remaining lifetime of datachannel alias and acl requests
 	go data_models.ManageExpiredAliasAndAcl(config.LifetimeConfiguration.ManageLifetimeInterval)
 
@@ -117,6 +114,10 @@ func main() {
 
 	// Set env
 	task.SetEnv(env)
+
+	// Thread for monitoring remaining max-age of signal session configuration
+	go controllers.ManageExpiredSessionMaxAge(signalCtx , config.LifetimeConfiguration.ManageLifetimeInterval)
+
 	// Register response handler
 	signalCtx.RegisterResponseHandler(func(_ *libcoap.Context, session *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
 		env.SetCoapSession(session)
@@ -139,7 +140,17 @@ func main() {
  */
 func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 	for _, resource := range libcoap.GetAllResource() {
-        if resource.GetRemovableResource() && (!resource.GetIsBlockwiseInProgress() || !resource.IsObserved()) {
+		isDeleted := false
+		if resource.GetRemovableResource() {
+			if !resource.GetIsBlockwiseInProgress() {
+				isDeleted = true
+			} else if resource.GetIsBlockwiseInProgress() && strings.Contains(resource.UriPath(), "/mid") &&
+			! resource.CheckDeleted() {
+				resource.SetCheckDeleted(true)
+				go CheckRemovedObserved(resource, context)
+			}
+		}
+		if isDeleted {
 			path := strings.Split(resource.UriPath(), "?")
 			_, cuid, mid, err := messages.ParseURIPath(strings.Split(path[0], "/"))
 			if err != nil {
@@ -164,4 +175,12 @@ func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 			context.DeleteResource(resource)
         }
     }
+}
+
+// Check observe is removed in case RST message
+func CheckRemovedObserved(resource *libcoap.Resource, context *libcoap.Context) {
+	time.Sleep(time.Duration(10)*time.Second)
+	if resource != nil && !context.CheckResourceDirty(resource) {
+		resource.SetIsBlockwiseInProgress(false)
+	}
 }
