@@ -235,8 +235,11 @@ func (context *Context) EnableResourceDirty(resource *Resource) int {
 
 // Check dirty of resource
 func (context *Context) CheckResourceDirty(resource *Resource) bool {
-    dirty := int(C.coap_set_dirty(resource.ptr, C.CString(""), 0))
-    return dirty == 1
+    if resource.ptr != nil {
+        dirty := int(C.coap_set_dirty(resource.ptr, C.CString(""), 0))
+        return dirty == 1
+    }
+    return false
 }
 
 /*
