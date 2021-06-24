@@ -19,6 +19,7 @@ type Resource struct {
     isBlockwiseInProgress bool
     customerId   *int
     checkDeleted bool
+    isNotification bool
 }
 
 type ResourceFlags int
@@ -53,7 +54,7 @@ func ResourceInit(uri *string, flags ResourceFlags) *Resource {
     uripath := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(curi)), C.size_t(urilen))
     ptr := C.coap_resource_init(uripath, C.int(flags) | C.COAP_RESOURCE_FLAGS_RELEASE_URI)
 
-    resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, 0, false, nil, false, nil, false}
+    resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, 0, false, nil, false, nil, false, false}
     resources[ptr] = resource
     return resource
 }
@@ -62,7 +63,7 @@ func ResourceUnknownInit() *Resource {
 
 	ptr := C.coap_resource_unknown_init(nil)
 
-	resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, 0, false, nil, false, nil, false}
+	resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, 0, false, nil, false, nil, false, false}
 	resources[ptr] = resource
 	return resource
 
@@ -238,6 +239,7 @@ func (resource *Resource) IncreaseObserveNumber() {
 func (resource *Resource) GetObserveNumber() int {
     return resource.observe
 }
+
 // Set check deleted
 func (resource *Resource) SetCheckDeleted(checkDeleted bool) {
     resource.checkDeleted = checkDeleted
@@ -246,4 +248,14 @@ func (resource *Resource) SetCheckDeleted(checkDeleted bool) {
 // Get check deleted
 func (resource *Resource) CheckDeleted() bool {
     return resource.checkDeleted
+}
+
+// Set is notification
+func (resource *Resource) SetIsNotification(isNotification bool) {
+    resource.isNotification = isNotification
+}
+
+// Get is notification
+func (resource *Resource) IsNotification() bool {
+    return resource.isNotification
 }

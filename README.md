@@ -46,11 +46,11 @@ Licensed under Apache License 2.0.
 ## How to build go-dots
 ### Build libcoap for go-dots
 
-Currenly supported libcoap version : v4.3.0-rc3
+Currenly supported libcoap version : v4.3.0-rc4
 
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
-    $ git checkout 421476011784a75936df6eaa7cd50577d26cc439
+    $ git checkout 64505862d1241bb2cc1a7f39335ff393eab7b546
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
     $ make

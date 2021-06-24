@@ -41,7 +41,7 @@ func (session *Session) SessionRelease() {
 }
 
 func (session *Session) SetMaxRetransmit (value int) {
-    C.coap_session_set_max_retransmit(session.ptr, C.uint(value))
+    C.coap_session_set_max_retransmit(session.ptr, C.uint16_t(value))
 }
 
 func (session *Session) SetAckTimeout (value decimal.Decimal) {

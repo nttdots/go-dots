@@ -64,9 +64,9 @@ func export_method_handler(rsrc  *C.coap_resource_t,
     // In order to handle request with handleGet(), it is necessary to re-create equest
     // First, initialize request from response to re-use some data.
     is_observe := false
-    if req == nil {
+    if resource.IsNotification() {
         is_observe = true
-        req = resp
+        resource.SetIsNotification(false)
     }
     tok := C.coap_get_token_from_request_pdu(req)
 
@@ -93,7 +93,7 @@ func export_method_handler(rsrc  *C.coap_resource_t,
         for _, uriFilter := range uriFilterList {
             uriQuery := uriFilter
             uriFilterSplit := strings.Split(uriFilter, "?")
-            if len(uriFilterList) > 1 {
+            if len(uriFilterSplit) > 1 {
                 uriQuery = uriFilterSplit[0]
             }
             resourceTmp := context.GetResourceByQuery(&uriQuery)
@@ -118,6 +118,15 @@ func export_method_handler(rsrc  *C.coap_resource_t,
             uri = strings.Split(uri_path, "/")
         }
         request.SetPath(uri)
+        // If request is observe and resource contains block 2 option, set block 2 for request
+        if blockSize != nil {
+            block := &Block{}
+            block.NUM = 0
+            block.M   = 0
+            block.SZX = *blockSize
+            request.SetOption(OptionBlock2, uint32(block.ToInt()))
+            request.fillC(req)
+        }
         session.SetIsNotification(true)
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
     }
@@ -135,11 +144,6 @@ func export_method_handler(rsrc  *C.coap_resource_t,
     if !is_observe && queryString != nil {
         queryStr := "?" + *queryString
         id += queryStr
-        uri_path += queryStr
-        resourceTmp := context.GetResourceByQuery(&uri_path)
-        if resourceTmp != nil {
-            resource = resourceTmp
-        }
     }
 
     handler, ok := resource.handlers[request.Code]
@@ -159,10 +163,12 @@ func export_method_handler(rsrc  *C.coap_resource_t,
         }
         if is_observe {
             response.SetPath(uri)
+            resource.IncreaseObserveNumber()
+            response.SetOption(OptionObserve, uint32(resource.GetObserveNumber()))
         } else {
             response.SetPath(strings.Split(uri_path, "/"))
         }
-        response.fillC(resp, false)
+        response.fillC(resp)
         if request.Code == RequestGet && response.Code == ResponseContent {
             // handle max-age option
             maxAge, err := response.GetOptionIntegerValue(OptionMaxage)
@@ -170,28 +176,9 @@ func export_method_handler(rsrc  *C.coap_resource_t,
                 maxAge = -1
             }
             response.RemoveOption(OptionMaxage)
-            // If request is observe and resource contains block 2 option, set block 2 for request
-            if is_observe {
-                if blockSize != nil {
-                    block := &Block{}
-                    block.NUM = 0
-                    block.M   = 1
-                    block.SZX = *blockSize
-                    request.SetOption(OptionBlock2, uint32(block.ToInt()))
-                    request.fillC(req, false)
-                }
-            }
             C.coap_add_data_blocked_response(req, resp, C.uint16_t(C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR), C.int(maxAge),
                                             C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])))
             resPdu,_ := resp.toGo()
-            // In case observe, server will increase observe number and send to client
-            // If existed two block2 options in pdu, server will remove one block2 option
-            if is_observe {
-                resPdu.RemoveOptionFirstBlock(OptionBlock2)
-                resource.IncreaseObserveNumber()
-                resPdu.SetOption(OptionObserve, uint32(resource.GetObserveNumber()))
-                resPdu.fillC(resp, true)
-            }
             HandleCache(resPdu, response, resource, context, itemKey)
         }
     }
