@@ -101,8 +101,37 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             response.Type = responseType(request.Type)
             response.Data = []byte(errMessage)
             return
-        } else if observe == int(messages.Register) {
-            resource.SetBlockSize(&block2Value)
+        }
+
+        qBlock2Value, err := request.GetOptionIntegerValue(libcoap.OptionQBlock2)
+        if err != nil {
+            log.Warnf("QBlock2 option: %+v", err)
+        } else if block2Value > libcoap.LARGEST_BLOCK_SIZE {
+            errMessage := fmt.Sprintf("QBlock 2 option with size = %+v > %+v (block size largest)", qBlock2Value, libcoap.LARGEST_BLOCK_SIZE)
+            log.Warn(errMessage)
+            response.Code = libcoap.ResponseBadRequest
+            response.Type = responseType(request.Type)
+            response.Data = []byte(errMessage)
+            return
+        }
+
+        if observe == int(messages.Register) {
+            if block2Value > -1 {
+                resource.SetBlockSize(&block2Value)
+                resource.SetQBlock2(false)
+            } else if qBlock2Value > -1 {
+                resource.SetBlockSize(&qBlock2Value)
+                resource.SetQBlock2(true)
+            }
+        }
+
+        if qBlock2Value >= 0 && len(request.Path()) < 1 && request.Type == libcoap.TypeCon {
+            message := fmt.Sprintln("This is a test server made with libcoap")
+            log.Debug(message)
+            response.Code = libcoap.ResponseContent
+            response.Type = responseType(libcoap.TypeAck)
+            response.Data = []byte(message)
+            return
         }
 
         log.Debugf("request.Data=\n%s", hex.Dump(request.Data))
@@ -667,6 +696,7 @@ func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *l
     resource := context.GetResourceByQuery(&requestPath)
     if resource != nil {
         resource.ToRemovableResource()
+        resource.SetQBlock2(false)
         libcoap.DeleteUriFilterByKey(requestPath)
         if len(requestPathSplit) <= 1 {
             // Delete resource one of telemetry pre-mitigation
@@ -675,6 +705,7 @@ func handleRemoveTelemetryPreMitigationResource(request *libcoap.Pdu, context *l
                 resourceOne := context.GetResourceByQuery(&queryOne)
                 if resourceOne != nil {
                     resourceOne.ToRemovableResource()
+                    resourceOne.SetQBlock2(false)
                 }
                 // Delete resource (uri-path contains uri-query)
                 libcoap.DeleteUriFilterByKey(queryOne)

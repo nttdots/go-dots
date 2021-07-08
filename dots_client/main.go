@@ -508,6 +508,10 @@ func loadConfig(env *task.Env) {
 	if config.SecondRequestBlockSize != nil && *config.SecondRequestBlockSize >= 0 {
 		env.SetSecondRequestBlockSize(config.SecondRequestBlockSize)
 	}
+	// Set config of QBlock2 to libcoap
+	if config.QBlockOption != nil {
+		env.SetRetransmitParamsForQBlock(*config.QBlockOption)
+	}
 }
 
 func main() {

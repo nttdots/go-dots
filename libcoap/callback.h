@@ -327,17 +327,41 @@ struct coap_session_t {
 
                                       Value maintained internally */
   void *app;                        /**< application-specific data */
-  unsigned int max_retransmit;      /**< maximum re-transmit count (default
-                                         4) */
-  coap_fixed_point_t ack_timeout;   /**< timeout waiting for ack (default 2
-                                         secs) */
+  uint8_t block_mode;             /**< Zero or more COAP_BLOCK_ or'd options */
+  coap_pdu_t *saved_pdu;          /**< Saved PDU when testing for remote
+                                       feature */
+  coap_fixed_point_t ack_timeout;   /**< timeout waiting for ack
+                                         (default 2.0 secs) */
   coap_fixed_point_t ack_random_factor; /**< ack random factor backoff (default
                                              1.5) */
+  uint16_t max_retransmit;          /**< maximum re-transmit count
+                                         (default 4) */
+  uint16_t nstart;                  /**< maximum concurrent confirmable xmits
+                                         (default 1) */
+  coap_fixed_point_t default_leisure; /**< Mcast leisure time
+                                           (default 5.0 secs) */
+  uint32_t probing_rate;            /**< Max transfer wait when remote is not
+                                         respoding (default 1 byte/sec) */
+  uint16_t max_payloads;            /**< maximum Q-BlockX payloads before delay
+                                         (default 10) */
+  uint16_t non_max_retransmit;      /**< maximum Q-BlockX non re-transmit count
+                                         (default 4) */
+  coap_fixed_point_t non_timeout;   /**< Q-BlockX timeout waiting for response
+                                         (default 2.0 secs) */
+  coap_fixed_point_t non_receive_timeout;  /**< Q-BlockX receive timeout before
+                                         requesting missing packets.
+                                         (default 4.0 secs) */
+  coap_fixed_point_t non_probing_wait_base; /**< Q-BlockX max wait time base
+                                              while probing
+                                             (default 247.0 secs) */
+  coap_fixed_point_t non_partial_timeout; /**< Q-BlockX time to wait before
+                                           discarding partial data for a body.
+                                           (default 247.0 secs) */
   unsigned int dtls_timeout_count;      /**< dtls setup retry counter */
   int dtls_event;                       /**< Tracking any (D)TLS events on this
                                              sesison */
-  uint8_t block_mode;             /**< Zero or more COAP_BLOCK_ or'd options */
   uint64_t tx_token;              /**< Next token number to use */
+  uint64_t tx_rtag;               /**< Next Request-Tag number to use */
 };
 struct coap_addr_hash_t {
   coap_address_t remote;       /**< remote address and port */

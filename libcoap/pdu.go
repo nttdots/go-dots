@@ -247,7 +247,8 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
                 if src.Type == TypeAck && (o.Key == OptionBlock2 || o.Key == OptionMaxage) {
                     continue
                 }
-                if o.Key == OptionObserve || o.Key == OptionEtag || o.Key == OptionBlock2 {
+                if o.Key == OptionObserve || o.Key == OptionEtag || o.Key == OptionBlock2 ||
+                   o.Key == OptionQBlock2 {
                     value, _ := o.Uint()
                     if 0 == C.coap_handle_add_option(p, C.uint16_t(o.Key), C.uint(value)) {
                         err = errors.New("coap_add_option() failed.")

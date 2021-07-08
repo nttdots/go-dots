@@ -142,12 +142,16 @@ func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 	for _, resource := range libcoap.GetAllResource() {
 		isDeleted := false
 		if resource.GetRemovableResource() {
-			if !resource.GetIsBlockwiseInProgress() {
+			if !resource.GetIsBlockwiseInProgress() && !resource.IsQBlock2() {
 				isDeleted = true
-			} else if resource.GetIsBlockwiseInProgress() && strings.Contains(resource.UriPath(), "/mid") &&
-			! resource.CheckDeleted() {
+			} else if (resource.GetIsBlockwiseInProgress() || resource.IsQBlock2()) && strings.Contains(resource.UriPath(), "/mid") &&
+			!resource.CheckDeleted() {
 				resource.SetCheckDeleted(true)
-				go CheckRemovedObserved(resource, context)
+				if resource.IsQBlock2() {
+					go SetQBlock2ToFalse(resource)
+				} else {
+					go CheckRemovedObserved(resource, context)
+				}
 			}
 		}
 		if isDeleted {
@@ -166,6 +170,7 @@ func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 				resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
 				if resourceAll != nil {
 					resourceAll.SetIsBlockwiseInProgress(false)
+					resourceAll.SetQBlock2(false)
 				}
 				libcoap.DeleteUriFilterByKey(resource.UriPath())
 				libcoap.DeleteUriFilterByValue(resource.UriPath())
@@ -182,5 +187,13 @@ func CheckRemovedObserved(resource *libcoap.Resource, context *libcoap.Context) 
 	time.Sleep(time.Duration(10)*time.Second)
 	if resource != nil && !context.CheckResourceDirty(resource) {
 		resource.SetIsBlockwiseInProgress(false)
+	}
+}
+
+// Set QBlock2 to False
+func SetQBlock2ToFalse(resource *libcoap.Resource) {
+	time.Sleep(time.Duration(10)*time.Second)
+	if resource != nil {
+		resource.SetQBlock2(false)
 	}
 }

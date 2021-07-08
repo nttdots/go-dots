@@ -36,6 +36,7 @@ const (
     OptionSize1         OptionKey = C.COAP_OPTION_SIZE1
     OptionBlock2        OptionKey = C.COAP_OPTION_BLOCK2
     OptionSize2         OptionKey = C.COAP_OPTION_SIZE2
+    OptionQBlock2       OptionKey = C.COAP_OPTION_Q_BLOCK2
 )
 
 func (key OptionKey) String(value string) Option {

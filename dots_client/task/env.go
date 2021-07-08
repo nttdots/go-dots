@@ -7,6 +7,7 @@ import (
     "github.com/shopspring/decimal"
     "github.com/nttdots/go-dots/libcoap"
     "github.com/nttdots/go-dots/dots_common/messages"
+    "github.com/nttdots/go-dots/dots_client/config"
     log "github.com/sirupsen/logrus"
     client_message "github.com/nttdots/go-dots/dots_client/messages"
 )
@@ -28,6 +29,7 @@ type Env struct {
     intervalBeforeMaxAge int
     initialRequestBlockSize *int
     secondRequestBlockSize  *int
+    qBlockSize *int
 
     // The new connected session that will replace the current
     replacingSession *libcoap.Session
@@ -60,6 +62,7 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         nil,
         nil,
         nil,
+        nil,
         false,
         nil,
     }
@@ -83,6 +86,14 @@ func (env *Env) SetRetransmitParams(maxRetransmit int, ackTimeout decimal.Decima
     env.session.SetMaxRetransmit(maxRetransmit)
     env.session.SetAckTimeout(ackTimeout)
     env.session.SetAckRandomFactor(ackRandomFactor)
+}
+
+func (env *Env) SetRetransmitParamsForQBlock(qBlock config.QBlockOption) {
+    env.qBlockSize = &qBlock.QBlockSize
+    env.session.SetMaxPayLoads(qBlock.MaxPayloads)
+    env.session.SetNonMaxRetransmit(qBlock.NonMaxRetransmit)
+    env.session.SetNonTimeout(decimal.NewFromFloat(qBlock.NonTimeout).Round((2)))
+    env.session.SetNonReceiveTimeout(decimal.NewFromFloat(qBlock.NonReceiveTimeout).Round((2)))
 }
 
 func (env *Env) SetMissingHbAllowed(missing_hb_allowed int) {
@@ -127,6 +138,10 @@ func (env *Env) SetSecondRequestBlockSize(secondRequestBlockSize *int) {
 
 func (env *Env) SecondRequestBlockSize() *int {
     return env.secondRequestBlockSize
+}
+
+func (env *Env) QBlockSize() *int {
+    return env.qBlockSize
 }
 
 func (env *Env) SetReplacingSession(session *libcoap.Session) {
@@ -429,7 +444,7 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
 
     // check mitigation status from notification to count the number of mitigations that are being observed
     tokenReq, queryReq := env.GetTokenAndRequestQuery(query)
-    if tokenReq != nil && queryReq != nil && scopes!= nil && *scopes[0].Status == 6 {
+    if tokenReq != nil && queryReq != nil && queryReq.CountMitigation != nil && scopes!= nil && *scopes[0].Status == 6 {
         // The notification indicate that a mitigation is expired
         if *queryReq.CountMitigation >= 1 {
             lenScopeReq := *queryReq.CountMitigation - 1

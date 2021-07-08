@@ -58,6 +58,7 @@ func export_method_handler(rsrc  *C.coap_resource_t,
         return
     }
     blockSize := resource.GetBlockSize()
+    isQBlock2 := resource.IsQBlock2()
     
     // Handle observe : 
     // In case of observation response (or notification), original 'request' from libcoap is NULL
@@ -124,7 +125,11 @@ func export_method_handler(rsrc  *C.coap_resource_t,
             block.NUM = 0
             block.M   = 0
             block.SZX = *blockSize
-            request.SetOption(OptionBlock2, uint32(block.ToInt()))
+            if isQBlock2 {
+                request.SetOption(OptionQBlock2, uint32(block.ToInt()))
+            } else {
+                request.SetOption(OptionBlock2, uint32(block.ToInt()))
+            }
             request.fillC(req)
         }
         session.SetIsNotification(true)
@@ -176,8 +181,14 @@ func export_method_handler(rsrc  *C.coap_resource_t,
                 maxAge = -1
             }
             response.RemoveOption(OptionMaxage)
-            C.coap_add_data_blocked_response(req, resp, C.uint16_t(C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR), C.int(maxAge),
+            qBlock2, _ := request.GetOptionIntegerValue(OptionQBlock2)
+            if qBlock2 >= 0 {
+                C.coap_add_data_large_response(resource.ptr, session.ptr, req, resp, query, C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR, C.int(0),
+                                            C.uint64_t(0), C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])), nil, nil)
+            } else {
+                C.coap_add_data_blocked_response(req, resp, C.uint16_t(C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR), C.int(maxAge),
                                             C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])))
+            }
             resPdu,_ := resp.toGo()
             HandleCache(resPdu, response, resource, context, itemKey)
         }
