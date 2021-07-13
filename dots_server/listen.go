@@ -129,7 +129,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
             message := fmt.Sprintln("This is a test server made with libcoap")
             log.Debug(message)
             response.Code = libcoap.ResponseContent
-            response.Type = responseType(libcoap.TypeAck)
+            response.Type = responseType(libcoap.TypeCon)
             response.Data = []byte(message)
             return
         }
