@@ -153,7 +153,7 @@ func export_method_handler(rsrc  *C.coap_resource_t,
 
     handler, ok := resource.handlers[request.Code]
     if ok {
-        itemKey := *tok.toString() + id
+        itemKey := uri_path
         response := Pdu{}
         res, isFound := caches.Get(itemKey)
 
