@@ -183,7 +183,7 @@ func export_method_handler(rsrc  *C.coap_resource_t,
             response.RemoveOption(OptionMaxage)
             qBlock2, _ := request.GetOptionIntegerValue(OptionQBlock2)
             if qBlock2 >= 0 {
-                C.coap_add_data_large_response(resource.ptr, session.ptr, req, resp, query, C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR, C.int(0),
+                C.coap_add_data_large_response(resource.ptr, session.ptr, req, resp, query, C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR, C.int(maxAge),
                                             C.uint64_t(0), C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])), nil, nil)
             } else {
                 C.coap_add_data_blocked_response(req, resp, C.uint16_t(C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR), C.int(maxAge),
