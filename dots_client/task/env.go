@@ -456,7 +456,7 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
             env.RemoveRequestQuery(string(tokenReq))
         }
         log.Debugf("The current number of observed mitigations is changed to: %+v", *queryReq.CountMitigation)
-    } else if tokenReq != nil && queryReq != nil && scopes !=nil && *scopes[0].Status == 2 {
+    } else if tokenReq != nil && queryReq != nil && queryReq.CountMitigation != nil && scopes !=nil && *scopes[0].Status == 2 {
         // The notification indicate that a mitigation is created
         lenScopeReq := *queryReq.CountMitigation + 1
         queryReq.CountMitigation = &lenScopeReq
