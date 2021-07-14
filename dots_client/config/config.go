@@ -56,7 +56,6 @@ type QBlockOption struct {
 	MaxPayloads       int     `yaml:"maxPayloads"`
 	NonMaxRetransmit  int     `yaml:"nonMaxRetransmit"`
 	NonTimeout        float64 `yaml:"nonTimeout"`
-	NonTimeoutRandom  float64 `yaml:"nonTimeoutRandom"`
 	NonReceiveTimeout float64 `yaml:"nonReceiveTimeout"`
 }
 
@@ -141,7 +140,6 @@ func (config *ClientSystemConfig) String() (result string) {
 		result += fmt.Sprintf("%s%s: %d\n", spaces6, "maxPayloads", qBlock.MaxPayloads)
 		result += fmt.Sprintf("%s%s: %d\n", spaces6, "nonMaxRetransmit", qBlock.NonMaxRetransmit)
 		result += fmt.Sprintf("%s%s: %.2f\n", spaces6, "nonTimeout", qBlock.NonTimeout)
-		result += fmt.Sprintf("%s%s: %.2f\n", spaces6, "nonTimeoutRandom", qBlock.NonTimeoutRandom)
 		result += fmt.Sprintf("%s%s: %.2f\n", spaces6, "nonReceiveTimeout", qBlock.NonReceiveTimeout)
 	}
 	return
