@@ -78,8 +78,10 @@ func main() {
 
 	// Run Ping task mechanism that monitor client session thread
 	env := task.NewEnv(signalCtx)
-	// Create new cache
-	libcoap.CreateNewCache(int(messages.EXCHANGE_LIFETIME), config.CacheInterval)
+	// If IsCacheBlockwiseTransfer is true, server create new cache
+	if config.IsCacheBlockwiseTransfer {
+		libcoap.CreateNewCache(int(messages.EXCHANGE_LIFETIME), config.CacheInterval)
+	}
 
 	// Register nack handler
     signalCtx.RegisterNackHandler(func(session *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {

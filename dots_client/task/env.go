@@ -293,6 +293,7 @@ func (env *Env) WaitingForResponse(task *MessageTask) (pdu *libcoap.Pdu) {
         return pdu
     case <- timeout:
         log.Warnf("<<Waiting for response timeout>>")
+        task.isStop = true
         return nil
     }
 }
@@ -429,7 +430,7 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
 
     // check mitigation status from notification to count the number of mitigations that are being observed
     tokenReq, queryReq := env.GetTokenAndRequestQuery(query)
-    if tokenReq != nil && queryReq != nil && scopes!= nil && *scopes[0].Status == 6 {
+    if tokenReq != nil && queryReq != nil && queryReq.CountMitigation != nil && scopes!= nil && *scopes[0].Status == 6 {
         // The notification indicate that a mitigation is expired
         if *queryReq.CountMitigation >= 1 {
             lenScopeReq := *queryReq.CountMitigation - 1
@@ -441,7 +442,7 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
             env.RemoveRequestQuery(string(tokenReq))
         }
         log.Debugf("The current number of observed mitigations is changed to: %+v", *queryReq.CountMitigation)
-    } else if tokenReq != nil && queryReq != nil && scopes !=nil && *scopes[0].Status == 2 {
+    } else if tokenReq != nil && queryReq != nil && queryReq.CountMitigation != nil && scopes !=nil && *scopes[0].Status == 2 {
         // The notification indicate that a mitigation is created
         lenScopeReq := *queryReq.CountMitigation + 1
         queryReq.CountMitigation = &lenScopeReq
