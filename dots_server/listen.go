@@ -436,6 +436,10 @@ func handleExpiredMitigation(requestPath []string, resource *libcoap.Resource, c
 func registerResourceMitigation(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
                                  context  *libcoap.Context, is_unknown bool) (interface{}, string, error) {
 
+    hex := hex.Dump(request.Data)
+    if request.Code == libcoap.RequestPut && !strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
+        return nil, "", errors.New("Body data MUST be mitigation request")
+    }
     body, err := messages.UnmarshalCbor(request, reflect.TypeOf(messages.MitigationRequest{}))
     if err != nil {
         return nil, "", err
@@ -477,6 +481,10 @@ func registerResourceMitigation(request *libcoap.Pdu, typ reflect.Type, controll
 func registerResourceSignalConfig(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
                                    context  *libcoap.Context, is_unknown bool, customerID int, observe int, token *[]byte, block2Value int) (interface{}, string, error, bool) {
 
+    hex := hex.Dump(request.Data)
+    if request.Code == libcoap.RequestPut && !strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
+        return nil, "", errors.New("Body data MUST be session configuration request"), is_unknown
+    }
     body, err := messages.UnmarshalCbor(request, reflect.TypeOf(messages.SignalConfigRequest{}))
     if err != nil {
         return nil, "", err, is_unknown
@@ -557,6 +565,10 @@ func registerUriPathObserve(responses interface{}, request *libcoap.Pdu, observe
 func registerResourceTelemetrySetup(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
                                  context  *libcoap.Context, is_unknown bool) (interface{}, string, error) {
 
+    hex := hex.Dump(request.Data)
+    if request.Code == libcoap.RequestPut && !strings.Contains(hex, string(libcoap.IETF_TELEMETRY_SETUP_HEX)) {
+        return nil, "", errors.New("Body data MUST be telemetry setup request")
+    }
     body, err := messages.UnmarshalCbor(request, reflect.TypeOf(messages.TelemetrySetupRequest{}))
     if err != nil {
         return nil, "", err
@@ -589,6 +601,10 @@ func registerResourceTelemetrySetup(request *libcoap.Pdu, typ reflect.Type, cont
 func registerResourceTelemetryPreMitigation(request *libcoap.Pdu, typ reflect.Type, controller controllers.ControllerInterface, session *libcoap.Session,
                                  context  *libcoap.Context, is_unknown bool) (interface{}, string, error) {
 
+    hex := hex.Dump(request.Data)
+    if request.Code == libcoap.RequestPut && !strings.Contains(hex, string(libcoap.IETF_TELEMETRY_PRE_MITIGATION)) {
+        return nil, "", errors.New("Body data MUST be telemetry pre-mitigation request")
+    }
     body, err := messages.UnmarshalCbor(request, reflect.TypeOf(messages.TelemetryPreMitigationRequest{}))
     if err != nil {
         return nil, "", err
