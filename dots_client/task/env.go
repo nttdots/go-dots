@@ -308,6 +308,7 @@ func (env *Env) WaitingForResponse(task *MessageTask) (pdu *libcoap.Pdu) {
         return pdu
     case <- timeout:
         log.Warnf("<<Waiting for response timeout>>")
+        task.isStop = true
         return nil
     }
 }

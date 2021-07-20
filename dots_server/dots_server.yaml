@@ -146,6 +146,8 @@ system:
 
   # Time(seconds) max-age of session configuration
   maxAgeOption: 45
+  # on/off cache blockwise transfer
+  isCacheBlockwiseTransfer: true
   # Time interval to delete expired items in cache
   cacheInterval: 10
   # The queries are supported by go-dots

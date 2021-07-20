@@ -155,7 +155,11 @@ func export_method_handler(rsrc  *C.coap_resource_t,
     if ok {
         itemKey := uri_path
         response := Pdu{}
-        res, isFound := caches.Get(itemKey)
+        var res interface{}
+        isFound := false
+        if caches != nil {
+            res, isFound = caches.Get(itemKey)
+        }
 
         // If data does not exist in cache, add data to cache. Else get data from cache for response body
         if !isFound {
@@ -280,16 +284,20 @@ func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, 
     // Delete block in cache when block is last block
     // Set isBlockwiseInProgress = false as one of conditions to remove resource if it expired
     if block != nil && block.NUM > 0 && block.M == LAST_BLOCK {
-        log.Debugf("Delete item cache with key = %+v", keyItem)
-        caches.Delete(keyItem)
+        if caches != nil {
+            log.Debugf("Delete item cache with key = %+v", keyItem)
+            caches.Delete(keyItem)
+        }
         resource.isBlockwiseInProgress = false
     }
 
     // Add item with key if it does not exists
     // Set isBlockwiseInProgress = true to not remove resource in case it expired because block-wise transfer is in progress
     if block != nil && block.NUM == 0 && block.M == MORE_BLOCK {
-        log.Debug("Create item cache with key = ", keyItem)
-        caches.Set(keyItem, response, cache.DefaultExpiration)
+        if caches != nil {
+            log.Debug("Create item cache with key = ", keyItem)
+            caches.Set(keyItem, response, cache.DefaultExpiration)
+        }
         resource.isBlockwiseInProgress = true
     }
     return nil

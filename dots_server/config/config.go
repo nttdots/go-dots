@@ -662,6 +662,7 @@ type ServerSystemConfig struct {
 	LifetimeConfiguration             *LifetimeConfiguration
 	Capabilities                      *Capabilities
 	MaxAgeOption                      uint
+	IsCacheBlockwiseTransfer          bool
 	CacheInterval                     int
 	QueryType                         []int
 	VendorMappingEnabled              bool
@@ -682,6 +683,7 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
 	GetServerSystemConfig().setCapabilities(*sc.Capabilities)
 	GetServerSystemConfig().setMaxAgeOption(sc.MaxAgeOption)
+	GetServerSystemConfig().setIsCacheBlockwiseTransfer(sc.IsCacheBlockwiseTransfer)
 	GetServerSystemConfig().setCacheInterval(sc.CacheInterval)
 	GetServerSystemConfig().setQueryType(sc.QueryType)
 	GetServerSystemConfig().setVendorMappingEnabled(sc.VendorMappingEnabled)
@@ -702,6 +704,7 @@ type ServerSystemConfigNode struct {
 	LifetimeConfiguration             LifetimeConfigurationNode             `yaml:"lifetimeConfiguration"`
 	Capabilities                      CapabilitiesNode                      `yaml:"capabilities"`
 	MaxAgeOption                      string                                `yaml:"maxAgeOption"`
+	IsCacheBlockwiseTransfer          bool                                  `yaml:"isCacheBlockwiseTransfer"`
 	CacheInterval                     string                                `yaml:"cacheInterval"`
 	QueryType                         string                                `yaml:"queryType"`
 	VendorMappingEnabled              bool                                  `yaml:"vendorMappingEnabled"`
@@ -799,6 +802,7 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		LifetimeConfiguration:             lifetimeConfiguration.(*LifetimeConfiguration),
 		Capabilities:                      capabilities.(*Capabilities),
 		MaxAgeOption:                      maxAgeOption,
+		IsCacheBlockwiseTransfer:          scn.IsCacheBlockwiseTransfer,
 		CacheInterval:                     cacheInterval,
 		QueryType:                         queryType,
 		VendorMappingEnabled:              scn.VendorMappingEnabled,
@@ -859,6 +863,10 @@ func (sc *ServerSystemConfig) setCapabilities(parameter Capabilities) {
 
 func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint) {
 	sc.MaxAgeOption = parameter
+}
+
+func (sc *ServerSystemConfig) setIsCacheBlockwiseTransfer(parameter bool) {
+	sc.IsCacheBlockwiseTransfer = parameter
 }
 
 func (sc *ServerSystemConfig) setCacheInterval(parameter int) {
