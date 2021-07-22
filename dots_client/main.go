@@ -159,6 +159,9 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 			}
 			session.SessionRelease()
 			restartConnection(env)
+		} else if event == libcoap.EventPartialBlock {
+			log.Debugf("Received Partial Block")
+			env.SetIsPartialBlock(true)
 		}
 	})
 
@@ -438,6 +441,11 @@ func restartConnection (env *task.Env) {
  *  env   the client environment data
  */
 func handleResponse(env *task.Env, pdu *libcoap.Pdu) {
+	if env.IsPartialBlock() {
+		log.Debugf("Unexpected incoming PDU: %+v", pdu)
+		env.SetIsPartialBlock(false)
+		return
+	}
     key := pdu.AsMapKey()
     t, ok := env.Requests()[key]
     if !ok {

@@ -27,6 +27,7 @@ const (
     EventSessionConnected    Event = C.COAP_EVENT_DTLS_CONNECTED
     EventSessionRenegotiate  Event = C.COAP_EVENT_DTLS_RENEGOTIATE
     EventSessionError        Event = C.COAP_EVENT_DTLS_ERROR
+    EventPartialBlock        Event = C.COAP_EVENT_PARTIAL_BLOCK //(Q-)BLOCK receive errors
 )
 
 func (context *Context) ContextSetPSK(identity string, key []byte) {
@@ -206,6 +207,7 @@ func newEvent (ev C.coap_event_t) Event {
     case C.COAP_EVENT_DTLS_CONNECTED:   return EventSessionConnected
     case C.COAP_EVENT_DTLS_RENEGOTIATE: return EventSessionRenegotiate
     case C.COAP_EVENT_DTLS_ERROR:       return EventSessionError
+    case C.COAP_EVENT_PARTIAL_BLOCK:    return EventPartialBlock
     default: return -1
     }
 }

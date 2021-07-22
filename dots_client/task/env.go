@@ -38,6 +38,8 @@ type Env struct {
 
     // the token of the deleted resource
     tokenOfDeletedResource []string
+
+    isPartialBlock bool
 }
 
 type RequestQuery struct {
@@ -65,6 +67,7 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         nil,
         false,
         nil,
+        false,
     }
 }
 
@@ -225,6 +228,14 @@ func (env *Env) GetIsServerStopped() bool {
 
 func (env *Env) SetIsServerStopped(isServerStopped bool) {
     env.isServerStopped = isServerStopped
+}
+
+func (env *Env) IsPartialBlock() bool {
+    return env.isPartialBlock
+}
+
+func (env *Env) SetIsPartialBlock(isPartialBlock bool) {
+    env.isPartialBlock = isPartialBlock
 }
 
 
