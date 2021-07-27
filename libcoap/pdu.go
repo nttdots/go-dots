@@ -183,7 +183,7 @@ func (src *Pdu) toC(session *Session) (_ *C.coap_pdu_t, err error) {
         return
     }
 
-    err = src.fillC(p)
+    err = src.fillC(p, session)
     if err != nil {
         return
     }
@@ -213,17 +213,18 @@ func (s *optsSorter) Minus(okey OptionKey) optsSorter {
 	return rv
 }
 
-func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
+func (src *Pdu) fillC(p *C.coap_pdu_t, session *Session) (err error) {
     p._type = C.coap_pdu_type_t(src.Type)
     p.code  = C.coap_pdu_code_t(src.Code)
     p.mid   = C.int(src.MessageID)
     // Set this field for coap_add_token()
     p.used_size = 0
-
+    token_len := C.size_t(len(src.Token))
     if 0 < len(src.Token) {
-        if 0 == C.coap_add_token(p,
-                                 C.size_t(len(src.Token)),
-                                 (*C.uint8_t)(unsafe.Pointer(&src.Token[0]))) {
+        if session != nil {
+            C.coap_session_init_token(session.ptr, token_len, (*C.uint8_t)(unsafe.Pointer(&src.Token[0])))
+        }
+        if 0 == C.coap_add_token(p, token_len, (*C.uint8_t)(unsafe.Pointer(&src.Token[0]))) {
             err = errors.New("coap_add_token() failed.")
             return
         }

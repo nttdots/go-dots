@@ -85,11 +85,7 @@ func export_method_handler(rsrc  *C.coap_resource_t,
     // Handle observe: 
     // Set request.uri-path from resource.uri-path (so that it can by-pass uri-path check inside PrefixFilter)
     var uri []string
-    uri_path := resource.UriPath()
-    hb_uri_path := request.PathString()
-    if strings.Contains(hb_uri_path, "/hb") {
-        uri_path = hb_uri_path
-    }
+    uri_path := request.PathString()
     if is_observe {
         uriFilterList := GetUriFilterByKey(uri_path)
         for _, uriFilter := range uriFilterList {
@@ -131,7 +127,7 @@ func export_method_handler(rsrc  *C.coap_resource_t,
             } else {
                 request.SetOption(OptionBlock2, uint32(block.ToInt()))
             }
-            request.fillC(req)
+            request.fillC(req, nil)
         }
         session.SetIsNotification(true)
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
@@ -178,7 +174,7 @@ func export_method_handler(rsrc  *C.coap_resource_t,
         } else {
             response.SetPath(strings.Split(uri_path, "/"))
         }
-        response.fillC(resp)
+        response.fillC(resp, nil)
         if request.Code == RequestGet && response.Code == ResponseContent {
             // handle max-age option
             maxAge, err := response.GetOptionIntegerValue(OptionMaxage)
