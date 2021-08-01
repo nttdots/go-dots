@@ -348,9 +348,14 @@ func (r *Request) Send() (res Response) {
 		config = dots_config.GetSystemConfig().ConfirmableMessageTask
 	}
 	qBlock2Config := dots_config.GetSystemConfig().QBlockOption
+	block2Config := dots_config.GetSystemConfig().InitialRequestBlockSize
+	isQBlock2 := true
+	if block2Config != nil {
+		isQBlock2 = false
+	}
 	// If `lg_xmit` has not released, clien can't send request for same request_name
 	ac, isPresent := acMap[r.requestName]
-	if isPresent && qBlock2Config != nil {
+	if isPresent && isQBlock2 {
 		lastUse := ac.LastUse.Add(time.Duration(4*qBlock2Config.NonTimeout)*time.Second)
 		now := time.Now()
 		if now.Before(lastUse) {
@@ -360,11 +365,19 @@ func (r *Request) Send() (res Response) {
 			return
 		}
 	}
+	// Set config for message task
+	interval := config.TaskInterval
+	retryNumber := config.TaskRetryNumber
+	timeout := config.TaskTimeout
+	if r.method == "GET" && isQBlock2 {
+		interval = 0
+		retryNumber = 0
+	}
 	task := task.NewMessageTask(
 		r.pdu,
-		time.Duration(config.TaskInterval) * time.Second,
-		config.TaskRetryNumber,
-		time.Duration(config.TaskTimeout) * time.Second,
+		time.Duration(interval) * time.Second,
+		retryNumber,
+		time.Duration(timeout) * time.Second,
 		false,
 		false,
 		r.handleResponse,
