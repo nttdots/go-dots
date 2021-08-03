@@ -137,6 +137,12 @@ type Pdu struct {
     Data      []byte
 }
 
+// Convert the pdu to text format
+func (pdu *Pdu) ToString() string {
+    return fmt.Sprintf("{Type:%d, Code:%d, MessageID:%d, Token:%+v, Options:[%s], Data: %+v}",
+		   pdu.Type, pdu.Code, pdu.MessageID, pdu.Token, OptionsToString(pdu.Options), pdu.Data)
+}
+
 func (src *C.coap_pdu_t) toGo() (_ *Pdu, err error) {
 
     var token []byte

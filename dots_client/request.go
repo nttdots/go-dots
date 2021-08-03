@@ -244,7 +244,7 @@ SKIP_OBSERVE:
 	requestQueryPaths := strings.Split(r.RequestCode.PathString(), "/")
 	requestQueryPaths = append(requestQueryPaths, r.queryParams...)
 	r.pdu.SetPath(requestQueryPaths)
-	log.Debugf("r.pdu=%+v", r.pdu)
+	log.Debugf("r.pdu=%s", r.pdu.ToString())
 }
 
 /*
@@ -273,7 +273,7 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 			response = r.env.GetBlockData(blockKey)
 			delete(r.env.Blocks(), blockKey)
 		}
-		log.Debugf("Success incoming PDU(HandleResponse): %+v", response)
+		log.Debugf("Success incoming PDU(HandleResponse): %s", response.ToString())
 
 		// Skip set analyze response data if it is the ping response
 		if response.Code != 0 {
@@ -646,9 +646,9 @@ func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, e
             delete(env.Blocks(), blockKey)
 		}
 		if pdu.Code == libcoap.ResponseNotFound {
-			log.Debugf("Resource is deleted. Incoming PDU: %+v", pdu)
+			log.Debugf("Resource is deleted. Incoming PDU: %s", pdu.ToString())
 		} else {
-			log.Debugf("Success incoming PDU(HandleResponse): %+v", pdu)
+			log.Debugf("Success incoming PDU(HandleResponse): %s", pdu.ToString())
 			log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
 			maxAgeRes, err := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
 			if err != nil {
@@ -829,9 +829,9 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
             delete(env.Blocks(), blockKey)
 		}
 		if pdu.Code == libcoap.ResponseNotFound {
-			log.Debugf("Resource is deleted. Incoming PDU: %+v", pdu)
+			log.Debugf("Resource is deleted. Incoming PDU: %s", pdu.ToString())
 		} else {
-			log.Debugf("Success incoming PDU (NotificationResponse): %+v", pdu)
+			log.Debugf("Success incoming PDU (NotificationResponse): %s", pdu.ToString())
 			logNotification(env, messageTask, pdu)
 		}
     } else if isMoreBlock {

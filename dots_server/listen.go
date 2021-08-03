@@ -53,7 +53,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                 response *libcoap.Pdu) {
 
         log.WithField("MessageID", request.MessageID).Info("Incoming Request")
-        log.WithField("Option", request.Options).Info("Incoming Request")
+        log.WithField("Option", libcoap.OptionsToString(request.Options)).Info("Incoming Request")
 
         observe, err := request.GetOptionIntegerValue(libcoap.OptionObserve)
         if err != nil {
