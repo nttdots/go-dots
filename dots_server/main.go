@@ -87,10 +87,10 @@ func main() {
     signalCtx.RegisterNackHandler(func(session *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
 			// Pong message
-			env.HandleResponse(sent)
+			env.HandleResponse(session,sent)
 		} else if (reason == libcoap.NackTooManyRetries){
 			// Ping timeout
-			env.HandleTimeout(sent)
+			env.HandleTimeout(session, sent)
 		} else {
 			// Unsupported type
 			log.Infof("nack_handler gets fired with unsupported reason type : %+v.", reason)
@@ -99,7 +99,6 @@ func main() {
 
 	// Register event handler
 	signalCtx.RegisterEventHandler(func(session *libcoap.Session, event libcoap.Event){
-		env.SetCoapSession(session)
 		if event == libcoap.EventSessionConnected {
 			// Session connected: Add session to map
 			log.Debugf("New session connecting to dots server: %+v", session.String())
@@ -107,6 +106,7 @@ func main() {
 		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
 			// Session disconnected: Remove session from map
 			log.Debugf("Remove connecting session from dots server: %+v", session.String())
+			env.RemoveSession(session)
 			libcoap.RemoveConnectingSession(session)
 		} else {
 			// Not support yet
@@ -122,8 +122,7 @@ func main() {
 
 	// Register response handler
 	signalCtx.RegisterResponseHandler(func(_ *libcoap.Context, session *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
-		env.SetCoapSession(session)
-		env.HandleResponse(received)
+		env.HandleResponse(session, received)
 	})
 	
 	for {

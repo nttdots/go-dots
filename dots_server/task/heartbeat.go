@@ -3,6 +3,7 @@ package task
 import (
     "time"
     "github.com/nttdots/go-dots/libcoap"
+    log "github.com/sirupsen/logrus"
 )
 
 type HeartBeatResponseHandler func(*HeartBeatMessageTask, *libcoap.Pdu)
@@ -12,6 +13,7 @@ type HeartBeatMessageTask struct {
     TaskBase
 
     message  *libcoap.Pdu
+    isStop   bool
 
     retry    int
     timeout  time.Duration
@@ -29,6 +31,7 @@ func NewHeartBeatMessageTask(message *libcoap.Pdu, retry int, timeout time.Durat
     return &HeartBeatMessageTask {
         newTaskBase(),
         message,
+        false,
         retry,
         timeout,
         interval,
@@ -49,7 +52,9 @@ func (t *HeartBeatMessageTask) run(out chan Event) {
         case <- time.After(t.interval):
             out <- &HeartBeatEvent{ EventBase{ t } }
         case <- timeout:
+            log.Debug("Heartbeat timeout")
             out <- &TimeoutEvent{ EventBase{ t } }
+            t.isStop = true
             t.stop()
         }
     }
@@ -59,6 +64,7 @@ func (t *HeartBeatMessageTask) run(out chan Event) {
             return
         case <- timeout:
             out <- &TimeoutEvent{ EventBase{ t } }
+            t.isStop = true
             t.stop()
         }
     } else {
@@ -71,8 +77,14 @@ func (t *HeartBeatMessageTask) run(out chan Event) {
 
 func (e *HeartBeatEvent) Handle(env *Env) {
     task := e.Task().(*HeartBeatMessageTask)
-    env.session.SetIsHeartBeatTask(true)
-    env.session.Send(task.message)
+    var session *libcoap.Session
+    for k, v := range env.heartBeatList {
+        if v == task {
+            session = k
+        }
+    }
+    session.SetIsHeartBeatTask(true)
+    session.Send(task.message)
 }
 
 func (e *TimeoutEvent) Handle(env *Env) {
