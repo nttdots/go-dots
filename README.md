@@ -46,15 +46,26 @@ Licensed under Apache License 2.0.
 ## How to build go-dots
 ### Build libcoap for go-dots
 
-Currenly supported libcoap version : v4.3.0
+To build libcoap for go-dots. We will work as follow:
 
+- Pull libcoap. Currenly supported libcoap version : v4.3.0
+    ```
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
     $ git checkout a80d462ff57630ce214efdf5caf34133b02ad7ee
+
+- Merge [q-block](https://github.com/mrdeep1/libcoap/tree/q-block) into libcoap.
+    ```
+    $ cd libcoap
+    $ sudo git remote add remote_name https://github.com/mrdeep1/libcoap.git
+    $ sudo git pull remote_name q-block
+
+- Build libcoap.
+    ```
+    $ cd libcoap
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
-    $ make
-    $ sudo make install
+    $ sudo make && sudo make install
 
 ### Install gorilla-mux for go-dots client router to handle RESTful API
 
