@@ -87,10 +87,10 @@ func main() {
     signalCtx.RegisterNackHandler(func(session *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
 			// Pong message
-			env.HandleResponse(sent)
+			env.HandleResponse(session,sent)
 		} else if (reason == libcoap.NackTooManyRetries){
 			// Ping timeout
-			env.HandleTimeout(sent)
+			env.HandleTimeout(session, sent)
 		} else {
 			// Unsupported type
 			log.Infof("nack_handler gets fired with unsupported reason type : %+v.", reason)
@@ -99,7 +99,6 @@ func main() {
 
 	// Register event handler
 	signalCtx.RegisterEventHandler(func(session *libcoap.Session, event libcoap.Event){
-		env.SetCoapSession(session)
 		if event == libcoap.EventSessionConnected {
 			// Session connected: Add session to map
 			log.Debugf("New session connecting to dots server: %+v", session.String())
@@ -107,6 +106,7 @@ func main() {
 		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
 			// Session disconnected: Remove session from map
 			log.Debugf("Remove connecting session from dots server: %+v", session.String())
+			env.RemoveSession(session)
 			libcoap.RemoveConnectingSession(session)
 		} else {
 			// Not support yet
@@ -122,8 +122,7 @@ func main() {
 
 	// Register response handler
 	signalCtx.RegisterResponseHandler(func(_ *libcoap.Context, session *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
-		env.SetCoapSession(session)
-		env.HandleResponse(received)
+		env.HandleResponse(session, received)
 	})
 	
 	for {
@@ -144,12 +143,16 @@ func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 	for _, resource := range libcoap.GetAllResource() {
 		isDeleted := false
 		if resource.GetRemovableResource() {
-			if !resource.GetIsBlockwiseInProgress() {
+			if !resource.GetIsBlockwiseInProgress() && !resource.IsQBlock2() {
 				isDeleted = true
-			} else if resource.GetIsBlockwiseInProgress() && strings.Contains(resource.UriPath(), "/mid") &&
-			! resource.CheckDeleted() {
+			} else if (resource.GetIsBlockwiseInProgress() || resource.IsQBlock2()) && strings.Contains(resource.UriPath(), "/mid") &&
+			!resource.CheckDeleted() {
 				resource.SetCheckDeleted(true)
-				go CheckRemovedObserved(resource, context)
+				if resource.IsQBlock2() {
+					go SetQBlock2ToFalse(resource)
+				} else {
+					go CheckRemovedObserved(resource, context)
+				}
 			}
 		}
 		if isDeleted {
@@ -168,6 +171,7 @@ func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 				resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
 				if resourceAll != nil {
 					resourceAll.SetIsBlockwiseInProgress(false)
+					resourceAll.SetQBlock2(false)
 				}
 				libcoap.DeleteUriFilterByKey(resource.UriPath())
 				libcoap.DeleteUriFilterByValue(resource.UriPath())
@@ -184,5 +188,13 @@ func CheckRemovedObserved(resource *libcoap.Resource, context *libcoap.Context) 
 	time.Sleep(time.Duration(10)*time.Second)
 	if resource != nil && !context.CheckResourceDirty(resource) {
 		resource.SetIsBlockwiseInProgress(false)
+	}
+}
+
+// Set QBlock2 to False
+func SetQBlock2ToFalse(resource *libcoap.Resource) {
+	time.Sleep(time.Duration(10)*time.Second)
+	if resource != nil {
+		resource.SetQBlock2(false)
 	}
 }

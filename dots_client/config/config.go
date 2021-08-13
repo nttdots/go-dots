@@ -24,6 +24,7 @@ type ClientSystemConfig struct {
 	InitialRequestBlockSize       *int                           `yaml:"initialRequestBlockSize"`
 	SecondRequestBlockSize        *int                           `yaml:"secondRequestBlockSize"`
 	PinnedCertificate             *PinnedCertificate             `yaml:"pinnedCertificate"`
+	QBlockOption                  *QBlockOption                  `yaml:"qBlockOption"`
 }
 type DefaultSessionConfiguration struct {
 	HeartbeatInterval int `yaml:"heartbeatInterval"`
@@ -48,6 +49,14 @@ type ClientRestfulApiConfiguration struct {
 type PinnedCertificate struct {
 	ReferenceIdentifier   string `yaml:"referenceIdentifier"`
 	PresentIdentifierList string `yaml:"presentIdentifierList"`
+}
+
+type QBlockOption struct {
+	QBlockSize        int     `yaml:"qBlockSize"`
+	MaxPayloads       int     `yaml:"maxPayloads"`
+	NonMaxRetransmit  int     `yaml:"nonMaxRetransmit"`
+	NonTimeout        float64 `yaml:"nonTimeout"`
+	NonReceiveTimeout float64 `yaml:"nonReceiveTimeout"`
 }
 
 /**
@@ -123,6 +132,15 @@ func (config *ClientSystemConfig) String() (result string) {
 		result += fmt.Sprintf("%s%s:\n", spaces3, "pinnedCertificate")
 		result += fmt.Sprintf("%s%s: %s\n", spaces6, "referenceIdentifier", pinnedCertificate.ReferenceIdentifier)
 		result += fmt.Sprintf("%s%s: %s\n", spaces6, "presentIdentifierList", pinnedCertificate.PresentIdentifierList)
+	}
+	if config.QBlockOption != nil {
+		qBlock := config.QBlockOption
+		result += fmt.Sprintf("%s%s:\n", spaces3, "qBlockOption")
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "qBlockSize", qBlock.QBlockSize)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "maxPayloads", qBlock.MaxPayloads)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "nonMaxRetransmit", qBlock.NonMaxRetransmit)
+		result += fmt.Sprintf("%s%s: %.2f\n", spaces6, "nonTimeout", qBlock.NonTimeout)
+		result += fmt.Sprintf("%s%s: %.2f\n", spaces6, "nonReceiveTimeout", qBlock.NonReceiveTimeout)
 	}
 	return
 }

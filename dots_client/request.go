@@ -51,6 +51,27 @@ type Response struct {
 	data       []byte
 }
 
+type ActiveRequest struct {
+	RequestName string
+	LastUse     time.Time
+}
+
+var acMap map[string]ActiveRequest = make(map[string]ActiveRequest)
+
+func AddActiveRequest(reqName string, lastUse time.Time) {
+	ac, isPresent := acMap[reqName]
+	if isPresent {
+		ac.LastUse = lastUse.Truncate(time.Second)
+		acMap[reqName] = ac
+	} else {
+		ac = ActiveRequest{
+			reqName,
+			lastUse,
+		}
+		acMap[reqName] = ac
+	}
+}
+
 /*
  * Request constructor.
  */
@@ -197,14 +218,21 @@ SKIP_OBSERVE:
 	// Block 2 option
 	if r.method == "GET" {
 		blockSize := r.env.InitialRequestBlockSize()
+		qBlockSize := r.env.QBlockSize()
 		if blockSize != nil {
 			block := &libcoap.Block{}
 			block.NUM = 0
 			block.M   = 0
 			block.SZX = *blockSize
 			r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+		} else if qBlockSize != nil {
+			block := &libcoap.Block{}
+			block.NUM = 0
+			block.M   = 1
+			block.SZX = *qBlockSize
+			r.pdu.SetOption(libcoap.OptionQBlock2, uint32(block.ToInt()))
 		} else {
-			log.Debugf("Not set block 2 option")
+			log.Debug("Not set Block2 option or QBlock2 option")
 		}
 	}
 
@@ -319,11 +347,37 @@ func (r *Request) Send() (res Response) {
 	} else if r.pdu.Type == libcoap.TypeCon {
 		config = dots_config.GetSystemConfig().ConfirmableMessageTask
 	}
+	qBlock2Config := dots_config.GetSystemConfig().QBlockOption
+	block2Config := dots_config.GetSystemConfig().InitialRequestBlockSize
+	isQBlock2 := true
+	if block2Config != nil {
+		isQBlock2 = false
+	}
+	// If `lg_xmit` has not released, clien can't send request for same request_name
+	ac, isPresent := acMap[r.requestName]
+	if isPresent && isQBlock2 {
+		lastUse := ac.LastUse.Add(time.Duration(4*qBlock2Config.NonTimeout)*time.Second)
+		now := time.Now()
+		if now.Before(lastUse) {
+			str := fmt.Sprintf("Can't send request to server. Please send %+v request after %+v", r.requestName, lastUse.Sub(now))
+			log.Warnf(str)
+			res = Response{ libcoap.ResponseBadRequest, []byte(str) }
+			return
+		}
+	}
+	// Set config for message task
+	interval := config.TaskInterval
+	retryNumber := config.TaskRetryNumber
+	timeout := config.TaskTimeout
+	if r.method == "GET" && isQBlock2 {
+		interval = 0
+		retryNumber = 0
+	}
 	task := task.NewMessageTask(
 		r.pdu,
-		time.Duration(config.TaskInterval) * time.Second,
-		config.TaskRetryNumber,
-		time.Duration(config.TaskTimeout) * time.Second,
+		time.Duration(interval) * time.Second,
+		retryNumber,
+		time.Duration(timeout) * time.Second,
 		false,
 		false,
 		r.handleResponse,
@@ -340,6 +394,10 @@ func (r *Request) Send() (res Response) {
 		res = Response{ libcoap.ResponseInternalServerError, []byte(str) }
 	} else {
 		res = Response{ pdu.Code, data }
+		// Set the last use of method GET
+		if r.method == "GET" && qBlock2Config != nil {
+			AddActiveRequest(r.requestName, time.Now())
+		}
 	}
 	return
 }

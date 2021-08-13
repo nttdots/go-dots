@@ -190,7 +190,7 @@ func (src *Pdu) toC(session *Session) (_ *C.coap_pdu_t, err error) {
         return
     }
 
-    err = src.fillC(p, false)
+    err = src.fillC(p, session)
     if err != nil {
         return
     }
@@ -220,17 +220,18 @@ func (s *optsSorter) Minus(okey OptionKey) optsSorter {
 	return rv
 }
 
-func (src *Pdu) fillC(p *C.coap_pdu_t, isObserve bool) (err error) {
+func (src *Pdu) fillC(p *C.coap_pdu_t, session *Session) (err error) {
     p._type = C.coap_pdu_type_t(src.Type)
     p.code  = C.coap_pdu_code_t(src.Code)
     p.mid   = C.int(src.MessageID)
     // Set this field for coap_add_token()
     p.used_size = 0
-
+    token_len := C.size_t(len(src.Token))
     if 0 < len(src.Token) {
-        if 0 == C.coap_add_token(p,
-                                 C.size_t(len(src.Token)),
-                                 (*C.uint8_t)(unsafe.Pointer(&src.Token[0]))) {
+        if session != nil {
+            C.coap_session_init_token(session.ptr, token_len, (*C.uint8_t)(unsafe.Pointer(&src.Token[0])))
+        }
+        if 0 == C.coap_add_token(p, token_len, (*C.uint8_t)(unsafe.Pointer(&src.Token[0]))) {
             err = errors.New("coap_add_token() failed.")
             return
         }
@@ -251,10 +252,11 @@ func (src *Pdu) fillC(p *C.coap_pdu_t, isObserve bool) (err error) {
                     return
                 }
             } else {
-                if src.Type == TypeAck {
+                if src.Type == TypeAck && (o.Key == OptionBlock2 || o.Key == OptionMaxage) {
                     continue
                 }
-                if o.Key == OptionObserve || o.Key == OptionEtag || o.Key == OptionBlock2 {
+                if o.Key == OptionObserve || o.Key == OptionEtag || o.Key == OptionBlock2 ||
+                   o.Key == OptionQBlock2 {
                     value, _ := o.Uint()
                     if 0 == C.coap_handle_add_option(p, C.uint16_t(o.Key), C.uint(value)) {
                         err = errors.New("coap_add_option() failed.")
@@ -273,7 +275,7 @@ func (src *Pdu) fillC(p *C.coap_pdu_t, isObserve bool) (err error) {
         }
     }
 
-    if (src.Code != ResponseContent && 0 < len(src.Data)) || isObserve {
+    if src.Code != ResponseContent && 0 < len(src.Data) {
         if 0 == C.coap_add_data(p,
                                 C.size_t(len(src.Data)),
                                 (*C.uint8_t)(unsafe.Pointer(&src.Data[0]))) {
@@ -393,16 +395,6 @@ func (pdu *Pdu) OptionValues(o OptionKey) []interface{} {
 func (pdu *Pdu) RemoveOption(key OptionKey) {
 	opts := optsSorter{pdu.Options}
 	pdu.Options = opts.Minus(key).opts
-}
-
-// Remove option for first block in case observe
-func (pdu *Pdu) RemoveOptionFirstBlock(key OptionKey) {
-	for k, v := range pdu.Options {
-        if v.Key == key {
-            pdu.Options = append(pdu.Options[:k], pdu.Options[k+1:]...)
-            return
-        }
-    }
 }
 
 // AddOption adds an option.

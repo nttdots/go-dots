@@ -176,7 +176,7 @@ func export_method_from_server_handler(rsrc  *C.coap_resource_t,
     if ok {
         handler(context, resource, session, request, token, queryString, &response)
     }
-    response.fillC(resp, false)
+    response.fillC(resp, nil)
 }
 
 //export export_nack_handler

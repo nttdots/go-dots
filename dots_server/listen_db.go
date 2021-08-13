@@ -135,7 +135,10 @@ ILOOP:
 					uriPath := messages.MessageTypes[messages.SESSION_CONFIGURATION].Path
 					query := uriPath + "/sid=" + sidStr
 					resource := context.GetResourceByQuery(&query)
-					context.EnableResourceDirty(resource)
+					dirty := context.EnableResourceDirty(resource)
+					if dirty > 0 {
+						resource.SetIsNotification(true)
+					}
 				}
 			} else if mapData["table_trigger"].(string) == string(PREFIX_ADDRESS_RANGE) {
 
@@ -272,6 +275,7 @@ func handleNotifyMitigation(id int64, cid int, cuid string, cdid string, mid int
 			isObserved = false
 		} else {
 			isObserved = true
+			resource.SetIsNotification(true)
 		}
 
 		if status == models.Terminated && !isObserved {
@@ -454,7 +458,10 @@ func handleNotifyUriFilteringTelemetryPreMitigation(mapData map[string]interface
 			log.Debugf("Session(%+v).Waiting the telemetry-notify-interval pass...", session.String())
 			notificationList[session] = resource
 		} else {
-			context.EnableResourceDirty(resource)
+			dirty := context.EnableResourceDirty(resource)
+			if dirty > 0 {
+				resource.SetIsNotification(true)
+			}
 			session.SetIsWaitNotification(true)
 			go handleTelemetryNotifyInterval(context, session, preMitigation.CustomerId, preMitigation.Cuid)
 		}
@@ -472,7 +479,10 @@ func handleTelemetryNotifyInterval(context *libcoap.Context, session *libcoap.Se
 		time.Sleep(time.Duration(interval) * time.Second)
 		resource := notificationList[session]
 		if resource != nil {
-			context.EnableResourceDirty(resource)
+			dirty := context.EnableResourceDirty(resource)
+			if dirty > 0 {
+				resource.SetIsNotification(true)
+			}
 			session.SetIsWaitNotification(false)
 			notificationList[session] = nil
 		} else {

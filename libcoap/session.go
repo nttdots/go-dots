@@ -41,7 +41,7 @@ func (session *Session) SessionRelease() {
 }
 
 func (session *Session) SetMaxRetransmit (value int) {
-    C.coap_session_set_max_retransmit(session.ptr, C.uint(value))
+    C.coap_session_set_max_retransmit(session.ptr, C.uint16_t(value))
 }
 
 func (session *Session) SetAckTimeout (value decimal.Decimal) {
@@ -68,6 +68,40 @@ func (session *Session) SetAckRandomFactor (value decimal.Decimal) {
     }
 
     C.coap_session_set_ack_random_factor (session.ptr, C.coap_fixed_point_t{C.uint16_t(intPart), C.uint16_t(fraction * 1000)})
+}
+
+func (session *Session) SetMaxPayLoads(value int) {
+    C.coap_session_set_max_payloads(session.ptr, C.uint16_t(value))
+}
+
+func (session *Session) SetNonMaxRetransmit(value int) {
+    C.coap_session_set_non_max_retransmit(session.ptr, C.uint16_t(value))
+}
+
+func (session *Session) SetNonTimeout(value decimal.Decimal) {
+    valStr := value.String()
+    parts := strings.Split(valStr, ".")
+    intPart,_ := strconv.Atoi(parts[0])
+    var fraction float64
+    if len(parts) > 1 {
+        fractionPart,_ := strconv.Atoi(parts[1])
+        fraction = float64(fractionPart) * (math.Pow10(-len(parts[1])))
+    }
+
+    C.coap_session_set_non_timeout(session.ptr, C.coap_fixed_point_t{C.uint16_t(intPart), C.uint16_t(fraction * 1000)})
+}
+
+func (session *Session) SetNonReceiveTimeout(value decimal.Decimal) {
+    valStr := value.String()
+    parts := strings.Split(valStr, ".")
+    intPart,_ := strconv.Atoi(parts[0])
+    var fraction float64
+    if len(parts) > 1 {
+        fractionPart,_ := strconv.Atoi(parts[1])
+        fraction = float64(fractionPart) * (math.Pow10(-len(parts[1])))
+    }
+
+    C.coap_session_set_non_receive_timeout(session.ptr, C.coap_fixed_point_t{C.uint16_t(intPart), C.uint16_t(fraction * 1000)})
 }
 
 /*
