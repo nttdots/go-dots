@@ -1,12 +1,12 @@
 system:
   signalConfigurationParameter:
     heartbeatInterval: 15-240
-    missingHbAllowed: 3-9
+    missingHbAllowed: 3-15
     maxRetransmit: 2-15
     ackTimeout: 1.0-30.0
     ackRandomFactor: 1.1-4.0
     heartbeatIntervalIdle: 15-240
-    missingHbAllowedIdle: 3-9
+    missingHbAllowedIdle: 3-15
     maxRetransmitIdle: 2-15
     ackTimeoutIdle: 1.0-30.0
     ackRandomFactorIdle: 1.1-4.0
@@ -14,12 +14,12 @@ system:
 # Default current values of session configuration
   defaultSignalConfiguration:
     heartbeatInterval: 30
-    missingHbAllowed: 5
+    missingHbAllowed: 15
     maxRetransmit: 3
     ackTimeout: 2.0
     ackRandomFactor: 1.5
     heartbeatIntervalIdle: 30
-    missingHbAllowedIdle: 5
+    missingHbAllowedIdle: 15
     maxRetransmitIdle: 3
     ackTimeoutIdle: 2.0
     ackRandomFactorIdle: 1.5

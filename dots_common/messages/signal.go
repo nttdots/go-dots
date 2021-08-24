@@ -265,8 +265,8 @@ type SignalConfigRequest struct {
 
 type SignalConfigs struct {
 	_struct          bool         `codec:",uint"` //encode struct with "unsigned integer" keys
-	MitigatingConfig SignalConfig `json:"mitigating-config" codec:"32"`
-	IdleConfig       SignalConfig `json:"idle-config"       codec:"44"`
+	MitigatingConfig SignalConfig `json:"mitigating-config" codec:"32,omitempty"`
+	IdleConfig       SignalConfig `json:"idle-config"       codec:"44,omitempty"`
 }
 
 type IntCurrent struct {

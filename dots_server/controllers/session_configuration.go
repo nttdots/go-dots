@@ -221,11 +221,11 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 	}
 
 	setDefaultValues(payload)
-	sessionConfigurationPayloadDisplay(payload)
 	ackTimeout, _ := payload.MitigatingConfig.AckTimeout.CurrentValue.Round(2).Float64()
 	ackTimeoutIdle, _ := payload.IdleConfig.AckTimeout.CurrentValue.Round(2).Float64()
 	ackRandomFactor, _ := payload.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
 	ackRandomFactorIdle, _ := payload.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
+	sessionConfigurationPayloadDisplay(payload, ackTimeout, ackTimeoutIdle, ackRandomFactor, ackRandomFactorIdle)
 	// validate
 	signalSessionConfiguration := models.NewSignalSessionConfiguration(
 		*sid,
@@ -404,19 +404,19 @@ func setDefaultValues (data *messages.SignalConfigs) {
 /*
  * Parse the request body and display the contents of the messages to stdout.
 */
-func sessionConfigurationPayloadDisplay(data *messages.SignalConfigs) {
+func sessionConfigurationPayloadDisplay(data *messages.SignalConfigs, ackTimeout float64, ackTimeoutIdle float64, ackRandomFactor float64, ackRandomFactorIdle float64) {
 	var result string = "\n"
 	result += fmt.Sprintf("   \"%s\": %d\n", "session-id", data.MitigatingConfig.SessionId)
-	result += fmt.Sprintf("   \"%s\": %d\n", "heartbeat-interval", data.MitigatingConfig.HeartbeatInterval)
-	result += fmt.Sprintf("   \"%s\": %d\n", "missing-hb-allowed", data.MitigatingConfig.MissingHbAllowed)
-	result += fmt.Sprintf("   \"%s\": %d\n", "max-retransmit", data.MitigatingConfig.MaxRetransmit)
-	result += fmt.Sprintf("   \"%s\": %d\n", "ack-timeout", data.MitigatingConfig.AckTimeout)
-	result += fmt.Sprintf("   \"%s\": %f\n", "ack-random-factor", data.MitigatingConfig.AckRandomFactor)
-	result += fmt.Sprintf("   \"%s\": %d\n", "heartbeat-interval-idle", data.IdleConfig.HeartbeatInterval)
-	result += fmt.Sprintf("   \"%s\": %d\n", "missing-hb-allowed-idle", data.IdleConfig.MissingHbAllowed)
-	result += fmt.Sprintf("   \"%s\": %d\n", "max-retransmit-idle", data.IdleConfig.MaxRetransmit)
-	result += fmt.Sprintf("   \"%s\": %d\n", "ack-timeout-idle", data.IdleConfig.AckTimeout)
-	result += fmt.Sprintf("   \"%s\": %f\n", "ack-random-factor-idle", data.IdleConfig.AckRandomFactor)
+	result += fmt.Sprintf("   \"%s\": %d\n", "heartbeat-interval", *data.MitigatingConfig.HeartbeatInterval.CurrentValue)
+	result += fmt.Sprintf("   \"%s\": %d\n", "missing-hb-allowed", *data.MitigatingConfig.MissingHbAllowed.CurrentValue)
+	result += fmt.Sprintf("   \"%s\": %d\n", "max-retransmit", *data.MitigatingConfig.MaxRetransmit.CurrentValue)
+	result += fmt.Sprintf("   \"%s\": %f\n", "ack-timeout", ackTimeout)
+	result += fmt.Sprintf("   \"%s\": %f\n", "ack-random-factor", ackRandomFactor)
+	result += fmt.Sprintf("   \"%s\": %d\n", "heartbeat-interval-idle", *data.IdleConfig.HeartbeatInterval.CurrentValue)
+	result += fmt.Sprintf("   \"%s\": %d\n", "missing-hb-allowed-idle", *data.IdleConfig.MissingHbAllowed.CurrentValue)
+	result += fmt.Sprintf("   \"%s\": %d\n", "max-retransmit-idle", *data.IdleConfig.MaxRetransmit.CurrentValue)
+	result += fmt.Sprintf("   \"%s\": %f\n", "ack-timeout-idle", ackTimeoutIdle)
+	result += fmt.Sprintf("   \"%s\": %f\n", "ack-random-factor-idle", ackRandomFactorIdle)
 	log.Infoln(result)
 }
 
