@@ -193,11 +193,25 @@ func (env *Env) HeartBeatMechaism(session *libcoap.Session, customer *models.Cus
 		if sessions[session.GetSessionPtr()] == nil {
 			return
 		}
+		// Get mitigationIds with status is 2
+		mids, err := models.GetMitigationIdsByCustomer(customer.Id)
+		if err != nil {
+			return
+		}
 		// Get session configuration of this session by customer id
 		sessionConfig, err := controllers.GetSessionConfig(customer)
 		if err != nil {
 			log.Errorf("[Session Mngt Thread]: Get session configuration failed.")
 			return
+		}
+		// Set value for heartbeat
+		retry := sessionConfig.MissingHbAllowedIdle
+		interval := sessionConfig.HeartbeatIntervalIdle
+		timeout := sessionConfig.AckTimeoutIdle
+		if len(mids) > 0 {
+			retry = sessionConfig.MissingHbAllowed
+			interval = sessionConfig.HeartbeatInterval
+			timeout = sessionConfig.AckTimeout
 		}
 		// If DOTS server receives 2.04 but DOTS server doesn't recieve heartbeat from DOTS client,  DOTS server set 'peer-hb-status' to false
         // Else  DOTS server set 'peer-hb-status' to true
@@ -218,9 +232,10 @@ func (env *Env) HeartBeatMechaism(session *libcoap.Session, customer *models.Cus
 			log.Debugf("[Session Mngt Thread]: Waiting for current heartbeat task (id = %+v)", env.heartBeatList[session].message.MessageID)
 		} else {
 			log.Debugf("[Session Mngt Thread]: Create new heartbeat message (id = %+v) to check client connection", hbMessage.MessageID)
-			task := NewHeartBeatMessageTask(hbMessage, sessionConfig.MissingHbAllowedIdle,
-				time.Duration(sessionConfig.AckTimeoutIdle) * time.Second,
-				time.Duration(sessionConfig.HeartbeatIntervalIdle) * time.Second,
+			task := NewHeartBeatMessageTask(hbMessage,
+				retry,
+				time.Duration(timeout) * time.Second,
+				time.Duration(interval) * time.Second,
 				heartbeatResponseHandler, heartbeatTimeoutHandler)
 			env.heartBeatList[session] = task
 			env.Run(session, task)
@@ -228,6 +243,6 @@ func (env *Env) HeartBeatMechaism(session *libcoap.Session, customer *models.Cus
 			session.SetIsReceiveResponseContent(false)
 			session.SetIsReceiveHeartBeat(false)
 		}
-		time.Sleep(time.Duration(sessionConfig.HeartbeatIntervalIdle) * time.Second)
+		time.Sleep(time.Duration(interval) * time.Second)
 	}
 }

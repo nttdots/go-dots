@@ -575,8 +575,27 @@ func GetMitigationByCustomerIdAndCuid(customerId int, cuid string) (mitigationLi
 	return
 }
 
+// Find all mitigationIds with status is 2 by a customerId
+func GetMitigationIdsByCustomer(customerId int) (mitigationscopeIds []int64, err error) {
+	// database connection create
+	engine, err := ConnectDB()
+	if err != nil {
+		log.Printf("database connect error: %s", err)
+		return
+	}
+
+	// Get customer table data
+	err = engine.Table("mitigation_scope").Where("customer_id = ? AND status = 2", customerId).Cols("id").Find(&mitigationscopeIds)
+	if err != nil {
+		log.Printf("find pre-configured mitigation ids error: %s\n", err)
+		return
+	}
+
+	return
+}
+
 /*
- * Find all mitigationId by a customerId.
+ * Find all mitigationIds with status is 8 by a customerId
  *
  * parameter:
  *  customerId id of the Customer
