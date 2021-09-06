@@ -22,6 +22,7 @@ CERTS_DIR="`dirname $0`/../../certs"
 if [ -n "$FILE" ]; then
 wget \
   -q -S -O - \
+  --content-on-error \
   --no-check-certificate \
   --ca-certificate="$CERTS_DIR"/ca-cert.pem \
   --certificate="$CERTS_DIR"/client-cert.pem \
@@ -33,6 +34,7 @@ wget \
 else
 wget \
   -q -S -O - \
+  --content-on-error \
   --no-check-certificate \
   --ca-certificate="$CERTS_DIR"/ca-cert.pem \
   --certificate="$CERTS_DIR"/client-cert.pem \
