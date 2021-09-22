@@ -272,6 +272,8 @@ func UpdateBlockerLoad(blockerId int64, diff int) (err error) {
 		return
 	}
 	session := engine.NewSession()
+	defer session.Close()
+
 	err = session.Begin()
 	if err != nil {
 		return

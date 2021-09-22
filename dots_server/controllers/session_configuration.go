@@ -38,11 +38,21 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 	resp.SignalConfigs.MitigatingConfig.MaxRetransmit.SetMinMax(config.MaxRetransmit)
 	resp.SignalConfigs.MitigatingConfig.AckTimeout.SetMinMax(config.AckTimeout)
 	resp.SignalConfigs.MitigatingConfig.AckRandomFactor.SetMinMax(config.AckRandomFactor)
+	resp.SignalConfigs.MitigatingConfig.MaxPayload.SetMinMax(config.MaxPayload)
+	resp.SignalConfigs.MitigatingConfig.NonMaxRetransmit.SetMinMax(config.NonMaxRetransmit)
+	resp.SignalConfigs.MitigatingConfig.NonTimeout.SetMinMax(config.NonTimeout)
+	resp.SignalConfigs.MitigatingConfig.NonProbingWait.SetMinMax(config.NonProbingWait)
+	resp.SignalConfigs.MitigatingConfig.NonPartialWait.SetMinMax(config.NonPartialWait)
 	resp.SignalConfigs.IdleConfig.HeartbeatInterval.SetMinMax(config.HeartbeatIntervalIdle)
 	resp.SignalConfigs.IdleConfig.MissingHbAllowed.SetMinMax(config.MissingHbAllowedIdle)
 	resp.SignalConfigs.IdleConfig.MaxRetransmit.SetMinMax(config.MaxRetransmitIdle)
 	resp.SignalConfigs.IdleConfig.AckTimeout.SetMinMax(config.AckTimeoutIdle)
 	resp.SignalConfigs.IdleConfig.AckRandomFactor.SetMinMax(config.AckRandomFactorIdle)
+	resp.SignalConfigs.IdleConfig.MaxPayload.SetMinMax(config.MaxPayloadIdle)
+	resp.SignalConfigs.IdleConfig.NonMaxRetransmit.SetMinMax(config.NonMaxRetransmitIdle)
+	resp.SignalConfigs.IdleConfig.NonTimeout.SetMinMax(config.NonTimeoutIdle)
+	resp.SignalConfigs.IdleConfig.NonProbingWait.SetMinMax(config.NonProbingWaitIdle)
+	resp.SignalConfigs.IdleConfig.NonPartialWait.SetMinMax(config.NonPartialWaitIdle)
 	resp.SignalConfigs.MitigatingConfig.ProbingRate = messages.ProbingRate{}
 	resp.SignalConfigs.IdleConfig.ProbingRate       = messages.ProbingRate{}
 
@@ -73,11 +83,21 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue     = defaultValue.MaxRetransmit
 		resp.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue        = decimal.NewFromFloat(defaultValue.AckTimeout).Round(2)
 		resp.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(defaultValue.AckRandomFactor).Round(2)
+		resp.SignalConfigs.MitigatingConfig.MaxPayload.CurrentValue        = defaultValue.MaxPayload
+		resp.SignalConfigs.MitigatingConfig.NonMaxRetransmit.CurrentValue  = defaultValue.NonMaxRetransmit
+		resp.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue        = decimal.NewFromFloat(defaultValue.NonTimeout).Round(2)
+		resp.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue    = decimal.NewFromFloat(defaultValue.NonPartialWait).Round(2)
+		resp.SignalConfigs.MitigatingConfig.NonPartialWait.CurrentValue    = decimal.NewFromFloat(defaultValue.NonPartialWait).Round(2)
 		resp.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue 	   = defaultValue.HeartbeatIntervalIdle
 		resp.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue        = defaultValue.MissingHbAllowedIdle
 		resp.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue           = defaultValue.MaxRetransmitIdle
 		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue              = decimal.NewFromFloat(defaultValue.AckTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue         = decimal.NewFromFloat(defaultValue.AckRandomFactorIdle).Round(2)
+		resp.SignalConfigs.IdleConfig.MaxPayload.CurrentValue              = defaultValue.MaxPayloadIdle
+		resp.SignalConfigs.IdleConfig.NonMaxRetransmit.CurrentValue        = defaultValue.NonMaxRetransmitIdle
+		resp.SignalConfigs.IdleConfig.NonTimeout.CurrentValue              = decimal.NewFromFloat(defaultValue.NonTimeoutIdle).Round(2)
+		resp.SignalConfigs.IdleConfig.NonProbingWait.CurrentValue          = decimal.NewFromFloat(defaultValue.NonPartialWaitIdle).Round(2)
+		resp.SignalConfigs.IdleConfig.NonPartialWait.CurrentValue          = decimal.NewFromFloat(defaultValue.NonPartialWaitIdle).Round(2)
 	} else {
 		// return 4.04 (NotFound) if there is not any session configuration with request sid in DB
 		signalSessionConfiguration, err := models.GetCurrentSignalSessionConfiguration(customer.Id)
@@ -109,11 +129,21 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue     = signalSessionConfiguration.MaxRetransmit
 		resp.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue        = decimal.NewFromFloat(signalSessionConfiguration.AckTimeout).Round(2)
 		resp.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactor).Round(2)
+		resp.SignalConfigs.MitigatingConfig.MaxPayload.CurrentValue        = signalSessionConfiguration.MaxPayload
+		resp.SignalConfigs.MitigatingConfig.NonMaxRetransmit.CurrentValue  = signalSessionConfiguration.NonMaxRetransmit
+		resp.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue        = decimal.NewFromFloat(signalSessionConfiguration.NonTimeout).Round(2)
+		resp.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue    = decimal.NewFromFloat(signalSessionConfiguration.NonProbingWait).Round(2)
+		resp.SignalConfigs.MitigatingConfig.NonPartialWait.CurrentValue    = decimal.NewFromFloat(signalSessionConfiguration.NonPartialWait).Round(2)
 		resp.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue 	   = signalSessionConfiguration.HeartbeatIntervalIdle
 		resp.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue  	   = signalSessionConfiguration.MissingHbAllowedIdle
 		resp.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue    	   = signalSessionConfiguration.MaxRetransmitIdle
 		resp.SignalConfigs.IdleConfig.AckTimeout.CurrentValue       	   = decimal.NewFromFloat(signalSessionConfiguration.AckTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue   	   = decimal.NewFromFloat(signalSessionConfiguration.AckRandomFactorIdle).Round(2)
+		resp.SignalConfigs.IdleConfig.MaxPayload.CurrentValue              = signalSessionConfiguration.MaxPayloadIdle
+		resp.SignalConfigs.IdleConfig.NonMaxRetransmit.CurrentValue        = signalSessionConfiguration.NonMaxRetransmitIdle
+		resp.SignalConfigs.IdleConfig.NonTimeout.CurrentValue              = decimal.NewFromFloat(signalSessionConfiguration.NonTimeoutIdle).Round(2)
+		resp.SignalConfigs.IdleConfig.NonProbingWait.CurrentValue          = decimal.NewFromFloat(signalSessionConfiguration.NonProbingWaitIdle).Round(2)
+		resp.SignalConfigs.IdleConfig.NonPartialWait.CurrentValue          = decimal.NewFromFloat(signalSessionConfiguration.NonPartialWaitIdle).Round(2)
 
 		// Add Max-age option into response to indicate the limit time of freshness mechanism
 		// Does not add Max-age option into response in case session configuration is reset by expired Max-age and notify to client
@@ -133,7 +163,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 				maxAgeOption, err = libcoap.OptionMaxage.Uint(uint64(maxAge))
 			}
 			if err != nil {
-				errMessage := fmt.Sprintf("Failed to add option Max-Age")
+				errMessage := fmt.Sprintln("Failed to add option Max-Age")
 				log.Error(errMessage)
 				res = Response{
 					Type: common.Acknowledgement,
@@ -221,25 +251,8 @@ func (m *SessionConfiguration) HandlePut(newRequest Request, customer *models.Cu
 	}
 
 	setDefaultValues(payload)
-	ackTimeout, _ := payload.MitigatingConfig.AckTimeout.CurrentValue.Round(2).Float64()
-	ackTimeoutIdle, _ := payload.IdleConfig.AckTimeout.CurrentValue.Round(2).Float64()
-	ackRandomFactor, _ := payload.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
-	ackRandomFactorIdle, _ := payload.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
-	sessionConfigurationPayloadDisplay(payload, ackTimeout, ackTimeoutIdle, ackRandomFactor, ackRandomFactorIdle)
-	// validate
-	signalSessionConfiguration := models.NewSignalSessionConfiguration(
-		*sid,
-		*payload.MitigatingConfig.HeartbeatInterval.CurrentValue,
-		*payload.MitigatingConfig.MissingHbAllowed.CurrentValue,
-		*payload.MitigatingConfig.MaxRetransmit.CurrentValue,
-		ackTimeout,
-		ackRandomFactor,
-		*payload.IdleConfig.HeartbeatInterval.CurrentValue,
-		*payload.IdleConfig.MissingHbAllowed.CurrentValue,
-		*payload.IdleConfig.MaxRetransmit.CurrentValue,
-		ackTimeoutIdle,
-		ackRandomFactorIdle,
-	)
+	signalSessionConfiguration := models.NewSignalSessionConfiguration(*sid, *payload)
+	// Validate the request data
 	isPresent, isUnprocessableEntity, errMessage := v.Validate(signalSessionConfiguration, *customer)
 	if errMessage != "" {
 		if isUnprocessableEntity {
@@ -275,7 +288,7 @@ ResponseNG:
 	}
 	return
 ResponseUnprocessableEntity:
-// on validation heartbeat-interval', 'missing-hb-allowed', 'max-retransmit', 'ack-timeout', and 'ack-random-factor' error
+// on validation the request data error
 	res = Response{
 		Type: common.Acknowledgement,
 		Code: common.UnprocessableEntity,
@@ -382,6 +395,24 @@ func setDefaultValues (data *messages.SignalConfigs) {
 		temp := decimal.NewFromFloat(defaultValue.AckRandomFactor)
 		data.MitigatingConfig.AckRandomFactor.CurrentValue = &temp
 	}
+	if data.MitigatingConfig.MaxPayload.CurrentValue == nil {
+		data.MitigatingConfig.MaxPayload.CurrentValue = &defaultValue.MaxPayload
+	}
+	if data.MitigatingConfig.NonMaxRetransmit.CurrentValue == nil {
+		data.MitigatingConfig.NonMaxRetransmit.CurrentValue = &defaultValue.NonMaxRetransmit
+	}
+	if data.MitigatingConfig.NonTimeout.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.NonTimeout)
+		data.MitigatingConfig.NonTimeout.CurrentValue = &temp
+	}
+	if data.MitigatingConfig.NonProbingWait.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.NonProbingWait)
+		data.MitigatingConfig.NonProbingWait.CurrentValue = &temp
+	}
+	if data.MitigatingConfig.NonPartialWait.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.NonPartialWait)
+		data.MitigatingConfig.NonPartialWait.CurrentValue = &temp
+	}
 	if data.IdleConfig.HeartbeatInterval.CurrentValue == nil {
 		data.IdleConfig.HeartbeatInterval.CurrentValue = &defaultValue.HeartbeatIntervalIdle
 	}
@@ -399,25 +430,25 @@ func setDefaultValues (data *messages.SignalConfigs) {
 		temp := decimal.NewFromFloat(defaultValue.AckRandomFactorIdle)
 		data.IdleConfig.AckRandomFactor.CurrentValue = &temp
 	}
-}
+	if data.IdleConfig.MaxPayload.CurrentValue == nil {
+		data.IdleConfig.MaxPayload.CurrentValue = &defaultValue.MaxPayloadIdle
+	}
+	if data.IdleConfig.NonMaxRetransmit.CurrentValue == nil {
+		data.IdleConfig.NonMaxRetransmit.CurrentValue = &defaultValue.NonMaxRetransmitIdle
+	}
+	if data.IdleConfig.NonTimeout.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.NonTimeoutIdle)
+		data.IdleConfig.NonTimeout.CurrentValue = &temp
+	}
+	if data.IdleConfig.NonProbingWait.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.NonProbingWaitIdle)
+		data.IdleConfig.NonProbingWait.CurrentValue = &temp
+	}
+	if data.IdleConfig.NonPartialWait.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.NonPartialWaitIdle)
+		data.IdleConfig.NonPartialWait.CurrentValue = &temp
+	}
 
-/*
- * Parse the request body and display the contents of the messages to stdout.
-*/
-func sessionConfigurationPayloadDisplay(data *messages.SignalConfigs, ackTimeout float64, ackTimeoutIdle float64, ackRandomFactor float64, ackRandomFactorIdle float64) {
-	var result string = "\n"
-	result += fmt.Sprintf("   \"%s\": %d\n", "session-id", data.MitigatingConfig.SessionId)
-	result += fmt.Sprintf("   \"%s\": %d\n", "heartbeat-interval", *data.MitigatingConfig.HeartbeatInterval.CurrentValue)
-	result += fmt.Sprintf("   \"%s\": %d\n", "missing-hb-allowed", *data.MitigatingConfig.MissingHbAllowed.CurrentValue)
-	result += fmt.Sprintf("   \"%s\": %d\n", "max-retransmit", *data.MitigatingConfig.MaxRetransmit.CurrentValue)
-	result += fmt.Sprintf("   \"%s\": %f\n", "ack-timeout", ackTimeout)
-	result += fmt.Sprintf("   \"%s\": %f\n", "ack-random-factor", ackRandomFactor)
-	result += fmt.Sprintf("   \"%s\": %d\n", "heartbeat-interval-idle", *data.IdleConfig.HeartbeatInterval.CurrentValue)
-	result += fmt.Sprintf("   \"%s\": %d\n", "missing-hb-allowed-idle", *data.IdleConfig.MissingHbAllowed.CurrentValue)
-	result += fmt.Sprintf("   \"%s\": %d\n", "max-retransmit-idle", *data.IdleConfig.MaxRetransmit.CurrentValue)
-	result += fmt.Sprintf("   \"%s\": %f\n", "ack-timeout-idle", ackTimeoutIdle)
-	result += fmt.Sprintf("   \"%s\": %f\n", "ack-random-factor-idle", ackRandomFactorIdle)
-	log.Infoln(result)
 }
 
 /*
@@ -479,11 +510,21 @@ func DefaultSessionConfiguration() (sessionConfig models.SignalSessionConfigurat
 	sessionConfig.MaxRetransmit         = defaultValue.MaxRetransmit
 	sessionConfig.AckTimeout            = defaultValue.AckTimeout
 	sessionConfig.AckRandomFactor       = defaultValue.AckRandomFactor
+	sessionConfig.MaxPayload            = defaultValue.MaxPayload
+	sessionConfig.NonMaxRetransmit      = defaultValue.NonMaxRetransmit
+	sessionConfig.NonTimeout            = defaultValue.NonTimeout
+	sessionConfig.NonProbingWait        = defaultValue.NonProbingWait
+	sessionConfig.NonPartialWait        = defaultValue.NonPartialWait
 	sessionConfig.HeartbeatIntervalIdle = defaultValue.HeartbeatIntervalIdle
 	sessionConfig.MissingHbAllowedIdle  = defaultValue.MissingHbAllowedIdle
 	sessionConfig.MaxRetransmitIdle     = defaultValue.MaxRetransmitIdle
 	sessionConfig.AckTimeoutIdle        = defaultValue.AckTimeoutIdle
 	sessionConfig.AckRandomFactorIdle   = defaultValue.AckRandomFactorIdle
+	sessionConfig.MaxPayloadIdle        = defaultValue.MaxPayloadIdle
+	sessionConfig.NonMaxRetransmitIdle  = defaultValue.NonMaxRetransmitIdle
+	sessionConfig.NonTimeoutIdle        = defaultValue.NonTimeoutIdle
+	sessionConfig.NonProbingWaitIdle    = defaultValue.NonProbingWaitIdle
+	sessionConfig.NonPartialWaitIdle    = defaultValue.NonPartialWaitIdle
 
 	return
 }

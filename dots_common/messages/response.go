@@ -133,6 +133,12 @@ type ConfigurationResponseConfig struct {
 	AckTimeout        DecimalCurrentMinMax `json:"ack-timeout"        codec:"39"`
 	AckRandomFactor   DecimalCurrentMinMax `json:"ack-random-factor"  codec:"40"`
 	ProbingRate       ProbingRate          `json:"probing-rate"       codec:"50"`
+	// The parameters in draft-ietf-dots-robust-blocks
+	MaxPayload       IntCurrentMinMax     `json:"ietf-dots-robust-trans:max-payloads" codec:"32776"`
+	NonMaxRetransmit IntCurrentMinMax     `json:"ietf-dots-robust-trans:non-max-retransmit" codec:"32777"`
+	NonTimeout       DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-timeout" codec:"32778"`
+	NonProbingWait   DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-probing-wait" codec:"32779"`
+	NonPartialWait   DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-partial-wait" codec:"32780"`
 }
 
 type ProbingRate struct {
@@ -381,100 +387,172 @@ func (m *MitigationResponsePut) String() (result string) {
  * return: Configuration Response in string
  */
 func (m *ConfigurationResponse) String() (result string) {
+	space3 := "   "
+	space6 := space3 + space3
+	space9 := space6 + space3
 	result = "\n \"ietf-dots-signal-channel:signal-config\":\n"
-	result += fmt.Sprintf("   \"%s\":\n", "mitigating-config")
-	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
-	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.MitigatingConfig.HeartbeatInterval.MinValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.MitigatingConfig.HeartbeatInterval.MaxValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue)
+	result += fmt.Sprintf("%s\"%s\":\n", space3, "mitigating-config")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "heartbeat-interval")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.MitigatingConfig.HeartbeatInterval.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.MitigatingConfig.HeartbeatInterval.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue)
 
-	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
-	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.MitigatingConfig.MissingHbAllowed.MinValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.MitigatingConfig.MissingHbAllowed.MaxValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue)
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "missing-hb-allowed")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.MitigatingConfig.MissingHbAllowed.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.MitigatingConfig.MissingHbAllowed.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue)
 
-	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
-	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.MitigatingConfig.MaxRetransmit.MinValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.MitigatingConfig.MaxRetransmit.MaxValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue)
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "max-retransmit")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.MitigatingConfig.MaxRetransmit.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.MitigatingConfig.MaxRetransmit.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue)
 
-	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-timeout")
 	min_float, _ := m.SignalConfigs.MitigatingConfig.AckTimeout.MinValue.Round(2).Float64()
 	max_float, _ := m.SignalConfigs.MitigatingConfig.AckTimeout.MaxValue.Round(2).Float64()
 	current_float, _ := m.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue.Round(2).Float64()
-	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
-	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
-	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 
-	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-random-factor")
 	min_float, _ = m.SignalConfigs.MitigatingConfig.AckRandomFactor.MinValue.Round(2).Float64()
 	max_float, _ = m.SignalConfigs.MitigatingConfig.AckRandomFactor.MaxValue.Round(2).Float64()
 	current_float, _ = m.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
-	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
-	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
-	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 
 	if m.SignalConfigs.MitigatingConfig.ProbingRate.MinValue == nil && m.SignalConfigs.MitigatingConfig.ProbingRate.MaxValue == nil && m.SignalConfigs.MitigatingConfig.ProbingRate.CurrentValue == nil {
-		result += fmt.Sprintf("     \"%s\": %+v\n", "probing-rate", "{}")
+		result += fmt.Sprintf("%s\"%s\": %+v\n", space6, "probing-rate", "{}")
 	} else {
-		result += fmt.Sprintf("     \"%s\": \n", "probing-rate")
+		result += fmt.Sprintf("%s\"%s\": \n", space6, "probing-rate")
 		if m.SignalConfigs.MitigatingConfig.ProbingRate.MinValue != nil {
-			result += fmt.Sprintf("       \"%s\": %d\n", "min-value", *m.SignalConfigs.MitigatingConfig.ProbingRate.MinValue)
+			result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", *m.SignalConfigs.MitigatingConfig.ProbingRate.MinValue)
 		}
 		if m.SignalConfigs.MitigatingConfig.ProbingRate.MaxValue != nil {
-			result += fmt.Sprintf("       \"%s\": %d\n", "max-value", *m.SignalConfigs.MitigatingConfig.ProbingRate.MaxValue)
+			result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", *m.SignalConfigs.MitigatingConfig.ProbingRate.MaxValue)
 		}
 		if m.SignalConfigs.MitigatingConfig.ProbingRate.CurrentValue != nil {
-			result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.ProbingRate.CurrentValue)
+			result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.ProbingRate.CurrentValue)
 		}
 	}
 
-	result += fmt.Sprintf("   \"%s\":\n", "idle-config")
-	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
-	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.MinValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.MaxValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue)
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:max-payloads")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.MitigatingConfig.MaxPayload.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.MitigatingConfig.MaxPayload.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.MitigatingConfig.MaxPayload.CurrentValue)
 
-	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
-	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.IdleConfig.MissingHbAllowed.MinValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.IdleConfig.MissingHbAllowed.MaxValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue)
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-max-retransmit")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.MitigatingConfig.NonMaxRetransmit.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.MitigatingConfig.NonMaxRetransmit.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.MitigatingConfig.NonMaxRetransmit.CurrentValue)
 
-	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
-	result += fmt.Sprintf("       \"%s\": %d\n", "min-value", m.SignalConfigs.IdleConfig.MaxRetransmit.MinValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "max-value", m.SignalConfigs.IdleConfig.MaxRetransmit.MaxValue)
-	result += fmt.Sprintf("       \"%s\": %d\n", "current-value", m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue)
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-timeout")
+	min_float, _ = m.SignalConfigs.MitigatingConfig.NonTimeout.MinValue.Round(2).Float64()
+	max_float, _ = m.SignalConfigs.MitigatingConfig.NonTimeout.MaxValue.Round(2).Float64()
+	current_float, _ = m.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 
-	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-probing-wait")
+	min_float, _ = m.SignalConfigs.MitigatingConfig.NonProbingWait.MinValue.Round(2).Float64()
+	max_float, _ = m.SignalConfigs.MitigatingConfig.NonProbingWait.MaxValue.Round(2).Float64()
+	current_float, _ = m.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-partial-wait")
+	min_float, _ = m.SignalConfigs.MitigatingConfig.NonPartialWait.MinValue.Round(2).Float64()
+	max_float, _ = m.SignalConfigs.MitigatingConfig.NonPartialWait.MaxValue.Round(2).Float64()
+	current_float, _ = m.SignalConfigs.MitigatingConfig.NonPartialWait.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+
+
+	result += fmt.Sprintf("%s\"%s\":\n", space3, "idle-config")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "heartbeat-interval")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue)
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "missing-hb-allowed")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.IdleConfig.MissingHbAllowed.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.IdleConfig.MissingHbAllowed.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue)
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "max-retransmit")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.IdleConfig.MaxRetransmit.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.IdleConfig.MaxRetransmit.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue)
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-timeout")
 	min_float, _ = m.SignalConfigs.IdleConfig.AckTimeout.MinValue.Round(2).Float64()
 	max_float, _ = m.SignalConfigs.IdleConfig.AckTimeout.MaxValue.Round(2).Float64()
 	current_float, _ = m.SignalConfigs.IdleConfig.AckTimeout.CurrentValue.Round(2).Float64()
-	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
-	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
-	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 
-	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-random-factor")
 	min_float, _ = m.SignalConfigs.IdleConfig.AckRandomFactor.MinValue.Round(2).Float64()
 	max_float, _ = m.SignalConfigs.IdleConfig.AckRandomFactor.MaxValue.Round(2).Float64()
 	current_float, _ = m.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
-	result += fmt.Sprintf("       \"%s\": %f\n", "min-value-decimal", min_float)
-	result += fmt.Sprintf("       \"%s\": %f\n", "max-value-decimal", max_float)
-	result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 
 	if m.SignalConfigs.IdleConfig.ProbingRate.MinValue == nil && m.SignalConfigs.IdleConfig.ProbingRate.MaxValue == nil && m.SignalConfigs.IdleConfig.ProbingRate.CurrentValue == nil {
-		result += fmt.Sprintf("     \"%s\": %+v\n", "probing-rate", "{}")
+		result += fmt.Sprintf("%s\"%s\": %+v\n", space6, "probing-rate", "{}")
 	} else {
-		result += fmt.Sprintf("     \"%s\": \n", "probing-rate")
+		result += fmt.Sprintf("%s\"%s\": \n", space6, "probing-rate")
 		if m.SignalConfigs.IdleConfig.ProbingRate.MinValue != nil {
-			result += fmt.Sprintf("       \"%s\": %d\n", "min-value", *m.SignalConfigs.IdleConfig.ProbingRate.MinValue)
+			result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", *m.SignalConfigs.IdleConfig.ProbingRate.MinValue)
 		}
 		if m.SignalConfigs.IdleConfig.ProbingRate.MaxValue != nil {
-			result += fmt.Sprintf("       \"%s\": %d\n", "max-value", *m.SignalConfigs.IdleConfig.ProbingRate.MaxValue)
+			result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", *m.SignalConfigs.IdleConfig.ProbingRate.MaxValue)
 		}
 		if m.SignalConfigs.IdleConfig.ProbingRate.CurrentValue != nil {
-			result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.ProbingRate.CurrentValue)
+			result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.ProbingRate.CurrentValue)
 		}
 	}
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:max-payloads")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.IdleConfig.MaxPayload.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.IdleConfig.MaxPayload.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.IdleConfig.MaxPayload.CurrentValue)
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-max-retransmit")
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "min-value", m.SignalConfigs.IdleConfig.NonMaxRetransmit.MinValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "max-value", m.SignalConfigs.IdleConfig.NonMaxRetransmit.MaxValue)
+	result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", m.SignalConfigs.IdleConfig.NonMaxRetransmit.CurrentValue)
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-timeout")
+	min_float, _ = m.SignalConfigs.IdleConfig.NonTimeout.MinValue.Round(2).Float64()
+	max_float, _ = m.SignalConfigs.IdleConfig.NonTimeout.MaxValue.Round(2).Float64()
+	current_float, _ = m.SignalConfigs.IdleConfig.NonTimeout.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-probing-wait")
+	min_float, _ = m.SignalConfigs.IdleConfig.NonProbingWait.MinValue.Round(2).Float64()
+	max_float, _ = m.SignalConfigs.IdleConfig.NonProbingWait.MaxValue.Round(2).Float64()
+	current_float, _ = m.SignalConfigs.IdleConfig.NonProbingWait.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-partial-wait")
+	min_float, _ = m.SignalConfigs.IdleConfig.NonPartialWait.MinValue.Round(2).Float64()
+	max_float, _ = m.SignalConfigs.IdleConfig.NonPartialWait.MaxValue.Round(2).Float64()
+	current_float, _ = m.SignalConfigs.IdleConfig.NonPartialWait.CurrentValue.Round(2).Float64()
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "min-value-decimal", min_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "max-value-decimal", max_float)
+	result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	return
 }
 

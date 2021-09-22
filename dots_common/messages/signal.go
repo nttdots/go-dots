@@ -298,6 +298,12 @@ type SignalConfig struct {
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
 	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40,omitempty"`
+	// The parameters in draft-ietf-dots-robust-blocks
+	MaxPayload       IntCurrent     `json:"ietf-dots-robust-trans:max-payloads" codec:"32776,omitempty"`
+	NonMaxRetransmit IntCurrent     `json:"ietf-dots-robust-trans:non-max-retransmit" codec:"32777,omitempty"`
+	NonTimeout       DecimalCurrent `json:"ietf-dots-robust-trans:non-timeout" codec:"32778,omitempty"`
+	NonProbingWait   DecimalCurrent `json:"ietf-dots-robust-trans:non-probing-wait" codec:"32779,omitempty"`
+	NonPartialWait   DecimalCurrent `json:"ietf-dots-robust-trans:non-partial-wait" codec:"32780,omitempty"`
 }
 
 type SignalChannelRequest struct {
@@ -309,53 +315,103 @@ type SignalChannelRequest struct {
  */
 func (m *SignalConfigRequest) String() (result string) {
 	var current_float float64
+	space3 := "   "
+	space6 := space3 + space3
+	space9 := space6 + space3
 	result = "\n \"ietf-dots-signal-channel:signal-config\":\n"
-	result += fmt.Sprintf("   \"%s\":\n", "mitigating-config")
-	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
+	result += fmt.Sprintf("%s\"%s\":\n", space3, "mitigating-config")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "heartbeat-interval")
 	if m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "missing-hb-allowed")
 	if m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "max-retransmit")
 	if m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-timeout")
 	if m.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue.Round(2).Float64()
-		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-random-factor")
 	if m.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
-		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:max-payloads")
+	if m.SignalConfigs.MitigatingConfig.MaxPayload.CurrentValue != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.MaxPayload.CurrentValue)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-max-retransmit")
+	if m.SignalConfigs.MitigatingConfig.NonMaxRetransmit.CurrentValue != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.NonMaxRetransmit.CurrentValue)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-timeout")
+	if m.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-probing-wait")
+	if m.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-partial-wait")
+	if m.SignalConfigs.MitigatingConfig.NonPartialWait.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.NonPartialWait.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
 
-	result += fmt.Sprintf("   \"%s\":\n", "idle-config")
-	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
+	result += fmt.Sprintf("%s\"%s\":\n", space3, "idle-config")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "heartbeat-interval")
 	if m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "missing-hb-allowed")
 	if m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "max-retransmit")
 	if m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-timeout")
 	if m.SignalConfigs.IdleConfig.AckTimeout.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.IdleConfig.AckTimeout.CurrentValue.Round(2).Float64()
-		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-random-factor")
 	if m.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
-		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:max-payloads")
+	if m.SignalConfigs.IdleConfig.MaxPayload.CurrentValue != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.MaxPayload.CurrentValue)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-max-retransmit")
+	if m.SignalConfigs.IdleConfig.NonMaxRetransmit.CurrentValue != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.NonMaxRetransmit.CurrentValue)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-timeout")
+	if m.SignalConfigs.IdleConfig.NonTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.NonTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-probing-wait")
+	if m.SignalConfigs.IdleConfig.NonProbingWait.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.NonProbingWait.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-partial-wait")
+	if m.SignalConfigs.IdleConfig.NonPartialWait.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.NonPartialWait.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
 	return
 }

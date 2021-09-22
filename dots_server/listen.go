@@ -11,6 +11,7 @@ import (
     "time"
     "bytes"
     "github.com/ugorji/go/codec"
+    "github.com/shopspring/decimal"
 
     "github.com/nttdots/go-dots/dots_common"
     "github.com/nttdots/go-dots/dots_common/messages"
@@ -144,7 +145,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         var resourcePath string
         isHeartBeatMechanism := false
         isTelemetryRequest   := false
-        isSesionConfig       := false
+        isSessionConfig       := false
         if typ == reflect.TypeOf(messages.SignalChannelRequest{}) {
             uri := request.Path()
             for i := range uri {
@@ -152,11 +153,10 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
                     log.Debug("Request path includes 'mitigate'. Cbor decode with type MitigationRequest")
                     body, resourcePath, err = registerResourceMitigation(request, typ, controller, session, context, is_unknown)
                     break;
-
                 } else if strings.HasPrefix(uri[i], "config") {
                     log.Debug("Request path includes 'config'. Cbor decode with type SignalConfigRequest")
                     body, resourcePath, err, is_unknown = registerResourceSignalConfig(request, typ, controller, session, context, is_unknown, customer.Id, observe, token, block2Value)
-                    isSesionConfig = true
+                    isSessionConfig = true
                     break;
                 } else if strings.HasPrefix(uri[i], "hb") {
                     isHeartBeatMechanism = true
@@ -328,7 +328,7 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
         }
 
         // Remove resource of session configuration
-        if isSesionConfig && request.Code == libcoap.RequestDelete {
+        if isSessionConfig && request.Code == libcoap.RequestDelete {
             resource.ToRemovableResource()
         }
 
@@ -338,7 +338,11 @@ func toMethodHandler(method controllers.ServiceMethod, typ reflect.Type, control
            *res.Body.(messages.MitigationResponse).MitigationScope.Scopes[0].Status == models.Terminated {
             handleExpiredMitigation(request.Path(), resource, customer, context, models.Terminated)
         }
-        return
+
+        // Set config paramters for Qblock option
+        if (request.Code == libcoap.RequestGet && response.Code == libcoap.ResponseContent && qBlock2Value >= 0) {
+            SetConfigParameterForQBlock(session, customer.Id)
+        }
     }
 }
 
@@ -750,4 +754,41 @@ func getTelemeytryNotifyInterval(customerId int, cuid string) (interval int, err
         interval = defaultValue.TelemetryNotifyInterval
     }
     return interval, nil
+}
+
+// Set config parametes for QBlock option.
+func SetConfigParameterForQBlock(session *libcoap.Session, customerId int) {
+    // Get session config
+    sessionConfig, err := models.GetCurrentSignalSessionConfiguration(customerId)
+    if err != nil {
+        log.Error("Failed to get current session config")
+    }
+    defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
+    // Get mitigationIds with status is 2
+    mids, err := models.GetMitigationIdsByCustomer(customerId)
+    if err != nil {
+        log.Error("Failed to Get mitigation ids")
+        return
+    }
+    maxPayLoad := defaultValue.MaxPayloadIdle
+    nonMaxRetransmit := defaultValue.NonMaxRetransmitIdle
+    nonTimeout := defaultValue.NonTimeoutIdle
+    if sessionConfig != nil {
+        if len(mids) > 0 {
+            maxPayLoad = sessionConfig.MaxPayload
+            nonMaxRetransmit = sessionConfig.NonMaxRetransmit
+            nonTimeout = sessionConfig.NonTimeout
+        } else {
+            maxPayLoad = sessionConfig.MaxPayloadIdle
+            nonMaxRetransmit = sessionConfig.NonMaxRetransmitIdle
+            nonTimeout = sessionConfig.NonTimeoutIdle
+        }
+    } else if len(mids) > 0 {
+        maxPayLoad = defaultValue.MaxPayload
+        nonMaxRetransmit = defaultValue.NonMaxRetransmit
+        nonTimeout = defaultValue.NonTimeout
+    }
+    session.SetMaxPayLoads(maxPayLoad)
+    session.SetNonMaxRetransmit(nonMaxRetransmit)
+    session.SetNonTimeout(decimal.NewFromFloat(nonTimeout).Round((2)))
 }

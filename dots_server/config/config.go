@@ -40,11 +40,21 @@ type SignalConfigurationParameterNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	MaxPayload        string `yaml:"maxPayload"`
+	NonMaxRetransmit  string `yaml:"nonMaxRetransmit"`
+	NonTimeout        string `yaml:"nonTimeout"`
+	NonProbingWait    string `yaml:"nonProbingWait"`
+	NonPartialWait    string `yaml:"nonPartialWait"`
 	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
 	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
 	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
 	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
 	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
+	MaxPayloadIdle        string `yaml:"maxPayloadIdle"`
+	NonMaxRetransmitIdle  string `yaml:"nonMaxRetransmitIdle"`
+	NonTimeoutIdle        string `yaml:"nonTimeoutIdle"`
+	NonProbingWaitIdle    string `yaml:"nonProbingWaitIdle"`
+	NonPartialWaitIdle    string `yaml:"nonPartialWaitIdle"`
 }
 
 type DefaultSignalConfigurationNode struct {
@@ -53,11 +63,21 @@ type DefaultSignalConfigurationNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	MaxPayload        string `yaml:"maxPayload"`
+	NonMaxRetransmit  string `yaml:"nonMaxRetransmit"`
+	NonTimeout        string `yaml:"nonTimeout"`
+	NonProbingWait    string `yaml:"nonProbingWait"`
+	NonPartialWait    string `yaml:"nonPartialWait"`
 	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
 	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
 	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
 	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
 	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
+	MaxPayloadIdle        string `yaml:"maxPayloadIdle"`
+	NonMaxRetransmitIdle  string `yaml:"nonMaxRetransmitIdle"`
+	NonTimeoutIdle        string `yaml:"nonTimeoutIdle"`
+	NonProbingWaitIdle    string `yaml:"nonProbingWaitIdle"`
+	NonPartialWaitIdle    string `yaml:"nonPartialWaitIdle"`
 }
 
 type TelemetryConfigurationParameterNode struct {
@@ -189,6 +209,26 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	maxPayload, err := parseIntegerParameterRange(scpn.MaxPayload)
+	if err != nil {
+		return nil, err
+	}
+	nonMaxRetransmit, err := parseIntegerParameterRange(scpn.NonMaxRetransmit)
+	if err != nil {
+		return nil, err
+	}
+	nonTimeout, err := parseFloatParameterRange(scpn.NonTimeout)
+	if err != nil {
+		return nil, err
+	}
+	nonProbingWait, err := parseFloatParameterRange(scpn.NonProbingWait)
+	if err != nil {
+		return nil, err
+	}
+	nonPartialWait, err := parseFloatParameterRange(scpn.NonPartialWait)
+	if err != nil {
+		return nil, err
+	}
 	heartbeatIntervalIdle, err := parseIntegerParameterRange(scpn.HeartbeatIntervalIdle)
 	if err != nil {
 		return nil, err
@@ -209,17 +249,47 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	maxPayloadIdle, err := parseIntegerParameterRange(scpn.MaxPayloadIdle)
+	if err != nil {
+		return nil, err
+	}
+	nonMaxRetransmitIdle, err := parseIntegerParameterRange(scpn.NonMaxRetransmitIdle)
+	if err != nil {
+		return nil, err
+	}
+	nonTimeoutIdle, err := parseFloatParameterRange(scpn.NonTimeoutIdle)
+	if err != nil {
+		return nil, err
+	}
+	nonProbingWaitIdle, err := parseFloatParameterRange(scpn.NonProbingWaitIdle)
+	if err != nil {
+		return nil, err
+	}
+	nonPartialWaitIdle, err := parseFloatParameterRange(scpn.NonPartialWaitIdle)
+	if err != nil {
+		return nil, err
+	}
 	return &SignalConfigurationParameter{
 		HeartbeatInterval: heartbeatInterval,
 		MissingHbAllowed:  missingHbAllowed,
 		MaxRetransmit:     maxRetransmit,
 		AckTimeout:        ackTimeout,
 		AckRandomFactor:   ackRandomFactor,
+		MaxPayload:        maxPayload,
+		NonMaxRetransmit:  nonMaxRetransmit,
+		NonTimeout:        nonTimeout,
+		NonProbingWait:    nonProbingWait,
+		NonPartialWait:    nonPartialWait,
 		HeartbeatIntervalIdle: heartbeatIntervalIdle,
 		MissingHbAllowedIdle:  missingHbAllowedIdle,
 		MaxRetransmitIdle:     maxRetransmitIdle,
 		AckTimeoutIdle:        ackTimeoutIdle,
 		AckRandomFactorIdle:   ackRandomFactorIdle,
+		MaxPayloadIdle:        maxPayloadIdle,
+		NonMaxRetransmitIdle:  nonMaxRetransmitIdle,
+		NonTimeoutIdle:        nonTimeoutIdle,
+		NonProbingWaitIdle:    nonProbingWaitIdle,
+		NonPartialWaitIdle:    nonPartialWaitIdle,
 	}, nil
 }
 
@@ -230,11 +300,21 @@ func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 		MaxRetransmit:     parseIntegerValue(dscn.MaxRetransmit),
 		AckTimeout:        parseFloatValue(dscn.AckTimeout),
 		AckRandomFactor:   parseFloatValue(dscn.AckRandomFactor),
+		MaxPayload:        parseIntegerValue(dscn.MaxPayload),
+		NonMaxRetransmit:  parseIntegerValue(dscn.NonMaxRetransmit),
+		NonTimeout:        parseFloatValue(dscn.NonTimeout),
+		NonProbingWait:    parseFloatValue(dscn.NonProbingWait),
+		NonPartialWait:    parseFloatValue(dscn.NonPartialWait),
 		HeartbeatIntervalIdle: parseIntegerValue(dscn.HeartbeatIntervalIdle),
 		MissingHbAllowedIdle:  parseIntegerValue(dscn.MissingHbAllowedIdle),
 		MaxRetransmitIdle:     parseIntegerValue(dscn.MaxRetransmitIdle),
 		AckTimeoutIdle:        parseFloatValue(dscn.AckTimeoutIdle),
 		AckRandomFactorIdle:   parseFloatValue(dscn.AckRandomFactorIdle),
+		MaxPayloadIdle:        parseIntegerValue(dscn.MaxPayloadIdle),
+		NonMaxRetransmitIdle:  parseIntegerValue(dscn.NonMaxRetransmitIdle),
+		NonTimeoutIdle:        parseFloatValue(dscn.NonTimeoutIdle),
+		NonProbingWaitIdle:    parseFloatValue(dscn.NonProbingWaitIdle),
+		NonPartialWaitIdle:    parseFloatValue(dscn.NonPartialWaitIdle),
 	}, nil
 }
 
@@ -1153,11 +1233,21 @@ type SignalConfigurationParameter struct {
 	MaxRetransmit     *IntegerParameterRange
 	AckTimeout        *FloatParameterRange
 	AckRandomFactor   *FloatParameterRange
+	MaxPayload        *IntegerParameterRange
+	NonMaxRetransmit  *IntegerParameterRange
+	NonTimeout        *FloatParameterRange
+	NonProbingWait    *FloatParameterRange
+	NonPartialWait    *FloatParameterRange
 	HeartbeatIntervalIdle *IntegerParameterRange
 	MissingHbAllowedIdle  *IntegerParameterRange
 	MaxRetransmitIdle     *IntegerParameterRange
 	AckTimeoutIdle        *FloatParameterRange
 	AckRandomFactorIdle   *FloatParameterRange
+	MaxPayloadIdle        *IntegerParameterRange
+	NonMaxRetransmitIdle  *IntegerParameterRange
+	NonTimeoutIdle        *FloatParameterRange
+	NonProbingWaitIdle    *FloatParameterRange
+	NonPartialWaitIdle    *FloatParameterRange
 }
 
 type DefaultSignalConfiguration struct {
@@ -1166,11 +1256,21 @@ type DefaultSignalConfiguration struct {
 	MaxRetransmit     int
 	AckTimeout        float64
 	AckRandomFactor   float64
+	MaxPayload        int
+	NonMaxRetransmit  int
+	NonTimeout        float64
+	NonProbingWait    float64
+	NonPartialWait    float64
 	HeartbeatIntervalIdle int
 	MissingHbAllowedIdle  int
 	MaxRetransmitIdle     int
 	AckTimeoutIdle        float64
 	AckRandomFactorIdle   float64
+	MaxPayloadIdle        int
+	NonMaxRetransmitIdle  int
+	NonTimeoutIdle        float64
+	NonProbingWaitIdle    float64
+	NonPartialWaitIdle    float64
 }
 
 type TelemetryConfigurationParameter struct {

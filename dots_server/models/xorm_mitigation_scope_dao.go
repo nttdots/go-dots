@@ -56,6 +56,7 @@ func CreateMitigationScope(mitigationScope MitigationScope, customer Customer, i
 
 	// transaction start
 	session := engine.NewSession()
+	defer session.Close()
 
 	err = session.Begin()
 	if err != nil {

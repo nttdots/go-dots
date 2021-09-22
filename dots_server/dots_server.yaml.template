@@ -4,27 +4,45 @@ system:
     missingHbAllowed: 3-15
     maxRetransmit: 2-15
     ackTimeout: 1.0-30.0
-    # ack-random-factor min-value must not be below 1.0
     ackRandomFactor: 1.1-4.0
+    maxPayload: 1-20
+    nonMaxRetransmit: 1-20
+    nonTimeout: 1.0-30.0
+    nonProbingWait: 1.0-300
+    nonPartialWait: 1.0-300
     heartbeatIntervalIdle: 15-240
     missingHbAllowedIdle: 3-15
     maxRetransmitIdle: 2-15
     ackTimeoutIdle: 1.0-30.0
-    # ack-random-factor min-value must not be below 1.0
     ackRandomFactorIdle: 1.1-4.0
+    maxPayloadIdle: 1-20
+    nonMaxRetransmitIdle: 1-20
+    nonTimeoutIdle: 1.0-30.0
+    nonProbingWaitIdle: 1.0-300
+    nonPartialWaitIdle: 1.0-300
 
-  # Default current values of session configuration
+# Default current values of session configuration
   defaultSignalConfiguration:
     heartbeatInterval: 30
     missingHbAllowed: 15
     maxRetransmit: 3
     ackTimeout: 2.0
     ackRandomFactor: 1.5
+    maxPayload: 10
+    nonMaxRetransmit: 4
+    nonTimeout: 2.0
+    nonProbingWait: 247.0
+    nonPartialWait: 247.0
     heartbeatIntervalIdle: 30
     missingHbAllowedIdle: 15
     maxRetransmitIdle: 3
     ackTimeoutIdle: 2.0
     ackRandomFactorIdle: 1.5
+    maxPayloadIdle: 10
+    nonMaxRetransmitIdle: 4
+    nonTimeoutIdle: 2.0
+    nonProbingWaitIdle: 247.0
+    nonPartialWaitIdle: 247.0
 
 # Range min-max values of telemetry configuration
   telemetryConfigurationParameter:
