@@ -404,7 +404,6 @@ func (r *Request) Send() (res Response) {
 
 func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 	var err error
-	var logStr string
 
 	if pdu == nil {
 		return
@@ -451,8 +450,7 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			var v messages.MitigationResponse
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 			r.env.SetCountMitigation(v, string(pdu.Token))
 			log.Debugf("Request query with token as key in map: %+v", r.env.GetAllRequestQuery())
 		case "PUT":
@@ -460,35 +458,25 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 				var v messages.MitigationResponseServiceUnavailable
 				err = dec.Decode(&v)
 				if err != nil { goto CBOR_DECODE_FAILED }
-				data, err = json.Marshal(v)
-				logStr = v.String()
+				data, err = json.MarshalIndent(v, "", "   ")
 			} else {
 				var v messages.MitigationResponsePut
 				err = dec.Decode(&v)
 				if err != nil { goto CBOR_DECODE_FAILED }
-				data, err = json.Marshal(v)
-				logStr = v.String()
+				data, err = json.MarshalIndent(v, "", "   ")
 			}
 		default:
 			var v messages.MitigationRequest
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 		}
 	case "session_configuration":
 		if r.method == "GET" {
 			var v messages.ConfigurationResponse
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
-		} else {
-			var v messages.SignalConfigRequest
-			err = dec.Decode(&v)
-			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 		}
 	case "telemetry_setup_request":
 		switch r.method {
@@ -496,14 +484,28 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			var v messages.TelemetrySetupResponse
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			var tscList []messages.TelemetryResponse
+			for _, tsc := range v.TelemetrySetup.Telemetry {
+				index := messages.ContainTsidInTelemetrySetup(tsc.Tsid, tscList)
+				if index >= 0 {
+					if tsc.CurrentConfig != nil {
+						tscList[index].CurrentConfig = tsc.CurrentConfig
+					} else if len(tsc.TotalPipeCapacity) > 0 {
+						tscList[index].TotalPipeCapacity = tsc.TotalPipeCapacity
+					} else if len(tsc.Baseline) > 0 {
+						tscList[index].Baseline = tsc.Baseline
+					}
+				} else {
+					tscList = append(tscList, tsc)
+				}
+			}
+			v.TelemetrySetup.Telemetry = tscList
+			data, err = json.MarshalIndent(v, "", "   ")
 		case "PUT":
 			var v messages.TelemetrySetupResponseConflict
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 		}
 	case "telemetry_pre_mitigation_request":
 		switch r.method {
@@ -511,15 +513,14 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			var v messages.TelemetryPreMitigationResponse
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 		}
 	}
 	if err != nil {
 		log.WithError(err).Warn("Parse object to JSON failed.")
 		return
 	}
-	log.Infof("        CBOR decoded: %s", logStr)
+	log.Infof("        CBOR decoded: %s", string(data))
 	return
 
 CBOR_DECODE_FAILED:
@@ -666,7 +667,12 @@ func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, e
 				log.WithError(err).Warn("CBOR Decode failed.")
 				return
 			}
-			log.Infof("        CBOR decoded: %+v", v.String())
+			data, err := json.MarshalIndent(v, "", "   ")
+			if err != nil {
+				log.WithError(err).Warn("Parse object to JSON failed.")
+				return
+			}
+			log.Infof("        CBOR decoded: %+v", string(data))
 			if pdu.Code == libcoap.ResponseContent {
 				RestartHeartBeatTask(pdu, env)
 			}
@@ -728,7 +734,7 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
     }
 
     var err error
-    var logStr string
+	var data []byte
     var req *libcoap.Pdu
     if task != nil {
         req = task.GetMessage()
@@ -767,8 +773,17 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
     // Identify response is mitigation or session configuration by cbor data in heximal
     if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
         var v messages.MitigationResponse
-        err = dec.Decode(&v)
-        logStr = v.String()
+		err = dec.Decode(&v)
+		if err != nil {
+			log.Error("Failed to decode value.")
+			return
+		}
+		data, err = json.MarshalIndent(v, "", "   ")
+		if err != nil {
+			log.WithError(err).Warn("Parse object to JSON failed.")
+			return
+		}
+
         env.UpdateCountMitigation(req, v, string(pdu.Token))
 		log.Debugf("Request query with token as key in map: %+v", env.GetAllRequestQuery())
 		// if status is 6, add token of the deleted resource
@@ -780,8 +795,16 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
 		}
     } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
         var v messages.ConfigurationResponse
-        err = dec.Decode(&v)
-        logStr = v.String()
+		err = dec.Decode(&v)
+		if err != nil {
+			log.Error("Failed to decode value.")
+			return
+		}
+		data, err = json.MarshalIndent(v, "", "   ")
+		if err != nil {
+			log.WithError(err).Warn("Parse object to JSON failed.")
+			return
+		}
         log.Debug("Receive session notification - Client update new values to system session configuration and restart ping task.")
 		RestartHeartBeatTask(pdu, env)
 
@@ -793,18 +816,21 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
 		}
 	} else if strings.Contains(hex, string(libcoap.IETF_TELEMETRY_PRE_MITIGATION)) {
         var v messages.TelemetryPreMitigationResponse
-        err = dec.Decode(&v)
-        logStr = v.String()
+		err = dec.Decode(&v)
+		if err != nil {
+			log.Error("Failed to decode value.")
+			return
+		}
+		data, err = json.MarshalIndent(v, "", "   ")
+		if err != nil {
+			log.WithError(err).Warn("Parse object to JSON failed.")
+			return
+		}
         log.Debug("Receive telemetry pre-mitigation notification.")
     } else {
         log.Warnf("Unknown notification is received.")
     }
-
-    if err != nil {
-        log.WithError(err).Warn("CBOR Decode failed.")
-        return
-    }
-    log.Infof("        CBOR decoded: %s", logStr)
+    log.Infof("        CBOR decoded: %s", string(data))
 }
 
 /*

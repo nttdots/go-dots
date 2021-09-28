@@ -1508,3 +1508,13 @@ func (pl TelemetryConnectionPercentileResponse) String(spacesn string) (result s
 	}
 	return
 }
+
+// Check telemetry setup contains tsid value
+func ContainTsidInTelemetrySetup(value int, array []TelemetryResponse) int {
+	for k, v := range array {
+		if value == v.Tsid {
+			return k
+		}
+	}
+	return -1
+}
