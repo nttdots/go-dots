@@ -353,18 +353,6 @@ func (r *Request) Send() (res Response) {
 	if block2Config != nil {
 		isQBlock2 = false
 	}
-	// If `lg_xmit` has not released, clien can't send request for same request_name
-	ac, isPresent := acMap[r.requestName]
-	if isPresent && isQBlock2 {
-		lastUse := ac.LastUse.Add(time.Duration(4*qBlock2Config.NonTimeout)*time.Second)
-		now := time.Now()
-		if now.Before(lastUse) {
-			str := fmt.Sprintf("Can't send request to server. Please send %+v request after %+v", r.requestName, lastUse.Sub(now))
-			log.Warnf(str)
-			res = Response{ libcoap.ResponseBadRequest, []byte(str) }
-			return
-		}
-	}
 	// Set config for message task
 	interval := config.TaskInterval
 	retryNumber := config.TaskRetryNumber

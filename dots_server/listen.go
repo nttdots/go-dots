@@ -679,8 +679,8 @@ func registerResourceTelemetryPreMitigation(request *libcoap.Pdu, typ reflect.Ty
 // Handle telemetry pre-mitigation message interval
 func handlePreMitigationMessageInterval(session *libcoap.Session, customer *models.Customer, path []string) (string, error) {
     // DOTS agents MUST NOT sent pre-mitigation telemetry messages to the same peer more frequently than once every 'telemetry-notify-interval'
-    if !session.GetIsNotification() && session.GetIsReceivedPreMitigation() {
-        errMessage := fmt.Sprintln("DOTS agents MUST NOT sent pre-mitigation telemetry messages to the same peer more frequently than once every 'telemetry-notify-interval'")
+    if session.GetIsNotification() && session.GetIsReceivedPreMitigation() {
+        errMessage := fmt.Sprintln("DOTS agents MUST NOT send pre-or-ongoing-mitigation telemetry notifications to the same peer more frequently than once every 'telemetry-notify-interval'")
         log.Warn(errMessage)
         return errMessage, nil
     }
@@ -695,9 +695,8 @@ func handlePreMitigationMessageInterval(session *libcoap.Session, customer *mode
     if err != nil {
         return "", err
     }
-    if session.GetIsNotification() {
+    if session.GetIsNotification() && !session.GetIsReceivedPreMitigation() {
         session.SetIsNotification(false)
-    } else {
         // handle telemetry-notify-interval when DOTS server receive request from DOTS client
         go func() {
             session.SetIsReceivedPreMitigation(true)
