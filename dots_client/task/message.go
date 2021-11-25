@@ -95,7 +95,7 @@ func (t *MessageTask) run(out chan Event) {
             return
         case <- timeout:
             if !t.isHeartBeat {
-                log.Debug("Mitigation request timeout")
+                log.Debug("Request timeout")
             }
             t.isStop = true
             out <- &TimeoutEvent{ EventBase{ t } }
