@@ -27,6 +27,15 @@ const (
 	CURRENT_C         PercentileType = "CURRENT_C"
 )
 
+type TotalAttackConnectionType string
+const (
+	CONNECTION_C      TotalAttackConnectionType = "CONNECTION-C"
+	EMBRYONIC_C       TotalAttackConnectionType = "EMBRYONIC-C"
+	CONNECTION_PS_C   TotalAttackConnectionType = "CONNECTION-PS-C"
+	REQUEST_PS_C      TotalAttackConnectionType = "REQUEST-PS-C"
+	PARTIAL_REQUEST_C TotalAttackConnectionType = "PARTIAL-REQUEST-C"
+)
+
 // Create telemetry pre-mitigation that is called by controller
 func CreateTelemetryPreMitigation(customer *Customer, cuid string, cdid string, tmid int, dataRequest messages.PreOrOngoingMitigation, aliases types.Aliases, isPresent bool) error {
 	// database connection create
@@ -146,33 +155,25 @@ func RegisterUriFilteringTelemetryPreMitigation(session *xorm.Session, customerI
 	}
 	// target-port
 	if len(newPreMitigation.Targets.TargetPortRange) > 0 {
-		for _, port := range newPreMitigation.Targets.TargetPortRange {
-			portList = append(portList, port)
-		}
+		portList = append(portList, newPreMitigation.Targets.TargetPortRange...)
 	} else {
 		portList = append(portList, PortRange{0,0})
 	}
 	// target-protocol
 	if len(newPreMitigation.Targets.TargetProtocol.List()) > 0 {
-		for _, protocol := range newPreMitigation.Targets.TargetProtocol.List() {
-			protocolList = append(protocolList, protocol)
-		}
+		protocolList = append(protocolList, newPreMitigation.Targets.TargetProtocol.List()...)
 	} else {
 		protocolList = append(protocolList, 0)
 	}
 	// target-fqdn
 	if len(newPreMitigation.Targets.FQDN.List()) > 0 {
-		for _, fqdn := range newPreMitigation.Targets.FQDN.List() {
-			fqdnList = append(fqdnList, fqdn)
-		}
+		fqdnList = append(fqdnList, newPreMitigation.Targets.FQDN.List()...)
 	} else {
 		fqdnList = append(fqdnList, "")
 	}
 	// alias-name
 	if len(newPreMitigation.Targets.AliasName.List()) > 0 {
-		for _, aliasName := range newPreMitigation.Targets.AliasName.List() {
-			aliasNameList = append(aliasNameList, aliasName)
-		}
+		aliasNameList = append(aliasNameList, newPreMitigation.Targets.AliasName.List()...)
 	} else {
 		aliasNameList = append(aliasNameList, "")
 	}
@@ -405,8 +406,8 @@ func GetTelemetryAttackDetail(engine *xorm.Engine, mitigationScopeId int64) ([]T
 }
 
 // Get telemetry source count
-func GetTelemetrySourceCount(engine *xorm.Engine, adId int64) (SourceCount, error) {
-	sourceCount := SourceCount{}
+func GetTelemetrySourceCount(engine *xorm.Engine, adId int64) (PercentilePeakAndCurrent, error) {
+	sourceCount := PercentilePeakAndCurrent{}
 	dbSc, err := db_models.GetTelemetrySourceCountByTeleAttackDetailId(engine, adId)
 	if err != nil {
 		log.Errorf("Failed to get telemetry source count. Error: %+v", err)
@@ -487,51 +488,32 @@ func GetTelemetryTraffic(engine *xorm.Engine, prefixType string, prefixTypeId in
 
 // Get telemetry total attack connection
 func GetTelemetryTotalAttackConnection(engine *xorm.Engine, prefixType string, prefixTypeId int64) (tac TelemetryTotalAttackConnection, err error) {
-	tac = TelemetryTotalAttackConnection{}
-	// Get low-precentile-c
-	tac.LowPercentileC, err = GetConnectionPercentile(engine, prefixType, prefixTypeId, string(LOW_PERCENTILE_C))
-	if err != nil {
-		return
-	}
-	// Get mid-precentile-c
-	tac.MidPercentileC, err = GetConnectionPercentile(engine, prefixType, prefixTypeId, string(MID_PERCENTILE_C))
-	if err != nil {
-		return
-	}
-	// Get high-precentile-c
-	tac.HighPercentileC, err = GetConnectionPercentile(engine, prefixType, prefixTypeId, string(HIGH_PERCENTILE_C))
-	if err != nil {
-		return
-	}
-	// Get peak-c
-	tac.PeakC, err = GetConnectionPercentile(engine, prefixType, prefixTypeId, string(PEAK_C))
-	if err != nil {
-		return
-	}
-	// Get current-c
-	tac.CurrentC, err = GetConnectionPercentile(engine, prefixType, prefixTypeId, string(CURRENT_C))
-	if err != nil {
-		return
-	}
-	return
-}
-
-// Get connection percentile (low/mid/high_percentile_c, peak_c, current_c)
-func GetConnectionPercentile(engine *xorm.Engine, prefixType string, prefixTypeId int64, percentileType string) (cp ConnectionPercentile, err error) {
-	cp = ConnectionPercentile{}
-	dbTac, err := db_models.GetTelemetryTotalAttackConnection(engine, prefixType, prefixTypeId, percentileType)
+	dbDatas, err := db_models.GetTelemetryTotalAttackConnection(engine, prefixType, prefixTypeId)
 	if err != nil {
 		log.Errorf("Failed to get telemetry total attack connection. Error: %+v", err)
 		return
 	}
-	cp.Connection       = messages.Uint64String(dbTac.Connection)
-	cp.Embryonic        = messages.Uint64String(dbTac.Embryonic)
-	cp.ConnectionPs     = messages.Uint64String(dbTac.ConnectionPs)
-	cp.RequestPs        = messages.Uint64String(dbTac.RequestPs)
-	cp.PartialRequestPs = messages.Uint64String(dbTac.PartialRequestPs)
+	tac = TelemetryTotalAttackConnection{}
+	for _, dbData := range dbDatas {
+		if dbData.Type == string(CONNECTION_C) {
+			tac.ConnectionC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+				dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+		} else if dbData.Type == string(EMBRYONIC_C) {
+			tac.EmbryonicC  = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+				dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+		} else if dbData.Type == string(CONNECTION_PS_C) {
+			tac.ConnectionPsC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+				dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+		} else if dbData.Type == string(REQUEST_PS_C) {
+			tac.RequestPsC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+				dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+		} else if dbData.Type == string(PARTIAL_REQUEST_C) {
+			tac.PartialRequestC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+				dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+		}
+	}
 	return
 }
-
 
 // Get telemetry source prefix
 func GetTelemetrySourcePrefix(engine *xorm.Engine, teleTopTalkerId int64) (prefix Prefix, err error) {
@@ -750,8 +732,8 @@ func GetUriFilteringTelemetryPreMitigationAttributes(customerId int, cuid string
 		if err != nil {
 			return
 		}
-		// Get total attack connection
-		preMitigation.TotalAttackConnection, err = GetUriFilteringTotalAttackConnection(engine, string(TARGET_PREFIX), ufPreMitigation.Id)
+		// Get total attack connection protocol
+		preMitigation.TotalAttackConnectionProtocol, err = GetUriFilteringTotalAttackConnectionProtocol(engine, string(TARGET_PREFIX), ufPreMitigation.Id)
 		if err != nil {
 			return
 		}
@@ -792,23 +774,15 @@ func GetUriFilteringTelemetryPreMitigationAttributes(customerId int, cuid string
 				if !reflect.DeepEqual(v.Targets.AliasName.List(), preMitigation.Targets.AliasName.List()) {
 					v.Targets.AliasName.AddList(preMitigation.Targets.AliasName.List())
 				}
-				v.TotalTraffic                              = append(v.TotalTraffic, preMitigation.TotalTraffic...)
-				v.TotalTrafficProtocol                      = append(v.TotalTrafficProtocol, preMitigation.TotalTrafficProtocol...)
-				v.TotalTrafficPort                          = append(v.TotalTrafficPort, preMitigation.TotalTrafficPort...)
-				v.TotalAttackTraffic                        = append(v.TotalAttackTraffic, preMitigation.TotalAttackTraffic...)
-				v.TotalAttackTrafficProtocol                = append(v.TotalAttackTrafficProtocol, preMitigation.TotalAttackTrafficProtocol...)
-				v.TotalAttackTrafficPort                    = append(v.TotalAttackTrafficPort, preMitigation.TotalAttackTrafficPort...)
-				v.TotalAttackConnection.LowPercentileL      = append(v.TotalAttackConnection.LowPercentileL, preMitigation.TotalAttackConnection.LowPercentileL...)
-				v.TotalAttackConnection.MidPercentileL      = append(v.TotalAttackConnection.MidPercentileL, preMitigation.TotalAttackConnection.MidPercentileL...)
-				v.TotalAttackConnection.HighPercentileL     = append(v.TotalAttackConnection.HighPercentileL, preMitigation.TotalAttackConnection.HighPercentileL...)
-				v.TotalAttackConnection.PeakL               = append(v.TotalAttackConnection.PeakL, preMitigation.TotalAttackConnection.PeakL...)
-				v.TotalAttackConnection.CurrentL            = append(v.TotalAttackConnection.CurrentL, preMitigation.TotalAttackConnection.CurrentL...)
-				v.TotalAttackConnectionPort.LowPercentileL  = append(v.TotalAttackConnectionPort.LowPercentileL, preMitigation.TotalAttackConnectionPort.LowPercentileL...)
-				v.TotalAttackConnectionPort.MidPercentileL  = append(v.TotalAttackConnectionPort.MidPercentileL, preMitigation.TotalAttackConnectionPort.MidPercentileL...)
-				v.TotalAttackConnectionPort.HighPercentileL = append(v.TotalAttackConnectionPort.HighPercentileL, preMitigation.TotalAttackConnectionPort.HighPercentileL...)
-				v.TotalAttackConnectionPort.PeakL           = append(v.TotalAttackConnectionPort.PeakL, preMitigation.TotalAttackConnectionPort.PeakL...)
-				v.TotalAttackConnectionPort.CurrentL        = append(v.TotalAttackConnectionPort.CurrentL, preMitigation.TotalAttackConnectionPort.CurrentL...)
-				v.AttackDetail                              = append(v.AttackDetail, preMitigation.AttackDetail...)
+				v.TotalTraffic                  = append(v.TotalTraffic, preMitigation.TotalTraffic...)
+				v.TotalTrafficProtocol          = append(v.TotalTrafficProtocol, preMitigation.TotalTrafficProtocol...)
+				v.TotalTrafficPort              = append(v.TotalTrafficPort, preMitigation.TotalTrafficPort...)
+				v.TotalAttackTraffic            = append(v.TotalAttackTraffic, preMitigation.TotalAttackTraffic...)
+				v.TotalAttackTrafficProtocol    = append(v.TotalAttackTrafficProtocol, preMitigation.TotalAttackTrafficProtocol...)
+				v.TotalAttackTrafficPort        = append(v.TotalAttackTrafficPort, preMitigation.TotalAttackTrafficPort...)
+				v.TotalAttackConnectionProtocol = append(v.TotalAttackConnectionProtocol, preMitigation.TotalAttackConnectionProtocol...)
+				v.TotalAttackConnectionPort     = append(v.TotalAttackConnectionPort, preMitigation.TotalAttackConnectionPort...)
+				v.AttackDetail                  = append(v.AttackDetail, preMitigation.AttackDetail...)
 				preMitigationList[k] = v
 				isExistedTmid = true
 				break
@@ -886,107 +860,57 @@ func GetUriFilteringTrafficPerPort(engine *xorm.Engine, preMitigationId int64, t
 	return trafficList, nil
 }
 
-// Get uri filtering total attack connection
-func GetUriFilteringTotalAttackConnection(engine *xorm.Engine, prefixType string, prefixTypeId int64) (tac TotalAttackConnection, err error) {
-	tac = TotalAttackConnection{}
-	// Get low-precentile-l
-	tac.LowPercentileL, err = GetUriFilteringConnectionProtocolPercentile(engine, prefixType, prefixTypeId, string(LOW_PERCENTILE_L))
+// Get uri filtering total attack connection protocol
+func GetUriFilteringTotalAttackConnectionProtocol(engine *xorm.Engine,  prefixType string, prefixTypeId int64) (tacList []TotalAttackConnectionProtocol, err error) {
+	tacList = []TotalAttackConnectionProtocol{}
+	dbDatas, err := db_models.GetUriFilteringTotalAttackConnectionProtocol(engine, prefixType, prefixTypeId)
 	if err != nil {
+		log.Errorf("Failed to get uri_filtering_total_attack_connection_protocol. Error: %+v", err)
 		return
 	}
-	// Get mid-precentile-l
-	tac.MidPercentileL, err = GetUriFilteringConnectionProtocolPercentile(engine, prefixType, prefixTypeId, string(MID_PERCENTILE_L))
-	if err != nil {
-		return
+	tacListTmp := make(map[int]TotalAttackConnectionProtocol)
+	for _, dbData := range dbDatas {
+		if v, found := tacListTmp[dbData.Protocol]; found {
+			tacListTmp[dbData.Protocol] = ConvertDataToTotalAttackConnectionProtocol(dbData, v)
+		} else {
+			tac := TotalAttackConnectionProtocol{}
+			tac.Protocol = dbData.Protocol
+			tacListTmp[dbData.Protocol] = ConvertDataToTotalAttackConnectionProtocol(dbData, tac)
+		}
 	}
-	// Get high-precentile-l
-	tac.HighPercentileL, err = GetUriFilteringConnectionProtocolPercentile(engine, prefixType, prefixTypeId, string(HIGH_PERCENTILE_L))
-	if err != nil {
-		return
-	}
-	// Get peak-l
-	tac.PeakL, err = GetUriFilteringConnectionProtocolPercentile(engine, prefixType, prefixTypeId, string(PEAK_L))
-	if err != nil {
-		return
-	}
-	// Get current-l
-	tac.CurrentL, err = GetUriFilteringConnectionProtocolPercentile(engine, prefixType, prefixTypeId, string(CURRENT_L))
-	if err != nil {
-		return
+	for _, tacTmp := range tacListTmp {
+		tacList = append(tacList, tacTmp)
 	}
 	return
+}
+
+type tacPortKey struct {
+	protocol int
+	port     int
 }
 
 // Get uri filtering total attack connection port
-func GetUriFilteringTotalAttackConnectionPort(engine *xorm.Engine, telePreMitigationId int64) (tac TotalAttackConnectionPort, err error) {
-	tac = TotalAttackConnectionPort{}
-	// Get low-precentile-l
-	tac.LowPercentileL, err = GetUriFilteringConnectionProtocolPortPercentile(engine, telePreMitigationId, string(LOW_PERCENTILE_L))
-	if err != nil {
-		return
-	}
-	// Get mid-precentile-l
-	tac.MidPercentileL, err = GetUriFilteringConnectionProtocolPortPercentile(engine, telePreMitigationId, string(MID_PERCENTILE_L))
-	if err != nil {
-		return
-	}
-	// Get high-precentile-l
-	tac.HighPercentileL, err = GetUriFilteringConnectionProtocolPortPercentile(engine, telePreMitigationId, string(HIGH_PERCENTILE_L))
-	if err != nil {
-		return
-	}
-	// Get peak-l
-	tac.PeakL, err = GetUriFilteringConnectionProtocolPortPercentile(engine, telePreMitigationId, string(PEAK_L))
-	if err != nil {
-		return
-	}
-	// Get current-l
-	tac.CurrentL, err = GetUriFilteringConnectionProtocolPortPercentile(engine, telePreMitigationId, string(CURRENT_L))
-	if err != nil {
-		return
-	}
-	return
-}
-
-// Get uri filtering connection protocol percentile (low/mid/high_percentile_l, peak_l, current_l)
-func GetUriFilteringConnectionProtocolPercentile(engine *xorm.Engine, prefixType string, prefixTypeId int64, percentileType string) (cppList []ConnectionProtocolPercentile, err error) {
-	cppList = []ConnectionProtocolPercentile{}
-	cpps, err := db_models.GetUriFilteringTotalAttackConnection(engine, prefixType, prefixTypeId, percentileType)
-	if err != nil {
-		log.Errorf("Failed to get uri_filtering_total_attack_connection. Error: %+v", err)
-		return
-	}
-	for _, v := range cpps {
-		cpp := ConnectionProtocolPercentile{}
-		cpp.Protocol         = v.Protocol
-		cpp.Connection       = messages.Uint64String(v.Connection)
-		cpp.Embryonic        = messages.Uint64String(v.Embryonic)
-		cpp.ConnectionPs     = messages.Uint64String(v.ConnectionPs)
-		cpp.RequestPs        = messages.Uint64String(v.RequestPs)
-		cpp.PartialRequestPs = messages.Uint64String(v.PartialRequestPs)
-		cppList = append(cppList, cpp)
-	}
-	return
-}
-
-// Get uri filtering connection protocol port percentile (low/mid/high_percentile_l, peak_l, current_l)
-func GetUriFilteringConnectionProtocolPortPercentile(engine *xorm.Engine, telePreMitigationId int64, percentileType string) (cppList []ConnectionProtocolPortPercentile, err error) {
-	cppList = []ConnectionProtocolPortPercentile{}
-	cpps, err := db_models.GetUriFilteringTotalAttackConnectionPort(engine, telePreMitigationId, percentileType)
+func GetUriFilteringTotalAttackConnectionPort(engine *xorm.Engine, telePreMitigationId int64) (tacList []TotalAttackConnectionPort, err error) {
+	tacList = []TotalAttackConnectionPort{}
+	dbDatas, err := db_models.GetUriFilteringTotalAttackConnectionPort(engine, telePreMitigationId)
 	if err != nil {
 		log.Errorf("Failed to get uri_filtering_total_attack_connection_port. Error: %+v", err)
 		return
 	}
-	for _, v := range cpps {
-		cpp := ConnectionProtocolPortPercentile{}
-		cpp.Protocol         = v.Protocol
-		cpp.Port             = v.Port
-		cpp.Connection       = messages.Uint64String(v.Connection)
-		cpp.Embryonic        = messages.Uint64String(v.Embryonic)
-		cpp.ConnectionPs     = messages.Uint64String(v.ConnectionPs)
-		cpp.RequestPs        = messages.Uint64String(v.RequestPs)
-		cpp.PartialRequestPs = messages.Uint64String(v.PartialRequestPs)
-		cppList = append(cppList, cpp)
+	tacListTmp := make(map[tacPortKey]TotalAttackConnectionPort)
+	for _, dbData := range dbDatas {
+		mapKey := tacPortKey{protocol: dbData.Protocol, port: dbData.Port}
+		if v, found := tacListTmp[mapKey]; found {
+			tacListTmp[mapKey] = ConvertDataToTotalAttackConnectionPort(dbData, v)
+		} else {
+			tac := TotalAttackConnectionPort{}
+			tac.Protocol = dbData.Protocol
+			tac.Port     = dbData.Port
+			tacListTmp[mapKey] = ConvertDataToTotalAttackConnectionPort(dbData, tac)
+		}
+	}
+	for _, tacTmp := range tacListTmp {
+		tacList = append(tacList, tacTmp)
 	}
 	return
 }
@@ -1011,6 +935,7 @@ func GetUriFilteringAttackDetail(engine *xorm.Engine, customerId int, cuid strin
 		attackDetail := AttackDetail{}
 		attackDetail.VendorId = dbAd.VendorId
 		attackDetail.AttackId = dbAd.AttackId
+		attackDetail.DescriptionLang = dbAd.DescriptionLang
 		isExist, err := IsExistedVendorAttackMapping(engine, client.Id, attackDetail.VendorId, attackDetail.AttackId)
 		if err != nil {
 			return nil, err
@@ -1039,8 +964,8 @@ func GetUriFilteringAttackDetail(engine *xorm.Engine, customerId int, cuid strin
 }
 
 // Get uri filtering source count
-func GetUriFilteringSourceCount(engine *xorm.Engine, adId int64) (SourceCount, error) {
-	sourceCount := SourceCount{}
+func GetUriFilteringSourceCount(engine *xorm.Engine, adId int64) ( PercentilePeakAndCurrent, error) {
+	sourceCount := PercentilePeakAndCurrent{}
 	dbSc, err := db_models.GetUriFilteringSourceCountByTeleAttackDetailId(engine, adId)
 	if err != nil {
 		log.Errorf("Failed to get uri_filtering_source_count. Error: %+v", err)
@@ -1089,8 +1014,8 @@ func GetUriFilteringTopTalker(engine *xorm.Engine, adId int64) ([]TopTalker, err
 		if err != nil {
 			return nil, err
 		}
-		// Get total attack connection
-		topTalker.TotalAttackConnection, err = GetUriFilteringTotalAttackConnection(engine, string(SOURCE_PREFIX), v.Id)
+		// Get total attack connection protocol
+		topTalker.TotalAttackConnectionProtocol, err = GetUriFilteringTotalAttackConnectionProtocol(engine, string(SOURCE_PREFIX), v.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -1516,8 +1441,8 @@ func DeleteCurrentUriFilteringTelemetryPreMitigation(engine *xorm.Engine, sessio
 			log.Errorf("Failed to delete uri_filtering_traffic_per_port. Err: %+v", err)
 			return err
 		}
-		// Delete uri_filtering_total_attack_connection
-		err = db_models.DeleteUriFilteringTotalAttackConnection(session, string(TARGET_PREFIX), v.Id)
+		// Delete uri_filtering_total_attack_connection_protocol
+		err = db_models.DeleteUriFilteringTotalAttackConnectionProtocol(session, string(TARGET_PREFIX), v.Id)
 		if err != nil {
 			log.Errorf("Failed to delete uri_filtering_total_attack_connection. Err: %+v", err)
 			return err
@@ -1594,10 +1519,10 @@ func DeleteUriFilteringAttackDetail(engine *xorm.Engine, session *xorm.Session, 
 				log.Errorf("Failed to delete uri_filtering_traffic. Err: %+v", err)
 				return err
 			}
-			// Delete uri_filtering_total_attack_connection
-			err = db_models.DeleteUriFilteringTotalAttackConnection(session, string(SOURCE_PREFIX), talker.Id)
+			// Delete uri_filtering_total_attack_connection_protocol
+			err = db_models.DeleteUriFilteringTotalAttackConnectionProtocol(session, string(SOURCE_PREFIX), talker.Id)
 			if err != nil {
-				log.Errorf("Failed to delete uri_filtering_total_attack_connection. Err: %+v", err)
+				log.Errorf("Failed to delete uri_filtering_total_attack_connection_protocol. Err: %+v", err)
 				return err
 			}
 		}
@@ -1605,12 +1530,12 @@ func DeleteUriFilteringAttackDetail(engine *xorm.Engine, session *xorm.Session, 
 	return nil
 }
 
-//Get source-count with type is SourceCount
-func GetModelsSourceCount(value *SourceCount) (sourceCount SourceCount) {
+// Get percentile peak and current with type is PercentilePeakAndCurrent
+func GetModelsPercentilePeakAndCurrent(value *PercentilePeakAndCurrent) (sourceCount PercentilePeakAndCurrent) {
 	if value != nil {
-		sourceCount = SourceCount {value.LowPercentileG, value.MidPercentileG, value.HighPercentileG, value.PeakG, value.CurrentG}
+		sourceCount = PercentilePeakAndCurrent {value.LowPercentileG, value.MidPercentileG, value.HighPercentileG, value.PeakG, value.CurrentG}
 	} else {
-		sourceCount = SourceCount {0,0,0,0,0}
+		sourceCount = PercentilePeakAndCurrent {0,0,0,0,0}
 	}
 	return
 }
@@ -1621,38 +1546,6 @@ func GetModelsTraffic(traffics []Traffic) (trafficList []Traffic) {
 	for _, v := range traffics {
 		traffic := Traffic{0, v.Unit, v.LowPercentileG, v.MidPercentileG, v.HighPercentileG, v.PeakG, v.CurrentG}
 		trafficList = append(trafficList, traffic)
-	}
-	return
-}
-
-// Get telemetry total-attack-connection with type is TelemetryTotalAttackConnection
-func GetModelsTelemetryTotalAttackConnection(value *TelemetryTotalAttackConnection) (tac TelemetryTotalAttackConnection) {
-	tac = TelemetryTotalAttackConnection {}
-	if value != nil {
-		if !reflect.DeepEqual(GetModelsTelemetryConnectionPercentile(&value.LowPercentileC), GetModelsTelemetryConnectionPercentile(nil)) {
-			tac.LowPercentileC = GetModelsTelemetryConnectionPercentile(&value.LowPercentileC)
-		}
-		if !reflect.DeepEqual(GetModelsTelemetryConnectionPercentile(&value.MidPercentileC), GetModelsTelemetryConnectionPercentile(nil)) {
-			tac.MidPercentileC = GetModelsTelemetryConnectionPercentile(&value.MidPercentileC)
-		}
-		if !reflect.DeepEqual(GetModelsTelemetryConnectionPercentile(&value.HighPercentileC), GetModelsTelemetryConnectionPercentile(nil)) {
-			tac.HighPercentileC = GetModelsTelemetryConnectionPercentile(&value.HighPercentileC)
-		}
-		if !reflect.DeepEqual(GetModelsTelemetryConnectionPercentile(&value.PeakC), GetModelsTelemetryConnectionPercentile(nil)) {
-			tac.PeakC = GetModelsTelemetryConnectionPercentile(&value.PeakC)
-		}
-		if !reflect.DeepEqual(GetModelsTelemetryConnectionPercentile(&value.CurrentC), GetModelsTelemetryConnectionPercentile(nil)) {
-			tac.CurrentC = GetModelsTelemetryConnectionPercentile(&value.CurrentC)
-		}
-	}
-	return
-}
-
-// Get telemetry connection-percentile with type ConnectionPercentile
-func GetModelsTelemetryConnectionPercentile(v *ConnectionPercentile) (cp ConnectionPercentile) {
-	cp = ConnectionPercentile{}
-	if v != nil {
-		cp = ConnectionPercentile{v.Connection, v.Embryonic, v.ConnectionPs, v.RequestPs, v.PartialRequestPs}
 	}
 	return
 }
@@ -1675,30 +1568,55 @@ func ConvertQueryTypeToString(queryType int) (queryTypeString string) {
 	return
 }
 
-/*
- * Check existed TotalAttackConnection
- * return:
- *    true: if existed
- *    false: if doesn't exist
- */
- func isExistedTotalAttackConnection(tac *messages.TotalAttackConnection) bool {
-	isExist := false
-	if tac != nil && (len(tac.LowPercentileL) > 0 || len(tac.MidPercentileL) > 0 || len(tac.HighPercentileL) > 0 || len(tac.PeakL) > 0 || len(tac.CurrentL) > 0) {
-		isExist = true
+// Convert data to TotalAttackConnectionProtocol
+func ConvertDataToTotalAttackConnectionProtocol(dbData db_models.UriFilteringTotalAttackConnectionProtocol, tac TotalAttackConnectionProtocol) TotalAttackConnectionProtocol {
+	if dbData.Type == string(CONNECTION_C) {
+		tac.ConnectionC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+	} else if dbData.Type == string(EMBRYONIC_C) {
+		tac.EmbryonicC  = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+	} else if dbData.Type == string(CONNECTION_PS_C) {
+		tac.ConnectionPsC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+	} else if dbData.Type == string(REQUEST_PS_C) {
+		tac.RequestPsC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+	} else if dbData.Type == string(PARTIAL_REQUEST_C) {
+		tac.PartialRequestC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
 	}
-	return isExist
+	return tac
 }
 
-/*
- * Check existed TotalAttackConnectionPort
- * return:
- *    true: if existed
- *    false: if doesn't exist
- */
-func isExistedTotalAttackConnectionPort(tac *messages.TotalAttackConnectionPort) bool {
-	isExist := false
-	if tac != nil && (len(tac.LowPercentileL) > 0 || len(tac.MidPercentileL) > 0 || len(tac.HighPercentileL) > 0 || len(tac.PeakL) > 0 || len(tac.CurrentL) > 0) {
-		isExist = true
+// Convert data to TotalAttackConnectionPort
+func ConvertDataToTotalAttackConnectionPort(dbData db_models.UriFilteringTotalAttackConnectionPort, tac TotalAttackConnectionPort) TotalAttackConnectionPort {
+	if dbData.Type == string(CONNECTION_C) {
+		tac.ConnectionC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+	} else if dbData.Type == string(EMBRYONIC_C) {
+		tac.EmbryonicC  = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+	} else if dbData.Type == string(CONNECTION_PS_C) {
+		tac.ConnectionPsC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+	} else if dbData.Type == string(REQUEST_PS_C) {
+		tac.RequestPsC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
+	} else if dbData.Type == string(PARTIAL_REQUEST_C) {
+		tac.PartialRequestC = ConvertDataToPercentilePeakAndCurrent(dbData.LowPercentileG, dbData.MidPercentileG,
+			dbData.HighPercentileG, dbData.PeakG, dbData.CurrentG)
 	}
-	return isExist
+	return tac
+}
+
+// Cobvert data to PercentilePeakAndCurrent
+func ConvertDataToPercentilePeakAndCurrent(low uint64, mid uint64, high uint64, peak uint64, current uint64) (ppac PercentilePeakAndCurrent) {
+	ppac = PercentilePeakAndCurrent{}
+	ppac.LowPercentileG  = messages.Uint64String(low)
+	ppac.MidPercentileG  = messages.Uint64String(mid)
+	ppac.HighPercentileG = messages.Uint64String(high)
+	ppac.PeakG           = messages.Uint64String(peak)
+	ppac.CurrentG        = messages.Uint64String(current)
+	return
 }

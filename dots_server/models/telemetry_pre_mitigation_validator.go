@@ -1,7 +1,10 @@
 package models
 
-import  (
+import (
+	"bytes"
 	"fmt"
+	"regexp"
+
 	"github.com/nttdots/go-dots/dots_common/messages"
 	log "github.com/sirupsen/logrus"
 )
@@ -26,6 +29,14 @@ func ValidateTelemetryPreMitigation(customer *Customer, cuid string, tmid int, d
 		} else if tmid == currentTmid {
 			isPresent = true
 		}
+	}
+	// At least the 'target' attribute and one other pre-or-ongoing-mitigation attribute MUST be present in the DOTS telemetry message.
+	if (data.Target == nil) || (data.Target != nil && len(data.TotalTraffic) < 1 && len(data.TotalTrafficProtocol) < 1 && len(data.TotalTrafficPort) < 1 &&
+	   len(data.TotalAttackTraffic) < 1 && len(data.TotalAttackTrafficProtocol) < 1 && len(data.TotalAttackTrafficPort) < 1 &&
+	   len(data.TotalAttackConnectionProtocol) < 1 && len(data.TotalAttackConnectionPort) < 1 && len(data.AttackDetail) < 1) {
+		   errMsg = "At least the 'target' attribute and one other pre-or-ongoing-mitigation attribute MUST be present in the DOTS telemetry message."
+		   log.Error(errMsg)
+		   return
 	}
 	// Validate targets
 	isUnprocessableEntity, errMsg = ValidateTargets(customer, data.Target)
@@ -69,21 +80,17 @@ func ValidateTelemetryPreMitigation(customer *Customer, cuid string, tmid int, d
 		log.Error(errMsg)
 		return
 	}
-	// Validate total attack connection
-	if data.TotalAttackConnection != nil {
-		isUnprocessableEntity, errMsg = ValidateTotalAttackConnection(data.TotalAttackConnection)
-		if errMsg != "" {
-			log.Error(errMsg)
-			return
-		}
+	// Validate total attack connection protocol
+	isUnprocessableEntity, errMsg = ValidateTotalAttackConnectionProtocol(data.TotalAttackConnectionProtocol)
+	if errMsg != "" {
+		log.Error(errMsg)
+		return
 	}
 	// Validate total attack connection port
-	if data.TotalAttackConnectionPort != nil {
-		isUnprocessableEntity, errMsg = ValidateTotalAttackConnectionPort(data.TotalAttackConnectionPort)
-		if errMsg != "" {
-			log.Error(errMsg)
-			return
-		}
+	isUnprocessableEntity, errMsg = ValidateTotalAttackConnectionPort(data.TotalAttackConnectionPort)
+	if errMsg != "" {
+		log.Error(errMsg)
+		return
 	}
 	// Validate attack detail
 	isUnprocessableEntity, errMsg = ValidateAttackDetail(data.AttackDetail)
@@ -98,10 +105,6 @@ func ValidateTelemetryPreMitigation(customer *Customer, cuid string, tmid int, d
 func ValidateTargets(customer *Customer, target *messages.Target) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
 	errMsg = ""
-	if target == nil{
-		errMsg = "'target' attribute MUST be present in the PUT request"
-		return
-	}
 	if target.TargetPrefix == nil && target.FQDN == nil && target.URI == nil && target.AliasName == nil {
 		errMsg = "At least one of the attributes 'target-prefix', 'target-fqdn', 'target-uri', 'alias-name' MUST be present in the target."
 		return
@@ -126,71 +129,10 @@ func ValidateTargets(customer *Customer, target *messages.Target) (isUnprocessab
 	return
 }
 
-// Valdate total-attack-connection
-func ValidateTotalAttackConnection(tac *messages.TotalAttackConnection) (isUnprocessableEntity bool, errMsg string) {
-	// Validate low-percentile-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPercentile(tac.LowPercentileL)
-	if errMsg != "" {
-		return
-	}
-	// Validate mid-percentile-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPercentile(tac.MidPercentileL)
-	if errMsg != "" {
-		return
-	}
-	// Validate high-percentile-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPercentile(tac.HighPercentileL)
-	if errMsg != "" {
-		return
-	}
-	// Validate peak-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPercentile(tac.PeakL)
-	if errMsg != "" {
-		return
-	}
-	// Validate current-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPercentile(tac.CurrentL)
-	if errMsg != "" {
-		return
-	}
-	return
-}
-
-// Valdate total-attack-connection-port
-func ValidateTotalAttackConnectionPort(tac *messages.TotalAttackConnectionPort) (isUnprocessableEntity bool, errMsg string) {
-	// Validate low-percentile-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPortPercentile(tac.LowPercentileL)
-	if errMsg != "" {
-		return
-	}
-	// Validate mid-percentile-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPortPercentile(tac.MidPercentileL)
-	if errMsg != "" {
-		return
-	}
-	// Validate high-percentile-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPortPercentile(tac.HighPercentileL)
-	if errMsg != "" {
-		return
-	}
-	// Validate peak-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPortPercentile(tac.PeakL)
-	if errMsg != "" {
-		return
-	}
-	// Validate current-l
-	isUnprocessableEntity, errMsg = ValidateConnectionProtocolPortPercentile(tac.CurrentL)
-	if errMsg != "" {
-		return
-	}
-	return
-}
-
-// Validate connection protocol percentile
-func ValidateConnectionProtocolPercentile(cpps []messages.ConnectionProtocolPercentile) (isUnprocessableEntity bool, errMsg string) {
-	errMsg = ""
+// Valdate total-attack-connection-protocol
+func ValidateTotalAttackConnectionProtocol(tacs []messages.TotalAttackConnectionProtocol) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
-	for _, v := range cpps {
+	for _, v := range tacs {
 		isUnprocessableEntity, errMsg = ValidateProtocol(v.Protocol)
 		if errMsg != "" {
 			return
@@ -199,11 +141,10 @@ func ValidateConnectionProtocolPercentile(cpps []messages.ConnectionProtocolPerc
 	return
 }
 
-// Validate connection protocol port percentile
-func ValidateConnectionProtocolPortPercentile(cpps []messages.ConnectionProtocolPortPercentile) (isUnprocessableEntity bool, errMsg string) {
-	errMsg = ""
+// Valdate total-attack-connection-port
+func ValidateTotalAttackConnectionPort(tacs []messages.TotalAttackConnectionPort) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
-	for _, v := range cpps {
+	for _, v := range tacs {
 		isUnprocessableEntity, errMsg = ValidateProtocol(v.Protocol)
 		if errMsg != "" {
 			return
@@ -226,6 +167,11 @@ func ValidateAttackDetail(ads []messages.AttackDetail) (isUnprocessableEntity bo
 		}
 		if ad.AttackId == nil {
 			errMsg = "Missing required 'attack-id' attribute"
+			return
+		}
+		// Validate description-lang
+		isUnprocessableEntity, errMsg = ValidateDescriptionLang(*ad.DescriptionLang)
+		if errMsg != "" {
 			return
 		}
 		// Validate attack-severity
@@ -256,20 +202,52 @@ func ValidateAttackDetail(ads []messages.AttackDetail) (isUnprocessableEntity bo
 						return
 					}
 				}
-				if v.TotalAttackTraffic != nil {
-					isUnprocessableEntity, errMsg = ValidateTraffic(v.TotalAttackTraffic)
-					if errMsg != "" {
-						return
-					}
+				isUnprocessableEntity, errMsg = ValidateTraffic(v.TotalAttackTraffic)
+				if errMsg != "" {
+					return
 				}
-				if v.TotalAttackConnection != nil {
-					isUnprocessableEntity, errMsg = ValidateTotalAttackConnection(v.TotalAttackConnection)
-					if errMsg != "" {
-						return
-					}
+				isUnprocessableEntity, errMsg = ValidateTotalAttackConnectionProtocol(v.TotalAttackConnectionProtocol)
+				if errMsg != "" {
+					return
 				}
 			}
 		}
 	}
 	return
+}
+
+// Validate description-lang
+func ValidateDescriptionLang(desl string) (bool, string) {
+	var pattern bytes.Buffer
+	pattern.WriteString("(([A-Za-z]{2,3}(-[A-Za-z]{3}(-[A-Za-z]{3})")
+	pattern.WriteString("{,2})?|[A-Za-z]{4}|[A-Za-z]{5,8})(-[A-Za-z]{4})?")
+	pattern.WriteString("(-([A-Za-z]{2}|[0-9]{3}))?(-([A-Za-z0-9]{5,8}")
+	pattern.WriteString("|([0-9][A-Za-z0-9]{3})))*(-[0-9A-WY-Za-wy-z]")
+	pattern.WriteString("(-([A-Za-z0-9]{2,8}))+)*(-[Xx](-([A-Za-z0-9]")
+	pattern.WriteString("{1,8}))+)?|[Xx](-([A-Za-z0-9]{1,8}))+|")
+	pattern.WriteString("(([Ee][Nn]-[Gg][Bb]-[Oo][Ee][Dd]|[Ii]-")
+	pattern.WriteString("[Aa][Mm][Ii]|[Ii]-[Bb][Nn][Nn]|[Ii]-")
+	pattern.WriteString("[Dd][Ee][Ff][Aa][Uu][Ll][Tt]|[Ii]-")
+	pattern.WriteString("[Ee][Nn][Oo][Cc][Hh][Ii][Aa][Nn]")
+	pattern.WriteString("|[Ii]-[Hh][Aa][Kk]|")
+	pattern.WriteString("[Ii]-[Kk][Ll][Ii][Nn][Gg][Oo][Nn]|")
+	pattern.WriteString("[Ii]-[Ll][Uu][Xx]|[Ii]-[Mm][Ii][Nn][Gg][Oo]|")
+	pattern.WriteString("[Ii]-[Nn][Aa][Vv][Aa][Jj][Oo]|[Ii]-[Pp][Ww][Nn]|")
+	pattern.WriteString("[Ii]-[Tt][Aa][Oo]|[Ii]-[Tt][Aa][Yy]|")
+	pattern.WriteString("[Ii]-[Tt][Ss][Uu]|[Ss][Gg][Nn]-[Bb][Ee]-[Ff][Rr]|")
+	pattern.WriteString("[Ss][Gg][Nn]-[Bb][Ee]-[Nn][Ll]|[Ss][Gg][Nn]-")
+	pattern.WriteString("[Cc][Hh]-[Dd][Ee])|([Aa][Rr][Tt]-")
+	pattern.WriteString("[Ll][Oo][Jj][Bb][Aa][Nn]|[Cc][Ee][Ll]-")
+	pattern.WriteString("[Gg][Aa][Uu][Ll][Ii][Ss][Hh]|")
+	pattern.WriteString("[Nn][Oo]-[Bb][Oo][Kk]|[Nn][Oo]-")
+	pattern.WriteString("[Nn][Yy][Nn]|[Zz][Hh]-[Gg][Uu][Oo][Yy][Uu]|")
+	pattern.WriteString("[Zz][Hh]-[Hh][Aa][Kk][Kk][Aa]|[Zz][Hh]-")
+	pattern.WriteString("[Mm][Ii][Nn]|[Zz][Hh]-[Mm][Ii][Nn]-")
+	pattern.WriteString("[Nn][Aa][Nn]|[Zz][Hh]-[Xx][Ii][Aa][Nn][Gg])))")
+
+	match, err := regexp.MatchString(pattern.String(), desl)
+	if !match || err != nil {
+		return true, "description-lang is invalid"
+	}
+	return false, ""
 }

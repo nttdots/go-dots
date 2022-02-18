@@ -103,8 +103,8 @@ system:
     connectionClientPs: 85
     requestPs: 86
     requestClientPs: 87
-    partialRequestPs: 88
-    partialRequestClientPs: 89
+    partialRequestMax: 88
+    partialRequestClientMax: 89
 
   secureFile:
     serverCertFile: ../certs/server-cert.pem

@@ -9,19 +9,19 @@ import (
 )
 
 type TelemetryPreMitigation struct {
-	Cuid                       string
-	Cdid                       string
-	Tmid                       int
-	Targets                    Targets
-	TotalTraffic               []Traffic
-	TotalTrafficProtocol       []TrafficPerProtocol
-	TotalTrafficPort           []TrafficPerPort
-	TotalAttackTraffic         []Traffic
-	TotalAttackTrafficProtocol []TrafficPerProtocol
-	TotalAttackTrafficPort     []TrafficPerPort
-	TotalAttackConnection      TotalAttackConnection
-	TotalAttackConnectionPort  TotalAttackConnectionPort
-	AttackDetail               []AttackDetail
+	Cuid                          string
+	Cdid                          string
+	Tmid                          int
+	Targets                       Targets
+	TotalTraffic                  []Traffic
+	TotalTrafficProtocol          []TrafficPerProtocol
+	TotalTrafficPort              []TrafficPerPort
+	TotalAttackTraffic            []Traffic
+	TotalAttackTrafficProtocol    []TrafficPerProtocol
+	TotalAttackTrafficPort        []TrafficPerPort
+	TotalAttackConnectionProtocol []TotalAttackConnectionProtocol
+	TotalAttackConnectionPort     []TotalAttackConnectionPort
+	AttackDetail                  []AttackDetail
 }
 
 type UriFilteringTelemetryPreMitigation struct {
@@ -41,53 +41,38 @@ type Targets struct {
 	TargetList      []Target
 }
 
-type TotalAttackConnection struct {
-	LowPercentileL  []ConnectionProtocolPercentile
-	MidPercentileL  []ConnectionProtocolPercentile
-	HighPercentileL []ConnectionProtocolPercentile
-	PeakL           []ConnectionProtocolPercentile
-	CurrentL        []ConnectionProtocolPercentile
+type TotalAttackConnectionProtocol struct {
+	Protocol        int
+	ConnectionC     PercentilePeakAndCurrent
+	EmbryonicC      PercentilePeakAndCurrent
+	ConnectionPsC   PercentilePeakAndCurrent
+	RequestPsC      PercentilePeakAndCurrent
+	PartialRequestC PercentilePeakAndCurrent
 }
 
 type TotalAttackConnectionPort struct {
-	LowPercentileL  []ConnectionProtocolPortPercentile
-	MidPercentileL  []ConnectionProtocolPortPercentile
-	HighPercentileL []ConnectionProtocolPortPercentile
-	PeakL           []ConnectionProtocolPortPercentile
-	CurrentL        []ConnectionProtocolPortPercentile
+	Protocol        int
+	Port            int
+	ConnectionC     PercentilePeakAndCurrent
+	EmbryonicC      PercentilePeakAndCurrent
+	ConnectionPsC   PercentilePeakAndCurrent
+	RequestPsC      PercentilePeakAndCurrent
+	PartialRequestC PercentilePeakAndCurrent
 }
 
 type AttackDetail struct {
 	VendorId          int
 	AttackId          int
+	DescriptionLang   string
 	AttackDescription string
 	AttackSeverity    messages.AttackSeverityString
 	StartTime         messages.Uint64String
 	EndTime           messages.Uint64String
-	SourceCount       SourceCount
+	SourceCount       PercentilePeakAndCurrent
 	TopTalker         []TopTalker
 }
 
-type ConnectionProtocolPercentile struct {
-	Protocol         int
-	Connection       messages.Uint64String
-	Embryonic        messages.Uint64String
-	ConnectionPs     messages.Uint64String
-	RequestPs        messages.Uint64String
-	PartialRequestPs messages.Uint64String
-}
-
-type ConnectionProtocolPortPercentile struct {
-	Protocol         int
-	Port             int
-	Connection       messages.Uint64String
-	Embryonic        messages.Uint64String
-	ConnectionPs     messages.Uint64String
-	RequestPs        messages.Uint64String
-	PartialRequestPs messages.Uint64String
-}
-
-type SourceCount struct {
+type PercentilePeakAndCurrent struct {
 	LowPercentileG  messages.Uint64String
 	MidPercentileG  messages.Uint64String
 	HighPercentileG messages.Uint64String
@@ -96,28 +81,20 @@ type SourceCount struct {
 }
 
 type TopTalker struct {
-	SpoofedStatus         bool
-	SourcePrefix          Prefix
-	SourcePortRange       []PortRange
-	SourceIcmpTypeRange   []ICMPTypeRange
-	TotalAttackTraffic    []Traffic
-	TotalAttackConnection TotalAttackConnection
+	SpoofedStatus                 bool
+	SourcePrefix                  Prefix
+	SourcePortRange               []PortRange
+	SourceIcmpTypeRange           []ICMPTypeRange
+	TotalAttackTraffic            []Traffic
+	TotalAttackConnectionProtocol []TotalAttackConnectionProtocol
 }
 
 type TelemetryTotalAttackConnection struct {
-	LowPercentileC  ConnectionPercentile
-	MidPercentileC  ConnectionPercentile
-	HighPercentileC ConnectionPercentile
-	PeakC           ConnectionPercentile
-	CurrentC        ConnectionPercentile
-}
-
-type ConnectionPercentile struct {
-	Connection       messages.Uint64String
-	Embryonic        messages.Uint64String
-	ConnectionPs     messages.Uint64String
-	RequestPs        messages.Uint64String
-	PartialRequestPs messages.Uint64String
+	ConnectionC     PercentilePeakAndCurrent
+	EmbryonicC      PercentilePeakAndCurrent
+	ConnectionPsC   PercentilePeakAndCurrent
+	RequestPsC      PercentilePeakAndCurrent
+	PartialRequestC PercentilePeakAndCurrent
 }
 
 type TelemetryAttackDetail struct {
@@ -127,7 +104,7 @@ type TelemetryAttackDetail struct {
 	AttackSeverity    messages.AttackSeverityString
 	StartTime         messages.Uint64String
 	EndTime           messages.Uint64String
-	SourceCount       SourceCount
+	SourceCount       PercentilePeakAndCurrent
 	TopTalker         []TelemetryTopTalker
 }
 
@@ -175,14 +152,10 @@ func NewTelemetryPreMitigation(customer *Customer, cuid string, dataRequest mess
 	preMitigation.TotalAttackTrafficProtocol = NewTrafficPerProtocol(dataRequest.TotalAttackTrafficProtocol)
 	// Create new total-attack-traffic-port
 	preMitigation.TotalAttackTrafficPort = NewTrafficPerPort(dataRequest.TotalAttackTrafficPort)
-	// Create new total-attack-connection
-	if dataRequest.TotalAttackConnection != nil {
-		preMitigation.TotalAttackConnection = NewTotalAttackConnection(*dataRequest.TotalAttackConnection)
-	}
+	// Create new total-attack-connection-protocol
+	preMitigation.TotalAttackConnectionProtocol = NewTotalAttackConnectionPerProtocol(dataRequest.TotalAttackConnectionProtocol)
 	// Create new total-attack-connection-port
-	if dataRequest.TotalAttackConnectionPort != nil {
-		preMitigation.TotalAttackConnectionPort = NewTotalAttackConnectionPerPort(*dataRequest.TotalAttackConnectionPort)
-	}
+	preMitigation.TotalAttackConnectionPort = NewTotalAttackConnectionPerPort(dataRequest.TotalAttackConnectionPort)
 	// Create new attack-detail
 	preMitigation.AttackDetail, err = NewAttackDetail(dataRequest.AttackDetail)
 	if err != nil {
@@ -239,44 +212,61 @@ func GetAliasDataAsTargetList(aliases types.Aliases) (targetList []Target, err e
 	return targetList, nil
 }
 
-// New total attack connection
-func NewTotalAttackConnection(tacRequest messages.TotalAttackConnection) (tac TotalAttackConnection) {
-	tac = TotalAttackConnection{}
-	if tacRequest.LowPercentileL != nil {
-		tac.LowPercentileL = NewConnectionProtocolPercentile(tacRequest.LowPercentileL)
-	}
-	if tacRequest.MidPercentileL != nil {
-		tac.MidPercentileL = NewConnectionProtocolPercentile(tacRequest.MidPercentileL)
-	}
-	if tacRequest.HighPercentileL != nil {
-		tac.HighPercentileL = NewConnectionProtocolPercentile(tacRequest.HighPercentileL)
-	}
-	if tacRequest.PeakL != nil {
-		tac.PeakL = NewConnectionProtocolPercentile(tacRequest.PeakL)
-	}
-	if tacRequest.CurrentL != nil {
-		tac.CurrentL = NewConnectionProtocolPercentile(tacRequest.CurrentL)
+// New total attack connection protocol
+func NewTotalAttackConnectionPerProtocol(tacRequests []messages.TotalAttackConnectionProtocol) (tacList []TotalAttackConnectionProtocol) {
+	tacList = []TotalAttackConnectionProtocol{}
+	for _, tacReq := range tacRequests {
+		tac := TotalAttackConnectionProtocol{}
+		if tacReq.Protocol != nil {
+			tac.Protocol = int(*tacReq.Protocol)
+		}
+		if tacReq.ConnectionC != nil {
+			tac.ConnectionC = NewPercentilePeakAndCurrent(*tacReq.ConnectionC)
+		}
+		if tacReq.EmbryonicC != nil {
+			tac.EmbryonicC = NewPercentilePeakAndCurrent(*tacReq.EmbryonicC)
+		}
+		if tacReq.ConnectionPsC != nil {
+			tac.ConnectionPsC = NewPercentilePeakAndCurrent(*tacReq.ConnectionPsC)
+		}
+		if tacReq.RequestPsC != nil {
+			tac.RequestPsC = NewPercentilePeakAndCurrent(*tacReq.RequestPsC)
+		}
+		if tacReq.PartialRequestC != nil {
+			tac.PartialRequestC = NewPercentilePeakAndCurrent(*tacReq.PartialRequestC)
+		}
+		tacList = append(tacList, tac)
 	}
 	return
 }
 
 // New total attack connection port
-func NewTotalAttackConnectionPerPort(tacRequest messages.TotalAttackConnectionPort) (tac TotalAttackConnectionPort) {
-	tac = TotalAttackConnectionPort{}
-	if tacRequest.LowPercentileL != nil {
-		tac.LowPercentileL = NewConnectionProtocolPortPercentile(tacRequest.LowPercentileL)
-	}
-	if tacRequest.MidPercentileL != nil {
-		tac.MidPercentileL = NewConnectionProtocolPortPercentile(tacRequest.MidPercentileL)
-	}
-	if tacRequest.HighPercentileL != nil {
-		tac.HighPercentileL = NewConnectionProtocolPortPercentile(tacRequest.HighPercentileL)
-	}
-	if tacRequest.PeakL != nil {
-		tac.PeakL = NewConnectionProtocolPortPercentile(tacRequest.PeakL)
-	}
-	if tacRequest.CurrentL != nil {
-		tac.CurrentL = NewConnectionProtocolPortPercentile(tacRequest.CurrentL)
+func NewTotalAttackConnectionPerPort(tacRequests []messages.TotalAttackConnectionPort) (tacList []TotalAttackConnectionPort) {
+	tacList = []TotalAttackConnectionPort{}
+	for _, tacReq := range tacRequests {
+		tac := TotalAttackConnectionPort{}
+		if tacReq.Protocol != nil {
+			tac.Protocol = int(*tacReq.Protocol)
+		}
+		if tacReq.Port != nil {
+			tac.Port = *tacReq.Port
+		}
+		if tacReq.ConnectionC != nil {
+			tac.ConnectionC = NewPercentilePeakAndCurrent(*tacReq.ConnectionC)
+		}
+		if tacReq.EmbryonicC != nil {
+			tac.EmbryonicC = NewPercentilePeakAndCurrent(*tacReq.EmbryonicC)
+		}
+		if tacReq.ConnectionPsC != nil {
+			tac.ConnectionPsC = NewPercentilePeakAndCurrent(*tacReq.ConnectionPsC)
+		}
+		if tacReq.RequestPsC != nil {
+			tac.RequestPsC = NewPercentilePeakAndCurrent(*tacReq.RequestPsC)
+		}
+		if tacReq.PartialRequestC != nil {
+			tac.PartialRequestC = NewPercentilePeakAndCurrent(*tacReq.PartialRequestC)
+		}
+		tacList = append(tacList, tac)
 	}
 	return
 }
@@ -291,6 +281,11 @@ func NewAttackDetail(adRequests []messages.AttackDetail) (attackDetailList []Att
 		}
 		if adRequest.AttackId != nil {
 			attackDetail.AttackId = int(*adRequest.AttackId)
+		}
+		if adRequest.DescriptionLang != nil {
+			attackDetail.DescriptionLang = *adRequest.DescriptionLang
+		} else {
+			attackDetail.DescriptionLang = "en-US"
 		}
 		if adRequest.AttackDescription != nil {
 			attackDetail.AttackDescription = *adRequest.AttackDescription
@@ -308,7 +303,7 @@ func NewAttackDetail(adRequests []messages.AttackDetail) (attackDetailList []Att
 		}
 		// Create new source count
 		if adRequest.SourceCount != nil {
-			attackDetail.SourceCount = NewSourceCount(*adRequest.SourceCount)
+			attackDetail.SourceCount = NewPercentilePeakAndCurrent(*adRequest.SourceCount)
 		}
 		// Create new top talker
 		if adRequest.TopTalKer != nil {
@@ -322,62 +317,9 @@ func NewAttackDetail(adRequests []messages.AttackDetail) (attackDetailList []Att
 	return
 }
 
-// New connection protocol percentile (low/mid/high-percentile-l, peak-l, current-l)
-func NewConnectionProtocolPercentile(cppRequest []messages.ConnectionProtocolPercentile) (cppList []ConnectionProtocolPercentile) {
-	cppList = []ConnectionProtocolPercentile{}
-	for _, v := range cppRequest {
-		cpp := ConnectionProtocolPercentile{}
-		cpp.Protocol = int(*v.Protocol)
-		if v.Connection != nil {
-			cpp.Connection = *v.Connection
-		}
-		if v.Embryonic != nil {
-			cpp.Embryonic = *v.Embryonic
-		}
-		if v.ConnectionPs != nil {
-			cpp.ConnectionPs = *v.ConnectionPs
-		}
-		if v.RequestPs != nil {
-			cpp.RequestPs = *v.RequestPs
-		}
-		if v.PartialRequestPs != nil {
-			cpp.PartialRequestPs = *v.PartialRequestPs
-		}
-		cppList = append(cppList, cpp)
-	}
-	return
-}
-
-// New connection protocol port percentile (low/mid/high-percentile-l, peak-l, current-l)
-func NewConnectionProtocolPortPercentile(cppRequest []messages.ConnectionProtocolPortPercentile) (cppList []ConnectionProtocolPortPercentile) {
-	cppList = []ConnectionProtocolPortPercentile{}
-	for _, v := range cppRequest {
-		cpp := ConnectionProtocolPortPercentile{}
-		cpp.Protocol = int(*v.Protocol)
-		cpp.Port = *v.Port
-		if v.Connection != nil {
-			cpp.Connection = *v.Connection
-		}
-		if v.Embryonic != nil {
-			cpp.Embryonic = *v.Embryonic
-		}
-		if v.ConnectionPs != nil {
-			cpp.ConnectionPs = *v.ConnectionPs
-		}
-		if v.RequestPs != nil {
-			cpp.RequestPs = *v.RequestPs
-		}
-		if v.PartialRequestPs != nil {
-			cpp.PartialRequestPs = *v.PartialRequestPs
-		}
-		cppList = append(cppList, cpp)
-	}
-	return
-}
-
-// New source count
-func NewSourceCount(scRequest messages.SourceCount) (sourceCount SourceCount) {
-	sourceCount = SourceCount{}
+// New percentile peak and current
+func NewPercentilePeakAndCurrent(scRequest messages.PercentilePeakAndCurrent) (sourceCount PercentilePeakAndCurrent) {
+	sourceCount = PercentilePeakAndCurrent{}
 	if scRequest.LowPercentileG != nil {
 		sourceCount.LowPercentileG = *scRequest.LowPercentileG
 	}
@@ -431,8 +373,8 @@ func NewTopTalker(ttRequest messages.TopTalker) (talkerList []TopTalker, err err
 		if v.TotalAttackTraffic != nil {
 			talker.TotalAttackTraffic = NewTraffic(v.TotalAttackTraffic)
 		}
-		if v.TotalAttackConnection != nil {
-			talker.TotalAttackConnection = NewTotalAttackConnection(*v.TotalAttackConnection)
+		if v.TotalAttackConnectionProtocol != nil {
+			talker.TotalAttackConnectionProtocol = NewTotalAttackConnectionPerProtocol(v.TotalAttackConnectionProtocol)
 		}
 		talkerList = append (talkerList, talker)
 	}
@@ -488,7 +430,7 @@ func NewTelemetryAttackDetail(adRequests []messages.TelemetryAttackDetail) (atta
 		}
 		// Create new source count
 		if adRequest.SourceCount != nil {
-			attackDetail.SourceCount = NewSourceCount(*adRequest.SourceCount)
+			attackDetail.SourceCount = NewPercentilePeakAndCurrent(*adRequest.SourceCount)
 		}
 		// Create new top talker
 		if adRequest.TopTalKer != nil {
@@ -539,45 +481,24 @@ func NewTelemetryTopTalker(ttRequest messages.TelemetryTopTalker) (talkerList []
 		}
 		if v.TotalAttackConnection != nil {
 			tac := TelemetryTotalAttackConnection{}
-			if v.TotalAttackConnection.LowPercentileC != nil{
-				tac.LowPercentileC = NewConnectionPercentile(*v.TotalAttackConnection.LowPercentileC)
+			if v.TotalAttackConnection.ConnectionC != nil{
+				tac.ConnectionC = NewPercentilePeakAndCurrent(*v.TotalAttackConnection.ConnectionC)
 			}
-			if v.TotalAttackConnection.MidPercentileC != nil{
-				tac.MidPercentileC = NewConnectionPercentile(*v.TotalAttackConnection.MidPercentileC)
+			if v.TotalAttackConnection.EmbryonicC != nil{
+				tac.EmbryonicC = NewPercentilePeakAndCurrent(*v.TotalAttackConnection.EmbryonicC)
 			}
-			if v.TotalAttackConnection.HighPercentileC != nil{
-				tac.HighPercentileC = NewConnectionPercentile(*v.TotalAttackConnection.HighPercentileC)
+			if v.TotalAttackConnection.ConnectionPsC != nil{
+				tac.ConnectionPsC = NewPercentilePeakAndCurrent(*v.TotalAttackConnection.ConnectionPsC)
 			}
-			if v.TotalAttackConnection.PeakC != nil{
-				tac.PeakC = NewConnectionPercentile(*v.TotalAttackConnection.PeakC)
+			if v.TotalAttackConnection.RequestPsC != nil{
+				tac.RequestPsC = NewPercentilePeakAndCurrent(*v.TotalAttackConnection.RequestPsC)
 			}
-			if v.TotalAttackConnection.CurrentC != nil{
-				tac.CurrentC = NewConnectionPercentile(*v.TotalAttackConnection.CurrentC)
+			if v.TotalAttackConnection.PartialRequestC != nil{
+				tac.PartialRequestC = NewPercentilePeakAndCurrent(*v.TotalAttackConnection.PartialRequestC)
 			}
 			talker.TotalAttackConnection = tac
 		}
 		talkerList = append (talkerList, talker)
-	}
-	return
-}
-
-// New connection percentile (low/mid/high-percentile-c, peak-c, current-c)
-func NewConnectionPercentile(cpRequest messages.ConnectionPercentile) (cp ConnectionPercentile) {
-	cp = ConnectionPercentile{}
-	if cpRequest.Connection != nil {
-		cp.Connection = *cpRequest.Connection
-	}
-	if cpRequest.Embryonic != nil {
-		cp.Embryonic = *cpRequest.Embryonic
-	}
-	if cpRequest.ConnectionPs != nil {
-		cp.ConnectionPs = *cpRequest.ConnectionPs
-	}
-	if cpRequest.RequestPs != nil {
-		cp.RequestPs = *cpRequest.RequestPs
-	}
-	if cpRequest.PartialRequestPs != nil {
-		cp.PartialRequestPs = *cpRequest.PartialRequestPs
 	}
 	return
 }

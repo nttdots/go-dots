@@ -98,8 +98,8 @@ type HexCBOR string
 const (
     IETF_MITIGATION_SCOPE_HEX      HexCBOR = "a1 01"       // "ietf-dots-signal-channel:mitigation-scope"
     IETF_SESSION_CONFIGURATION_HEX HexCBOR = "a1 18 1e"    // "ietf-dots-signal-channel:signal-config"
-    IETF_TELEMETRY_PRE_MITIGATION  HexCBOR = "a1 18 d2 a1" // "ietf-dots-telemetry:telemetry"
-    IETF_TELEMETRY_SETUP_HEX       HexCBOR = "a1 18 cd a1" // "ietf-dots-telemetry:telemetry-setup"
+    IETF_TELEMETRY_PRE_MITIGATION  HexCBOR = "a1 18 d0 a1" // "ietf-dots-telemetry:telemetry"
+    IETF_TELEMETRY_SETUP_HEX       HexCBOR = "a1 18 cb a1" // "ietf-dots-telemetry:telemetry-setup"
 )
 
 // MediaType specifies the content type of a message.

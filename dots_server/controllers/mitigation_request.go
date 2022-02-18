@@ -156,11 +156,7 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 			scopeStates.PktsDropped = &pktsDropped
 			scopeStates.PpsDropped = &ppsDropped
 			scopeStates.TotalTraffic = convertToTrafficResponse(mp.mitigation.TelemetryTotalTraffic)
-			if !reflect.DeepEqual(models.GetModelsTelemetryTotalAttackConnection(&mp.mitigation.TelemetryTotalAttackConnection), models.GetModelsTelemetryTotalAttackConnection(nil)) {
-				scopeStates.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(mp.mitigation.TelemetryTotalAttackConnection)
-			} else {
-				scopeStates.TotalAttackConnection = nil
-			}
+			scopeStates.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(mp.mitigation.TelemetryTotalAttackConnection)
 			scopeStates.TotalAttackTraffic = convertToTrafficResponse(mp.mitigation.TelemetryTotalAttackTraffic)
 			scopeStates.AttackDetail = convertToTelemetryAttackDetailResponse(mp.mitigation.TelemetryAttackDetail)
 		}
@@ -746,36 +742,6 @@ func deleteMitigationByMessage(req *messages.MitigationRequest, customer *models
 /*
  * Terminate the mitigation.
  */
-func cancelMitigationByMessage(req *messages.MitigationRequest, customer *models.Customer) error {
-	ids := make([]int, len(req.MitigationScope.Scopes))
-	for i, scope := range req.MitigationScope.Scopes {
-		ids[i] = *scope.MitigationId
-	}
-	return cancelMitigationByIds(ids, req.EffectiveClientIdentifier(), customer)
-}
-
-/*
- * Terminate the mitigation.
- */
-func cancelMitigationByModel(scope *models.MitigationScope, clientIdentifier string, customer *models.Customer) error {
-	ids := make([]int, 1)
-	ids[0] = scope.MitigationId
-	return cancelMitigationByIds(ids, clientIdentifier, customer)
-}
-
-/*
- * Terminate the mitigations.
- */
-func cancelMitigationByIds(mitigationIds []int, clientIdentifier string, customer *models.Customer) (err error) {
-	for _, mitigationId := range mitigationIds {
-		err = cancelMitigationById(mitigationId, clientIdentifier, customer.Id, models.AnyMitigationScopeId)
-	}
-	return
-}
-
-/*
- * Terminate the mitigation.
- */
 func cancelMitigationById(mitigationId int, clientIdentifier string, customerId int, mitigationScopeId int64) (err error) {
 
 	// DB search
@@ -1014,7 +980,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 
 	// Skip validating mitigation request when efficacy update
 	var aliases types.Aliases
-	if isIfMatchOption == false {
+	if !isIfMatchOption {
 		// Get data alias from data channel
 		aliases, err = data_controllers.GetDataAliasesByName(customer, body.EffectiveClientIdentifier(), body.MitigationScope.Scopes[0].AliasName)
 		if err != nil {
@@ -1033,7 +999,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 	}
 
 	// cancel mitigation scope when refresh mitigation with trigger-mitigation is false
-	if currentScope != nil && currentScope.IsActive() && requestScope.TriggerMitigation == false {
+	if currentScope != nil && currentScope.IsActive() && !requestScope.TriggerMitigation {
 		// Cancel blocker asynchronously only in case blocker type is Arista ACL
 		if blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_RTBH || blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_FLOWSPEC {
 			err = handleCancelBlocker(currentScope.MitigationId, body.EffectiveClientIdentifier(), customer.Id, currentScope.MitigationScopeId)
@@ -1047,14 +1013,14 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 	if currentScope != nil { requestScope.Status = currentScope.Status }
 
 	// store mitigation request into the mitigationScope table
-	if requestScope.TriggerMitigation == false { requestScope.Status = models.Triggered }
+	if !requestScope.TriggerMitigation { requestScope.Status = models.Triggered }
 	mitigationScope, err := models.CreateMitigationScope(*requestScope, *customer, isIfMatchOption)
 	if err != nil {
 		return nil, err
 	}
 
 	// call blocker mitigation scope when create mitigation or refresh mitigation with trigger-mitigation is true
-	if (currentScope == nil || (currentScope != nil && !currentScope.IsActive())) && requestScope.TriggerMitigation == true {
+	if (currentScope == nil || (currentScope != nil && !currentScope.IsActive())) && requestScope.TriggerMitigation {
 		requestScope.MitigationScopeId = mitigationScope.Id
 		if currentScope != nil && requestScope.MitigationScopeId == 0 {
 			requestScope.MitigationScopeId = currentScope.MitigationScopeId
@@ -1236,7 +1202,7 @@ func handleCallBlocker(customer *models.Customer, currentScope *models.Mitigatio
 
 
 	// Set Status to InProgress
-	if currentScope == nil || (currentScope != nil && currentScope.TriggerMitigation == false){
+	if currentScope == nil || (currentScope != nil && !currentScope.TriggerMitigation){
 		err = UpdateMitigationStatus(customer.Id, requestScope.ClientIdentifier, requestScope.MitigationId,
 			requestScope.MitigationScopeId, models.SuccessfullyMitigated, false)
 		if err != nil {
@@ -1701,7 +1667,7 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 			if err != nil {
 				log.Errorf("Terminate expired mitigation (id = %+v) failed. Error: %+v", overridedMitigation.MitigationId, err)
 			}
-		} else if overridedMitigation.TriggerMitigation == false {
+		} else if !overridedMitigation.TriggerMitigation {
 			// The current mitigation will be withdrawn
 			log.Debugf("[Overlap]: The current mitigation: %+v will be deactivated because overlap with the request mitigation: %+v", overridedMitigation.MitigationId, requestScope.MitigationId)
 			UpdateMitigationStatus(overridedMitigation.Customer.Id, overridedMitigation.ClientIdentifier,
@@ -2080,12 +2046,12 @@ func validateForCallHome(customer *models.Customer, scope messages.Scope) (bool,
 	sourceOnlyIPv4 := true
 	sourceOnlyIPv6 := true
 	if scope.TriggerMitigation != nil && !*scope.TriggerMitigation {
-		msg = fmt.Sprintf("Call Home DOTS clients MUST NOT send requests with 'trigger-mitigation' set to 'false'")
+		msg = fmt.Sprintln("Call Home DOTS clients MUST NOT send requests with 'trigger-mitigation' set to 'false'")
 		log.Error(msg)
 		return isActive, msg
 	}
 	if scope.TargetPrefix == nil {
-		msg = fmt.Sprintf("Missing required the 'target-prefix' attribute")
+		msg = fmt.Sprintln("Missing required the 'target-prefix' attribute")
 		log.Error(msg)
 		return isActive, msg
 	}
@@ -2109,11 +2075,11 @@ func validateForCallHome(customer *models.Customer, scope messages.Scope) (bool,
 	// If target-prefix only contains IPv4 and source-prefix only contains IPv6, the server will return 400 Bad Request
 	// If target-prefix only contains IPv6 and source-prefix only contains IPv4, the server will return 400 Bad Request
 	if targetOnlyIPv4 && sourceOnlyIPv6 {
-		msg = fmt.Sprintf("Failed to the 'target-prefix' only contains IPv4 and the 'source-prefix' only contains IPv6")
+		msg = fmt.Sprintln("Failed to the 'target-prefix' only contains IPv4 and the 'source-prefix' only contains IPv6")
 		log.Error(msg)
 		return isActive, msg
 	} else if targetOnlyIPv6 && sourceOnlyIPv4 {
-		msg = fmt.Sprintf("Failed to the 'target-prefix' only contains IPv6 and the 'source-prefix' only contains IPv4")
+		msg = fmt.Sprintln("Failed to the 'target-prefix' only contains IPv6 and the 'source-prefix' only contains IPv4")
 		log.Error(msg)
 		return isActive, msg
 	}

@@ -129,17 +129,17 @@ type DefaultTotalTrafficNormalBaselineNode struct {
 }
 
 type DefaultTotalConnectionCapacityNode struct {
-	Protocol               string `yaml:"protocol"`
-	Connection             string `yaml:"connection"`
-	ConnectionClient       string `yaml:"connectionClient"`
-	EmbryOnic              string `yaml:"embryonic"`
-	EmbryOnicClient        string `yaml:"embryonicClient"`
-	ConnectionPs           string `yaml:"connectionPs"`
-	ConnectionClientPs     string `yaml:"connectionClientPs"`
-	RequestPs              string `yaml:"requestPs"`
-	RequestClientPs        string `yaml:"requestClientPs"`
-	PartialRequestPs       string `yaml:"partialRequestPs"`
-	PartialRequestClientPs string `yaml:"partialRequestClientPs"`
+	Protocol                string `yaml:"protocol"`
+	Connection              string `yaml:"connection"`
+	ConnectionClient        string `yaml:"connectionClient"`
+	EmbryOnic               string `yaml:"embryonic"`
+	EmbryOnicClient         string `yaml:"embryonicClient"`
+	ConnectionPs            string `yaml:"connectionPs"`
+	ConnectionClientPs      string `yaml:"connectionClientPs"`
+	RequestPs               string `yaml:"requestPs"`
+	RequestClientPs         string `yaml:"requestClientPs"`
+	PartialRequestMax       string `yaml:"partialRequestMax"`
+	PartialRequestClientMax string `yaml:"partialRequestClientMax"`
 }
 
 type LifetimeConfigurationNode struct {
@@ -455,17 +455,17 @@ func (dtccn DefaultTotalConnectionCapacityNode) Convert() (interface{}, error) {
 		return nil, errors.New("'protocol' MUST be between 0 and 255")
 	}
 	return &DefaultTotalConnectionCapacity{
-		Protocol:               protocol,
-		Connection:             parseUint64Value(dtccn.Connection),
-		ConnectionClient:       parseUint64Value(dtccn.ConnectionClient),
-		EmbryOnic:              parseUint64Value(dtccn.EmbryOnic),
-		EmbryOnicClient:        parseUint64Value(dtccn.EmbryOnicClient),
-		ConnectionPs:           parseUint64Value(dtccn.ConnectionPs),
-		ConnectionClientPs:     parseUint64Value(dtccn.ConnectionClientPs),
-		RequestPs:              parseUint64Value(dtccn.RequestPs),
-		RequestClientPs:        parseUint64Value(dtccn.RequestClientPs),
-		PartialRequestPs:       parseUint64Value(dtccn.PartialRequestPs),
-		PartialRequestClientPs: parseUint64Value(dtccn.PartialRequestClientPs),
+		Protocol:                protocol,
+		Connection:              parseUint64Value(dtccn.Connection),
+		ConnectionClient:        parseUint64Value(dtccn.ConnectionClient),
+		EmbryOnic:               parseUint64Value(dtccn.EmbryOnic),
+		EmbryOnicClient:         parseUint64Value(dtccn.EmbryOnicClient),
+		ConnectionPs:            parseUint64Value(dtccn.ConnectionPs),
+		ConnectionClientPs:      parseUint64Value(dtccn.ConnectionClientPs),
+		RequestPs:               parseUint64Value(dtccn.RequestPs),
+		RequestClientPs:         parseUint64Value(dtccn.RequestClientPs),
+		PartialRequestMax:       parseUint64Value(dtccn.PartialRequestMax),
+		PartialRequestClientMax: parseUint64Value(dtccn.PartialRequestClientMax),
 	}, nil
 }
 
@@ -1322,17 +1322,17 @@ type DefaultTotalTrafficNormalBaseline struct {
 }
 
 type DefaultTotalConnectionCapacity struct {
-	Protocol               int
-	Connection             uint64
-	ConnectionClient       uint64
-	EmbryOnic              uint64
-	EmbryOnicClient        uint64
-	ConnectionPs           uint64
-	ConnectionClientPs     uint64
-	RequestPs              uint64
-	RequestClientPs        uint64
-	PartialRequestPs       uint64
-	PartialRequestClientPs uint64
+	Protocol                int
+	Connection              uint64
+	ConnectionClient        uint64
+	EmbryOnic               uint64
+	EmbryOnicClient         uint64
+	ConnectionPs            uint64
+	ConnectionClientPs      uint64
+	RequestPs               uint64
+	RequestClientPs         uint64
+	PartialRequestMax       uint64
+	PartialRequestClientMax uint64
 }
 
 

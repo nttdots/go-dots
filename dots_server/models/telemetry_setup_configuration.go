@@ -92,33 +92,33 @@ type TrafficPerPort struct {
 }
 type TotalConnectionCapacity struct {
 	TotalConnectionCapacityId int64
-	Protocol               int
-	Connection             messages.Uint64String
-	ConnectionClient       messages.Uint64String
-	Embryonic              messages.Uint64String
-	EmbryonicClient        messages.Uint64String
-	ConnectionPs           messages.Uint64String
-	ConnectionClientPs     messages.Uint64String
-	RequestPs              messages.Uint64String
-	RequestClientPs        messages.Uint64String
-	PartialRequestPs       messages.Uint64String
-	PartialRequestClientPs messages.Uint64String
+	Protocol                int
+	Connection              messages.Uint64String
+	ConnectionClient        messages.Uint64String
+	Embryonic               messages.Uint64String
+	EmbryonicClient         messages.Uint64String
+	ConnectionPs            messages.Uint64String
+	ConnectionClientPs      messages.Uint64String
+	RequestPs               messages.Uint64String
+	RequestClientPs         messages.Uint64String
+	PartialRequestMax       messages.Uint64String
+	PartialRequestClientMax messages.Uint64String
 }
 
 type TotalConnectionCapacityPerPort struct {
 	TotalConnectionCapacityId int64
-	Protocol               int
-	Port                   int
-	Connection             messages.Uint64String
-	ConnectionClient       messages.Uint64String
-	Embryonic              messages.Uint64String
-	EmbryonicClient        messages.Uint64String
-	ConnectionPs           messages.Uint64String
-	ConnectionClientPs     messages.Uint64String
-	RequestPs              messages.Uint64String
-	RequestClientPs        messages.Uint64String
-	PartialRequestPs       messages.Uint64String
-	PartialRequestClientPs messages.Uint64String
+	Protocol                int
+	Port                    int
+	Connection              messages.Uint64String
+	ConnectionClient        messages.Uint64String
+	Embryonic               messages.Uint64String
+	EmbryonicClient         messages.Uint64String
+	ConnectionPs            messages.Uint64String
+	ConnectionClientPs      messages.Uint64String
+	RequestPs               messages.Uint64String
+	RequestClientPs         messages.Uint64String
+	PartialRequestMax       messages.Uint64String
+	PartialRequestClientMax messages.Uint64String
 }
 
 type TelemetryConfigurationParameter struct {
@@ -414,11 +414,11 @@ func NewTotalConnectionCapacity(totalConnectionCapacities []messages.TotalConnec
 		if v.RequestClientPs != nil {
 			connectionCapacity.RequestClientPs = *v.RequestClientPs
 		}
-		if v.PartialRequestPs != nil {
-			connectionCapacity.PartialRequestPs = *v.PartialRequestPs
+		if v.PartialRequestMax != nil {
+			connectionCapacity.PartialRequestMax = *v.PartialRequestMax
 		}
-		if v.PartialRequestClientPs != nil {
-			connectionCapacity.PartialRequestClientPs = *v.PartialRequestClientPs
+		if v.PartialRequestClientMax != nil {
+			connectionCapacity.PartialRequestClientMax = *v.PartialRequestClientMax
 		}
 		totalConnectionCapacityList[k] = connectionCapacity
 	}
@@ -460,11 +460,11 @@ func NewTotalConnectionCapacityPerPort(totalConnectionCapacities []messages.Tota
 		if v.RequestClientPs != nil {
 			connectionCapacity.RequestClientPs = *v.RequestClientPs
 		}
-		if v.PartialRequestPs != nil {
-			connectionCapacity.PartialRequestPs = *v.PartialRequestPs
+		if v.PartialRequestMax != nil {
+			connectionCapacity.PartialRequestMax = *v.PartialRequestMax
 		}
-		if v.PartialRequestClientPs != nil {
-			connectionCapacity.PartialRequestClientPs = *v.PartialRequestClientPs
+		if v.PartialRequestClientMax != nil {
+			connectionCapacity.PartialRequestClientMax = *v.PartialRequestClientMax
 		}
 		totalConnectionCapacityList[k] = connectionCapacity
 	}

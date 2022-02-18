@@ -853,18 +853,18 @@ func RegisterTotalConnectionCapacity(session *xorm.Session, teleBaselineId int64
 	newTccList := []db_models.TotalConnectionCapacity{}
 	for _, vTcc := range tccs {
 		newTcc  := db_models.TotalConnectionCapacity {
-			TeleBaselineId:         teleBaselineId,
-			Protocol:               vTcc.Protocol,
-			Connection:             uint64(vTcc.Connection),
-			ConnectionClient:       uint64(vTcc.ConnectionClient),
-			Embryonic:              uint64(vTcc.Embryonic),
-			EmbryonicClient:        uint64(vTcc.EmbryonicClient),
-			ConnectionPs:           uint64(vTcc.ConnectionPs),
-			ConnectionClientPs:     uint64(vTcc.ConnectionClientPs),
-			RequestPs:              uint64(vTcc.RequestPs),
-			RequestClientPs:        uint64(vTcc.RequestClientPs),
-			PartialRequestPs:       uint64(vTcc.PartialRequestPs),
-			PartialRequestClientPs: uint64(vTcc.PartialRequestClientPs),
+			TeleBaselineId:          teleBaselineId,
+			Protocol:                vTcc.Protocol,
+			Connection:              uint64(vTcc.Connection),
+			ConnectionClient:        uint64(vTcc.ConnectionClient),
+			Embryonic:               uint64(vTcc.Embryonic),
+			EmbryonicClient:         uint64(vTcc.EmbryonicClient),
+			ConnectionPs:            uint64(vTcc.ConnectionPs),
+			ConnectionClientPs:      uint64(vTcc.ConnectionClientPs),
+			RequestPs:               uint64(vTcc.RequestPs),
+			RequestClientPs:         uint64(vTcc.RequestClientPs),
+			PartialRequestMax:       uint64(vTcc.PartialRequestMax),
+			PartialRequestClientMax: uint64(vTcc.PartialRequestClientMax),
 		}
 		newTccList = append(newTccList, newTcc)
 	}
@@ -883,19 +883,19 @@ func RegisterTotalConnectionCapacityPerPort(session *xorm.Session, teleBaselineI
 	newTccList := []db_models.TotalConnectionCapacityPerPort{}
 	for _, vTcc := range tccs {
 		newTcc  := db_models.TotalConnectionCapacityPerPort {
-			TeleBaselineId:         teleBaselineId,
-			Protocol:               vTcc.Protocol,
-			Port:                   vTcc.Port,
-			Connection:             uint64(vTcc.Connection),
-			ConnectionClient:       uint64(vTcc.ConnectionClient),
-			Embryonic:              uint64(vTcc.Embryonic),
-			EmbryonicClient:        uint64(vTcc.EmbryonicClient),
-			ConnectionPs:           uint64(vTcc.ConnectionPs),
-			ConnectionClientPs:     uint64(vTcc.ConnectionClientPs),
-			RequestPs:              uint64(vTcc.RequestPs),
-			RequestClientPs:        uint64(vTcc.RequestClientPs),
-			PartialRequestPs:       uint64(vTcc.PartialRequestPs),
-			PartialRequestClientPs: uint64(vTcc.PartialRequestClientPs),
+			TeleBaselineId:          teleBaselineId,
+			Protocol:                vTcc.Protocol,
+			Port:                    vTcc.Port,
+			Connection:              uint64(vTcc.Connection),
+			ConnectionClient:        uint64(vTcc.ConnectionClient),
+			Embryonic:               uint64(vTcc.Embryonic),
+			EmbryonicClient:         uint64(vTcc.EmbryonicClient),
+			ConnectionPs:            uint64(vTcc.ConnectionPs),
+			ConnectionClientPs:      uint64(vTcc.ConnectionClientPs),
+			RequestPs:               uint64(vTcc.RequestPs),
+			RequestClientPs:         uint64(vTcc.RequestClientPs),
+			PartialRequestMax:       uint64(vTcc.PartialRequestMax),
+			PartialRequestClientMax: uint64(vTcc.PartialRequestClientMax),
 		}
 		newTccList = append(newTccList, newTcc)
 	}
@@ -1392,18 +1392,18 @@ func GetTotalConnectionCapacity(engine *xorm.Engine, teleBaselineId int64) (tccL
 	tccList = []TotalConnectionCapacity{}
 	for _, vTcc := range tccs {
 		tcc := TotalConnectionCapacity{}
-		tcc.Protocol               = vTcc.Protocol
-		tcc.Connection             = messages.Uint64String(vTcc.Connection)
-		tcc.ConnectionClient       = messages.Uint64String(vTcc.ConnectionClient)
-		tcc.Embryonic              = messages.Uint64String(vTcc.Embryonic)
-		tcc.EmbryonicClient        = messages.Uint64String(vTcc.EmbryonicClient)
-		tcc.ConnectionPs           = messages.Uint64String(vTcc.ConnectionPs)
-		tcc.ConnectionClientPs     = messages.Uint64String(vTcc.ConnectionClientPs)
-		tcc.RequestPs              = messages.Uint64String(vTcc.RequestPs)
-		tcc.RequestClientPs        = messages.Uint64String(vTcc.RequestClientPs)
-		tcc.PartialRequestPs       = messages.Uint64String(vTcc.PartialRequestPs)
-		tcc.PartialRequestClientPs = messages.Uint64String(vTcc.PartialRequestClientPs)
-		tccList                    = append(tccList, tcc)
+		tcc.Protocol                = vTcc.Protocol
+		tcc.Connection              = messages.Uint64String(vTcc.Connection)
+		tcc.ConnectionClient        = messages.Uint64String(vTcc.ConnectionClient)
+		tcc.Embryonic               = messages.Uint64String(vTcc.Embryonic)
+		tcc.EmbryonicClient         = messages.Uint64String(vTcc.EmbryonicClient)
+		tcc.ConnectionPs            = messages.Uint64String(vTcc.ConnectionPs)
+		tcc.ConnectionClientPs      = messages.Uint64String(vTcc.ConnectionClientPs)
+		tcc.RequestPs               = messages.Uint64String(vTcc.RequestPs)
+		tcc.RequestClientPs         = messages.Uint64String(vTcc.RequestClientPs)
+		tcc.PartialRequestMax       = messages.Uint64String(vTcc.PartialRequestMax)
+		tcc.PartialRequestClientMax = messages.Uint64String(vTcc.PartialRequestClientMax)
+		tccList                     = append(tccList, tcc)
 	}
 	return tccList, nil
 }
@@ -1418,19 +1418,19 @@ func GetTotalConnectionCapacityPerPort(engine *xorm.Engine, teleBaselineId int64
 	tccList = []TotalConnectionCapacityPerPort{}
 	for _, vTcc := range tccs {
 		tcc := TotalConnectionCapacityPerPort{}
-		tcc.Protocol               = vTcc.Protocol
-		tcc.Port                   = vTcc.Port
-		tcc.Connection             = messages.Uint64String(vTcc.Connection)
-		tcc.ConnectionClient       = messages.Uint64String(vTcc.ConnectionClient)
-		tcc.Embryonic              = messages.Uint64String(vTcc.Embryonic)
-		tcc.EmbryonicClient        = messages.Uint64String(vTcc.EmbryonicClient)
-		tcc.ConnectionPs           = messages.Uint64String(vTcc.ConnectionPs)
-		tcc.ConnectionClientPs     = messages.Uint64String(vTcc.ConnectionClientPs)
-		tcc.RequestPs              = messages.Uint64String(vTcc.RequestPs)
-		tcc.RequestClientPs        = messages.Uint64String(vTcc.RequestClientPs)
-		tcc.PartialRequestPs       = messages.Uint64String(vTcc.PartialRequestPs)
-		tcc.PartialRequestClientPs = messages.Uint64String(vTcc.PartialRequestClientPs)
-		tccList                    = append(tccList, tcc)
+		tcc.Protocol                = vTcc.Protocol
+		tcc.Port                    = vTcc.Port
+		tcc.Connection              = messages.Uint64String(vTcc.Connection)
+		tcc.ConnectionClient        = messages.Uint64String(vTcc.ConnectionClient)
+		tcc.Embryonic               = messages.Uint64String(vTcc.Embryonic)
+		tcc.EmbryonicClient         = messages.Uint64String(vTcc.EmbryonicClient)
+		tcc.ConnectionPs            = messages.Uint64String(vTcc.ConnectionPs)
+		tcc.ConnectionClientPs      = messages.Uint64String(vTcc.ConnectionClientPs)
+		tcc.RequestPs               = messages.Uint64String(vTcc.RequestPs)
+		tcc.RequestClientPs         = messages.Uint64String(vTcc.RequestClientPs)
+		tcc.PartialRequestMax       = messages.Uint64String(vTcc.PartialRequestMax)
+		tcc.PartialRequestClientMax = messages.Uint64String(vTcc.PartialRequestClientMax)
+		tccList                     = append(tccList, tcc)
 	}
 	return tccList, nil
 }
@@ -1778,17 +1778,17 @@ func DefaultBaseline() (baselineList []Baseline, err error) {
 
 	// total_connection_capacity
 	tcc := TotalConnectionCapacity{}
-	tcc.Protocol               = defaultTccValue.Protocol
-	tcc.Connection             = messages.Uint64String(defaultTccValue.Connection)
-	tcc.ConnectionClient       = messages.Uint64String(defaultTccValue.ConnectionClient)
-	tcc.Embryonic              = messages.Uint64String(defaultTccValue.EmbryOnic)
-	tcc.EmbryonicClient        = messages.Uint64String(defaultTccValue.EmbryOnicClient)
-	tcc.ConnectionPs           = messages.Uint64String(defaultTccValue.ConnectionPs)
-	tcc.ConnectionClientPs     = messages.Uint64String(defaultTccValue.ConnectionClientPs)
-	tcc.RequestPs              = messages.Uint64String(defaultTccValue.RequestPs)
-	tcc.RequestClientPs        = messages.Uint64String(defaultTccValue.RequestClientPs)
-	tcc.PartialRequestPs       = messages.Uint64String(defaultTccValue.PartialRequestPs)
-	tcc.PartialRequestClientPs = messages.Uint64String(defaultTccValue.PartialRequestClientPs)
+	tcc.Protocol                = defaultTccValue.Protocol
+	tcc.Connection              = messages.Uint64String(defaultTccValue.Connection)
+	tcc.ConnectionClient        = messages.Uint64String(defaultTccValue.ConnectionClient)
+	tcc.Embryonic               = messages.Uint64String(defaultTccValue.EmbryOnic)
+	tcc.EmbryonicClient         = messages.Uint64String(defaultTccValue.EmbryOnicClient)
+	tcc.ConnectionPs            = messages.Uint64String(defaultTccValue.ConnectionPs)
+	tcc.ConnectionClientPs      = messages.Uint64String(defaultTccValue.ConnectionClientPs)
+	tcc.RequestPs               = messages.Uint64String(defaultTccValue.RequestPs)
+	tcc.RequestClientPs         = messages.Uint64String(defaultTccValue.RequestClientPs)
+	tcc.PartialRequestMax       = messages.Uint64String(defaultTccValue.PartialRequestMax)
+	tcc.PartialRequestClientMax = messages.Uint64String(defaultTccValue.PartialRequestClientMax)
 	baseline.TotalConnectionCapacity = append(baseline.TotalConnectionCapacity, tcc)
 	baselineList = append(baselineList, baseline)
 	return baselineList, nil

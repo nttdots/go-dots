@@ -41,7 +41,7 @@ const (
 	URI_FILTERING_TRAFFIC                      TableName = "uri_filtering_traffic"
 	URI_FILTERING_TRAFFIC_PROTOCOL             TableName = "uri_filtering_traffic_per_protocol"
 	URI_FILTERING_TRAFFIC_PORT                 TableName = "uri_filtering_traffic_per_port"
-	URI_FILTERING_TOTAL_ATTACK_CONNECTION      TableName = "uri_filtering_total_attack_connection"
+	URI_FILTERING_TOTAL_ATTACK_CONNECTION      TableName = "uri_filtering_total_attack_connection_protocol"
 	URI_FILTERING_TOTAL_ATTACK_CONNECTION_PORT TableName = "uri_filtering_total_attack_connection_port"
 	URI_FILTERING_ATTACK_DETAIL                TableName = "uri_filtering_attack_detail"
 	URI_FILTERING_SOURCE_COUNT                 TableName = "uri_filtering_source_count"

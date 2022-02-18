@@ -48,7 +48,7 @@ enum TRIGGER_TYPE {
 #define URI_FILTERING_TRAFFIC                      "uri_filtering_traffic"
 #define URI_FILTERING_TRAFFIC_PROTOCOL             "uri_filtering_traffic_per_protocol"
 #define URI_FILTERING_TRAFFIC_PORT                 "uri_filtering_traffic_per_port"
-#define URI_FILTERING_TOTAL_ATTACK_CONNECTION      "uri_filtering_total_attack_connection"
+#define URI_FILTERING_TOTAL_ATTACK_CONNECTION      "uri_filtering_total_attack_connection_protocol"
 #define URI_FILTERING_TOTAL_ATTACK_CONNECTION_PORT "uri_filtering_total_attack_connection_port"
 #define URI_FILTERING_ATTACK_DETAIL                "uri_filtering_attack_detail"
 #define URI_FILTERING_SOURCE_COUNT                 "uri_filtering_source_count"
