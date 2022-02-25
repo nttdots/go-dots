@@ -13,7 +13,7 @@
 * draft-ietf-dots-use-cases-21
 * draft-ietf-dots-signal-filter-control-07
 * draft-ietf-dots-signal-call-home-09
-* draft-ietf-dots-telemetry-23
+* draft-ietf-dots-telemetry-24
 * draft-ietf-dots-robust-blocks-00
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
@@ -49,17 +49,17 @@ Licensed under Apache License 2.0.
 
 To build libcoap for go-dots. We will work as follow:
 
-- Pull libcoap. Currenly supported libcoap version : v4.3.0
+- Pull libcoap. Currenly supported libcoap version : v4.3.0 (6aa967cee1235713a54c00be22876b2d641fcae7)
     ```
     $ git clone https://github.com/obgm/libcoap.git
     $ cd libcoap
-    $ git checkout a80d462ff57630ce214efdf5caf34133b02ad7ee
+    $ git checkout 6aa967cee1235713a54c00be22876b2d641fcae7
 
-- Merge [q-block](https://github.com/mrdeep1/libcoap/tree/q-block) into libcoap.
+- Merge [q-block](https://github.com/mrdeep1/libcoap/tree/4b3ac1f47e66bf25ec720cc186d428c6b0f10ab9) (4b3ac1f47e66bf25ec720cc186d428c6b0f10ab9) into libcoap.
     ```
     $ cd libcoap
     $ sudo git remote add remote_name https://github.com/mrdeep1/libcoap.git
-    $ sudo git pull remote_name q-block
+    $ sudo git pull remote_name 4b3ac1f47e66bf25ec720cc186d428c6b0f10ab9
 
 - Build libcoap.
     ```

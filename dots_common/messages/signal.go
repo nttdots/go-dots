@@ -1060,7 +1060,7 @@ func (ad AttackDetail) String(spacesn string) (result string) {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "attack-id", *ad.AttackId)
 	}
 	if ad.DescriptionLang != nil {
-		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "description-lang", *ad.AttackDescription)
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "description-lang", *ad.DescriptionLang)
 	}
 	if ad.AttackDescription != nil {
 		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-description", *ad.AttackDescription)
