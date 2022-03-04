@@ -25,6 +25,9 @@
             "ietf-dots-robust-trans:non-timeout":{
                 "current-value-decimal":2.00
             },
+            "ietf-dots-robust-trans:non-receive-timeout":{
+                "current-value-decimal":4.00
+            },
             "ietf-dots-robust-trans:non-probing-wait":{
                 "current-value-decimal":247.00
             },
@@ -56,6 +59,9 @@
             },
             "ietf-dots-robust-trans:non-timeout":{
                 "current-value-decimal":4.00
+            },
+            "ietf-dots-robust-trans:non-receive-timeout":{
+                "current-value-decimal":8.00
             },
             "ietf-dots-robust-trans:non-probing-wait":{
                 "current-value-decimal":248.00

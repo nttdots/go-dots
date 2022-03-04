@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/hcl"
 	"gopkg.in/yaml.v2"
 	types "github.com/nttdots/go-dots/dots_common/types/data"
 )
@@ -43,6 +42,7 @@ type SignalConfigurationParameterNode struct {
 	MaxPayload        string `yaml:"maxPayload"`
 	NonMaxRetransmit  string `yaml:"nonMaxRetransmit"`
 	NonTimeout        string `yaml:"nonTimeout"`
+	NonReceiveTimeout string `yaml:"nonReceiveTimeout"`
 	NonProbingWait    string `yaml:"nonProbingWait"`
 	NonPartialWait    string `yaml:"nonPartialWait"`
 	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
@@ -53,6 +53,7 @@ type SignalConfigurationParameterNode struct {
 	MaxPayloadIdle        string `yaml:"maxPayloadIdle"`
 	NonMaxRetransmitIdle  string `yaml:"nonMaxRetransmitIdle"`
 	NonTimeoutIdle        string `yaml:"nonTimeoutIdle"`
+	NonReceiveTimeoutIdle string `yaml:"nonReceiveTimeoutIdle"`
 	NonProbingWaitIdle    string `yaml:"nonProbingWaitIdle"`
 	NonPartialWaitIdle    string `yaml:"nonPartialWaitIdle"`
 }
@@ -66,6 +67,7 @@ type DefaultSignalConfigurationNode struct {
 	MaxPayload        string `yaml:"maxPayload"`
 	NonMaxRetransmit  string `yaml:"nonMaxRetransmit"`
 	NonTimeout        string `yaml:"nonTimeout"`
+	NonReceiveTimeout string `yaml:"nonReceiveTimeout"`
 	NonProbingWait    string `yaml:"nonProbingWait"`
 	NonPartialWait    string `yaml:"nonPartialWait"`
 	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
@@ -76,6 +78,7 @@ type DefaultSignalConfigurationNode struct {
 	MaxPayloadIdle        string `yaml:"maxPayloadIdle"`
 	NonMaxRetransmitIdle  string `yaml:"nonMaxRetransmitIdle"`
 	NonTimeoutIdle        string `yaml:"nonTimeoutIdle"`
+	NonReceiveTimeoutIdle string `yaml:"nonReceiveTimeoutIdle"`
 	NonProbingWaitIdle    string `yaml:"nonProbingWaitIdle"`
 	NonPartialWaitIdle    string `yaml:"nonPartialWaitIdle"`
 }
@@ -221,6 +224,10 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	nonReceiveTimeout, err := parseFloatParameterRange(scpn.NonReceiveTimeout)
+	if err != nil {
+		return nil, err
+	}
 	nonProbingWait, err := parseFloatParameterRange(scpn.NonProbingWait)
 	if err != nil {
 		return nil, err
@@ -261,6 +268,10 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	nonReceiveTimeoutIdle, err := parseFloatParameterRange(scpn.NonReceiveTimeoutIdle)
+	if err != nil {
+		return nil, err
+	}
 	nonProbingWaitIdle, err := parseFloatParameterRange(scpn.NonProbingWaitIdle)
 	if err != nil {
 		return nil, err
@@ -278,6 +289,7 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 		MaxPayload:        maxPayload,
 		NonMaxRetransmit:  nonMaxRetransmit,
 		NonTimeout:        nonTimeout,
+		NonReceiveTimeout: nonReceiveTimeout,
 		NonProbingWait:    nonProbingWait,
 		NonPartialWait:    nonPartialWait,
 		HeartbeatIntervalIdle: heartbeatIntervalIdle,
@@ -288,6 +300,7 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 		MaxPayloadIdle:        maxPayloadIdle,
 		NonMaxRetransmitIdle:  nonMaxRetransmitIdle,
 		NonTimeoutIdle:        nonTimeoutIdle,
+		NonReceiveTimeoutIdle: nonReceiveTimeoutIdle,
 		NonProbingWaitIdle:    nonProbingWaitIdle,
 		NonPartialWaitIdle:    nonPartialWaitIdle,
 	}, nil
@@ -303,6 +316,7 @@ func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 		MaxPayload:        parseIntegerValue(dscn.MaxPayload),
 		NonMaxRetransmit:  parseIntegerValue(dscn.NonMaxRetransmit),
 		NonTimeout:        parseFloatValue(dscn.NonTimeout),
+		NonReceiveTimeout: parseFloatValue(dscn.NonReceiveTimeout),
 		NonProbingWait:    parseFloatValue(dscn.NonProbingWait),
 		NonPartialWait:    parseFloatValue(dscn.NonPartialWait),
 		HeartbeatIntervalIdle: parseIntegerValue(dscn.HeartbeatIntervalIdle),
@@ -313,6 +327,7 @@ func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 		MaxPayloadIdle:        parseIntegerValue(dscn.MaxPayloadIdle),
 		NonMaxRetransmitIdle:  parseIntegerValue(dscn.NonMaxRetransmitIdle),
 		NonTimeoutIdle:        parseFloatValue(dscn.NonTimeoutIdle),
+		NonReceiveTimeoutIdle: parseFloatValue(dscn.NonReceiveTimeoutIdle),
 		NonProbingWaitIdle:    parseFloatValue(dscn.NonProbingWaitIdle),
 		NonPartialWaitIdle:    parseFloatValue(dscn.NonPartialWaitIdle),
 	}, nil
@@ -724,8 +739,6 @@ func (dc *Database) Store() {
 	GetServerSystemConfig().setDatabase(*dc)
 }
 
-//
-
 // System global configuration container
 type ServerSystemConfig struct {
 	SignalConfigurationParameter      *SignalConfigurationParameter
@@ -969,20 +982,6 @@ func GetServerSystemConfig() *ServerSystemConfig {
 		systemConfigInstance = &ServerSystemConfig{}
 	}
 	return systemConfigInstance
-}
-
-func parseHcl(hclText []byte) (*ServerConfigTree, error) {
-	hclParseTree, err := hcl.Parse(string(hclText))
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := &ServerConfigTree{}
-	if err := hcl.DecodeObject(&cfg, hclParseTree); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
 }
 
 func parseServerYaml(configText []byte) (*ServerConfigTree, error) {
@@ -1236,6 +1235,7 @@ type SignalConfigurationParameter struct {
 	MaxPayload        *IntegerParameterRange
 	NonMaxRetransmit  *IntegerParameterRange
 	NonTimeout        *FloatParameterRange
+	NonReceiveTimeout *FloatParameterRange
 	NonProbingWait    *FloatParameterRange
 	NonPartialWait    *FloatParameterRange
 	HeartbeatIntervalIdle *IntegerParameterRange
@@ -1246,6 +1246,7 @@ type SignalConfigurationParameter struct {
 	MaxPayloadIdle        *IntegerParameterRange
 	NonMaxRetransmitIdle  *IntegerParameterRange
 	NonTimeoutIdle        *FloatParameterRange
+	NonReceiveTimeoutIdle *FloatParameterRange
 	NonProbingWaitIdle    *FloatParameterRange
 	NonPartialWaitIdle    *FloatParameterRange
 }
@@ -1259,6 +1260,7 @@ type DefaultSignalConfiguration struct {
 	MaxPayload        int
 	NonMaxRetransmit  int
 	NonTimeout        float64
+	NonReceiveTimeout float64
 	NonProbingWait    float64
 	NonPartialWait    float64
 	HeartbeatIntervalIdle int
@@ -1269,6 +1271,7 @@ type DefaultSignalConfiguration struct {
 	MaxPayloadIdle        int
 	NonMaxRetransmitIdle  int
 	NonTimeoutIdle        float64
+	NonReceiveTimeoutIdle float64
 	NonProbingWaitIdle    float64
 	NonPartialWaitIdle    float64
 }

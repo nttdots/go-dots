@@ -297,11 +297,12 @@ type SignalConfig struct {
 	// CoAP).  This is an optional attribute.
 	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40,omitempty"`
 	// The parameters in draft-ietf-dots-robust-blocks
-	MaxPayload       IntCurrent     `json:"ietf-dots-robust-trans:max-payloads" codec:"32776,omitempty"`
-	NonMaxRetransmit IntCurrent     `json:"ietf-dots-robust-trans:non-max-retransmit" codec:"32777,omitempty"`
-	NonTimeout       DecimalCurrent `json:"ietf-dots-robust-trans:non-timeout" codec:"32778,omitempty"`
-	NonProbingWait   DecimalCurrent `json:"ietf-dots-robust-trans:non-probing-wait" codec:"32779,omitempty"`
-	NonPartialWait   DecimalCurrent `json:"ietf-dots-robust-trans:non-partial-wait" codec:"32780,omitempty"`
+	MaxPayload        IntCurrent     `json:"ietf-dots-robust-trans:max-payloads" codec:"32776,omitempty"`
+	NonMaxRetransmit  IntCurrent     `json:"ietf-dots-robust-trans:non-max-retransmit" codec:"32777,omitempty"`
+	NonTimeout        DecimalCurrent `json:"ietf-dots-robust-trans:non-timeout" codec:"32778,omitempty"`
+	NonReceiveTimeout DecimalCurrent `json:"ietf-dots-robust-trans:non-receive-timeout" codec:"32779,omitempty"`
+	NonProbingWait    DecimalCurrent `json:"ietf-dots-robust-trans:non-probing-wait" codec:"32780,omitempty"`
+	NonPartialWait    DecimalCurrent `json:"ietf-dots-robust-trans:non-partial-wait" codec:"32781,omitempty"`
 }
 
 type SignalChannelRequest struct {
@@ -353,6 +354,11 @@ func (m *SignalConfigRequest) String() (result string) {
 		current_float, _ = m.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue.Round(2).Float64()
 		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-receive-timeout")
+	if m.SignalConfigs.MitigatingConfig.NonReceiveTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.NonReceiveTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
 	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-probing-wait")
 	if m.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue.Round(2).Float64()
@@ -399,6 +405,11 @@ func (m *SignalConfigRequest) String() (result string) {
 	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-timeout")
 	if m.SignalConfigs.IdleConfig.NonTimeout.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.IdleConfig.NonTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-receive-timeout")
+	if m.SignalConfigs.IdleConfig.NonReceiveTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.NonReceiveTimeout.CurrentValue.Round(2).Float64()
 		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
 	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-probing-wait")

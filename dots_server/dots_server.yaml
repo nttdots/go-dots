@@ -8,6 +8,7 @@ system:
     maxPayload: 1-20
     nonMaxRetransmit: 1-20
     nonTimeout: 1.0-30.0
+    nonReceiveTimeout: 1.0-60.0
     nonProbingWait: 1.0-300
     nonPartialWait: 1.0-300
     heartbeatIntervalIdle: 15-240
@@ -18,6 +19,7 @@ system:
     maxPayloadIdle: 1-20
     nonMaxRetransmitIdle: 1-20
     nonTimeoutIdle: 1.0-30.0
+    nonReceiveTimeoutIdle: 1.0-60.0
     nonProbingWaitIdle: 1.0-300
     nonPartialWaitIdle: 1.0-300
 
@@ -31,6 +33,7 @@ system:
     maxPayload: 10
     nonMaxRetransmit: 4
     nonTimeout: 2.0
+    nonReceiveTimeout: 4.0
     nonProbingWait: 247.0
     nonPartialWait: 247.0
     heartbeatIntervalIdle: 30
@@ -41,6 +44,7 @@ system:
     maxPayloadIdle: 10
     nonMaxRetransmitIdle: 4
     nonTimeoutIdle: 2.0
+    nonReceiveTimeoutIdle: 4.0
     nonProbingWaitIdle: 247.0
     nonPartialWaitIdle: 247.0
 

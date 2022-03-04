@@ -125,11 +125,12 @@ type ConfigurationResponseConfig struct {
 	AckRandomFactor   DecimalCurrentMinMax `json:"ack-random-factor"  codec:"40"`
 	ProbingRate       ProbingRate          `json:"probing-rate"       codec:"50"`
 	// The parameters in draft-ietf-dots-robust-blocks
-	MaxPayload       IntCurrentMinMax     `json:"ietf-dots-robust-trans:max-payloads" codec:"32776"`
-	NonMaxRetransmit IntCurrentMinMax     `json:"ietf-dots-robust-trans:non-max-retransmit" codec:"32777"`
-	NonTimeout       DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-timeout" codec:"32778"`
-	NonProbingWait   DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-probing-wait" codec:"32779"`
-	NonPartialWait   DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-partial-wait" codec:"32780"`
+	MaxPayload         IntCurrentMinMax     `json:"ietf-dots-robust-trans:max-payloads" codec:"32776"`
+	NonMaxRetransmit   IntCurrentMinMax     `json:"ietf-dots-robust-trans:non-max-retransmit" codec:"32777"`
+	NonTimeout         DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-timeout" codec:"32778"`
+	NonReceiveTimeout  DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-receive-timeout" codec:"32779"`
+	NonProbingWait     DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-probing-wait" codec:"32780"`
+	NonPartialWait     DecimalCurrentMinMax `json:"ietf-dots-robust-trans:non-partial-wait" codec:"32781"`
 }
 
 type ProbingRate struct {

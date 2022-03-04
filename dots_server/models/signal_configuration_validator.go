@@ -44,6 +44,9 @@ func getCompareDataSource() *SignalConfigurationParameter {
 		non_timeout: ConfigurationParameterRange {
 			min_value: config.NonTimeout.Start().(float64),
 			max_value: config.NonTimeout.End().(float64)},
+		non_receive_timeout: ConfigurationParameterRange {
+			min_value: config.NonReceiveTimeout.Start().(float64),
+			max_value: config.NonReceiveTimeout.End().(float64)},
 		non_probing_wait: ConfigurationParameterRange {
 			min_value: config.NonProbingWait.Start().(float64),
 			max_value: config.NonProbingWait.End().(float64)},
@@ -74,6 +77,9 @@ func getCompareDataSource() *SignalConfigurationParameter {
 		non_timeout_idle: ConfigurationParameterRange {
 			min_value: config.NonTimeoutIdle.Start().(float64),
 			max_value: config.NonTimeoutIdle.End().(float64)},
+		non_receive_timeout_idle: ConfigurationParameterRange {
+			min_value: config.NonReceiveTimeoutIdle.Start().(float64),
+			max_value: config.NonReceiveTimeoutIdle.End().(float64)},
 		non_probing_wait_idle: ConfigurationParameterRange {
 			min_value: config.NonProbingWaitIdle.Start().(float64),
 			max_value: config.NonProbingWaitIdle.End().(float64)},
@@ -122,6 +128,7 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (is
 				compareSource.max_payload.Includes(float64(sc.MaxPayload)) &&
 				compareSource.non_max_retransmit.Includes(float64(sc.NonMaxRetransmit)) &&
 				compareSource.non_timeout.Includes(sc.NonTimeout) &&
+				compareSource.non_receive_timeout.Includes(sc.NonReceiveTimeout) &&
 				compareSource.non_probing_wait.Includes(sc.NonProbingWait) &&
 				compareSource.non_partial_wait.Includes(sc.NonPartialWait)) ||
 				!(compareSource.heartbeat_interval_idle.Includes(float64(sc.HeartbeatIntervalIdle)) &&
@@ -132,6 +139,7 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (is
 				compareSource.max_payload_idle.Includes(float64(sc.MaxPayloadIdle)) &&
 				compareSource.non_max_retransmit_idle.Includes(float64(sc.NonMaxRetransmitIdle)) &&
 				compareSource.non_timeout_idle.Includes(sc.NonTimeoutIdle) &&
+				compareSource.non_receive_timeout_idle.Includes(sc.NonReceiveTimeoutIdle) &&
 				compareSource.non_probing_wait_idle.Includes(sc.NonProbingWaitIdle) &&
 				compareSource.non_partial_wait_idle.Includes(sc.NonPartialWaitIdle)) {
 					errMessage = "Config values are out of range."

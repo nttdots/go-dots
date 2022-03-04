@@ -73,6 +73,7 @@ type SignalSessionConfiguration struct {
 	MaxPayload        int
 	NonMaxRetransmit  int
 	NonTimeout        float64
+	NonReceiveTimeout float64
 	NonProbingWait    float64
 	NonPartialWait    float64
 	HeartbeatIntervalIdle int
@@ -83,6 +84,7 @@ type SignalSessionConfiguration struct {
 	MaxPayloadIdle        int
 	NonMaxRetransmitIdle  int
 	NonTimeoutIdle        float64
+	NonReceiveTimeoutIdle float64
 	NonProbingWaitIdle    float64
 	NonPartialWaitIdle    float64
 }
@@ -100,11 +102,13 @@ func NewSignalSessionConfiguration(sessionId int, payload messages.SignalConfigs
 	ackTimeout, _ := payload.MitigatingConfig.AckTimeout.CurrentValue.Round(2).Float64()
 	ackRandomFactor, _ := payload.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
 	nonTimeout,_ := payload.MitigatingConfig.NonTimeout.CurrentValue.Round(2).Float64()
+	nonReceiveTimeout,_ := payload.MitigatingConfig.NonReceiveTimeout.CurrentValue.Round(2).Float64()
 	nonProbingWait,_ := payload.MitigatingConfig.NonProbingWait.CurrentValue.Round(2).Float64()
 	nonPartialWait,_ := payload.MitigatingConfig.NonPartialWait.CurrentValue.Round(2).Float64()
 	ackTimeoutIdle, _ := payload.IdleConfig.AckTimeout.CurrentValue.Round(2).Float64()
 	ackRandomFactorIdle, _ := payload.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
 	nonTimeoutIdle,_ := payload.IdleConfig.NonTimeout.CurrentValue.Round(2).Float64()
+	nonReceiveTimeoutIdle,_ := payload.IdleConfig.NonReceiveTimeout.CurrentValue.Round(2).Float64()
 	nonProbingWaitIdle,_ := payload.IdleConfig.NonProbingWait.CurrentValue.Round(2).Float64()
 	nonPartialWaitIdle,_ := payload.IdleConfig.NonPartialWait.CurrentValue.Round(2).Float64()
 
@@ -118,6 +122,7 @@ func NewSignalSessionConfiguration(sessionId int, payload messages.SignalConfigs
 		MaxPayload:        *payload.MitigatingConfig.MaxPayload.CurrentValue,
 		NonMaxRetransmit:  *payload.MitigatingConfig.NonMaxRetransmit.CurrentValue,
 		NonTimeout:        nonTimeout,
+		NonReceiveTimeout: nonReceiveTimeout,
 		NonProbingWait:    nonProbingWait,
 		NonPartialWait:    nonPartialWait,
 		HeartbeatIntervalIdle: *payload.IdleConfig.HeartbeatInterval.CurrentValue,
@@ -128,6 +133,7 @@ func NewSignalSessionConfiguration(sessionId int, payload messages.SignalConfigs
 		MaxPayloadIdle:        *payload.IdleConfig.MaxPayload.CurrentValue,
 		NonMaxRetransmitIdle:  *payload.IdleConfig.NonMaxRetransmit.CurrentValue,
 		NonTimeoutIdle:        nonTimeoutIdle,
+		NonReceiveTimeoutIdle: nonReceiveTimeoutIdle,
 		NonProbingWaitIdle:    nonProbingWaitIdle,
 		NonPartialWaitIdle:    nonPartialWaitIdle,
 	}
@@ -137,26 +143,28 @@ func NewSignalSessionConfiguration(sessionId int, payload messages.SignalConfigs
 }
 
 type SignalConfigurationParameter struct {
-	heartbeat_interval ConfigurationParameterRange
-	missing_hb_allowed ConfigurationParameterRange
-	max_retransmit     ConfigurationParameterRange
-	ack_timeout        ConfigurationParameterRange
-	ack_random_factor  ConfigurationParameterRange
-	max_payload        ConfigurationParameterRange
-	non_max_retransmit ConfigurationParameterRange
-	non_timeout        ConfigurationParameterRange
-	non_probing_wait   ConfigurationParameterRange
-	non_partial_wait   ConfigurationParameterRange
-	heartbeat_interval_idle ConfigurationParameterRange
-	missing_hb_allowed_idle ConfigurationParameterRange
-	max_retransmit_idle     ConfigurationParameterRange
-	ack_timeout_idle        ConfigurationParameterRange
-	ack_random_factor_idle  ConfigurationParameterRange
-	max_payload_idle        ConfigurationParameterRange
-	non_max_retransmit_idle ConfigurationParameterRange
-	non_timeout_idle        ConfigurationParameterRange
-	non_probing_wait_idle   ConfigurationParameterRange
-	non_partial_wait_idle   ConfigurationParameterRange
+	heartbeat_interval  ConfigurationParameterRange
+	missing_hb_allowed  ConfigurationParameterRange
+	max_retransmit      ConfigurationParameterRange
+	ack_timeout         ConfigurationParameterRange
+	ack_random_factor   ConfigurationParameterRange
+	max_payload         ConfigurationParameterRange
+	non_max_retransmit  ConfigurationParameterRange
+	non_timeout         ConfigurationParameterRange
+	non_receive_timeout ConfigurationParameterRange
+	non_probing_wait    ConfigurationParameterRange
+	non_partial_wait    ConfigurationParameterRange
+	heartbeat_interval_idle  ConfigurationParameterRange
+	missing_hb_allowed_idle  ConfigurationParameterRange
+	max_retransmit_idle      ConfigurationParameterRange
+	ack_timeout_idle         ConfigurationParameterRange
+	ack_random_factor_idle   ConfigurationParameterRange
+	max_payload_idle         ConfigurationParameterRange
+	non_max_retransmit_idle  ConfigurationParameterRange
+	non_timeout_idle         ConfigurationParameterRange
+	non_receive_timeout_idle ConfigurationParameterRange
+	non_probing_wait_idle    ConfigurationParameterRange
+	non_partial_wait_idle    ConfigurationParameterRange
 }
 
 /*
@@ -173,6 +181,7 @@ func sessionConfigurationPayloadDisplay(data *SignalSessionConfiguration) {
 	result += fmt.Sprintf("   \"%s\": %d\n", "max-payloads", data.MaxPayload)
 	result += fmt.Sprintf("   \"%s\": %d\n", "non-max-retransmit", data.NonMaxRetransmit)
 	result += fmt.Sprintf("   \"%s\": %f\n", "non-timeout", data.NonTimeout)
+	result += fmt.Sprintf("   \"%s\": %f\n", "non-receive-timeout", data.NonReceiveTimeout)
 	result += fmt.Sprintf("   \"%s\": %f\n", "non-probing-wait", data.NonProbingWait)
 	result += fmt.Sprintf("   \"%s\": %f\n", "non-partial-wait", data.NonPartialWait)
 	result += fmt.Sprintf("   \"%s\": %d\n", "heartbeat-interval-idle", data.HeartbeatIntervalIdle)
@@ -183,6 +192,7 @@ func sessionConfigurationPayloadDisplay(data *SignalSessionConfiguration) {
 	result += fmt.Sprintf("   \"%s\": %d\n", "max-payloads-idle", data.MaxPayloadIdle)
 	result += fmt.Sprintf("   \"%s\": %d\n", "non-max-retransmit-idle", data.NonMaxRetransmitIdle)
 	result += fmt.Sprintf("   \"%s\": %f\n", "non-timeout-idle", data.NonTimeoutIdle)
+	result += fmt.Sprintf("   \"%s\": %f\n", "non-receive-timeout-idle", data.NonReceiveTimeoutIdle)
 	result += fmt.Sprintf("   \"%s\": %f\n", "non-probing-wait-idle", data.NonProbingWaitIdle)
 	result += fmt.Sprintf("   \"%s\": %f\n", "non-partial-wait-idle", data.NonPartialWaitIdle)
 	log.Infoln(result)

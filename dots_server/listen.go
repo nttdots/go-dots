@@ -772,22 +772,27 @@ func SetConfigParameterForQBlock(session *libcoap.Session, customerId int) {
     maxPayLoad := defaultValue.MaxPayloadIdle
     nonMaxRetransmit := defaultValue.NonMaxRetransmitIdle
     nonTimeout := defaultValue.NonTimeoutIdle
+    nonReceiveTimeout := defaultValue.NonReceiveTimeoutIdle
     if sessionConfig != nil {
         if len(mids) > 0 {
             maxPayLoad = sessionConfig.MaxPayload
             nonMaxRetransmit = sessionConfig.NonMaxRetransmit
             nonTimeout = sessionConfig.NonTimeout
+            nonReceiveTimeout = sessionConfig.NonReceiveTimeout
         } else {
             maxPayLoad = sessionConfig.MaxPayloadIdle
             nonMaxRetransmit = sessionConfig.NonMaxRetransmitIdle
             nonTimeout = sessionConfig.NonTimeoutIdle
+            nonReceiveTimeout = sessionConfig.NonReceiveTimeoutIdle
         }
     } else if len(mids) > 0 {
         maxPayLoad = defaultValue.MaxPayload
         nonMaxRetransmit = defaultValue.NonMaxRetransmit
         nonTimeout = defaultValue.NonTimeout
+        nonReceiveTimeout = defaultValue.NonReceiveTimeout
     }
     session.SetMaxPayLoads(maxPayLoad)
     session.SetNonMaxRetransmit(nonMaxRetransmit)
     session.SetNonTimeout(decimal.NewFromFloat(nonTimeout).Round((2)))
+    session.SetNonReceiveTimeout(decimal.NewFromFloat(nonReceiveTimeout).Round((2)))
 }

@@ -14,6 +14,7 @@ type SignalSessionConfiguration struct {
 	MaxPayload        int       `xorm:"max_payload"`
 	NonMaxRetransmit  int       `xorm:"non_max_retransmit"`
 	NonTimeout        float64   `xorm:"non_timeout"`
+	NonReceiveTimeout float64   `xorm:"non_receive_timeout"`
 	NonProbingWait    float64   `xorm:"non_probing_wait"`
 	NonPartialWait    float64   `xorm:"non_partial_wait"`
 	HeartbeatIntervalIdle int       `xorm:"'heartbeat_interval_idle'"`
@@ -24,6 +25,7 @@ type SignalSessionConfiguration struct {
 	MaxPayloadIdle        int       `xorm:"max_payload_idle"`
 	NonMaxRetransmitIdle  int       `xorm:"non_max_retransmit_idle"`
 	NonTimeoutIdle        float64   `xorm:"non_timeout_idle"`
+	NonReceiveTimeoutIdle float64   `xorm:"non_receive_timeout_idle"`
 	NonProbingWaitIdle    float64   `xorm:"non_probing_wait_idle"`
 	NonPartialWaitIdle    float64   `xorm:"non_partial_wait_idle"`
 	Created           time.Time `xorm:"created"`

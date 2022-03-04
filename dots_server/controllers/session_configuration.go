@@ -41,6 +41,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 	resp.SignalConfigs.MitigatingConfig.MaxPayload.SetMinMax(config.MaxPayload)
 	resp.SignalConfigs.MitigatingConfig.NonMaxRetransmit.SetMinMax(config.NonMaxRetransmit)
 	resp.SignalConfigs.MitigatingConfig.NonTimeout.SetMinMax(config.NonTimeout)
+	resp.SignalConfigs.MitigatingConfig.NonReceiveTimeout.SetMinMax(config.NonReceiveTimeout)
 	resp.SignalConfigs.MitigatingConfig.NonProbingWait.SetMinMax(config.NonProbingWait)
 	resp.SignalConfigs.MitigatingConfig.NonPartialWait.SetMinMax(config.NonPartialWait)
 	resp.SignalConfigs.IdleConfig.HeartbeatInterval.SetMinMax(config.HeartbeatIntervalIdle)
@@ -51,6 +52,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 	resp.SignalConfigs.IdleConfig.MaxPayload.SetMinMax(config.MaxPayloadIdle)
 	resp.SignalConfigs.IdleConfig.NonMaxRetransmit.SetMinMax(config.NonMaxRetransmitIdle)
 	resp.SignalConfigs.IdleConfig.NonTimeout.SetMinMax(config.NonTimeoutIdle)
+	resp.SignalConfigs.IdleConfig.NonReceiveTimeout.SetMinMax(config.NonReceiveTimeoutIdle)
 	resp.SignalConfigs.IdleConfig.NonProbingWait.SetMinMax(config.NonProbingWaitIdle)
 	resp.SignalConfigs.IdleConfig.NonPartialWait.SetMinMax(config.NonPartialWaitIdle)
 	resp.SignalConfigs.MitigatingConfig.ProbingRate = messages.ProbingRate{}
@@ -86,6 +88,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.MitigatingConfig.MaxPayload.CurrentValue        = defaultValue.MaxPayload
 		resp.SignalConfigs.MitigatingConfig.NonMaxRetransmit.CurrentValue  = defaultValue.NonMaxRetransmit
 		resp.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue        = decimal.NewFromFloat(defaultValue.NonTimeout).Round(2)
+		resp.SignalConfigs.MitigatingConfig.NonReceiveTimeout.CurrentValue = decimal.NewFromFloat(defaultValue.NonReceiveTimeout).Round(2)
 		resp.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue    = decimal.NewFromFloat(defaultValue.NonPartialWait).Round(2)
 		resp.SignalConfigs.MitigatingConfig.NonPartialWait.CurrentValue    = decimal.NewFromFloat(defaultValue.NonPartialWait).Round(2)
 		resp.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue 	   = defaultValue.HeartbeatIntervalIdle
@@ -96,6 +99,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.IdleConfig.MaxPayload.CurrentValue              = defaultValue.MaxPayloadIdle
 		resp.SignalConfigs.IdleConfig.NonMaxRetransmit.CurrentValue        = defaultValue.NonMaxRetransmitIdle
 		resp.SignalConfigs.IdleConfig.NonTimeout.CurrentValue              = decimal.NewFromFloat(defaultValue.NonTimeoutIdle).Round(2)
+		resp.SignalConfigs.IdleConfig.NonReceiveTimeout.CurrentValue       = decimal.NewFromFloat(defaultValue.NonReceiveTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.NonProbingWait.CurrentValue          = decimal.NewFromFloat(defaultValue.NonPartialWaitIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.NonPartialWait.CurrentValue          = decimal.NewFromFloat(defaultValue.NonPartialWaitIdle).Round(2)
 	} else {
@@ -132,6 +136,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.MitigatingConfig.MaxPayload.CurrentValue        = signalSessionConfiguration.MaxPayload
 		resp.SignalConfigs.MitigatingConfig.NonMaxRetransmit.CurrentValue  = signalSessionConfiguration.NonMaxRetransmit
 		resp.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue        = decimal.NewFromFloat(signalSessionConfiguration.NonTimeout).Round(2)
+		resp.SignalConfigs.MitigatingConfig.NonReceiveTimeout.CurrentValue = decimal.NewFromFloat(signalSessionConfiguration.NonReceiveTimeout).Round(2)
 		resp.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue    = decimal.NewFromFloat(signalSessionConfiguration.NonProbingWait).Round(2)
 		resp.SignalConfigs.MitigatingConfig.NonPartialWait.CurrentValue    = decimal.NewFromFloat(signalSessionConfiguration.NonPartialWait).Round(2)
 		resp.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue 	   = signalSessionConfiguration.HeartbeatIntervalIdle
@@ -142,6 +147,7 @@ func (m *SessionConfiguration) HandleGet(request Request, customer *models.Custo
 		resp.SignalConfigs.IdleConfig.MaxPayload.CurrentValue              = signalSessionConfiguration.MaxPayloadIdle
 		resp.SignalConfigs.IdleConfig.NonMaxRetransmit.CurrentValue        = signalSessionConfiguration.NonMaxRetransmitIdle
 		resp.SignalConfigs.IdleConfig.NonTimeout.CurrentValue              = decimal.NewFromFloat(signalSessionConfiguration.NonTimeoutIdle).Round(2)
+		resp.SignalConfigs.IdleConfig.NonReceiveTimeout.CurrentValue       = decimal.NewFromFloat(signalSessionConfiguration.NonReceiveTimeoutIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.NonProbingWait.CurrentValue          = decimal.NewFromFloat(signalSessionConfiguration.NonProbingWaitIdle).Round(2)
 		resp.SignalConfigs.IdleConfig.NonPartialWait.CurrentValue          = decimal.NewFromFloat(signalSessionConfiguration.NonPartialWaitIdle).Round(2)
 
@@ -405,6 +411,10 @@ func setDefaultValues (data *messages.SignalConfigs) {
 		temp := decimal.NewFromFloat(defaultValue.NonTimeout)
 		data.MitigatingConfig.NonTimeout.CurrentValue = &temp
 	}
+	if data.MitigatingConfig.NonReceiveTimeout.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.NonReceiveTimeout)
+		data.MitigatingConfig.NonReceiveTimeout.CurrentValue = &temp
+	}
 	if data.MitigatingConfig.NonProbingWait.CurrentValue == nil {
 		temp := decimal.NewFromFloat(defaultValue.NonProbingWait)
 		data.MitigatingConfig.NonProbingWait.CurrentValue = &temp
@@ -439,6 +449,10 @@ func setDefaultValues (data *messages.SignalConfigs) {
 	if data.IdleConfig.NonTimeout.CurrentValue == nil {
 		temp := decimal.NewFromFloat(defaultValue.NonTimeoutIdle)
 		data.IdleConfig.NonTimeout.CurrentValue = &temp
+	}
+	if data.IdleConfig.NonReceiveTimeout.CurrentValue == nil {
+		temp := decimal.NewFromFloat(defaultValue.NonReceiveTimeoutIdle)
+		data.IdleConfig.NonReceiveTimeout.CurrentValue = &temp
 	}
 	if data.IdleConfig.NonProbingWait.CurrentValue == nil {
 		temp := decimal.NewFromFloat(defaultValue.NonProbingWaitIdle)
@@ -513,6 +527,7 @@ func DefaultSessionConfiguration() (sessionConfig models.SignalSessionConfigurat
 	sessionConfig.MaxPayload            = defaultValue.MaxPayload
 	sessionConfig.NonMaxRetransmit      = defaultValue.NonMaxRetransmit
 	sessionConfig.NonTimeout            = defaultValue.NonTimeout
+	sessionConfig.NonReceiveTimeout     = defaultValue.NonReceiveTimeout
 	sessionConfig.NonProbingWait        = defaultValue.NonProbingWait
 	sessionConfig.NonPartialWait        = defaultValue.NonPartialWait
 	sessionConfig.HeartbeatIntervalIdle = defaultValue.HeartbeatIntervalIdle
@@ -523,6 +538,7 @@ func DefaultSessionConfiguration() (sessionConfig models.SignalSessionConfigurat
 	sessionConfig.MaxPayloadIdle        = defaultValue.MaxPayloadIdle
 	sessionConfig.NonMaxRetransmitIdle  = defaultValue.NonMaxRetransmitIdle
 	sessionConfig.NonTimeoutIdle        = defaultValue.NonTimeoutIdle
+	sessionConfig.NonReceiveTimeoutIdle = defaultValue.NonReceiveTimeoutIdle
 	sessionConfig.NonProbingWaitIdle    = defaultValue.NonProbingWaitIdle
 	sessionConfig.NonPartialWaitIdle    = defaultValue.NonPartialWaitIdle
 

@@ -55,6 +55,7 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 		MaxPayload:        signalSessionConfiguration.MaxPayload,
 		NonMaxRetransmit:  signalSessionConfiguration.NonMaxRetransmit,
 		NonTimeout:        signalSessionConfiguration.NonTimeout,
+		NonReceiveTimeout: signalSessionConfiguration.NonReceiveTimeout,
 		NonProbingWait:    signalSessionConfiguration.NonProbingWait,
 		NonPartialWait:    signalSessionConfiguration.NonPartialWait,
 		HeartbeatIntervalIdle: signalSessionConfiguration.HeartbeatIntervalIdle,
@@ -65,6 +66,7 @@ func CreateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 		MaxPayloadIdle:        signalSessionConfiguration.MaxPayloadIdle,
 		NonMaxRetransmitIdle:  signalSessionConfiguration.NonMaxRetransmitIdle,
 		NonTimeoutIdle:        signalSessionConfiguration.NonTimeoutIdle,
+		NonReceiveTimeoutIdle: signalSessionConfiguration.NonReceiveTimeoutIdle,
 		NonProbingWaitIdle:    signalSessionConfiguration.NonProbingWaitIdle,
 		NonPartialWaitIdle:    signalSessionConfiguration.NonPartialWaitIdle,
 	}
@@ -128,6 +130,7 @@ func UpdateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 	updSignalSessionConfiguration.MaxPayload = signalSessionConfiguration.MaxPayload
 	updSignalSessionConfiguration.NonMaxRetransmit = signalSessionConfiguration.NonMaxRetransmit
 	updSignalSessionConfiguration.NonTimeout = signalSessionConfiguration.NonTimeout
+	updSignalSessionConfiguration.NonReceiveTimeout = signalSessionConfiguration.NonReceiveTimeout
 	updSignalSessionConfiguration.NonProbingWait = signalSessionConfiguration.NonProbingWait
 	updSignalSessionConfiguration.NonPartialWait = signalSessionConfiguration.NonPartialWait
 	updSignalSessionConfiguration.HeartbeatIntervalIdle = signalSessionConfiguration.HeartbeatIntervalIdle
@@ -138,6 +141,7 @@ func UpdateSignalSessionConfiguration(signalSessionConfiguration SignalSessionCo
 	updSignalSessionConfiguration.MaxPayloadIdle = signalSessionConfiguration.MaxPayloadIdle
 	updSignalSessionConfiguration.NonMaxRetransmitIdle = signalSessionConfiguration.NonMaxRetransmitIdle
 	updSignalSessionConfiguration.NonTimeoutIdle = signalSessionConfiguration.NonTimeoutIdle
+	updSignalSessionConfiguration.NonReceiveTimeoutIdle = signalSessionConfiguration.NonReceiveTimeoutIdle
 	updSignalSessionConfiguration.NonProbingWaitIdle = signalSessionConfiguration.NonProbingWaitIdle
 	updSignalSessionConfiguration.NonPartialWaitIdle = signalSessionConfiguration.NonPartialWaitIdle
 	_, err = session.ID(updSignalSessionConfiguration.Id).Update(updSignalSessionConfiguration)
@@ -281,6 +285,7 @@ func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfigur
 	signalSessionConfiguration.MaxPayload = dbSignalSessionConfiguration.MaxPayload
 	signalSessionConfiguration.NonMaxRetransmit = dbSignalSessionConfiguration.NonMaxRetransmit
 	signalSessionConfiguration.NonTimeout = dbSignalSessionConfiguration.NonTimeout
+	signalSessionConfiguration.NonReceiveTimeout = dbSignalSessionConfiguration.NonReceiveTimeout
 	signalSessionConfiguration.NonProbingWait = dbSignalSessionConfiguration.NonProbingWait
 	signalSessionConfiguration.NonPartialWait = dbSignalSessionConfiguration.NonPartialWait
 	signalSessionConfiguration.HeartbeatIntervalIdle = dbSignalSessionConfiguration.HeartbeatIntervalIdle
@@ -291,6 +296,7 @@ func GetCurrentSignalSessionConfiguration(customerId int) (signalSessionConfigur
 	signalSessionConfiguration.MaxPayloadIdle = dbSignalSessionConfiguration.MaxPayloadIdle
 	signalSessionConfiguration.NonMaxRetransmitIdle = dbSignalSessionConfiguration.NonMaxRetransmitIdle
 	signalSessionConfiguration.NonTimeoutIdle = dbSignalSessionConfiguration.NonTimeoutIdle
+	signalSessionConfiguration.NonReceiveTimeoutIdle = dbSignalSessionConfiguration.NonReceiveTimeoutIdle
 	signalSessionConfiguration.NonProbingWaitIdle = dbSignalSessionConfiguration.NonProbingWaitIdle
 	signalSessionConfiguration.NonPartialWaitIdle = dbSignalSessionConfiguration.NonPartialWaitIdle
 
