@@ -99,7 +99,7 @@ func export_validate_cn_call_back(presentIdentifier *C.char, depth C.uint, refer
     return 0
 }
 
-func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
+func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int, isSupportQBlock2 bool) *Context {
     var caddr *C.coap_address_t = nil
     if addr != nil {
       caddr = &addr.value
@@ -157,7 +157,9 @@ func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
         ok := C.coap_context_set_pki(ptr, setupData)
 
         if ok == 1 {
-            C.coap_context_set_block_mode(ptr, C.COAP_BLOCK_USE_LIBCOAP | C.COAP_BLOCK_TRY_Q_BLOCK)
+            if isSupportQBlock2 {
+                C.coap_context_set_block_mode(ptr, C.COAP_BLOCK_USE_LIBCOAP | C.COAP_BLOCK_TRY_Q_BLOCK)
+            }
             context := &Context{ ptr, nil, nil, nil, setupData }
             contexts[ptr] = context
             return context            
