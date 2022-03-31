@@ -249,106 +249,106 @@ All shell-script and sample json files are located in below directory:
 Registering DOTS Clients
 
     Post dots_client:
-    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data sampleClient.json
+    $ ./do_request_from_file.sh {certPath} POST {href}/data/ietf-dots-data-channel:dots-data sampleClient.json
 
     Put dots_client:
-    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleClient.json
+    $ ./do_request_from_file.sh {certPath} PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleClient.json
 
 Uregistering DOTS Clients
 
-    $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123
+    $ ./do_request_from_file.sh {certPath} DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123
 
 ### Managing DOTS Aliases
 Create Aliases
 
     Post alias:
-    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAlias.json
+    $ ./do_request_from_file.sh {certPath} POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAlias.json
 
     Put alias:
-    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=xxx sampleAlias.json
+    $ ./do_request_from_file.sh {certPath} PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=xxx sampleAlias.json
 
 Retrieve Installed Aliases
 
     Get all aliases without 'content' parameter (default is get all type attributes, including configurable and non-configurable attributes):
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases
 
     Get all aliases with 'content'='config' (get configurable attributes only):
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=config
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=config
 
     Get all aliases with 'content'='nonconfig' (get non-configurable attributes only):
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=nonconfig
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=nonconfig
 
     Get all aliases with 'content'='all'(get all type attributes, including configurable and non-configurable attributes):
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=all
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases?content=all
 
     Get specific alias without 'content' parameter:
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1
 
     Get specific alias with 'content'='config':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=config
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=config
 
     Get specific alias with 'content'='nonconfig':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=nonconfig
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=nonconfig
 
     Get specific alias with 'content'='all':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=all
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1?content=all
 
 Delete Aliases
 
-    $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1
+    $ ./do_request_from_file.sh {certPath} DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/aliases/alias=https1
 
 ### Managing DOTS Filtering Rules
 Retrieve DOTS Filtering Capabilities
 
     Get Capabilities without 'content' parameter:
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/capabilities
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/capabilities
 
     Get Capabilities with 'content'='config':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/capabilities?content=config
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/capabilities?content=config
 
     Get Capabilities with 'content'='nonconfig':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/capabilities?content=nonconfig
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/capabilities?content=nonconfig
 
     Get Capabilities with 'content'='all':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/capabilities?content=all
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/capabilities?content=all
 
 Install Filtering Rules
 
     Post acl:
-    $ ./do_request_from_file.sh POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAcl.json
+    $ ./do_request_from_file.sh {certPath} POST {href}/data/ietf-dots-data-channel:dots-data/dots-client=123 sampleAcl.json
 
     Put acl:
-    $ ./do_request_from_file.sh PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=xxx sampleAcl.json
+    $ ./do_request_from_file.sh {certPath} PUT {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=xxx sampleAcl.json
 
 Retrieve Installed Filtering Rules
 
     Get all Acl without 'content' parameter:
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls
 
     Get all Acl with 'content'='config':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=config
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=config
 
     Get all Acl with 'content'='nonconfig':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=nonconfig
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=nonconfig
 
     Get all Acl with 'content'='all':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=all
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls?content=all
 
     Get specific acl without 'content' parameter:
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
 
     Get specific acl with 'content'='config':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=config
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=config
 
     Get specific acl with 'content'='nonconfig':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=nonconfig
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=nonconfig
 
     Get specific acl with 'content'='all':
-    $ ./do_request_from_file.sh GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=all
+    $ ./do_request_from_file.sh {certPath} GET {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl?content=all
 
 Remove Filtering Rules
 
-    $ ./do_request_from_file.sh DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
+    $ ./do_request_from_file.sh {certPath} DELETE {href}/data/ietf-dots-data-channel:dots-data/dots-client=123/acls/acl=sample-ipv4-acl
 
 ## Signal Channel Control Filtering
 Unlike the DOTS signal channel, the DOTS data channel is not expected to deal with attack conditions.

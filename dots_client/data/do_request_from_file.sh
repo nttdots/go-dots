@@ -1,8 +1,9 @@
 #!/bin/sh
 
-METHOD=$1
-URI_PATH=$2
-FILE=$3
+CERTS_DIR=$1
+METHOD=$2
+URI_PATH=$3
+FILE=$4
 
 if [ -z "$METHOD" ]; then
   echo 'No METHOD parameter.' >&2
@@ -16,8 +17,6 @@ if { [ -n "$FILE" ] && ! [ -e "$FILE" ]; }; then
   echo "Input file $FILE is not existed"
   exit 1
 fi
-
-CERTS_DIR="`dirname $0`/../../certs"
 
 if [ -n "$FILE" ]; then
 wget \

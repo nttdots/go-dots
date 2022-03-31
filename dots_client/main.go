@@ -568,6 +568,12 @@ func main() {
 		}
 	}
 
+	if config.SecureFile != nil {
+		certFile = config.SecureFile.CertFile
+		clientCertFile = config.SecureFile.ClientCertFile
+		clientKeyFile = config.SecureFile.ClientKeyFile
+	}
+
 	for _, filePath := range []string{certFile, clientCertFile, clientKeyFile} {
 		exists(filePath)
 	}

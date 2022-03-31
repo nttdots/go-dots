@@ -26,6 +26,10 @@ system:
     taskRetryNumber: 0
     taskTimeout: 10
 
+  secureFile:
+    clientCertFile: ../certs/client-cert.pem
+    clientKeyFile: ../certs/client-key.pem
+    certFile: ../certs/ca-cert.pem
 
   # Time (seconds) before max-age to refresh Get session config
   intervalBeforeMaxAge: 15

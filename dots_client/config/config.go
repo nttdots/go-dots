@@ -20,6 +20,7 @@ type ClientSystemConfig struct {
 	DefaultSessionConfiguration   *DefaultSessionConfiguration   `yaml:"defaultSessionConfiguration"`
 	NonConfirmableMessageTask     *MessageTaskConfiguration      `yaml:"nonConfirmableMessageTask"`
 	ConfirmableMessageTask        *MessageTaskConfiguration      `yaml:"confirmableMessageTask"`
+	SecureFile                    *SecureFile                    `yaml:"secureFile"`
 	IntervalBeforeMaxAge           int                           `yaml:"intervalBeforeMaxAge"`
 	InitialRequestBlockSize       *int                           `yaml:"initialRequestBlockSize"`
 	SecondRequestBlockSize        *int                           `yaml:"secondRequestBlockSize"`
@@ -38,6 +39,12 @@ type MessageTaskConfiguration struct {
 	TaskInterval    int `yaml:"taskInterval"`
 	TaskRetryNumber int `yaml:"taskRetryNumber"`
 	TaskTimeout     int `yaml:"taskTimeout"`
+}
+
+type SecureFile struct {
+	ClientCertFile string `yaml:"clientCertFile"`
+	ClientKeyFile  string `yaml:"clientKeyFile"`
+	CertFile       string `yaml:"certFile"`
 }
 
 type ClientRestfulApiConfiguration struct {
@@ -119,6 +126,13 @@ func (config *ClientSystemConfig) String() (result string) {
 		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskInterval", confirmableMessageTask.TaskInterval)
 		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskRetryNumber", confirmableMessageTask.TaskRetryNumber)
 		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskTimeout", confirmableMessageTask.TaskTimeout)
+	}
+	if config.SecureFile != nil {
+		secureFile := config.SecureFile
+		result += fmt.Sprintf("%s%s:\n", spaces3, "secureFile")
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "clientCertFile", secureFile.ClientCertFile)
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "clientKeyFile", secureFile.ClientKeyFile)
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "certFile", secureFile.CertFile)
 	}
 	result += fmt.Sprintf("%s%s: %d\n", spaces3, "intervalBeforeMaxAge", config.IntervalBeforeMaxAge)
 	if config.InitialRequestBlockSize != nil {
