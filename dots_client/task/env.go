@@ -7,7 +7,6 @@ import (
     "github.com/shopspring/decimal"
     "github.com/nttdots/go-dots/libcoap"
     "github.com/nttdots/go-dots/dots_common/messages"
-    "github.com/nttdots/go-dots/dots_client/config"
     log "github.com/sirupsen/logrus"
     client_message "github.com/nttdots/go-dots/dots_client/messages"
 )
@@ -91,12 +90,13 @@ func (env *Env) SetRetransmitParams(maxRetransmit int, ackTimeout decimal.Decima
     env.session.SetAckRandomFactor(ackRandomFactor)
 }
 
-func (env *Env) SetRetransmitParamsForQBlock(qBlock config.QBlockOption) {
-    env.qBlockSize = &qBlock.QBlockSize
-    env.session.SetMaxPayLoads(qBlock.MaxPayloads)
-    env.session.SetNonMaxRetransmit(qBlock.NonMaxRetransmit)
-    env.session.SetNonTimeout(decimal.NewFromFloat(qBlock.NonTimeout).Round((2)))
-    env.session.SetNonReceiveTimeout(decimal.NewFromFloat(qBlock.NonReceiveTimeout).Round((2)))
+func (env *Env) SetRetransmitParamsForQBlock(qblockSize int, maxPayload int, nonMaxRetransmit int,
+    nonTimeout float64, nonReceiveTimeout float64) {
+    env.qBlockSize = &qblockSize
+    env.session.SetMaxPayLoads(maxPayload)
+    env.session.SetNonMaxRetransmit(nonMaxRetransmit)
+    env.session.SetNonTimeout(decimal.NewFromFloat(nonReceiveTimeout).Round((2)))
+    env.session.SetNonReceiveTimeout(decimal.NewFromFloat(nonReceiveTimeout).Round((2)))
 }
 
 func (env *Env) SetMissingHbAllowed(missing_hb_allowed int) {

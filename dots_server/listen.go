@@ -390,7 +390,7 @@ func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libco
     }
     log.Debugf("addr=%+v", addr)
 
-    ctx := libcoap.NewContextDtls(nil, dtlsParam, int(libcoap.SERVER_PEER), true)
+    ctx := libcoap.NewContextDtls(nil, dtlsParam, int(libcoap.SERVER_PEER))
     if ctx == nil {
         err = errors.New("libcoap.NewContextDtls() -> nil")
         return
@@ -762,37 +762,26 @@ func SetConfigParameterForQBlock(session *libcoap.Session, customerId int) {
     if err != nil {
         log.Error("Failed to get current session config")
     }
-    defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
     // Get mitigationIds with status is 2
     mids, err := models.GetMitigationIdsByCustomer(customerId)
     if err != nil {
         log.Error("Failed to Get mitigation ids")
         return
     }
-    maxPayLoad := defaultValue.MaxPayloadIdle
-    nonMaxRetransmit := defaultValue.NonMaxRetransmitIdle
-    nonTimeout := defaultValue.NonTimeoutIdle
-    nonReceiveTimeout := defaultValue.NonReceiveTimeoutIdle
-    if sessionConfig != nil {
+    if sessionConfig != nil && sessionConfig.SessionId > 0 {
+        maxPayLoad := sessionConfig.MaxPayloadIdle
+        nonMaxRetransmit := sessionConfig.NonMaxRetransmitIdle
+        nonTimeout := sessionConfig.NonTimeoutIdle
+        nonReceiveTimeout := sessionConfig.NonReceiveTimeoutIdle
         if len(mids) > 0 {
             maxPayLoad = sessionConfig.MaxPayload
             nonMaxRetransmit = sessionConfig.NonMaxRetransmit
             nonTimeout = sessionConfig.NonTimeout
             nonReceiveTimeout = sessionConfig.NonReceiveTimeout
-        } else {
-            maxPayLoad = sessionConfig.MaxPayloadIdle
-            nonMaxRetransmit = sessionConfig.NonMaxRetransmitIdle
-            nonTimeout = sessionConfig.NonTimeoutIdle
-            nonReceiveTimeout = sessionConfig.NonReceiveTimeoutIdle
         }
-    } else if len(mids) > 0 {
-        maxPayLoad = defaultValue.MaxPayload
-        nonMaxRetransmit = defaultValue.NonMaxRetransmit
-        nonTimeout = defaultValue.NonTimeout
-        nonReceiveTimeout = defaultValue.NonReceiveTimeout
+        session.SetMaxPayLoads(maxPayLoad)
+        session.SetNonMaxRetransmit(nonMaxRetransmit)
+        session.SetNonTimeout(decimal.NewFromFloat(nonTimeout).Round((2)))
+        session.SetNonReceiveTimeout(decimal.NewFromFloat(nonReceiveTimeout).Round((2)))
     }
-    session.SetMaxPayLoads(maxPayLoad)
-    session.SetNonMaxRetransmit(nonMaxRetransmit)
-    session.SetNonTimeout(decimal.NewFromFloat(nonTimeout).Round((2)))
-    session.SetNonReceiveTimeout(decimal.NewFromFloat(nonReceiveTimeout).Round((2)))
 }

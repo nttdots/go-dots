@@ -31,7 +31,7 @@ func main() {
 //    dtls := libcoap.DtlsParam{ nil, &systemCerts, nil, nil }
 
 
-    ctx := libcoap.NewContextDtls(nil, &dtls, int(libcoap.CLIENT_PEER), false)
+    ctx := libcoap.NewContextDtls(nil, &dtls, int(libcoap.CLIENT_PEER))
     if ctx == nil {
         log.Println("NewContext() -> nil")
         return

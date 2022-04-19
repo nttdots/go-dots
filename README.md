@@ -252,6 +252,24 @@ Configure dots_client to use 'mitigating-config' parameters
     $ $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Mitigating.json
 
+### Client Controller [client_configuration_heartbeat]
+Configure dots_client with heartbeat parameter
+
+    $ $GOPATH/bin/dots_client_controller -request client_configuration_heartbeat -method POST \
+    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_HeartBeat.json
+
+### Client Controller [client_configuration_qblock]
+Configure dots_client with qblock parameter
+
+    $ $GOPATH/bin/dots_client_controller -request client_configuration_qblock -method POST \
+    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_QBlockOption.json
+
+### Client Controller [client_configuration_block]
+Configure dots_client with block parameter
+
+    $ $GOPATH/bin/dots_client_controller -request client_configuration_block -method POST \
+    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_BlockOption.json
+
 ##  Data Channel
 The primary purpose of the data channel is to support DOTS related configuration and policy information exchange between the DOTS client and the DOTS server.
 
