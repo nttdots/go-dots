@@ -28,7 +28,7 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.13.5 or later is required. (for the latest GoBGP - v2.20.0)
+  * go 1.18.1 or later is required. (for the latest GoBGP - v3.0.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.1g or higher (for libcoap)
@@ -74,9 +74,10 @@ To build libcoap for go-dots. We will work as follow:
     
 ### Install go-dots
 To install go-dots source codes and command line programs, use the following command:
-    
-    $ go get -u github.com/nttdots/go-dots/...
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/
+    ```
+    $ git clone https://github.com/nttdots/go-dots.git
+    $ cd go-dots
+    $ go mod download
     $ make && make install
 
 # How to install (In Japanese)
@@ -117,13 +118,21 @@ The blocker configuration of DOTS server is defined in database. For more detail
     $ $GOPATH/bin/dots_client --server localhost --signalChannelPort=4646 --config [config.yml file (ex: go-dots/dots_client/dots_client.yaml)] -vv
 
 ## MySQL Notification
-After the go-dots is built, the mysql-notification.* MUST be copied from $GOPATH/src/github.com/nttdots/go-dots/mysql-udf to /usr/lib/mysql/plugin
+After the go-dots is built, the mysql-notification.* MUST be copied from go-dots/mysql-udf to /usr/lib/mysql/plugin
 
-    $ sudo cp -avr $GOPATH/src/github.com/nttdots/go-dots/mysql-udf/* /usr/lib/mysql/plugin
+    $ sudo cp go-dots/mysql_udf/* /usr/lib/mysql/plugin
 
 ## GoBGP Server
 To install and run gobgp-server, refer to the following link:
 * [gobgp-server](https://github.com/osrg/gobgp)
+
+
+Buid gobgp as below:
+
+    $ sudo chmod -R 777 $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.0.0
+    $ cd $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.0.0
+    $ go build -o $GOPATH/bin ./cmd/gobgp
+    $ go build -o $GOPATH/bin ./cmd/gobgpd
 
 
 ## Arista Server
@@ -150,13 +159,13 @@ The primary purpose of the signal channel is for a DOTS client to ask a DOTS ser
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraft.json
+     -json go-dots/dots_client/sampleMitigationRequestDraft.json
 
 In order to handle out-of-order delivery of mitigation requests, 'mid' values MUST increase monotonically. Besides, if the 'mid' value has exceeded 3/4 of (2**32 - 1), it should be reset by sending a mitigation request with 'mid' is set to '0' to avoid 'mid' rollover. However, the reset request is only accepted by DOTS server at peace-time (have no any active mitigation request which is maintaining).
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=0 \
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraft.json
+     -json go-dots/dots_client/sampleMitigationRequestDraft.json
 
 ### Client Controller [mitigation_retrieve_all]
 
@@ -207,19 +216,19 @@ A DOTS client can convey the 'If-Match' option with empty value in the PUT reque
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftEfficacyUpdate.json
+     -json go-dots/dots_client/sampleMitigationRequestDraftEfficacyUpdate.json
 
 DOTS client to DOTS server mitigation efficacy DOTS telemetry attributes
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -ifMatch="" \
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationEfficacyTelemetryAttributes.json
+     -json go-dots/dots_client/sampleMitigationEfficacyTelemetryAttributes.json
 
 ### Client Controller [session_configuration_request]
 
     $ $GOPATH/bin/dots_client_controller -request session_configuration -method Put \
      -sid 234 \
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleSessionConfigurationDraft.json
+     -json go-dots/dots_client/sampleSessionConfigurationDraft.json
 
 In order to handle out-of-order delivery of session configuration, 'sid' values MUST increase monotonically.
 
@@ -245,36 +254,36 @@ Dots_client uses 'idle-config' parameter set by default. It can be configured to
 Configure dots_client to use 'idle-config' parameters
 
     $ $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
-    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Idle.json
+    -json go-dots/dots_client/sampleClientConfigurationRequest_Idle.json
 
 Configure dots_client to use 'mitigating-config' parameters
 
     $ $GOPATH/bin/dots_client_controller -request client_configuration -method POST \
-    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_Mitigating.json
+    -json go-dots/dots_client/sampleClientConfigurationRequest_Mitigating.json
 
 ### Client Controller [client_configuration_heartbeat]
 Configure dots_client with heartbeat parameter
 
     $ $GOPATH/bin/dots_client_controller -request client_configuration_heartbeat -method POST \
-    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_HeartBeat.json
+    -json go-dots/dots_client/sampleClientConfigurationRequest_HeartBeat.json
 
 ### Client Controller [client_configuration_qblock]
 Configure dots_client with qblock parameter
 
     $ $GOPATH/bin/dots_client_controller -request client_configuration_qblock -method POST \
-    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_QBlockOption.json
+    -json go-dots/dots_client/sampleClientConfigurationRequest_QBlockOption.json
 
 ### Client Controller [client_configuration_block]
 Configure dots_client with block parameter
 
     $ $GOPATH/bin/dots_client_controller -request client_configuration_block -method POST \
-    -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleClientConfigurationRequest_BlockOption.json
+    -json go-dots/dots_client/sampleClientConfigurationRequest_BlockOption.json
 
 ##  Data Channel
 The primary purpose of the data channel is to support DOTS related configuration and policy information exchange between the DOTS client and the DOTS server.
 
 All shell-script and sample json files are located in below directory:
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/dots_client/data/
+    $ cd go-dots/dots_client/data/
 
 ### Get Root Resource Path
 
@@ -446,7 +455,7 @@ Therefore, when DOTS client is under attacked by DDoS, the DOTS client can use D
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftControlFiltering.json
+     -json go-dots/dots_client/sampleMitigationRequestDraftControlFiltering.json
 
 ## Signal Channel Call Home
 The DOTS signal channel Call Home identify the source to block DDoS attack traffic closer to the source(s) of a DDoS attack.
@@ -456,7 +465,7 @@ when the DOTS client is under attacked by DDoS, the DOTS client sends the attack
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Put \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 \
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleMitigationRequestDraftCallHome.json
+     -json go-dots/dots_client/sampleMitigationRequestDraftCallHome.json
 
 ##  Telemetry
 The telemetry aims to enrich DOTS signal channel protocol with various telemetry attributes allowing optimal DDoS attack mitigation. The telemetry specifies the normal traffic baseline and attack traffic telemetry attributes a DOTS client can convey to its DOTS server in the mitigation request, the mitigation status telemetry attributes a DOTS server can communicate to a DOTS client, and the mitigation efficacy telemetry attributes a DOTS client can communicate to a DOTS server. The telemetry contains `Telemetry Setup Configuration` and `Telemetry Pre-or-ongoing-mitigation`
@@ -466,17 +475,17 @@ The telemetry aims to enrich DOTS signal channel protocol with various telemetry
 Registering telemetry configuration
 
     $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123\
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleTelemetryConfiguration.json
+     -json go-dots/dots_client/sampleTelemetryConfiguration.json
 
 Registering total pipe capacity
 
     $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123\
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleTotalPipeCapacity.json
+     -json go-dots/dots_client/sampleTotalPipeCapacity.json
 
 Registering baseline
 
     $ $GOPATH/bin/dots_client_controller -request telemetry_setup_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tsid=123\
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleBaseline.json
+     -json go-dots/dots_client/sampleBaseline.json
 
 Get one telemetry setup configuration
 
@@ -498,7 +507,7 @@ Delete all telemetry setup configuration
 Registering telemetry pre-or-ongoing-mitigation
 
     $ $GOPATH/bin/dots_client_controller -request telemetry_pre_mitigation_request -method Put -cuid=dz6pHjaADkaFTbjr0JGBpw -tmid=123\
-     -json $GOPATH/src/github.com/nttdots/go-dots/dots_client/sampleTelemetryPreMitigation.json
+     -json go-dots/dots_client/sampleTelemetryPreMitigation.json
 
 Get one telemetry pre-or-ongoing-mitigation
 
@@ -530,12 +539,12 @@ Delete all telemetry pre-or-ongoing-mitigation
 To set up your database, refer to the [Database configuration document](./docs/DATABASE.md)  
 The 'dots_server' accesses the 'dots' database on MySQL as the root user.
 
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/
+    $ cd go-dots/
     $ mysql -u root -p dots < ./dots_server/db_models/test_dump.sql
 
 Or you can run MySQL on docker.
 
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/
+    $ cd go-dots/
     $ docker run -d -p 3306:3306 -v ${PWD}/dots_server/db_models/test_dump.sql:/docker-entrypoint-initdb.d/test_dump.sql:ro -e MYSQL_DATABASE=dots -e MYSQL_ALLOW_EMPTY_PASSWORD=yes mysql
 
 DOTS server listens to DB notification (e.g changes to mitigation_scope#status) at port 9999. If you want to change to different port, you have to change it at two places:
@@ -545,7 +554,7 @@ DOTS server listens to DB notification (e.g changes to mitigation_scope#status) 
 
 After changing port number, it is neccessary to rebuild go-dots (which includes rebuilding mysql-notification.c and restarting DB) so that the change can take effect.
 
-    $ cd $GOPATH/src/github.com/nttdots/go-dots/
+    $ cd go-dots/
     $ make && make install
 
 # GOBGP
@@ -704,12 +713,12 @@ Kubernetes is a portable, extensible, open-source platform for managing containe
 - After executing the go-dots server container. In the go-dots server container, you to do as below: 
     - Building the go-dots
         ```
-        $ cd $GOPATH/src/github.com/nttdots/go-dots
+        $ cd go-dots
         $ make && make install
         ```
     - Copy the mysql_udf/* to /usr/lib/mysql/plugin to the go-dots server listens to DB notification
         ```
-        $ sudo cp $GOPATH/src/github.com/nttdots/go-dots/mysql_udf/* /usr/lib/mysql/plugin
+        $ sudo cp go-dots/mysql_udf/* /usr/lib/mysql/plugin
         ```
     - Run the go-dots server
         ```
