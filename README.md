@@ -74,7 +74,7 @@ To build libcoap for go-dots. We will work as follow:
     
 ### Install go-dots
 To install go-dots source codes and command line programs, use the following command:
-    ```
+
     $ git clone https://github.com/nttdots/go-dots.git
     $ cd go-dots
     $ go mod download
