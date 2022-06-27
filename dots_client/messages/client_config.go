@@ -1,5 +1,9 @@
 package messages
 
+import (
+	"fmt"
+)
+
 type ClientConfigRequest struct {
 	SessionConfig SessionConfig `json:"session-config"`
 }
@@ -56,3 +60,29 @@ const (
 	CLIENT_CONFIGURATION_QBLOCK ClientConfigName = "client_configuration_qblock"
 	CLIENT_CONFIGURATION_BLOCK ClientConfigName = "client_configuration_block"
 )
+
+/**
+ * Convert session configuration heartbeat data to string data
+ */
+func (requestData SessionConfigHeartBeat) String() (heartBeatConfig string) {
+	space3 := "   "
+	heartBeatConfig = fmt.Sprintf("%s\"%s\": %d \n", space3, "heartbeat-interval", requestData.HeartBeatInterval)
+	heartBeatConfig += fmt.Sprintf("%s\"%s\": %d \n", space3, "missing-hb-allowed", requestData.MissingHbAllowed)
+	heartBeatConfig += fmt.Sprintf("%s\"%s\": %d \n", space3, "max-retransmit", requestData.MaxRetransmit)
+	heartBeatConfig += fmt.Sprintf("%s\"%s\": %.2f \n", space3, "ack-timeout", requestData.AckTimeout)
+	heartBeatConfig += fmt.Sprintf("%s\"%s\": %.2f \n", space3, "ack-random-factor", requestData.AckRandomFactor)
+	return
+}
+
+/**
+ * Convert session configuration qblock data to string data
+ */
+func (requestData SessionConfigQBlock) String() (qblockConfig string) {
+	space3 := "   "
+	qblockConfig = fmt.Sprintf("%s\"%s\": %d \n", space3, "q-block-size", requestData.QBlockSize)
+	qblockConfig += fmt.Sprintf("%s\"%s\": %d \n", space3, "max-payload", requestData.MaxPayload)
+	qblockConfig += fmt.Sprintf("%s\"%s\": %d \n", space3, "non-max-retransmit", requestData.NonMaxRetransmit)
+	qblockConfig += fmt.Sprintf("%s\"%s\": %.2f \n", space3, "non-timeout", requestData.NonTimeout)
+	qblockConfig += fmt.Sprintf("%s\"%s\": %.2f \n", space3, "non-receive-timeout", requestData.NonReceiveTimeout)
+	return
+}

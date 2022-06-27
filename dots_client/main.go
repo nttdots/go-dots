@@ -658,9 +658,9 @@ func handleClientConfiguration(jsonData []byte, env *task.Env) {
 		return
 	}
 	mode := clientConfig.SessionConfig.Mode
-	log.Debugf("Session config mode: %+v",mode)
+	log.Debugf("Session config mode: %s", mode)
 	if mode == string(client_message.IDLE) || mode == string(client_message.MITIGATING) {
-		log.Debug("Session config mode is valid. Switch to new session config mode")
+		log.Debugf("Session config mode is valid. Switch to new session config mode: %s", mode)
 		env.SetSessionConfigMode(mode)
 	} else {
 		log.Debug("Session config mode is invalid")
@@ -680,8 +680,7 @@ func handleClientConfigurationHeartBeat(jsonData []byte, env *task.Env) {
 	maxRetransmit := clientConfigHeartBeat.SessionConfigHeartBeat.MaxRetransmit
 	ackTimeout := decimal.NewFromFloat(clientConfigHeartBeat.SessionConfigHeartBeat.AckTimeout).Round(2)
 	ackRandomFactor := decimal.NewFromFloat(clientConfigHeartBeat.SessionConfigHeartBeat.AckRandomFactor).Round(2)
-	log.Debugf("Set new parameter for heart beat. Restart ping task with heatbeat-interval=%v, missing-hb-allowed=%v...",
-	    heartbeatInterval, missingHbAllowed)
+	log.Debugf("Set new parameter for heart beat. Restart ping task with: \n%s", clientConfigHeartBeat.SessionConfigHeartBeat.String())
 	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
 	env.SetRetransmitParams(maxRetransmit, ackTimeout, ackRandomFactor)
 	pingTimeout, _ := ackTimeout.Float64()
@@ -709,7 +708,7 @@ func handleClientConfigurationQblock(jsonData []byte, env *task.Env) {
 		log.Errorf("q-block-size: %+v is invalid", qblock.QBlockSize)
 		return
 	}
-	log.Debug("Set new parameter for qblock option")
+	log.Debugf("Set new parameter for qblock option: \n%s", qblock.String())
 	env.SetRetransmitParamsForQBlock(qblock.QBlockSize, qblock.MaxPayload, qblock.NonMaxRetransmit, 
 		qblock.NonTimeout, qblock.NonReceiveTimeout)
 	env.SetInitialRequestBlockSize(nil)
@@ -729,6 +728,6 @@ func handleClientConfigurationBlock(jsonData []byte, env *task.Env) {
 		log.Errorf("block-size: %+v is invalid", blockSize)
 		return
 	}
-	log.Debug("Set new parameter for block option")
+	log.Debugf("Set new parameter for block option with block-size: %d", blockSize)
 	env.SetInitialRequestBlockSize(&blockSize)
 }
