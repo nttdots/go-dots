@@ -95,7 +95,7 @@ func (env *Env) SetRetransmitParamsForQBlock(qblockSize int, maxPayload int, non
     env.qBlockSize = &qblockSize
     env.session.SetMaxPayLoads(maxPayload)
     env.session.SetNonMaxRetransmit(nonMaxRetransmit)
-    env.session.SetNonTimeout(decimal.NewFromFloat(nonReceiveTimeout).Round((2)))
+    env.session.SetNonTimeout(decimal.NewFromFloat(nonTimeout).Round((2)))
     env.session.SetNonReceiveTimeout(decimal.NewFromFloat(nonReceiveTimeout).Round((2)))
 }
 

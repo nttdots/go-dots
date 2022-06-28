@@ -309,7 +309,7 @@ func handlePutTotalPipeCapacity(bodyRequest []messages.TotalPipeCapacity, custom
 	if isConflict {
 		log.Error("[Conflicted] Existed total pipe capacity")
 		conflictInfo = &models.ConflictInformation {
-			ConflictCause:  models.OVERLAPPING_TARGETS,
+			ConflictCause:  models.OVERLAPPING_PIPE_SCOPE,
 			ConflictScope:  nil,
 		}
 		res = Response {

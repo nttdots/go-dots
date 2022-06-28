@@ -221,10 +221,10 @@ func ValidateAttackDetail(ads []messages.AttackDetail) (isUnprocessableEntity bo
 // Validate description-lang
 func ValidateDescriptionLang(desl string) (bool, string) {
 	var pattern bytes.Buffer
-	pattern.WriteString("(([A-Za-z]{2,3}(-[A-Za-z]{3}(-[A-Za-z]{3})")
-	pattern.WriteString("{0,2})?|[A-Za-z]{4}|[A-Za-z]{5,8})(-[A-Za-z]{4})?")
-	pattern.WriteString("(-([A-Za-z]{2}|[0-9]{3}))?(-([A-Za-z0-9]{5,8}")
-	pattern.WriteString("|([0-9][A-Za-z0-9]{3})))*(-[0-9A-WY-Za-wy-z]")
+	pattern.WriteString("((([A-Za-z]{2,3}(-[A-Za-z]{3}(-[A-Za-z]{3})")
+	pattern.WriteString("{0,2})?)|[A-Za-z]{4}|[A-Za-z]{5,8})(-[A-Za-z]{4})")
+	pattern.WriteString("?(-([A-Za-z]{2}|[0-9]{3}))?(-([A-Za-z0-9]{5,8}")
+	pattern.WriteString("|([0-9][A-Za-z0-9]{3})))*(-[0-9A-WYZa-wyz]")
 	pattern.WriteString("(-([A-Za-z0-9]{2,8}))+)*(-[Xx](-([A-Za-z0-9]")
 	pattern.WriteString("{1,8}))+)?|[Xx](-([A-Za-z0-9]{1,8}))+|")
 	pattern.WriteString("(([Ee][Nn]-[Gg][Bb]-[Oo][Ee][Dd]|[Ii]-")
