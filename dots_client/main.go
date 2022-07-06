@@ -153,7 +153,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 			}
 		} else if event == libcoap.EventSessionDisconnected {
 			if orgEnv == nil {
-				log.Warn("Server is stopped. DOTS client can't connect to server")
+				log.Warn("Session is disconnected.")
 				env.SetIsServerStopped(true)
 				return
 			}
