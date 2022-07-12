@@ -109,7 +109,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	} else {
 		dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile, config.PinnedCertificate }
 		if orgEnv == nil {
-			ctx = libcoap.NewContextDtls(nil, &dtlsParam, int(libcoap.CLIENT_PEER))
+			ctx = libcoap.NewContextDtls(nil, &dtlsParam, int(libcoap.CLIENT_PEER), nil)
 			if ctx == nil {
 				log.Error("NewContextDtls() -> nil")
 				err = errors.New("NewContextDtls() -> nil")

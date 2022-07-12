@@ -178,3 +178,5 @@ system:
   queryType: 1,2,3,4,6,8,9,10
   # vendor-mapping-enabled to get the Dots server's vendor attack mapping
   vendorMappingEnabled: false
+  # Time(seconds) session is timed out
+  sessionTimeout: 86400

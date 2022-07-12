@@ -759,6 +759,7 @@ type ServerSystemConfig struct {
 	CacheInterval                     int
 	QueryType                         []int
 	VendorMappingEnabled              bool
+	SessionTimeout                    int
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -780,6 +781,7 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setCacheInterval(sc.CacheInterval)
 	GetServerSystemConfig().setQueryType(sc.QueryType)
 	GetServerSystemConfig().setVendorMappingEnabled(sc.VendorMappingEnabled)
+	GetServerSystemConfig().setSessionTimeout(sc.SessionTimeout)
 }
 
 type ServerSystemConfigNode struct {
@@ -801,6 +803,7 @@ type ServerSystemConfigNode struct {
 	CacheInterval                     string                                `yaml:"cacheInterval"`
 	QueryType                         string                                `yaml:"queryType"`
 	VendorMappingEnabled              bool                                  `yaml:"vendorMappingEnabled"`
+	SessionTimeout                    string                                `yaml:"sessionTimeout"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -879,6 +882,7 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	sessionTimeout := parseIntegerValue(scn.SessionTimeout)
 
 	return &ServerSystemConfig{
 		SignalConfigurationParameter:      signalConfigurationParameter.(*SignalConfigurationParameter),
@@ -899,6 +903,7 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		CacheInterval:                     cacheInterval,
 		QueryType:                         queryType,
 		VendorMappingEnabled:              scn.VendorMappingEnabled,
+		SessionTimeout:                    sessionTimeout,
 	}, nil
 }
 
@@ -972,6 +977,10 @@ func (sc *ServerSystemConfig) setQueryType(parameter []int) {
 
 func (sc *ServerSystemConfig) setVendorMappingEnabled(parameter bool) {
 	sc.VendorMappingEnabled = parameter
+}
+
+func (sc *ServerSystemConfig) setSessionTimeout(parameter int) {
+	sc.SessionTimeout = parameter
 }
 
 var systemConfigInstance *ServerSystemConfig

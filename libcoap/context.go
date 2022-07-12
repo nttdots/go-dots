@@ -42,7 +42,6 @@ const (
 )
 
 var contexts = make(map[*C.coap_context_t] *Context)
-var sessionTimeout = 86400 // Session will be timeouted on 1 day
 
 func Startup() {
     C.coap_startup()
@@ -100,7 +99,7 @@ func export_validate_cn_call_back(presentIdentifier *C.char, depth C.uint, refer
     return 0
 }
 
-func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
+func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int, sessionTimeout *int) *Context {
     var caddr *C.coap_address_t = nil
     if addr != nil {
       caddr = &addr.value
@@ -158,7 +157,9 @@ func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
         ok := C.coap_context_set_pki(ptr, setupData)
 
         if ok == 1 {
-            C.coap_context_set_session_timeout(ptr, C.uint(sessionTimeout))
+            if sessionTimeout != nil && *sessionTimeout > 0 {
+                C.coap_context_set_session_timeout(ptr, C.uint(*sessionTimeout))
+            }
             C.coap_context_set_block_mode(ptr, C.COAP_BLOCK_USE_LIBCOAP| C.COAP_BLOCK_TRY_Q_BLOCK)
             context := &Context{ ptr, nil, nil, nil, setupData }
             contexts[ptr] = context

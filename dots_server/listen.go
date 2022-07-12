@@ -376,7 +376,7 @@ func addPrefixHandler(ctx *libcoap.Context, code messages.Code, controller contr
     ctx.AddResource(createResource(ctx, "dummy for unknown", msg.Type, filter, true))
 }
 
-func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libcoap.Context, err error) {
+func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam, sessionTimeout int) (_ *libcoap.Context, err error) {
     log.Debugf("listen.go, listen -in. address=%+v, port=%+v", address, port)
     ip := net.ParseIP(address)
     if ip == nil {
@@ -390,7 +390,7 @@ func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libco
     }
     log.Debugf("addr=%+v", addr)
 
-    ctx := libcoap.NewContextDtls(nil, dtlsParam, int(libcoap.SERVER_PEER))
+    ctx := libcoap.NewContextDtls(nil, dtlsParam, int(libcoap.SERVER_PEER), &sessionTimeout)
     if ctx == nil {
         err = errors.New("libcoap.NewContextDtls() -> nil")
         return
@@ -400,8 +400,8 @@ func listen(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libco
     return ctx, nil
 }
 
-func listenSignal(address string, port uint16, dtlsParam *libcoap.DtlsParam) (_ *libcoap.Context, err error) {
-    ctx, err := listen(address, port, dtlsParam)
+func listenSignal(address string, port uint16, dtlsParam *libcoap.DtlsParam, sessionTimeout int) (_ *libcoap.Context, err error) {
+    ctx, err := listen(address, port, dtlsParam, sessionTimeout)
     if err != nil {
         return
     }

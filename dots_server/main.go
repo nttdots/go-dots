@@ -55,7 +55,7 @@ func main() {
 	go data_models.ManageExpiredAliasAndAcl(config.LifetimeConfiguration.ManageLifetimeInterval)
 
 	log.Debug("listen Signal with DTLS param: %# v", dtlsParam)
-	signalCtx, err := listenSignal(config.Network.BindAddress, uint16(config.Network.SignalChannelPort), &dtlsParam)
+	signalCtx, err := listenSignal(config.Network.BindAddress, uint16(config.Network.SignalChannelPort), &dtlsParam, config.SessionTimeout)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
