@@ -2,6 +2,7 @@ package data_controllers
 
 import (
   "fmt"
+  "errors"
   "io/ioutil"
   "encoding/json"
   "net/http"
@@ -131,17 +132,17 @@ func EmptyResponse(code int) (Response, error) {
   return Response{ Code: code }, nil
 }
 
-func ErrorResponse(errorCode int, errorTag ErrTag, errorMsg string) (Response, error) {
-
-  errors := make([]Error, 1)
+func ErrorResponse(errorCode int, errorTag ErrTag, errorMsg string, isAfterTransaction bool) (Response, error) {
+  log.Errorf(errorMsg)
+  errs := make([]Error, 1)
   e := Error{}
   e.ErrorTag = errorTag
   e.ErrorType = e.GetDefaultErrorType()
   e.ErrorMessage = errorMsg
-  errors[0] = e
+  errs[0] = e
 
   eres := ErrorsResponse{}
-  eres.Errors.Error = errors
+  eres.Errors.Error = errs
 
   r := Response{}
 
@@ -154,7 +155,10 @@ func ErrorResponse(errorCode int, errorTag ErrTag, errorMsg string) (Response, e
   r.Headers = make(http.Header)
   r.Headers.Add("Content-Type", "application/yang-data+json")
   r.Content = raw
-  return r, nil
+  if !isAfterTransaction {
+    return r, nil
+  }
+  return r, errors.New(errorMsg)
 }
 
 func YangJsonResponse(content interface{}) (Response, error) {
@@ -189,12 +193,18 @@ func WithTransaction(f func(*db.Tx) (Response, error)) (Response, error) {
 }
 
 func WithClient(tx *db.Tx, customer *models.Customer, cuid string, f func(*data_models.Client) (Response, error)) (Response, error) {
+  errMsg :=""
   client, err := data_models.FindClientByCuid(tx, customer, cuid)
+  isAfterTransaction := true
   if err != nil {
-    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Fail to get dot-client")
+    errMsg = "Fail to get dot-client"
+    log.Errorf(errMsg)
+    return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, errMsg, isAfterTransaction)
   }
   if client == nil {
-    return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, "Not Found dot-client by specified cuid")
+    errMsg = "Not Found dot-client by specified cuid"
+    log.Errorf(errMsg)
+    return ErrorResponse(http.StatusNotFound, ErrorTag_Invalid_Value, errMsg, isAfterTransaction)
   }
   return f(client)
 }

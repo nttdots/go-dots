@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 	"strconv"
+	"encoding/json"
 	"github.com/ugorji/go/codec"
 	"github.com/nttdots/go-dots/libcoap"
 	"github.com/nttdots/go-dots/dots_common"
@@ -97,50 +98,69 @@ const (
 
 type Unit string
 const (
-	PACKETS_PER_SECOND     Unit = "PACKETS_PS"
-	BITS_PER_SECOND        Unit = "BITS_PS"
-	BYTES_PER_SECOND       Unit = "BYTES_PS"
-	KILOPACKETS_PER_SECOND Unit = "KILOPACKETS_PS"
-	KILOBITS_PER_SECOND    Unit = "KILOBITS_PS"
-	KILOBYTES_PER_SECOND   Unit = "KILOBYTES_PS"
-	MEGAPACKETS_PER_SECOND Unit = "MEGAPACKETS_PS"
-	MEGABITS_PER_SECOND    Unit = "MEGABITS_PS"
-	MEGABYTES_PER_SECOND   Unit = "MEGABYTES_PS"
-	GIGAPACKETS_PER_SECOND Unit = "GIGAPACKETS_PS"
-	GIGABITS_PER_SECOND    Unit = "GIGABITS_PS"
-	GIGABYTES_PER_SECOND   Unit = "GIGABYTES_PS"
-	TERAPACKETS_PER_SECOND Unit = "TERAPACKETS_PS"
-	TERABITS_PER_SECOND    Unit = "TERABITS_PS"
-	TERABYTES_PER_SECOND   Unit = "TERABYTES_PS"
+	PACKETS_PER_SECOND      Unit = "packet-ps"
+	BITS_PER_SECOND         Unit = "bit-ps"
+	BYTES_PER_SECOND        Unit = "byte-ps"
+	KILOPACKETS_PER_SECOND  Unit = "kilopacket-ps"
+	KILOBITS_PER_SECOND     Unit = "kilobit-ps"
+	KILOBYTES_PER_SECOND    Unit = "kilobyte-ps"
+	MEGAPACKETS_PER_SECOND  Unit = "megapacket-ps"
+	MEGABITS_PER_SECOND     Unit = "megabit-ps"
+	MEGABYTES_PER_SECOND    Unit = "megabyte-ps"
+	GIGAPACKETS_PER_SECOND  Unit = "gigapacket-ps"
+	GIGABITS_PER_SECOND     Unit = "gigabit-ps"
+	GIGABYTES_PER_SECOND    Unit = "gigabyte-ps"
+	TERAPACKETS_PER_SECOND  Unit = "terapacket-ps"
+	TERABITS_PER_SECOND     Unit = "terabit-ps"
+	TERABYTES_PER_SECOND    Unit = "terabyte-ps"
+	PETAPACKETS_PER_SECOND  Unit = "petapacket-ps"
+	PETABITS_PER_SECOND     Unit = "petabit-ps"
+	PETABYTES_PER_SECOND    Unit = "petabyte-ps"
+	EXAPACKETS_PER_SECOND   Unit = "exapacket-ps"
+	EXABITS_PER_SECOND      Unit = "exabit-ps"
+	EXABYTES_PER_SECOND     Unit = "exabyte-ps"
+	ZETTAPACKETS_PER_SECOND Unit = "zettapacket-ps"
+	ZETTABITS_PER_SECOND    Unit = "zettabit-ps"
+	ZETTABYTES_PER_SECOND   Unit = "zettabyte-ps"
 )
 
 type Interval string
 const (
-	HOUR  Interval = "HOUR"
-	DAY   Interval = "DAY"
-	WEEK  Interval = "WEEK"
-	MONTH Interval = "MONTH"
+	FIVE_MINUTES_INTERVAL   Interval = "5-minutes"
+	TEN_MINUTES_INTERVAL    Interval = "10-minutes"
+	THIRTY_MINUTES_INTERVAL Interval = "30-minutes"
+	HOUR                    Interval = "hour"
+	DAY                     Interval = "day"
+	WEEK                    Interval = "week"
+	MONTH                   Interval = "month"
 )
 
 type Sample string
 const (
-	SECOND          Sample = "SECOND"
-	FIVE_SECONDS    Sample = "5_SECONDS"
-	THIRTY_SECONDDS Sample = "30_SECONDS"
-	ONE_MINUTE      Sample = "ONE_MINUTE"
-	FIVE_MINUTES    Sample = "5_MINUTES"
-	TEN_MINUTES     Sample = "10_MINUTES"
-	THIRTY_MINUTES  Sample = "30_MINUTES"
-	ONE_HOUR        Sample = "ONE_HOUR"
+	SECOND          Sample = "second"
+	FIVE_SECONDS    Sample = "5-seconds"
+	THIRTY_SECONDDS Sample = "30-seconds"
+	ONE_MINUTE      Sample = "minute"
+	FIVE_MINUTES    Sample = "5-minutes"
+	TEN_MINUTES     Sample = "10-minutes"
+	THIRTY_MINUTES  Sample = "30-minutes"
+	ONE_HOUR        Sample = "hour"
 )
 
 type AttackSeverity string
 const (
-	NONE    AttackSeverity = "NONE"
-	LOW     AttackSeverity = "LOW"
-	MEDIUM  AttackSeverity = "MEDIUM"
-	HIGH    AttackSeverity = "HIGH"
-	UNKNOWN AttackSeverity = "UNKNOWN"
+	NONE    AttackSeverity = "none"
+	LOW     AttackSeverity = "low"
+	MEDIUM  AttackSeverity = "medium"
+	HIGH    AttackSeverity = "high"
+	UNKNOWN AttackSeverity = "unknown"
+)
+
+type ActivationType string
+const (
+	ACTIVATE_WHEN_MITIGATING ActivationType = "activate-when-mitigating"
+	IMMEDIATE                ActivationType = "immediate"
+	DEACTIVATE               ActivationType = "deactivate"
 )
 
 type QueryType string
@@ -155,9 +175,15 @@ const (
 	SOURCE_PREFIX    QueryType = "source-prefix"
 	SOURCE_PORT      QueryType = "source-port"
 	SOURCE_ICMP_TYPE QueryType = "source-icmp-type"
-	CONTENT          QueryType = "content"
+	CONTENT          QueryType = "c"
 )
 
+type Content string
+const (
+	CONFIG     Content = "c"
+	NON_CONFIG Content = "n"
+	ALL        Content = "a"
+)
 
 /*
  * Dots message structure.
@@ -351,7 +377,7 @@ func ParseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err err
 		if(strings.HasPrefix(uriPath, "cuid=")){
 			cuid = uriPath[strings.Index(uriPath, "cuid=")+5:]
 		} else if(strings.HasPrefix(uriPath, "cdid=")){
-			cuid = uriPath[strings.Index(uriPath, "cdid=")+5:]
+			cdid = uriPath[strings.Index(uriPath, "cdid=")+5:]
 		} else if(strings.HasPrefix(uriPath, "tmid=")){
 			tmidStr := uriPath[strings.Index(uriPath, "tmid=")+5:]
 			tmidValue, err := strconv.Atoi(tmidStr)
@@ -371,6 +397,380 @@ func ParseURIPath(uriPath []string) (cdid string, cuid string, mid *int, err err
 	    log.Debugf("Parsing URI-Path result : cuid=%+v, tmid=%+v", cuid, nil)
 	} else {
         log.Debugf("Parsing URI-Path result : cuid=%+v, tmid=%+v", cuid, *tmid)
+	}
+	return
+}
+
+// Uint64String to convert value from string (json) to uint64 (cbor)
+//              and to convert value from uint64 (cbor) to string (json)
+type Uint64String uint64
+
+func (u Uint64String) MarshalJSON() ([]byte, error) {
+	return json.Marshal(strconv.FormatUint(uint64(u), 10))
+}
+
+func (u *Uint64String) UnmarshalJSON(data []byte) error {
+	var jstring string
+	err := json.Unmarshal(data, &jstring)
+	if err != nil {
+		return err
+	}
+	*(*uint64)(u), err = strconv.ParseUint(jstring, 0, 64)
+	return err
+}
+
+// AttackSeverityString to convert value from string (json) to int (cbor)
+//                      and to convert value from int (cbor) to string (json)
+type AttackSeverityString int
+
+const (
+	None AttackSeverityString = iota + 1
+	Low
+	Medium
+	High
+	Unknown
+)
+
+func (as AttackSeverityString) MarshalJSON() ([]byte, error) {
+	jstring := ConvertAttackSeverityToString(as)
+	return json.Marshal(jstring)
+}
+
+func (as *AttackSeverityString) UnmarshalJSON(data []byte) error {
+	var jstring string
+	err := json.Unmarshal(data, &jstring)
+	if err != nil {
+		return err
+	}
+	*as = ConvertAttackSeverityToInt(jstring)
+	return nil
+}
+
+// IntervalString to convert value from string (json) to int (cbor)
+//                and to convert value from int (cbor) to string (json)
+type IntervalString int
+
+const (
+	FiveMinutesInterval IntervalString = iota + 1
+	TenMinutesInterval
+	ThirtyMinutesInterval
+	Hour
+	Day
+	Week
+	Month
+)
+
+func (i IntervalString) MarshalJSON() ([]byte, error) {
+	jstring := ConvertMeasurementIntervalToString(i)
+	return json.Marshal(jstring)
+}
+
+func (i *IntervalString) UnmarshalJSON(data []byte) error {
+	var jstring string
+	err := json.Unmarshal(data, &jstring)
+	if err != nil {
+		return err
+	}
+	*i = ConvertMeasurementIntervalToInt(jstring)
+	return nil
+}
+
+// SampleString to convert value from string (json) to int (cbor)
+//              and to convert value from int (cbor) to string (json)
+type SampleString int
+
+const (
+	Second SampleString = iota + 1
+	FiveSeconds
+	ThirtySeconds
+	OneMinute
+	FiveMinutes
+	TenMinutes
+	ThirtyMinutes
+	OneHour
+)
+
+func (s SampleString) MarshalJSON() ([]byte, error) {
+	jstring := ConvertMeasurementSampleToString(s)
+	return json.Marshal(jstring)
+}
+
+func (s *SampleString) UnmarshalJSON(data []byte) error {
+	var jstring string
+	err := json.Unmarshal(data, &jstring)
+	if err != nil {
+		return err
+	}
+	*s = ConvertMeasurementSampleToInt(jstring)
+	return nil
+}
+
+// UnitString to convert value from string (json) to int (cbor)
+//            and to convert value from int (cbor) to string (json)
+type UnitString int
+
+const (
+	PacketsPerSecond UnitString = iota + 1
+	BitsPerSecond
+	BytesPerSecond
+	KiloPacketsPerSecond
+	KiloBitsPerSecond
+	KiloBytesPerSecond
+	MegaPacketsPerSecond
+	MegaBitsPerSecond
+	MegaBytesPerSecond
+	GigaPacketsPerSecond
+	GigaBitsPerSecond
+	GigaBytesPerSecond
+	TeraPacketsPerSecond
+	TeraBitsPerSecond
+	TeraBytesPerSecond
+	PetaPacketsPerSecond
+	PetaBitsPerSecond
+	PetaBytesPerSecond
+	ExaPacketsPerSecond
+	ExaBitsPerSecond
+	ExaBytesPerSecond
+	ZettaPacketsPerSecond
+	ZettaBitsPerSecond
+	ZettaBytesPerSecond
+)
+
+func (u UnitString) MarshalJSON() ([]byte, error) {
+	jstring := ConvertUnitToString(u)
+	return json.Marshal(jstring)
+}
+
+func (u *UnitString) UnmarshalJSON(data []byte) error {
+	var jstring string
+	err := json.Unmarshal(data, &jstring)
+	if err != nil {
+		return err
+	}
+	*u = ConvertUnitToInt(jstring)
+	return nil
+}
+
+// ActivationTypeString to convert value from string (json) to int (cbor)
+//                      and to convert value from int (cbor) to string (json)
+type ActivationTypeString int
+
+const (
+	ActivateWhenMitigating ActivationTypeString = iota + 1
+	Immediate
+	Deactive
+)
+
+func (at ActivationTypeString) MarshalJSON() ([]byte, error) {
+	jstring := ConvertActivateTypeToString(at)
+	return json.Marshal(jstring)
+}
+
+func (at *ActivationTypeString) UnmarshalJSON(data []byte) error {
+	var jstring string
+	err := json.Unmarshal(data, &jstring)
+	if err != nil {
+		return err
+	}
+	*at = ConvertActivateTypeToInt(jstring)
+	return nil
+}
+
+// QueryTypeArrayString to convert value from array int (cbor) to array string (json)
+type QueryTypeArrayString []int
+
+func (qta QueryTypeArrayString) MarshalJSON() ([]byte, error) {
+	jastring := ConvertArrayQueryTypeToArrayString(qta)
+	return json.Marshal(jastring)
+}
+
+// Convert measurement_interval from int to string
+func ConvertMeasurementIntervalToString(measurementInterval IntervalString) (measurementIntervalStr string) {
+	switch measurementInterval {
+	case IntervalString(FiveMinutesInterval):   measurementIntervalStr = string(FIVE_MINUTES_INTERVAL)
+	case IntervalString(TenMinutesInterval):    measurementIntervalStr = string(TEN_MINUTES_INTERVAL)
+	case IntervalString(ThirtyMinutesInterval): measurementIntervalStr = string(THIRTY_MINUTES_INTERVAL)
+	case IntervalString(Hour):                  measurementIntervalStr = string(HOUR)
+	case IntervalString(Day):                   measurementIntervalStr = string(DAY)
+	case IntervalString(Week):                  measurementIntervalStr = string(WEEK)
+	case IntervalString(Month):                 measurementIntervalStr = string(MONTH)
+	}
+	return
+}
+
+// Convert measurement_sample from int to string
+func ConvertMeasurementSampleToString(measurementSample SampleString) (measurementSampleStr string) {
+	switch measurementSample {
+	case SampleString(Second):       measurementSampleStr = string(SECOND)
+	case SampleString(FiveSeconds):  measurementSampleStr = string(FIVE_SECONDS)
+	case SampleString(ThirtySeconds):measurementSampleStr = string(THIRTY_SECONDDS)
+	case SampleString(OneMinute):    measurementSampleStr = string(ONE_MINUTE)
+	case SampleString(FiveMinutes):  measurementSampleStr = string(FIVE_MINUTES)
+	case SampleString(TenMinutes):   measurementSampleStr = string(TEN_MINUTES)
+	case SampleString(ThirtyMinutes):measurementSampleStr = string(THIRTY_MINUTES)
+	case SampleString(OneHour):      measurementSampleStr = string(ONE_HOUR)
+	}
+	return
+}
+
+// Convert unit from int to string
+func ConvertUnitToString(unit UnitString) (unitStr string) {
+	switch unit {
+	case UnitString(PacketsPerSecond):     unitStr = string(PACKETS_PER_SECOND)
+	case UnitString(BitsPerSecond):        unitStr = string(BITS_PER_SECOND)
+	case UnitString(BytesPerSecond):       unitStr = string(BYTES_PER_SECOND)
+	case UnitString(KiloPacketsPerSecond): unitStr = string(KILOPACKETS_PER_SECOND)
+	case UnitString(KiloBitsPerSecond):    unitStr = string(KILOBITS_PER_SECOND)
+	case UnitString(KiloBytesPerSecond):   unitStr = string(KILOBYTES_PER_SECOND)
+	case UnitString(MegaPacketsPerSecond): unitStr = string(MEGAPACKETS_PER_SECOND)
+	case UnitString(MegaBitsPerSecond):    unitStr = string(MEGABITS_PER_SECOND)
+	case UnitString(MegaBytesPerSecond):   unitStr = string(MEGABYTES_PER_SECOND)
+	case UnitString(GigaPacketsPerSecond): unitStr = string(GIGAPACKETS_PER_SECOND)
+	case UnitString(GigaBitsPerSecond):    unitStr = string(GIGABITS_PER_SECOND)
+	case UnitString(GigaBytesPerSecond):   unitStr = string(GIGABYTES_PER_SECOND)
+	case UnitString(TeraPacketsPerSecond): unitStr = string(TERAPACKETS_PER_SECOND)
+	case UnitString(TeraBitsPerSecond):    unitStr = string(TERABITS_PER_SECOND)
+	case UnitString(TeraBytesPerSecond):   unitStr = string(TERABYTES_PER_SECOND)
+	case UnitString(PetaPacketsPerSecond): unitStr = string(PETAPACKETS_PER_SECOND)
+	case UnitString(PetaBitsPerSecond):    unitStr = string(PETABITS_PER_SECOND)
+	case UnitString(PetaBytesPerSecond):   unitStr = string(PETABYTES_PER_SECOND)
+	case UnitString(ExaPacketsPerSecond):  unitStr = string(EXAPACKETS_PER_SECOND)
+	case UnitString(ExaBitsPerSecond):     unitStr = string(EXABITS_PER_SECOND)
+	case UnitString(ExaBytesPerSecond):    unitStr = string(EXABYTES_PER_SECOND)
+	case UnitString(ZettaPacketsPerSecond):unitStr = string(ZETTAPACKETS_PER_SECOND)
+	case UnitString(ZettaBitsPerSecond):   unitStr = string(ZETTABITS_PER_SECOND)
+	case UnitString(ZettaBytesPerSecond):  unitStr = string(ZETTABYTES_PER_SECOND)
+	}
+	return
+}
+
+// Convert measurement_interval from string to int
+func ConvertMeasurementIntervalToInt(measurementInterval string) (measurementIntervalInt IntervalString) {
+	switch measurementInterval {
+	case string(FIVE_MINUTES_INTERVAL):    measurementIntervalInt = IntervalString(FiveMinutesInterval)
+	case string(TEN_MINUTES_INTERVAL):     measurementIntervalInt = IntervalString(TenMinutesInterval)
+	case string(THIRTY_MINUTES_INTERVAL):  measurementIntervalInt = IntervalString(ThirtyMinutesInterval)
+	case string(HOUR):                     measurementIntervalInt = IntervalString(Hour)
+	case string(DAY):                      measurementIntervalInt = IntervalString(Day)
+	case string(WEEK):                     measurementIntervalInt = IntervalString(Week)
+	case string(MONTH):                    measurementIntervalInt = IntervalString(Month)
+	}
+	return
+}
+
+// Convert measurement_sample from string to int
+func ConvertMeasurementSampleToInt(measurementSample string) (measurementSampleInt SampleString) {
+	switch measurementSample {
+	case string(SECOND):          measurementSampleInt  = SampleString(Second)
+	case string(FIVE_SECONDS):    measurementSampleInt  = SampleString(FiveSeconds)
+	case string(THIRTY_SECONDDS): measurementSampleInt = SampleString(ThirtySeconds)
+	case string(ONE_MINUTE):      measurementSampleInt  = SampleString(OneMinute)
+	case string(FIVE_MINUTES):    measurementSampleInt  = SampleString(FiveMinutes)
+	case string(TEN_MINUTES):     measurementSampleInt  = SampleString(TenMinutes)
+	case string(THIRTY_MINUTES):  measurementSampleInt  = SampleString(ThirtyMinutes)
+	case string(ONE_HOUR):        measurementSampleInt  = SampleString(OneHour)
+	}
+	return
+}
+
+// Convert sample from string to int
+func ConvertUnitToInt(unit string) (unitInt UnitString) {
+	switch unit {
+	case string(PACKETS_PER_SECOND):      unitInt = UnitString(PacketsPerSecond)
+	case string(BITS_PER_SECOND):         unitInt = UnitString(BitsPerSecond)
+	case string(BYTES_PER_SECOND):        unitInt = UnitString(BytesPerSecond)
+	case string(KILOPACKETS_PER_SECOND):  unitInt = UnitString(KiloPacketsPerSecond)
+	case string(KILOBITS_PER_SECOND):     unitInt = UnitString(KiloBitsPerSecond)
+	case string(KILOBYTES_PER_SECOND):    unitInt = UnitString(KiloBytesPerSecond)
+	case string(MEGAPACKETS_PER_SECOND):  unitInt = UnitString(MegaPacketsPerSecond)
+	case string(MEGABITS_PER_SECOND):     unitInt = UnitString(MegaBitsPerSecond)
+	case string(MEGABYTES_PER_SECOND):    unitInt = UnitString(MegaBytesPerSecond)
+	case string(GIGAPACKETS_PER_SECOND):  unitInt = UnitString(GigaPacketsPerSecond)
+	case string(GIGABITS_PER_SECOND):     unitInt = UnitString(GigaBitsPerSecond)
+	case string(GIGABYTES_PER_SECOND):    unitInt = UnitString(GigaBytesPerSecond)
+	case string(TERAPACKETS_PER_SECOND):  unitInt = UnitString(TeraPacketsPerSecond)
+	case string(TERABITS_PER_SECOND):     unitInt = UnitString(TeraBitsPerSecond)
+	case string(TERABYTES_PER_SECOND):    unitInt = UnitString(TeraBytesPerSecond)
+	case string(PETAPACKETS_PER_SECOND):  unitInt = UnitString(PetaPacketsPerSecond)
+	case string(PETABITS_PER_SECOND):     unitInt = UnitString(PetaBitsPerSecond)
+	case string(PETABYTES_PER_SECOND):    unitInt = UnitString(PetaBytesPerSecond)
+	case string(EXAPACKETS_PER_SECOND):   unitInt = UnitString(ExaPacketsPerSecond)
+	case string(EXABITS_PER_SECOND):      unitInt = UnitString(ExaBitsPerSecond)
+	case string(EXABYTES_PER_SECOND):     unitInt = UnitString(ExaBytesPerSecond)
+	case string(ZETTAPACKETS_PER_SECOND): unitInt = UnitString(ZettaPacketsPerSecond)
+	case string(ZETTABITS_PER_SECOND):    unitInt = UnitString(ZettaBitsPerSecond)
+	case string(ZETTABYTES_PER_SECOND):   unitInt = UnitString(ZettaBytesPerSecond)
+	}
+	return
+}
+
+// Convert attack-severity to string
+func ConvertAttackSeverityToString(attackSeverity AttackSeverityString) (attackSeverityString string) {
+	switch attackSeverity {
+	case AttackSeverityString(None):    attackSeverityString = string(NONE)
+	case AttackSeverityString(Low):     attackSeverityString = string(LOW)
+	case AttackSeverityString(Medium):  attackSeverityString = string(MEDIUM)
+	case AttackSeverityString(High):    attackSeverityString = string(HIGH)
+	case AttackSeverityString(Unknown): attackSeverityString = string(UNKNOWN)
+	}
+	return
+}
+
+// Convert attack-severity to int
+func ConvertAttackSeverityToInt(attackSeverity string) (attackSeverityInt AttackSeverityString) {
+	switch attackSeverity {
+	case string(NONE):    attackSeverityInt = AttackSeverityString(None)
+	case string(LOW):     attackSeverityInt = AttackSeverityString(Low)
+	case string(MEDIUM):  attackSeverityInt = AttackSeverityString(Medium)
+	case string(HIGH):    attackSeverityInt = AttackSeverityString(High)
+	case string(UNKNOWN): attackSeverityInt = AttackSeverityString(Unknown)
+	}
+	return
+}
+
+// Convert activation-type to string
+func ConvertActivateTypeToString(activationType ActivationTypeString) (activationTypeString string) {
+	switch activationType {
+	case ActivationTypeString(ActivateWhenMitigating): activationTypeString = string(ACTIVATE_WHEN_MITIGATING)
+	case ActivationTypeString(Immediate):              activationTypeString = string(IMMEDIATE)
+	case ActivationTypeString(Deactive):               activationTypeString = string(DEACTIVATE)
+	}
+	return
+}
+
+// Convert activation-type to int
+func ConvertActivateTypeToInt(activationType string) (activationTypeInt ActivationTypeString) {
+	switch activationType {
+	case string(ACTIVATE_WHEN_MITIGATING): activationTypeInt = ActivationTypeString(ActivateWhenMitigating)
+	case string(IMMEDIATE):                activationTypeInt = ActivationTypeString(Immediate)
+	case string(DEACTIVATE):               activationTypeInt = ActivationTypeString(Deactive)
+	}
+	return
+}
+
+// Convert array query type to array string
+func ConvertArrayQueryTypeToArrayString(queryTypes QueryTypeArrayString) (queryTypeStringes []string) {
+	for _, v := range queryTypes {
+		queryStr := ConvertQueryTypeToString(v)
+		queryTypeStringes = append(queryTypeStringes, queryStr)
+	}
+	return
+}
+
+// Convert query type to string
+func ConvertQueryTypeToString(queryType int) (queryTypeStr string) {
+	switch queryType {
+	case 1:  queryTypeStr = string(TARGET_PREFIX)
+	case 2:  queryTypeStr = string(TARGET_PORT)
+	case 3:  queryTypeStr = string(TARGET_PROTOCOL)
+	case 4:  queryTypeStr = string(TARGET_FQDN)
+	case 5:  queryTypeStr = string(TARGET_URI)
+	case 6:  queryTypeStr = string(TARGET_ALIAS)
+	case 7:  queryTypeStr = string(MID)
+	case 8:  queryTypeStr = string(SOURCE_PREFIX)
+	case 9:  queryTypeStr = string(SOURCE_PORT)
+	case 10: queryTypeStr = string(SOURCE_ICMP_TYPE)
+	case 11: queryTypeStr = string(CONTENT)
 	}
 	return
 }

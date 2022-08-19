@@ -1,0 +1,9 @@
+{
+    "session-config-qblock": {
+        "q-block-size": 2,
+        "max-payload": 5,
+        "non-max-retransmit": 4,
+        "non-timeout": 2.00,
+        "non-receive-timeout": 4.00
+    }
+}

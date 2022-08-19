@@ -1,31 +1,65 @@
-#!/bin/sh
+#!/bin/bash
+CA_CERT=../certs/ca-cert.pem
+CLIENT_CERT=../certs/client-cert.pem
+CLIENT_KEY=../certs/client-key.pem
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --ca-cert)
+            CA_CERT=$2
+            shift 2
+            ;;
+        --client-cert)
+            CLIENT_CERT=$2
+            shift 2
+            ;;
+        --client-key)
+            CLIENT_KEY=$2
+            shift 2
+            ;;
+        POST|PUT)
+            METHOD=$1
+            URI_PATH=$2
+            FILE=$3
+            shift 3
+            ;;
+        GET|DELETE)
+            METHOD=$1
+            URI_PATH=$2
+            shift 2
+            ;;
+        *)
+            echo "Unknown option $1"
+            exit 1
+            ;;
+    esac
+done
 
-METHOD=$1
-URI_PATH=$2
-FILE=$3
+if { [ -n "$CA_CERT" ] && ! [ -e "$CA_CERT" ]; }; then
+    echo "$CA_CERT is not existed"
+    exit 1
+fi
+if { [ -n "$CLIENT_CERT" ] && ! [ -e "$CLIENT_CERT" ]; }; then
+    echo "$CLIENT_CERT is not existed"
+    exit 1
+fi
+if { [ -n "$CLIENT_KEY" ] && ! [ -e "$CLIENT_KEY" ]; }; then
+    echo "$CLIENT_KEY is not existed"
+    exit 1
+fi
 
-if [ -z "$METHOD" ]; then
-  echo 'No METHOD parameter.' >&2
-  exit 1
-fi
-if [ -z "$URI_PATH" ]; then
-  echo 'No URI_PATH parameter.' >&2
-  exit 1
-fi
 if { [ -n "$FILE" ] && ! [ -e "$FILE" ]; }; then
-  echo "Input file $FILE is not existed"
-  exit 1
+    echo "$FILE is not existed"
+    exit 1
 fi
-
-CERTS_DIR="`dirname $0`/../../certs"
 
 if [ -n "$FILE" ]; then
 wget \
   -q -S -O - \
+  --content-on-error \
   --no-check-certificate \
-  --ca-certificate="$CERTS_DIR"/ca-cert.pem \
-  --certificate="$CERTS_DIR"/client-cert.pem \
-  --private-key="$CERTS_DIR"/client-key.pem \
+  --ca-certificate=$CA_CERT \
+  --certificate=$CLIENT_CERT \
+  --private-key=$CLIENT_KEY \
   --method="$METHOD" \
   "$URI_PATH" \
   "--body-file=$FILE" \
@@ -33,10 +67,11 @@ wget \
 else
 wget \
   -q -S -O - \
+  --content-on-error \
   --no-check-certificate \
-  --ca-certificate="$CERTS_DIR"/ca-cert.pem \
-  --certificate="$CERTS_DIR"/client-cert.pem \
-  --private-key="$CERTS_DIR"/client-key.pem \
+  --ca-certificate=$CA_CERT \
+  --certificate=$CLIENT_CERT \
+  --private-key=$CLIENT_KEY \
   --method="$METHOD" \
   "$URI_PATH"
 fi

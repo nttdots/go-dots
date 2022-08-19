@@ -35,6 +35,7 @@ func (c *ResourceDiscoveryController) Get(customer *models.Customer, r *http.Req
 	log.Debugf("GET ResourceDiscoveryController")
 
 	contentType := r.Header.Get("Content-Type")
+	isAfterTransaction := false
 
 	if contentType == CONTENT_TYPE_XRD_XML || contentType == "" {
 
@@ -47,7 +48,7 @@ func (c *ResourceDiscoveryController) Get(customer *models.Customer, r *http.Req
 
 		x, err := xml.MarshalIndent(resource, "", " ")
 		if err != nil {
-			return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Can not marshal xml")
+			return ErrorResponse(http.StatusInternalServerError, ErrorTag_Operation_Failed, "Can not marshal xml", isAfterTransaction)
 		}
 
         xmlData := string(x)
@@ -63,9 +64,9 @@ func (c *ResourceDiscoveryController) Get(customer *models.Customer, r *http.Req
 
 	} else if contentType == CONTENT_TYPE_YANG_DATA_JSON {
 		log.Debugf("Content-Type: %+v", CONTENT_TYPE_YANG_DATA_JSON)
-		return ErrorResponse(http.StatusNotImplemented, ErrorTag_Operation_Not_Supported, "yang-data+json is not yet support for this request")
+		return ErrorResponse(http.StatusNotImplemented, ErrorTag_Operation_Not_Supported, "yang-data+json is not yet support for this request", isAfterTransaction)
 
 	}
 
-	return ErrorResponse(http.StatusBadRequest, ErrorTag_Malformed_Message, "Only support xrd+xml for this request")
+	return ErrorResponse(http.StatusBadRequest, ErrorTag_Malformed_Message, "Only support xrd+xml for this request", isAfterTransaction)
 }

@@ -1,44 +1,24 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
-#include <coap2/coap.h>
+#cgo LDFLAGS: -lcoap-3-openssl
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
 import "errors"
 import "unsafe"
 import "strings"
-import "strconv"
 import log "github.com/sirupsen/logrus"
 import cache "github.com/patrickmn/go-cache"
-
 
 // across invocations, sessions are not 'eq'
 type MethodHandler func(*Context, *Resource, *Session, *Pdu, *[]byte, *string, *Pdu)
 
-type EventHandler func(*Context, Event, *Session)
+type EventHandler func(*Session, Event)
 
 type EndPoint struct {
     ptr *C.coap_endpoint_t
-}
-
-// Mitigation map between uri-path (mitigation) and bool (is notify telemetry attributes)
-var mitigationMap = make(map[string]bool)
-
-// Set mitigation map
-func SetMitigationMap(key string, value bool) {
-    mitigationMap[key] = value
-}
-
-// Get mitigation map by key
-func GetMitigationMapByKey(key string) bool {
-    return mitigationMap[key]
-}
-
-// Delete mitigation map by key
-func DeleteMitigationMapByKey(key string) {
-    delete(mitigationMap, key)
 }
 
 type Event int
@@ -47,6 +27,7 @@ const (
     EventSessionConnected    Event = C.COAP_EVENT_DTLS_CONNECTED
     EventSessionRenegotiate  Event = C.COAP_EVENT_DTLS_RENEGOTIATE
     EventSessionError        Event = C.COAP_EVENT_DTLS_ERROR
+    EventPartialBlock        Event = C.COAP_EVENT_PARTIAL_BLOCK //(Q-)BLOCK receive errors
 )
 
 func (context *Context) ContextSetPSK(identity string, key []byte) {
@@ -60,33 +41,36 @@ func (context *Context) ContextSetPSK(identity string, key []byte) {
 }
 
 //export export_method_handler
-func export_method_handler(ctx   *C.coap_context_t,
-                           rsrc  *C.coap_resource_t,
+func export_method_handler(rsrc  *C.coap_resource_t,
                            sess  *C.coap_session_t,
                            req   *C.coap_pdu_t,
-                           tok   *C.coap_string_t,
                            query *C.coap_string_t,
                            resp  *C.coap_pdu_t) {
-
+    ctx := C.coap_session_get_context(sess)
+    if ctx == nil {
+        return
+    }
     context, ok := contexts[ctx]
     if !ok {
         return
     }
-
     resource, ok := resources[rsrc]
     if !ok {
         return
     }
+    blockSize := resource.GetBlockSize()
+    isQBlock2 := resource.IsQBlock2()
     
     // Handle observe : 
     // In case of observation response (or notification), original 'request' from libcoap is NULL
     // In order to handle request with handleGet(), it is necessary to re-create equest
     // First, initialize request from response to re-use some data.
     is_observe := false
-    if req == nil {
+    if resource.IsNotification() {
         is_observe = true
-        req = resp
+        resource.SetIsNotification(false)
     }
+    tok := C.coap_get_token_from_request_pdu(req)
 
     session, ok := sessions[sess]
     if !ok {
@@ -100,50 +84,79 @@ func export_method_handler(ctx   *C.coap_context_t,
 
     // Handle observe: 
     // Set request.uri-path from resource.uri-path (so that it can by-pass uri-path check inside PrefixFilter)
+    var uri []string
+    uri_path := request.PathString()
     if is_observe {
+        uriFilterList := GetUriFilterByKey(uri_path)
+        for _, uriFilter := range uriFilterList {
+            uriQuery := uriFilter
+            uriFilterSplit := strings.Split(uriFilter, "?")
+            if len(uriFilterSplit) > 1 {
+                uriQuery = uriFilterSplit[0]
+            }
+            resourceTmp := context.GetResourceByQuery(&uriQuery)
+            if resourceTmp != nil && resource.IsObserved() {
+                if !strings.Contains(uri_path, "/mid") && !strings.Contains(uri_path, "/tmid") {
+                    resourceTmp.SetIsObserved(false)
+                }
+                resource = resourceTmp
+                uri_path = uriFilter
+                break
+            }
+        }
         request.Code = RequestGet
         request.Options = make([]Option, 0)
-
-        var uri []string
-        tmpUri := strings.Split(*(rsrc.uri_path.toString()), "?")
+        tmpUri := strings.Split(uri_path, "?")
         // Set uri-query and uri-path for handle observe
         if len(tmpUri) > 1 {
             uri = strings.Split(tmpUri[0], "/")
             queries := strings.Split(tmpUri[1], "&")
             uri = append(uri, queries...)
         } else {
-            uri = strings.Split(*(rsrc.uri_path.toString()), "/")
+            uri = strings.Split(uri_path, "/")
         }
         request.SetPath(uri)
+        // If request is observe and resource contains block 2 option, set block 2 for request
+        if blockSize != nil {
+            block := &Block{}
+            block.NUM = 0
+            block.M   = 0
+            block.SZX = *blockSize
+            if isQBlock2 {
+                request.SetOption(OptionQBlock2, uint32(block.ToInt()))
+            } else {
+                request.SetOption(OptionBlock2, uint32(block.ToInt()))
+            }
+            request.fillC(req, nil)
+        }
         session.SetIsNotification(true)
         log.WithField("Request:", request).Debug("Re-create request for handling obervation\n")
     }
-    
+
+    id := ""
+    resourceOneUriPaths := strings.Split(uri_path, "/mid=")
+    if len (resourceOneUriPaths) <= 1 {
+        resourceOneUriPaths = strings.Split(uri_path, "/tmid=")
+    }
+    if len(resourceOneUriPaths) > 1 {
+        id = resourceOneUriPaths[1]
+    }
     token := tok.toBytes()
     queryString := query.toString()
-
-    // Identify the current notification progress is on resource one or resource all
-    isObserveOne := false
-    mid := ""
-    resourceOneUriPaths := strings.Split(*(rsrc.uri_path.toString()), "/mid=")
-    if len(resourceOneUriPaths) > 1 && queryString == nil {
-        isObserveOne = true
-        mid = resourceOneUriPaths[1]
+    if !is_observe && queryString != nil {
+        queryStr := "?" + *queryString
+        id += queryStr
     }
 
     handler, ok := resource.handlers[request.Code]
     if ok {
-        etag, err := request.GetOptionIntegerValue(OptionEtag)
-        if err != nil {
-            log.WithError(err).Warn("Get Etag option value failed.")
-            return
-        }
-        itemKey := strconv.Itoa(etag)
-        if isObserveOne {
-            itemKey = itemKey + mid
-        }
+        itemKey := uri_path
         response := Pdu{}
-        res, isFound := caches.Get(itemKey)
+        var res interface{}
+        isFound := false
+        if caches != nil {
+            res, isFound = caches.Get(itemKey)
+        }
 
         // If data does not exist in cache, add data to cache. Else get data from cache for response body
         if !isFound {
@@ -154,33 +167,31 @@ func export_method_handler(ctx   *C.coap_context_t,
             response.MessageID = request.MessageID
             response.Token = request.Token
         }
-
-        // add observe option value to notification header
-        if is_observe && response.Type != TypeNon {
-            response.SetOption(OptionObserve, rsrc.observe)
+        if is_observe {
+            response.SetPath(uri)
+            resource.IncreaseObserveNumber()
+            response.SetOption(OptionObserve, uint32(resource.GetObserveNumber()))
+        } else {
+            response.SetPath(strings.Split(uri_path, "/"))
         }
-
-        response.fillC(resp)
-        if request.Code == RequestGet && response.Code == ResponseContent && response.Type == TypeNon {
+        response.fillC(resp, nil)
+        if request.Code == RequestGet && response.Code == ResponseContent {
             // handle max-age option
             maxAge, err := response.GetOptionIntegerValue(OptionMaxage)
             if err != nil || maxAge < 0 {
-                maxAge = 0
+                maxAge = -1
             }
             response.RemoveOption(OptionMaxage)
-
-            coapToken := &C.coap_binary_t{}
-            coapToken.s = req.token
-            coapToken.length = C.size_t(len(string(*token)))
-            // If the process is observation, request is nil
-            if is_observe {
-                req = nil
-            }
-            C.coap_add_data_blocked_response(resource.ptr, session.ptr, req, resp, coapToken, C.COAP_MEDIATYPE_APPLICATION_CBOR, C.int(maxAge),
+            qBlock2, _ := request.GetOptionIntegerValue(OptionQBlock2)
+            if qBlock2 >= 0 {
+                C.coap_add_data_large_response(resource.ptr, session.ptr, req, resp, query, C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR, C.int(maxAge),
+                                            C.uint64_t(0), C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])), nil, nil)
+            } else {
+                C.coap_add_data_blocked_response(req, resp, C.uint16_t(C.COAP_MEDIATYPE_APPLICATION_DOTS_CBOR), C.int(maxAge),
                                             C.size_t(len(response.Data)), (*C.uint8_t)(unsafe.Pointer(&response.Data[0])))
+            }
             resPdu,_ := resp.toGo()
-
-            HandleCache(resPdu, response, resource, context, isObserveOne, mid)
+            HandleCache(resPdu, response, resource, context, itemKey)
         }
     }
 }
@@ -192,15 +203,17 @@ func newEvent (ev C.coap_event_t) Event {
     case C.COAP_EVENT_DTLS_CONNECTED:   return EventSessionConnected
     case C.COAP_EVENT_DTLS_RENEGOTIATE: return EventSessionRenegotiate
     case C.COAP_EVENT_DTLS_ERROR:       return EventSessionError
+    case C.COAP_EVENT_PARTIAL_BLOCK:    return EventPartialBlock
     default: return -1
     }
 }
 
 //export export_event_handler
-func export_event_handler(ctx *C.coap_context_t,
-	event C.coap_event_t,
-	sess *C.coap_session_t) {
-
+func export_event_handler(sess *C.coap_session_t, event C.coap_event_t) {
+    ctx := C.coap_session_get_context(sess)
+    if ctx == nil {
+        return
+    }
     context, ok := contexts[ctx]
 	if !ok {
 		return
@@ -213,13 +226,13 @@ func export_event_handler(ctx *C.coap_context_t,
     
     // Run event handler when session is connected or disconnected
 	if context.eventHandler != nil {
-		context.eventHandler(context, newEvent(event), session)
+		context.eventHandler(session, newEvent(event))
 	}
 }
 
 func (resource *Resource) RegisterHandler(method Code, handler MethodHandler) {
     resource.handlers[method] = handler
-    C.coap_register_handler(resource.ptr, C.uchar(method), C.coap_method_handler_t(C.method_handler))
+    C.coap_register_handler(resource.ptr, C.coap_request_t(method), C.coap_method_handler_t(C.method_handler))
 }
 
 // Register event handler to libcoap
@@ -263,33 +276,27 @@ func SetBlockOptionFirstRequest(request *Pdu) {
  * Handle delete item if block is last block
  * Handle add item if item does not exist in cache
  */
-func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, isObserveOne bool, mid string) error {
+func HandleCache(resp *Pdu, response Pdu, resource *Resource, context *Context, keyItem string) error {
     blockValue,_ := resp.GetOptionIntegerValue(OptionBlock2)
     block := IntToBlock(int(blockValue))
-    etag, err := resp.GetOptionIntegerValue(OptionEtag)
-    if err != nil { return err }
-
-    keyItem := strconv.Itoa(etag)
-    if isObserveOne {
-        keyItem = keyItem + mid
-    }
-
     // Delete block in cache when block is last block
     // Set isBlockwiseInProgress = false as one of conditions to remove resource if it expired
     if block != nil && block.NUM > 0 && block.M == LAST_BLOCK {
-        log.Debugf("Delete item cache with key = %+v", keyItem)
-        caches.Delete(keyItem)
+        if caches != nil {
+            log.Debugf("Delete item cache with key = %+v", keyItem)
+            caches.Delete(keyItem)
+        }
         resource.isBlockwiseInProgress = false
     }
 
     // Add item with key if it does not exists
     // Set isBlockwiseInProgress = true to not remove resource in case it expired because block-wise transfer is in progress
     if block != nil && block.NUM == 0 && block.M == MORE_BLOCK {
-        log.Debug("Create item cache with key = ", keyItem)
-        caches.Set(keyItem, response, cache.DefaultExpiration)
-        if isObserveOne {
-            resource.isBlockwiseInProgress = true
+        if caches != nil {
+            log.Debug("Create item cache with key = ", keyItem)
+            caches.Set(keyItem, response, cache.DefaultExpiration)
         }
+        resource.isBlockwiseInProgress = true
     }
     return nil
 }

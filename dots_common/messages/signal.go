@@ -1,7 +1,9 @@
 package messages
 
-import "fmt"
-import "github.com/shopspring/decimal"
+import (
+	"fmt"
+	"github.com/shopspring/decimal"
+)
 
 type PortRange struct {
 	_struct   bool `codec:",uint"` //encode struct with "unsigned integer" keys
@@ -16,9 +18,9 @@ type ICMPTypeRange struct {
 }
 
 type ACL struct {
-	_struct        bool   `codec:",uint"` //encode struct with "unsigned integer" keys
-	AclName        string `json:"ietf-dots-signal-control:acl-name" codec:"54,omitempty"`
-	ActivationType *int   `json:"ietf-dots-signal-control:activation-type" codec:"52,omitempty"`
+	_struct        bool                  `codec:",uint"` //encode struct with "unsigned integer" keys
+	AclName        string                `json:"acl-name" codec:"23,omitempty"`
+	ActivationType *ActivationTypeString `json:"activation-type" codec:"52,omitempty"`
 }
 
 type MitigationScope struct {
@@ -61,9 +63,9 @@ type Scope struct {
 	// If false, mitigation is triggered only if the signal channel is lost. This is an optional attribute.
 	TriggerMitigation *bool `json:"trigger-mitigation" codec:"45,omitempty"`
 	// telemetry total attack traffic
-	TotalAttackTraffic []TelemetryTraffic `json:"ietf-dots-telemetry:total-attack-traffic" codec:"32885,omitempty"`
+	TotalAttackTraffic []Traffic `json:"ietf-dots-telemetry:total-attack-traffic" codec:"205,omitempty"`
 	// telemetry attack detail
-	AttackDetail []TelemetryAttackDetail `json:"ietf-dots-telemetry:attack-detail" codec:"32896,omitempty"`
+	AttackDetail []TelemetryAttackDetail `json:"ietf-dots-telemetry:attack-detail" codec:"207,omitempty"`
 }
 
 type MitigationRequest struct {
@@ -71,78 +73,39 @@ type MitigationRequest struct {
 	MitigationScope MitigationScope `json:"ietf-dots-signal-channel:mitigation-scope" codec:"1"`
 }
 
-type TelemetryTraffic struct {
-	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit            *int    `json:"ietf-dots-telemetry:unit" codec:"32880,omitempty"`
-	Protocol        *uint8  `json:"ietf-dots-telemetry:protocol" codec:"32868,omitempty"`
-	LowPercentileG  *uint64 `json:"ietf-dots-telemetry:low-percentile-g" codec:"32881,omitempty"`
-	MidPercentileG  *uint64 `json:"ietf-dots-telemetry:mid-percentile-g" codec:"32882,omitempty"`
-	HighPercentileG *uint64 `json:"ietf-dots-telemetry:high-percentile-g" codec:"32883,omitempty"`
-	PeakG           *uint64 `json:"ietf-dots-telemetry:peak-g" codec:"32884,omitempty"`
-}
-
 type TelemetryAttackDetail struct {
-	_struct        bool                  `codec:",uint"` //encode struct with "unsigned integer" keys
-	VendorId       *uint32               `json:"ietf-dots-telemetry:vendor-id" codec:"32917,omitempty"` // CBOR key temp
-	AttackId       *uint32               `json:"ietf-dots-telemetry:attack-id" codec:"32898,omitempty"`
-	AttackName     *string               `json:"ietf-dots-telemetry:attack-name" codec:"32899,omitempty"`
-	AttackSeverity *int                  `json:"ietf-dots-telemetry:attack-severity" codec:"32900,omitempty"`
-	StartTime      *uint64               `json:"ietf-dots-telemetry:start-time" codec:"32901,omitempty"`
-	EndTime        *uint64               `json:"ietf-dots-telemetry:end-time" codec:"32902,omitempty"`
-	SourceCount    *TelemetrySourceCount `json:"ietf-dots-telemetry:source-count" codec:"32903,omitempty"`
-	TopTalKer      *TelemetryTopTalker   `json:"ietf-dots-telemetry:top-talker" codec:"32904,omitempty"`
-}
-
-type TelemetrySourceCount struct{
-	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowPercentileG  *uint64 `json:"ietf-dots-telemetry:low-percentile-g" codec:"32881,omitempty"`
-	MidPercentileG  *uint64 `json:"ietf-dots-telemetry:mid-percentile-g" codec:"32882,omitempty"`
-	HighPercentileG *uint64 `json:"ietf-dots-telemetry:high-percentile-g" codec:"32883,omitempty"`
-	PeakG           *uint64 `json:"ietf-dots-telemetry:peak-g" codec:"32884,omitempty"`
+	_struct           bool                      `codec:",uint"` //encode struct with "unsigned integer" keys
+	VendorId          *uint32                   `json:"vendor-id" codec:"202,omitempty"`
+	AttackId          *uint32                   `json:"attack-id" codec:"164,omitempty"`
+	AttackDescription *string                   `json:"attack-description" codec:"165,omitempty"`
+	AttackSeverity    *AttackSeverityString     `json:"attack-severity" codec:"166,omitempty"`
+	StartTime         *Uint64String             `json:"start-time" codec:"167,omitempty"`
+	EndTime           *Uint64String             `json:"end-time" codec:"168,omitempty"`
+	SourceCount       *PercentilePeakAndCurrent `json:"source-count" codec:"169,omitempty"`
+	TopTalKer         *TelemetryTopTalker       `json:"top-talker" codec:"170,omitempty"`
 }
 
 type TelemetryTopTalker struct {
 	_struct bool              `codec:",uint"` //encode struct with "unsigned integer" keys
-	Talker  []TelemetryTalker `json:"ietf-dots-telemetry:talker" codec:"32906,omitempty"`
+	Talker  []TelemetryTalker `json:"talker" codec:"184,omitempty"`
 }
 
 type TelemetryTalker struct {
 	_struct               bool                            `codec:",uint"` //encode struct with "unsigned integer" keys
-	SpoofedStatus         *bool                           `json:"ietf-dots-telemetry:spoofed-status" codec:"32905,omitempty"`
-	SourcePrefix          *string                         `json:"ietf-dots-telemetry:source-prefix" codec:"32907,omitempty"`
-	SourcePortRange       []TelemetrySourcePortRange      `json:"ietf-dots-telemetry:source-port-range" codec:"32908,omitempty"`
-	SourceIcmpTypeRange   []TelemetrySourceICMPTypeRange  `json:"ietf-dots-telemetry:source-icmp-type-range" codec:"32911,omitempty"`
-	TotalAttackTraffic    []TelemetryTraffic              `json:"ietf-dots-telemetry:total-attack-traffic" codec:"32885,omitempty"`
-	TotalAttackConnection *TelemetryTotalAttackConnection `json:"ietf-dots-telemetry:total-attack-connection" codec:"32886,omitempty"`
+	SpoofedStatus         *bool                           `json:"spoofed-status" codec:"171,omitempty"`
+	SourcePrefix          *string                         `json:"source-prefix" codec:"185,omitempty"`
+	SourcePortRange       []PortRange                     `json:"source-port-range" codec:"187,omitempty"`
+	SourceIcmpTypeRange   []ICMPTypeRange                 `json:"source-icmp-type-range" codec:"188,omitempty"`
+	TotalAttackTraffic    []Traffic                       `json:"total-attack-traffic" codec:"144,omitempty"`
+	TotalAttackConnection *TelemetryTotalAttackConnection `json:"total-attack-connection" codec:"157,omitempty"`
 }
-
 type TelemetryTotalAttackConnection struct {
-	_struct         bool                           `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowPercentileC  *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:low-percentile-c" codec:"32887,omitempty"`
-	MidPercentileC  *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:mid-percentile-c" codec:"32888,omitempty"`
-	HighPercentileC *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:high-percentile-c" codec:"32889,omitempty"`
-	PeakC           *TelemetryConnectionPercentile `json:"ietf-dots-telemetry:peak-c" codec:"32890,omitempty"`
-}
-
-type TelemetryConnectionPercentile struct {
-	_struct          bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Connection       *uint64 `json:"ietf-dots-telemetry:connection" codec:"32891,omitempty"`
-	Embryonic        *uint64 `json:"ietf-dots-telemetry:embryonic" codec:"32892,omitempty"`
-	ConnectionPs     *uint64 `json:"ietf-dots-telemetry:connection-ps" codec:"32893,omitempty"`
-	RequestPs        *uint64 `json:"ietf-dots-telemetry:request-ps" codec:"32894,omitempty"`
-	PartialRequestPs *uint64 `json:"ietf-dots-telemetry:partial-request-ps" codec:"32895,omitempty"`
-}
-
-type TelemetrySourcePortRange struct {
-	_struct   bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowerPort *int `json:"ietf-dots-telemetry:lower-port" codec:"32909,omitempty"`
-	UpperPort *int `json:"ietf-dots-telemetry:upper-port" codec:"32910,omitempty"`
-}
-
-type TelemetrySourceICMPTypeRange struct {
-	_struct   bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowerType *int `json:"ietf-dots-telemetry:lower-type" codec:"32912,omitempty"`
-	UpperType *int `json:"ietf-dots-telemetry:upper-type" codec:"32913,omitempty"`
+	_struct         bool                      `codec:",uint"` //encode struct with "unsigned integer" keys
+	ConnectionC     *PercentilePeakAndCurrent `json:"connection-c" codec:"158,omitempty"`
+	EmbryonicC      *PercentilePeakAndCurrent `json:"embryonic-c" codec:"159,omitempty"`
+	ConnectionPsC   *PercentilePeakAndCurrent `json:"connection-ps-c" codec:"160,omitempty"`
+	RequestPsC      *PercentilePeakAndCurrent `json:"request-ps-c" codec:"161,omitempty"`
+	PartialRequestC *PercentilePeakAndCurrent `json:"partial-request-c" codec:"172,omitempty"`
 }
 
 /*
@@ -266,9 +229,9 @@ func (m *MitigationRequest) String() (result string) {
 		if scope.AclList != nil {
 			for k, v := range scope.AclList {
 				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "ietf-dots-signal-control:acl-list", k+1)
-				result += fmt.Sprintf("%s\"%s\": %s\n", spaces9, "ietf-dots-signal-control:acl-name", v.AclName)
+				result += fmt.Sprintf("%s\"%s\": %s\n", spaces9, "acl-name", v.AclName)
 				if v.ActivationType != nil {
-					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "ietf-dots-signal-control:activation-type", *v.ActivationType)
+					result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "activation-type", *v.ActivationType)
 				}
 			}
 		}
@@ -300,8 +263,8 @@ type SignalConfigRequest struct {
 
 type SignalConfigs struct {
 	_struct          bool         `codec:",uint"` //encode struct with "unsigned integer" keys
-	MitigatingConfig SignalConfig `json:"mitigating-config" codec:"32"`
-	IdleConfig       SignalConfig `json:"idle-config"       codec:"44"`
+	MitigatingConfig SignalConfig `json:"mitigating-config" codec:"32,omitempty"`
+	IdleConfig       SignalConfig `json:"idle-config"       codec:"44,omitempty"`
 }
 
 type IntCurrent struct {
@@ -333,6 +296,13 @@ type SignalConfig struct {
 	// Random factor used to influence the timing of retransmissions (referred to as ACK_RANDOM_FACTOR parameter in
 	// CoAP).  This is an optional attribute.
 	AckRandomFactor DecimalCurrent `json:"ack-random-factor" codec:"40,omitempty"`
+	// The parameters in draft-ietf-dots-robust-blocks
+	MaxPayload        IntCurrent     `json:"ietf-dots-robust-trans:max-payloads" codec:"32776,omitempty"`
+	NonMaxRetransmit  IntCurrent     `json:"ietf-dots-robust-trans:non-max-retransmit" codec:"32777,omitempty"`
+	NonTimeout        DecimalCurrent `json:"ietf-dots-robust-trans:non-timeout" codec:"32778,omitempty"`
+	NonReceiveTimeout DecimalCurrent `json:"ietf-dots-robust-trans:non-receive-timeout" codec:"32779,omitempty"`
+	NonProbingWait    DecimalCurrent `json:"ietf-dots-robust-trans:non-probing-wait" codec:"32780,omitempty"`
+	NonPartialWait    DecimalCurrent `json:"ietf-dots-robust-trans:non-partial-wait" codec:"32781,omitempty"`
 }
 
 type SignalChannelRequest struct {
@@ -344,53 +314,113 @@ type SignalChannelRequest struct {
  */
 func (m *SignalConfigRequest) String() (result string) {
 	var current_float float64
+	space3 := "   "
+	space6 := space3 + space3
+	space9 := space6 + space3
 	result = "\n \"ietf-dots-signal-channel:signal-config\":\n"
-	result += fmt.Sprintf("   \"%s\":\n", "mitigating-config")
-	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
+	result += fmt.Sprintf("%s\"%s\":\n", space3, "mitigating-config")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "heartbeat-interval")
 	if m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.HeartbeatInterval.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "missing-hb-allowed")
 	if m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.MissingHbAllowed.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "max-retransmit")
 	if m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.MaxRetransmit.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-timeout")
 	if m.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.MitigatingConfig.AckTimeout.CurrentValue.Round(2).Float64()
-		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-random-factor")
 	if m.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.MitigatingConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
-		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:max-payloads")
+	if m.SignalConfigs.MitigatingConfig.MaxPayload.CurrentValue != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.MaxPayload.CurrentValue)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-max-retransmit")
+	if m.SignalConfigs.MitigatingConfig.NonMaxRetransmit.CurrentValue != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.MitigatingConfig.NonMaxRetransmit.CurrentValue)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-timeout")
+	if m.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.NonTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-receive-timeout")
+	if m.SignalConfigs.MitigatingConfig.NonReceiveTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.NonReceiveTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-probing-wait")
+	if m.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.NonProbingWait.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-partial-wait")
+	if m.SignalConfigs.MitigatingConfig.NonPartialWait.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.MitigatingConfig.NonPartialWait.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
 
-	result += fmt.Sprintf("   \"%s\":\n", "idle-config")
-	result += fmt.Sprintf("     \"%s\":\n", "heartbeat-interval")
+	result += fmt.Sprintf("%s\"%s\":\n", space3, "idle-config")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "heartbeat-interval")
 	if m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.HeartbeatInterval.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "missing-hb-allowed")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "missing-hb-allowed")
 	if m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.MissingHbAllowed.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "max-retransmit")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "max-retransmit")
 	if m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue != nil {
-		result += fmt.Sprintf("       \"%s\": %d\n", "current-value", *m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue)
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.MaxRetransmit.CurrentValue)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "ack-timeout")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-timeout")
 	if m.SignalConfigs.IdleConfig.AckTimeout.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.IdleConfig.AckTimeout.CurrentValue.Round(2).Float64()
-		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
-	result += fmt.Sprintf("     \"%s\":\n", "ack-random-factor")
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ack-random-factor")
 	if m.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue != nil {
 		current_float, _ = m.SignalConfigs.IdleConfig.AckRandomFactor.CurrentValue.Round(2).Float64()
-		result += fmt.Sprintf("       \"%s\": %f\n", "current-value-decimal", current_float)
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:max-payloads")
+	if m.SignalConfigs.IdleConfig.MaxPayload.CurrentValue != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.MaxPayload.CurrentValue)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-max-retransmit")
+	if m.SignalConfigs.IdleConfig.NonMaxRetransmit.CurrentValue != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", space9, "current-value", *m.SignalConfigs.IdleConfig.NonMaxRetransmit.CurrentValue)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-timeout")
+	if m.SignalConfigs.IdleConfig.NonTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.NonTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-receive-timeout")
+	if m.SignalConfigs.IdleConfig.NonReceiveTimeout.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.NonReceiveTimeout.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-probing-wait")
+	if m.SignalConfigs.IdleConfig.NonProbingWait.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.NonProbingWait.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
+	}
+	result += fmt.Sprintf("%s\"%s\":\n", space6, "ietf-dots-robust-trans:non-partial-wait")
+	if m.SignalConfigs.IdleConfig.NonPartialWait.CurrentValue != nil {
+		current_float, _ = m.SignalConfigs.IdleConfig.NonPartialWait.CurrentValue.Round(2).Float64()
+		result += fmt.Sprintf("%s\"%s\": %f\n", space9, "current-value-decimal", current_float)
 	}
 	return
 }
@@ -418,127 +448,130 @@ func (hb *HeartBeatRequest) String() (result string) {
 
 type TelemetrySetupRequest struct {
 	_struct        bool           `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetrySetup TelemetrySetup `json:"ietf-dots-telemetry:telemetry-setup" codec:"32878,omitempty"`
+	TelemetrySetup TelemetrySetup `json:"ietf-dots-telemetry:telemetry-setup" codec:"203,omitempty"`
 }
 
 type TelemetrySetup struct {
-	_struct   bool        `codec:",uint"`                            //encode struct with "unsigned integer" keys
-	Telemetry []Telemetry `json:"telemetry" codec:"32802,omitempty"`
+	_struct   bool        `codec:",uint"` //encode struct with "unsigned integer" keys
+	Telemetry []Telemetry `json:"telemetry" codec:"129,omitempty"`
 }
 
 type Telemetry struct {
 	_struct                       bool                           `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetryConfigurationCurrent *TelemetryConfigurationCurrent `json:"current-config" codec:"32850,omitempty"`
-	TotalPipeCapacity             []TotalPipeCapacity            `json:"total-pipe-capacity" codec:"32809,omitempty"`
-	Baseline                      []Baseline                     `json:"baseline" codec:"32849,omitempty"`
+	TelemetryConfigurationCurrent *TelemetryConfigurationCurrent `json:"current-config" codec:"175,omitempty"`
+	TotalPipeCapacity             []TotalPipeCapacity            `json:"total-pipe-capacity" codec:"136,omitempty"`
+	Baseline                      []Baseline                     `json:"baseline" codec:"174,omitempty"`
 }
 type TelemetryConfigurationCurrent struct {
-	_struct                   bool             `codec:",uint"`                                       //encode struct with "unsigned integer" keys
-	MeasurementInterval       *int             `json:"measurement-interval" codec:"32857,omitempty"`
-	MeasurementSample         *int             `json:"measurement-sample" codec:"32858,omitempty"`
-	LowPercentile             *decimal.Decimal `json:"low-percentile" codec:"32803,omitempty"`
-	MidPercentile             *decimal.Decimal `json:"mid-percentile" codec:"32804,omitempty"`
-	HighPercentile            *decimal.Decimal `json:"high-percentile" codec:"32805,omitempty"`
-	UnitConfigList            []UnitConfig     `json:"unit-config" codec:"32806,omitempty"`
-	ServerOriginatedTelemetry *bool            `json:"server-originated-telemetry" codec:"32854,omitempty"`
-	TelemetryNotifyInterval   *int             `json:"telemetry-notify-interval" codec:"32855,omitempty"`
+	_struct                   bool             `codec:",uint"` //encode struct with "unsigned integer" keys
+	MeasurementInterval       *IntervalString  `json:"measurement-interval" codec:"182,omitempty"`
+	MeasurementSample         *SampleString    `json:"measurement-sample" codec:"183,omitempty"`
+	LowPercentile             *decimal.Decimal `json:"low-percentile" codec:"130,omitempty"`
+	MidPercentile             *decimal.Decimal `json:"mid-percentile" codec:"131,omitempty"`
+	HighPercentile            *decimal.Decimal `json:"high-percentile" codec:"132,omitempty"`
+	UnitConfigList            []UnitConfig     `json:"unit-config" codec:"133,omitempty"`
+	ServerOriginatedTelemetry *bool            `json:"server-originated-telemetry" codec:"179,omitempty"`
+	TelemetryNotifyInterval   *int             `json:"telemetry-notify-interval" codec:"180,omitempty"`
 }
 
 type UnitConfig struct {
-	_struct    bool  `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit       *int  `json:"unit" codec:"32807,omitempty"`
-	UnitStatus *bool `json:"unit-status" codec:"32808,omitempty"`
+	_struct    bool        `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit       *UnitString `json:"unit" codec:"134,omitempty"`
+	UnitStatus *bool       `json:"unit-status" codec:"135,omitempty"`
 }
 
 type TotalPipeCapacity struct {
-	_struct  bool    `codec:",uint"`                           //encode struct with "unsigned integer" keys
-	LinkId   *string `json:"link-id" codec:"32810,omitempty"`
-	Capacity *int    `json:"capacity" codec:"32867,omitempty"`
-	Unit     *int    `json:"unit" codec:"32807,omitempty"`
+	_struct  bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	LinkId   *string       `json:"link-id" codec:"137,omitempty"`
+	Capacity *Uint64String `json:"capacity" codec:"190,omitempty"`
+	Unit     *UnitString   `json:"unit" codec:"134,omitempty"`
 }
 
 type Baseline struct {
 	_struct                        bool                             `codec:",uint"` //encode struct with "unsigned integer" keys
-	Id                             *int                             `json:"id" codec:"32836,omitempty"`
+	Id                             *int                             `json:"id" codec:"163,omitempty"`
 	TargetPrefix                   []string                         `json:"target-prefix" codec:"6,omitempty"`
 	TargetPortRange                []PortRange                      `json:"target-port-range" codec:"7,omitempty"`
 	TargetProtocol                 []int                            `json:"target-protocol" codec:"10,omitempty"`
 	TargetFQDN                     []string                         `json:"target-fqdn" codec:"11,omitempty"`
 	TargetURI                      []string                         `json:"target-uri" codec:"12,omitempty"`
 	AliasName                      []string                         `json:"alias-name" codec:"13,omitempty"`
-	TotalTrafficNormal             []Traffic                        `json:"total-traffic-normal" codec:"32812,omitempty"`
-	TotalTrafficNormalPerProtocol  []TrafficPerProtocol             `json:"total-traffic-normal-per-protocol" codec:"32869,omitempty"`
-	TotalTrafficNormalPerPort      []TrafficPerPort                 `json:"total-traffic-normal-per-port" codec:"32870,omitempty"`
-	TotalConnectionCapacity        []TotalConnectionCapacity        `json:"total-connection-capacity" codec:"32819,omitempty"`
-	TotalConnectionCapacityPerPort []TotalConnectionCapacityPerPort `json:"total-connection-capacity-per-port" codec:"32871,omitempty"`
+	TotalTrafficNormal             []Traffic                        `json:"total-traffic-normal" codec:"139,omitempty"`
+	TotalTrafficNormalPerProtocol  []TrafficPerProtocol             `json:"total-traffic-normal-per-protocol" codec:"192,omitempty"`
+	TotalTrafficNormalPerPort      []TrafficPerPort                 `json:"total-traffic-normal-per-port" codec:"193,omitempty"`
+	TotalConnectionCapacity        []TotalConnectionCapacity        `json:"total-connection-capacity" codec:"146,omitempty"`
+	TotalConnectionCapacityPerPort []TotalConnectionCapacityPerPort `json:"total-connection-capacity-per-port" codec:"194,omitempty"`
 }
 
 type Traffic struct {
-	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit            *int    `json:"unit" codec:"32807,omitempty"`
-	LowPercentileG  *uint64 `json:"low-percentile-g" codec:"32813,omitempty"`
-	MidPercentileG  *uint64 `json:"mid-percentile-g" codec:"32814,omitempty"`
-	HighPercentileG *uint64 `json:"high-percentile-g" codec:"32815,omitempty"`
-	PeakG           *uint64 `json:"peak-g" codec:"32816,omitempty"`
+	_struct         bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit            *UnitString   `json:"unit" codec:"134,omitempty"`
+	LowPercentileG  *Uint64String `json:"low-percentile-g" codec:"140,omitempty"`
+	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"141,omitempty"`
+	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"142,omitempty"`
+	PeakG           *Uint64String `json:"peak-g" codec:"143,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"209,omitempty"`
 }
 
 type TrafficPerProtocol struct {
-	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit            *int    `json:"unit" codec:"32807,omitempty"`
-	Protocol        *uint8  `json:"protocol" codec:"32868,omitempty"`
-	LowPercentileG  *uint64 `json:"low-percentile-g" codec:"32813,omitempty"`
-	MidPercentileG  *uint64 `json:"mid-percentile-g" codec:"32814,omitempty"`
-	HighPercentileG *uint64 `json:"high-percentile-g" codec:"32815,omitempty"`
-	PeakG           *uint64 `json:"peak-g" codec:"32816,omitempty"`
+	_struct         bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit            *UnitString   `json:"unit" codec:"134,omitempty"`
+	Protocol        *uint8        `json:"protocol" codec:"191,omitempty"`
+	LowPercentileG  *Uint64String `json:"low-percentile-g" codec:"140,omitempty"`
+	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"141,omitempty"`
+	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"142,omitempty"`
+	PeakG           *Uint64String `json:"peak-g" codec:"143,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"209,omitempty"`
 }
 
 type TrafficPerPort struct {
-	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Unit            *int    `json:"unit" codec:"32807,omitempty"`
-	Port            *int    `json:"port" codec:"32877,omitempty"`
-	LowPercentileG  *uint64 `json:"low-percentile-g" codec:"32813,omitempty"`
-	MidPercentileG  *uint64 `json:"mid-percentile-g" codec:"32814,omitempty"`
-	HighPercentileG *uint64 `json:"high-percentile-g" codec:"32815,omitempty"`
-	PeakG           *uint64 `json:"peak-g" codec:"32816,omitempty"`
+	_struct         bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Unit            *UnitString   `json:"unit" codec:"134,omitempty"`
+	Port            *int          `json:"port" codec:"200,omitempty"`
+	LowPercentileG  *Uint64String `json:"low-percentile-g" codec:"140,omitempty"`
+	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"141,omitempty"`
+	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"142,omitempty"`
+	PeakG           *Uint64String `json:"peak-g" codec:"143,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"209,omitempty"`
 }
 type TotalConnectionCapacity struct {
-	_struct                bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol               *uint8  `json:"protocol" codec:"32868,omitempty"`
-	Connection             *uint64 `json:"connection" codec:"32820,omitempty"`
-	ConnectionClient       *uint64 `json:"connection-client" codec:"32821,omitempty"`
-	Embryonic              *uint64 `json:"embryonic" codec:"32822,omitempty"`
-	EmbryonicClient        *uint64 `json:"embryonic-client" codec:"32823,omitempty"`
-	ConnectionPs           *uint64 `json:"connection-ps" codec:"32824,omitempty"`
-	ConnectionClientPs     *uint64 `json:"connection-client-ps" codec:"32825,omitempty"`
-	RequestPs              *uint64 `json:"request-ps" codec:"32826,omitempty"`
-	RequestClientPs        *uint64 `json:"request-client-ps" codec:"32827,omitempty"`
-	PartialRequestPs       *uint64 `json:"partial-request-ps" codec:"32828,omitempty"`
-	PartialRequestClientPs *uint64 `json:"partial-request-client-ps" codec:"32829,omitempty"`
+	_struct                 bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol                *uint8        `json:"protocol" codec:"191,omitempty"`
+	Connection              *Uint64String `json:"connection" codec:"147,omitempty"`
+	ConnectionClient        *Uint64String `json:"connection-client" codec:"148,omitempty"`
+	Embryonic               *Uint64String `json:"embryonic" codec:"149,omitempty"`
+	EmbryonicClient         *Uint64String `json:"embryonic-client" codec:"150,omitempty"`
+	ConnectionPs            *Uint64String `json:"connection-ps" codec:"151,omitempty"`
+	ConnectionClientPs      *Uint64String `json:"connection-client-ps" codec:"152,omitempty"`
+	RequestPs               *Uint64String `json:"request-ps" codec:"153,omitempty"`
+	RequestClientPs         *Uint64String `json:"request-client-ps" codec:"154,omitempty"`
+	PartialRequestMax       *Uint64String `json:"partial-request-max" codec:"155,omitempty"`
+	PartialRequestClientMax *Uint64String `json:"partial-request-client-max" codec:"156,omitempty"`
 }
 
 type TotalConnectionCapacityPerPort struct {
-	_struct                bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol               *uint8  `json:"protocol" codec:"32868,omitempty"`
-	Port                   *int    `json:"port" codec:"32877,omitempty"`
-	Connection             *uint64 `json:"connection" codec:"32820,omitempty"`
-	ConnectionClient       *uint64 `json:"connection-client" codec:"32821,omitempty"`
-	Embryonic              *uint64 `json:"embryonic" codec:"32822,omitempty"`
-	EmbryonicClient        *uint64 `json:"embryonic-client" codec:"32823,omitempty"`
-	ConnectionPs           *uint64 `json:"connection-ps" codec:"32824,omitempty"`
-	ConnectionClientPs     *uint64 `json:"connection-client-ps" codec:"32825,omitempty"`
-	RequestPs              *uint64 `json:"request-ps" codec:"32826,omitempty"`
-	RequestClientPs        *uint64 `json:"request-client-ps" codec:"32827,omitempty"`
-	PartialRequestPs       *uint64 `json:"partial-request-ps" codec:"32828,omitempty"`
-	PartialRequestClientPs *uint64 `json:"partial-request-client-ps" codec:"32829,omitempty"`
+	_struct                 bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol                *uint8        `json:"protocol" codec:"191,omitempty"`
+	Port                    *int          `json:"port" codec:"200,omitempty"`
+	Connection              *Uint64String `json:"connection" codec:"147,omitempty"`
+	ConnectionClient        *Uint64String `json:"connection-client" codec:"148,omitempty"`
+	Embryonic               *Uint64String `json:"embryonic" codec:"149,omitempty"`
+	EmbryonicClient         *Uint64String `json:"embryonic-client" codec:"150,omitempty"`
+	ConnectionPs            *Uint64String `json:"connection-ps" codec:"151,omitempty"`
+	ConnectionClientPs      *Uint64String `json:"connection-client-ps" codec:"152,omitempty"`
+	RequestPs               *Uint64String `json:"request-ps" codec:"153,omitempty"`
+	RequestClientPs         *Uint64String `json:"request-client-ps" codec:"154,omitempty"`
+	PartialRequestMax       *Uint64String `json:"partial-request-max" codec:"155,omitempty"`
+	PartialRequestClientMax *Uint64String `json:"partial-request-client-max" codec:"156,omitempty"`
 }
 
 /*
  * Convert TelemetrySetupConfigurationRequest to strings
  */
- func (ts *TelemetrySetupRequest) String() (result string) {
-	spaces3  := "   "
-	spaces6  := spaces3 + spaces3
-	spaces9  := spaces6 + spaces3
+func (ts *TelemetrySetupRequest) String() (result string) {
+	spaces3 := "   "
+	spaces6 := spaces3 + spaces3
+	spaces9 := spaces6 + spaces3
 	spaces12 := spaces9 + spaces3
 	result = "\n \"ietf-dots-telemetry:telemetry-setup\":\n"
 	for key, t := range ts.TelemetrySetup.Telemetry {
@@ -574,7 +607,7 @@ type TotalConnectionCapacityPerPort struct {
 				}
 			}
 			if tConfig.ServerOriginatedTelemetry != nil {
-				result += fmt.Sprintf("%s\"%s\": %t\n", spaces9, "server-initiated-telemetry", *tConfig.ServerOriginatedTelemetry)
+				result += fmt.Sprintf("%s\"%s\": %t\n", spaces9, "server-originated-telemetry", *tConfig.ServerOriginatedTelemetry)
 			}
 			if tConfig.TelemetryNotifyInterval != nil {
 				result += fmt.Sprintf("%s\"%s\": %d\n", spaces9, "telemetry-notify-interval", *tConfig.TelemetryNotifyInterval)
@@ -607,7 +640,7 @@ type TotalConnectionCapacityPerPort struct {
 				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces9, "total-traffic-normal-per-protocol", kNormalPerProtocol+1)
 				result += vNormalPerProtocol.String(spaces9)
 			}
-			for kNormalPerPort, vNormalPerPort:= range v.TotalTrafficNormalPerPort {
+			for kNormalPerPort, vNormalPerPort := range v.TotalTrafficNormalPerPort {
 				result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces9, "total-traffic-normal-per-port", kNormalPerPort+1)
 				result += vNormalPerPort.String(spaces9)
 			}
@@ -625,7 +658,7 @@ type TotalConnectionCapacityPerPort struct {
 }
 
 // Convert TagetsRequest to string
-func ConvertTargetsRequestToStrings(prefixs []string, portRanges []PortRange, protocols []int, fqdns []string, uris []string,  aliases []string, spacesn string) (result string) {
+func ConvertTargetsRequestToStrings(prefixs []string, portRanges []PortRange, protocols []int, fqdns []string, uris []string, aliases []string, spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
 	for k, v := range prefixs {
@@ -674,6 +707,9 @@ func (traffic Traffic) String(spacesn string) (result string) {
 	if traffic.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
 	}
+	if traffic.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *traffic.CurrentG)
+	}
 	return
 }
 
@@ -699,6 +735,9 @@ func (traffic TrafficPerProtocol) String(spacesn string) (result string) {
 	if traffic.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
 	}
+	if traffic.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *traffic.CurrentG)
+	}
 	return
 }
 
@@ -723,6 +762,9 @@ func (traffic TrafficPerPort) String(spacesn string) (result string) {
 	}
 	if traffic.PeakG != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *traffic.PeakG)
+	}
+	if traffic.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *traffic.CurrentG)
 	}
 	return
 }
@@ -758,11 +800,11 @@ func (tcc TotalConnectionCapacity) String(spacesn string) (result string) {
 	if tcc.RequestClientPs != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-client-ps", *tcc.RequestClientPs)
 	}
-	if tcc.PartialRequestPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-ps", *tcc.PartialRequestPs)
+	if tcc.PartialRequestMax != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-max", *tcc.PartialRequestMax)
 	}
-	if tcc.PartialRequestClientPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-client-ps", *tcc.PartialRequestClientPs)
+	if tcc.PartialRequestClientMax != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-client-max", *tcc.PartialRequestClientMax)
 	}
 	return
 }
@@ -801,37 +843,37 @@ func (tcc TotalConnectionCapacityPerPort) String(spacesn string) (result string)
 	if tcc.RequestClientPs != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-client-ps", *tcc.RequestClientPs)
 	}
-	if tcc.PartialRequestPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-ps", *tcc.PartialRequestPs)
+	if tcc.PartialRequestMax != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-max", *tcc.PartialRequestMax)
 	}
-	if tcc.PartialRequestClientPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-client-ps", *tcc.PartialRequestClientPs)
+	if tcc.PartialRequestClientMax != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-client-max", *tcc.PartialRequestClientMax)
 	}
 	return
 }
 
 type TelemetryPreMitigationRequest struct {
-	_struct                bool                    `codec:",uint"` //encode struct with "unsigned integer" keys
-	TelemetryPreMitigation *TelemetryPreMitigation `json:"ietf-dots-telemetry:telemetry" codec:"32914,omitempty"`
+	_struct                bool                    `codec:",uint"`                                                //encode struct with "unsigned integer" keys
+	TelemetryPreMitigation *TelemetryPreMitigation `json:"ietf-dots-telemetry:telemetry" codec:"208,omitempty"` // CBOR key temp
 }
 
 type TelemetryPreMitigation struct {
 	_struct                bool                     `codec:",uint"` //encode struct with "unsigned integer" keys
-	PreOrOngoingMitigation []PreOrOngoingMitigation `json:"pre-or-ongoing-mitigation" codec:"32811,omitempty"`
+	PreOrOngoingMitigation []PreOrOngoingMitigation `json:"pre-or-ongoing-mitigation" codec:"138,omitempty"`
 }
 
 type PreOrOngoingMitigation struct {
-	_struct                    bool                       `codec:",uint"` //encode struct with "unsigned integer" keys
-	Target                     *Target                    `json:"target" codec:"32866,omitempty"`
-	TotalTraffic               []Traffic                  `json:"total-traffic" codec:"32818,omitempty"`
-	TotalTrafficProtocol       []TrafficPerProtocol       `json:"total-traffic-protocol" codec:"32872,omitempty"`
-	TotalTrafficPort           []TrafficPerPort           `json:"total-traffic-port" codec:"32873,omitempty"`
-	TotalAttackTraffic         []Traffic                  `json:"total-attack-traffic" codec:"32817,omitempty"`
-	TotalAttackTrafficProtocol []TrafficPerProtocol       `json:"total-attack-traffic-protocol" codec:"32874,omitempty"`
-	TotalAttackTrafficPort     []TrafficPerPort           `json:"total-attack-traffic-port" codec:"32875,omitempty"`
-	TotalAttackConnection      *TotalAttackConnection     `json:"total-attack-connection" codec:"32830,omitempty"`
-	TotalAttackConnectionPort  *TotalAttackConnectionPort `json:"total-attack-connection-port" codec:"32876,omitempty"`
-	AttackDetail               []AttackDetail             `json:"attack-detail" codec:"32835,omitempty"`
+	_struct                       bool                            `codec:",uint"` //encode struct with "unsigned integer" keys
+	Target                        *Target                         `json:"target" codec:"189,omitempty"`
+	TotalTraffic                  []Traffic                       `json:"total-traffic" codec:"145,omitempty"`
+	TotalTrafficProtocol          []TrafficPerProtocol            `json:"total-traffic-protocol" codec:"195,omitempty"`
+	TotalTrafficPort              []TrafficPerPort                `json:"total-traffic-port" codec:"196,omitempty"`
+	TotalAttackTraffic            []Traffic                       `json:"total-attack-traffic" codec:"144,omitempty"`
+	TotalAttackTrafficProtocol    []TrafficPerProtocol            `json:"total-attack-traffic-protocol" codec:"197,omitempty"`
+	TotalAttackTrafficPort        []TrafficPerPort                `json:"total-attack-traffic-port" codec:"198,omitempty"`
+	TotalAttackConnectionProtocol []TotalAttackConnectionProtocol `json:"total-attack-connection-protocol" codec:"173,omitempty"`
+	TotalAttackConnectionPort     []TotalAttackConnectionPort     `json:"total-attack-connection-port" codec:"199,omitempty"`
+	AttackDetail                  []AttackDetail                  `json:"attack-detail" codec:"162,omitempty"`
 }
 
 type Target struct {
@@ -844,88 +886,68 @@ type Target struct {
 	AliasName       []string    `json:"alias-name" codec:"13,omitempty"`
 }
 
-type TotalAttackConnection struct {
-	_struct         bool                           `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowPercentileL  []ConnectionProtocolPercentile `json:"low-percentile-l" codec:"32831,omitempty"`
-	MidPercentileL  []ConnectionProtocolPercentile `json:"mid-percentile-l" codec:"32832,omitempty"`
-	HighPercentileL []ConnectionProtocolPercentile `json:"high-percentile-l" codec:"32833,omitempty"`
-	PeakL           []ConnectionProtocolPercentile `json:"peak-l" codec:"32834,omitempty"`
+type TotalAttackConnectionProtocol struct {
+	_struct          bool                     `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol        *uint8                    `json:"protocol" codec:"191,omitempty"`
+	ConnectionC     *PercentilePeakAndCurrent `json:"connection-c" codec:"158,omitempty"`
+	EmbryonicC      *PercentilePeakAndCurrent `json:"embryonic-c" codec:"159,omitempty"`
+	ConnectionPsC   *PercentilePeakAndCurrent `json:"connection-ps-c" codec:"160,omitempty"`
+	RequestPsC      *PercentilePeakAndCurrent `json:"request-ps-c" codec:"161,omitempty"`
+	PartialRequestC *PercentilePeakAndCurrent `json:"partial-request-c" codec:"172,omitempty"`
 }
 
 type TotalAttackConnectionPort struct {
-	_struct         bool                               `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowPercentileL  []ConnectionProtocolPortPercentile `json:"low-percentile-l" codec:"32831,omitempty"`
-	MidPercentileL  []ConnectionProtocolPortPercentile `json:"mid-percentile-l" codec:"32832,omitempty"`
-	HighPercentileL []ConnectionProtocolPortPercentile `json:"high-percentile-l" codec:"32833,omitempty"`
-	PeakL           []ConnectionProtocolPortPercentile `json:"peak-l" codec:"32834,omitempty"`
+	_struct         bool                     `codec:",uint"` //encode struct with "unsigned integer" keys
+	Protocol        *uint8                   `json:"protocol" codec:"191,omitempty"`
+	Port            *int                     `json:"port" codec:"200,omitempty"`
+	ConnectionC     *PercentilePeakAndCurrent `json:"connection-c" codec:"158,omitempty"`
+	EmbryonicC      *PercentilePeakAndCurrent `json:"embryonic-c" codec:"159,omitempty"`
+	ConnectionPsC   *PercentilePeakAndCurrent `json:"connection-ps-c" codec:"160,omitempty"`
+	RequestPsC      *PercentilePeakAndCurrent `json:"request-ps-c" codec:"161,omitempty"`
+	PartialRequestC *PercentilePeakAndCurrent `json:"partial-request-c" codec:"172,omitempty"`
 }
 
 type AttackDetail struct {
-	_struct        bool         `codec:",uint"` //encode struct with "unsigned integer" keys
-	VendorId       *uint32      `json:"vendor-id" codec:"32916,omitempty"` // CBOR key temp
-	AttackId       *uint32      `json:"attack-id" codec:"32837,omitempty"`
-	AttackName     *string      `json:"attack-name" codec:"32838,omitempty"`
-	AttackSeverity *int         `json:"attack-severity" codec:"32839,omitempty"`
-	StartTime      *uint64      `json:"start-time" codec:"32840,omitempty"`
-	EndTime        *uint64      `json:"end-time" codec:"32841,omitempty"`
-	SourceCount    *SourceCount `json:"source-count" codec:"32842,omitempty"`
-	TopTalKer      *TopTalker   `json:"top-talker" codec:"32843,omitempty"`
+	_struct           bool                      `codec:",uint"` //encode struct with "unsigned integer" keys
+	VendorId          *uint32                   `json:"vendor-id" codec:"202,omitempty"`
+	AttackId          *uint32                   `json:"attack-id" codec:"164,omitempty"`
+	DescriptionLang   *string                   `json:"description-lang" codec:"210,omitempty"`
+	AttackDescription *string                   `json:"attack-description" codec:"165,omitempty"`
+	AttackSeverity    *AttackSeverityString     `json:"attack-severity" codec:"166,omitempty"`
+	StartTime         *Uint64String             `json:"start-time" type:"string" codec:"167,omitempty"`
+	EndTime           *Uint64String             `json:"end-time" codec:"168,omitempty"`
+	SourceCount       *PercentilePeakAndCurrent `json:"source-count" codec:"169,omitempty"`
+	TopTalKer         *TopTalker                `json:"top-talker" codec:"170,omitempty"`
 }
 
-type ConnectionProtocolPercentile struct {
-	_struct          bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol         *uint8  `json:"protocol" codec:"32868,omitempty"`
-	Connection       *uint64 `json:"connection" codec:"32820,omitempty"`
-	Embryonic        *uint64 `json:"embryonic" codec:"32822,omitempty"`
-	ConnectionPs     *uint64 `json:"connection-ps" codec:"32824,omitempty"`
-	RequestPs        *uint64 `json:"request-ps" codec:"32826,omitempty"`
-	PartialRequestPs *uint64 `json:"partial-request-ps" codec:"32828,omitempty"`
-}
-
-type ConnectionProtocolPortPercentile struct {
-	_struct          bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	Protocol         *uint8  `json:"protocol" codec:"32868,omitempty"`
-	Port             *int    `json:"port" codec:"32877,omitempty"`
-	Connection       *uint64 `json:"connection" codec:"32820,omitempty"`
-	Embryonic        *uint64 `json:"embryonic" codec:"32822,omitempty"`
-	ConnectionPs     *uint64 `json:"connection-ps" codec:"32824,omitempty"`
-	RequestPs        *uint64 `json:"request-ps" codec:"32826,omitempty"`
-	PartialRequestPs *uint64 `json:"partial-request-ps" codec:"32828,omitempty"`
-}
-
-type SourceCount struct {
-	_struct         bool    `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowPercentileG  *uint64 `json:"low-percentile-g" codec:"32813,omitempty"`
-	MidPercentileG  *uint64 `json:"mid-percentile-g" codec:"32814,omitempty"`
-	HighPercentileG *uint64 `json:"high-percentile-g" codec:"32815,omitempty"`
-	PeakG           *uint64 `json:"peak-g" codec:"32816,omitempty"`
+type PercentilePeakAndCurrent struct {
+	_struct         bool          `codec:",uint"` //encode struct with "unsigned integer" keys
+	LowPercentileG  *Uint64String `json:"low-percentile-g" codec:"140,omitempty"`
+	MidPercentileG  *Uint64String `json:"mid-percentile-g" codec:"141,omitempty"`
+	HighPercentileG *Uint64String `json:"high-percentile-g" codec:"142,omitempty"`
+	PeakG           *Uint64String `json:"peak-g" codec:"143,omitempty"`
+	CurrentG        *Uint64String `json:"current-g" codec:"209,omitempty"`
 }
 
 type TopTalker struct {
 	_struct bool     `codec:",uint"` //encode struct with "unsigned integer" keys
-	Talker  []Talker `json:"talker" codec:"32859,omitempty"`
+	Talker  []Talker `json:"talker" codec:"184,omitempty"`
 }
 
 type Talker struct {
-	_struct               bool                   `codec:",uint"` //encode struct with "unsigned integer" keys
-	SpoofedStatus         *bool                  `json:"spoofed-status" codec:"32844,omitempty"`
-	SourcePrefix          *string                `json:"source-prefix" codec:"32860,omitempty"`
-	SourcePortRange       []PortRange            `json:"source-port-range" codec:"32862,omitempty"`
-	SourceIcmpTypeRange   []SourceICMPTypeRange  `json:"source-icmp-type-range" codec:"32863,omitempty"`
-	TotalAttackTraffic    []Traffic              `json:"total-attack-traffic" codec:"32817,omitempty"`
-	TotalAttackConnection *TotalAttackConnection `json:"total-attack-connection" codec:"32830,omitempty"`
-}
-
-type SourceICMPTypeRange struct {
-	_struct   bool `codec:",uint"` //encode struct with "unsigned integer" keys
-	LowerType *int `json:"lower-type" codec:"32864,omitempty"`
-	UpperType *int `json:"upper-type" codec:"32865,omitempty"`
+	_struct                       bool                            `codec:",uint"` //encode struct with "unsigned integer" keys
+	SpoofedStatus                 *bool                           `json:"spoofed-status" codec:"171,omitempty"`
+	SourcePrefix                  *string                         `json:"source-prefix" codec:"185,omitempty"`
+	SourcePortRange               []PortRange                     `json:"source-port-range" codec:"187,omitempty"`
+	SourceIcmpTypeRange           []ICMPTypeRange                 `json:"source-icmp-type-range" codec:"188,omitempty"`
+	TotalAttackTraffic            []Traffic                       `json:"total-attack-traffic" codec:"144,omitempty"`
+	TotalAttackConnectionProtocol []TotalAttackConnectionProtocol `json:"total-attack-connection-protocol" codec:"173,omitempty"`
 }
 
 /*
  * Convert TelemetryPreMitigationRequest to strings
  */
- func (tpm *TelemetryPreMitigationRequest) String() (result string) {
+func (tpm *TelemetryPreMitigationRequest) String() (result string) {
 	spaces3 := "   "
 	spaces6 := spaces3 + spaces3
 	spaces9 := spaces6 + spaces3
@@ -958,11 +980,13 @@ type SourceICMPTypeRange struct {
 			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-attack-traffic-port", k+1)
 			result += v.String(spaces6)
 		}
-		if t.TotalAttackConnection != nil {
-			result += t.TotalAttackConnection.String(spaces6)
+		for k, v := range t.TotalAttackConnectionProtocol {
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-attack-connection-protocol", k+1)
+			result += v.String(spaces6)
 		}
-		if t.TotalAttackConnectionPort != nil {
-			result += t.TotalAttackConnectionPort.String(spaces6)
+		for k, v := range t.TotalAttackConnectionPort {
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "total-attack-connection-port", k+1)
+			result += v.String(spaces6)
 		}
 		for k, v := range t.AttackDetail {
 			result += fmt.Sprintf("%s\"%s[%d]\":\n", spaces6, "attack-detail", k+1)
@@ -972,26 +996,32 @@ type SourceICMPTypeRange struct {
 	return
 }
 
-// Convert TotalAttackConnection to String
-func (tac *TotalAttackConnection) String(spacesn string) (result string) {
+// Convert TotalAttackConnectionProtocol to String
+func (tac *TotalAttackConnectionProtocol) String(spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
-	result += fmt.Sprintf("%s\"%s\":\n", spacesn, "total-attack-connection")
-	for k, v := range tac.LowPercentileL {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "low-percentile-l", k+1)
-		result += v.String(spacesn3)
+	if tac.Protocol != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "protocol", *tac.Protocol)
 	}
-	for k, v := range tac.MidPercentileL {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "mid-percentile-l", k+1)
-		result += v.String(spacesn3)
+	if tac.ConnectionC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "connection-c")
+		result += tac.ConnectionC.String(spacesn3)
 	}
-	for k, v := range tac.HighPercentileL {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "high-percentile-l", k+1)
-		result += v.String(spacesn3)
+	if tac.EmbryonicC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "embryonic-c")
+		result += tac.EmbryonicC.String(spacesn3)
 	}
-	for k, v := range tac.PeakL {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "peak-l", k+1)
-		result += v.String(spacesn3)
+	if tac.ConnectionPsC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "connection-ps-c")
+		result += tac.ConnectionPsC.String(spacesn3)
+	}
+	if tac.RequestPsC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "request-ps-c")
+		result += tac.RequestPsC.String(spacesn3)
+	}
+	if tac.PartialRequestC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "partial-request-c")
+		result += tac.PartialRequestC.String(spacesn3)
 	}
 	return
 }
@@ -1000,79 +1030,34 @@ func (tac *TotalAttackConnection) String(spacesn string) (result string) {
 func (tac *TotalAttackConnectionPort) String(spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
-	result += fmt.Sprintf("%s\"%s\":\n", spacesn, "total-attack-connection-port")
-	for k, v := range tac.LowPercentileL {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "low-percentile-l", k+1)
-		result += v.String(spacesn3)
+	if tac.Protocol != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "protocol", *tac.Protocol)
 	}
-	for k, v := range tac.MidPercentileL {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "mid-percentile-l", k+1)
-		result += v.String(spacesn3)
+	if tac.Port != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "port", *tac.Port)
 	}
-	for k, v := range tac.HighPercentileL {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "high-percentile-l", k+1)
-		result += v.String(spacesn3)
+	if tac.ConnectionC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "connection-c")
+		result += tac.ConnectionC.String(spacesn3)
 	}
-	for k, v := range tac.PeakL {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "peak-l", k+1)
-		result += v.String(spacesn3)
+	if tac.EmbryonicC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "embryonic-c")
+		result += tac.EmbryonicC.String(spacesn3)
 	}
-	return
-}
-
-// Convert ConnectionProtocolPercentile to String
-func (pl ConnectionProtocolPercentile) String(spacesn string) (result string) {
-	spaces3 := "   "
-	spacesn3 := spacesn + spaces3
-	if pl.Protocol != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "protocol", *pl.Protocol)
+	if tac.ConnectionPsC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "connection-ps-c")
+		result += tac.ConnectionPsC.String(spacesn3)
 	}
-	if pl.Connection != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection", *pl.Connection)
+	if tac.RequestPsC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "request-ps-c")
+		result += tac.RequestPsC.String(spacesn3)
 	}
-	if pl.Embryonic != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "embryonic", *pl.Embryonic)
-	}
-	if pl.ConnectionPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-ps", *pl.ConnectionPs)
-	}
-	if pl.RequestPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-ps", *pl.RequestPs)
-	}
-	if pl.PartialRequestPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-ps", *pl.PartialRequestPs)
+	if tac.PartialRequestC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "partial-request-c")
+		result += tac.PartialRequestC.String(spacesn3)
 	}
 	return
 }
-
-// Convert ConnectionProtocolPortPercentile to String
-func (pl ConnectionProtocolPortPercentile) String(spacesn string) (result string) {
-	spaces3 := "   "
-	spacesn3 := spacesn + spaces3
-	if pl.Protocol != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "protocol", *pl.Protocol)
-	}
-	if pl.Port != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "port", *pl.Port)
-	}
-	if pl.Connection != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection", *pl.Connection)
-	}
-	if pl.Embryonic != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "embryonic", *pl.Embryonic)
-	}
-	if pl.ConnectionPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "connection-ps", *pl.ConnectionPs)
-	}
-	if pl.RequestPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "request-ps", *pl.RequestPs)
-	}
-	if pl.PartialRequestPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "partial-request-ps", *pl.PartialRequestPs)
-	}
-	return
-}
-
 
 // Convert AttackDetail to String
 func (ad AttackDetail) String(spacesn string) (result string) {
@@ -1085,8 +1070,11 @@ func (ad AttackDetail) String(spacesn string) (result string) {
 	if ad.AttackId != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "attack-id", *ad.AttackId)
 	}
-	if ad.AttackName != nil {
-		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-name", *ad.AttackName)
+	if ad.DescriptionLang != nil {
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "description-lang", *ad.DescriptionLang)
+	}
+	if ad.AttackDescription != nil {
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-description", *ad.AttackDescription)
 	}
 	if ad.AttackSeverity != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "attack-severity", *ad.AttackSeverity)
@@ -1096,6 +1084,10 @@ func (ad AttackDetail) String(spacesn string) (result string) {
 	}
 	if ad.EndTime != nil {
 		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "end-time", *ad.EndTime)
+	}
+	if ad.SourceCount != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "source-count")
+		result += ad.SourceCount.String(spacesn3)
 	}
 	if ad.TopTalKer != nil {
 		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "top-talker")
@@ -1140,33 +1132,9 @@ func (t Talker) String(spacesn string) (result string) {
 		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "total-attack-traffic", k+1)
 		result += v.String(spacesn3)
 	}
-	if t.TotalAttackConnection != nil {
-		result += t.TotalAttackConnection.String(spacesn3)
-	}
-	return
-}
-
-// Convert TelemetryTraffic to String
-func (traffic TelemetryTraffic) String(spacesn string) (result string) {
-	spaces3 := "   "
-	spacesn3 := spacesn + spaces3
-	if traffic.Unit != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:unit", *traffic.Unit)
-	}
-	if traffic.Protocol != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:protocol", *traffic.Protocol)
-	}
-	if traffic.LowPercentileG != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:low-percentile-g", *traffic.LowPercentileG)
-	}
-	if traffic.MidPercentileG != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:mid-percentile-g", *traffic.MidPercentileG)
-	}
-	if traffic.HighPercentileG != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:high-percentile-g", *traffic.HighPercentileG)
-	}
-	if traffic.PeakG != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:peak-g", *traffic.PeakG)
+	for k, v := range t.TotalAttackConnectionProtocol {
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "total-attack-connection-protocol", k+1)
+		result += v.String(spacesn3)
 	}
 	return
 }
@@ -1177,52 +1145,55 @@ func (ad TelemetryAttackDetail) String(spacesn string) (result string) {
 	spacesn3 := spacesn + spaces3
 	spacesn6 := spacesn3 + spaces3
 	if ad.VendorId != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:vendor-id", *ad.VendorId)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "vendor-id", *ad.VendorId)
 	}
 	if ad.AttackId != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:attack-id", *ad.AttackId)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "attack-id", *ad.AttackId)
 	}
-	if ad.AttackName != nil {
-		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "ietf-dots-telemetry:attack-name", *ad.AttackName)
+	if ad.AttackDescription != nil {
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "attack-description", *ad.AttackDescription)
 	}
 	if ad.AttackSeverity != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:attack-severity", *ad.AttackSeverity)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "attack-severity", *ad.AttackSeverity)
 	}
 	if ad.StartTime != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:start-time", *ad.StartTime)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "start-time", *ad.StartTime)
 	}
 	if ad.EndTime != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:end-time", *ad.EndTime)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "end-time", *ad.EndTime)
 	}
 	if ad.SourceCount != nil {
-		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:source-count")
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "source-count")
 		result += ad.SourceCount.String(spacesn3)
 	}
 	if ad.TopTalKer != nil {
-		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:top-talker")
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "top-talker")
 		for k, v := range ad.TopTalKer.Talker {
-			result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn6, "ietf-dots-telemetry:talker", k+1)
+			result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn6, "talker", k+1)
 			result += v.String(spacesn6)
 		}
 	}
 	return
 }
 
-// Convert TelemetrySourceCount to String
-func (sc TelemetrySourceCount) String(spacesn string) (result string) {
+// Convert PercentilePeakAndCurrent to String
+func (sc PercentilePeakAndCurrent) String(spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
 	if sc.LowPercentileG != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:low-percentile-g", *sc.LowPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "low-percentile-g", *sc.LowPercentileG)
 	}
 	if sc.MidPercentileG != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:mid-percentile-g", *sc.MidPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "mid-percentile-g", *sc.MidPercentileG)
 	}
 	if sc.HighPercentileG != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:high-percentile-g", *sc.HighPercentileG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "high-percentile-g", *sc.HighPercentileG)
 	}
 	if sc.PeakG != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:peak-g", *sc.PeakG)
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "peak-g", *sc.PeakG)
+	}
+	if sc.CurrentG != nil {
+		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "current-g", *sc.CurrentG)
 	}
 	return
 }
@@ -1233,31 +1204,31 @@ func (t TelemetryTalker) String(spacesn string) (result string) {
 	spacesn3 := spacesn + spaces3
 	spacesn6 := spacesn3 + spaces3
 	if t.SpoofedStatus != nil {
-		result += fmt.Sprintf("%s\"%s\": %t\n", spacesn3, "ietf-dots-telemetry:spoofed-status", *t.SpoofedStatus)
+		result += fmt.Sprintf("%s\"%s\": %t\n", spacesn3, "spoofed-status", *t.SpoofedStatus)
 	}
 	if t.SourcePrefix != nil {
-		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "ietf-dots-telemetry:source-prefix", *t.SourcePrefix)
+		result += fmt.Sprintf("%s\"%s\": %s\n", spacesn3, "source-prefix", *t.SourcePrefix)
 	}
 	for k, v := range t.SourcePortRange {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "ietf-dots-telemetry:source-port-range", k+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "source-port-range", k+1)
 		if v.LowerPort != nil {
-			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "ietf-dots-telemetry:lower-port", *v.LowerPort)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "lower-port", *v.LowerPort)
 		}
 		if v.UpperPort != nil {
-			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "ietf-dots-telemetry:upper-port", *v.UpperPort)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-port", *v.UpperPort)
 		}
 	}
 	for k, v := range t.SourceIcmpTypeRange {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "ietf-dots-telemetry:source-icmp-type-range", k+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "source-icmp-type-range", k+1)
 		if v.LowerType != nil {
-			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "ietf-dots-telemetry:lower-type", *v.LowerType)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "lower-type", *v.LowerType)
 		}
 		if v.UpperType != nil {
-			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "ietf-dots-telemetry:upper-type", *v.UpperType)
+			result += fmt.Sprintf("%s\"%s\": %d\n", spacesn6, "upper-type", *v.UpperType)
 		}
 	}
 	for k, v := range t.TotalAttackTraffic {
-		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "ietf-dots-telemetry:total-attack-traffic", k+1)
+		result += fmt.Sprintf("%s\"%s[%d]\":\n", spacesn3, "total-attack-traffic", k+1)
 		result += v.String(spacesn3)
 	}
 	if t.TotalAttackConnection != nil {
@@ -1270,44 +1241,26 @@ func (t TelemetryTalker) String(spacesn string) (result string) {
 func (tac *TelemetryTotalAttackConnection) String(spacesn string) (result string) {
 	spaces3 := "   "
 	spacesn3 := spacesn + spaces3
-	result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:total-attack-connection")
-	if tac.LowPercentileC != nil {
-		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:low-percentile-c")
-		result += tac.LowPercentileC.String(spacesn3)
+	result += fmt.Sprintf("%s\"%s\":\n", spacesn, "total-attack-connection")
+	if tac.ConnectionC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "connection-c")
+		result += tac.ConnectionC.String(spacesn3)
 	}
-	if tac.MidPercentileC != nil {
-		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:mid-percentile-c")
-		result += tac.MidPercentileC.String(spacesn3)
+	if tac.EmbryonicC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "embryonic-c")
+		result += tac.EmbryonicC.String(spacesn3)
 	}
-	if tac.HighPercentileC != nil {
-		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:high-percentile-c")
-		result += tac.HighPercentileC.String(spacesn3)
+	if tac.ConnectionPsC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "connection-ps-c")
+		result += tac.ConnectionPsC.String(spacesn3)
 	}
-	if tac.PeakC != nil {
-		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "ietf-dots-telemetry:peak-c")
-		result += tac.PeakC.String(spacesn3)
+	if tac.RequestPsC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "request-ps-c")
+		result += tac.RequestPsC.String(spacesn3)
 	}
-	return
-}
-
-// Convert TelemetryConnectionProtocolPercentile to String
-func (pl TelemetryConnectionPercentile) String(spacesn string) (result string) {
-	spaces3 := "   "
-	spacesn3 := spacesn + spaces3
-	if pl.Connection != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:connection", *pl.Connection)
-	}
-	if pl.Embryonic != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:embryonic", *pl.Embryonic)
-	}
-	if pl.ConnectionPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:connection-ps", *pl.ConnectionPs)
-	}
-	if pl.RequestPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:request-ps", *pl.RequestPs)
-	}
-	if pl.PartialRequestPs != nil {
-		result += fmt.Sprintf("%s\"%s\": %d\n", spacesn3, "ietf-dots-telemetry:partial-request-ps", *pl.PartialRequestPs)
+	if tac.PartialRequestC != nil {
+		result += fmt.Sprintf("%s\"%s\":\n", spacesn3, "partial-request-c")
+		result += tac.PartialRequestC.String(spacesn3)
 	}
 	return
 }

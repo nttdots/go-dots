@@ -1,15 +1,15 @@
 {
-    "ietf-dots-telemetry:telemetry-setup":{
-      "telemetry":[
-        {
-          "total-pipe-capacity":[
-            {
-              "link-id":"link1",
-              "capacity":500,
-              "unit": 1
-            }
-          ]
-        }
-      ]
-    }
+  "ietf-dots-telemetry:telemetry-setup":{
+    "telemetry":[
+      {
+        "total-pipe-capacity":[
+          {
+            "unit":"megapacket-ps",
+            "capacity":"500",
+            "link-id":"link-1"
+          }
+        ]
+      }
+    ]
+  }
 }

@@ -250,11 +250,23 @@ CREATE TABLE `signal_session_configuration` (
   `max_retransmit` int(11) DEFAULT NULL,
   `ack_timeout` double DEFAULT NULL,
   `ack_random_factor` double DEFAULT NULL,
+  `max_payload` int(11) DEFAULT NULL,
+  `non_max_retransmit` int(11) DEFAULT NULL,
+  `non_timeout` double DEFAULT NULL,
+  `non_receive_timeout` double DEFAULT NULL,
+  `non_probing_wait` double DEFAULT NULL,
+  `non_partial_wait` double DEFAULT NULL,
   `heartbeat_interval_idle` int(11) DEFAULT NULL,
   `missing_hb_allowed_idle` int(11) DEFAULT NULL,
   `max_retransmit_idle` int(11) DEFAULT NULL,
   `ack_timeout_idle` double DEFAULT NULL,
   `ack_random_factor_idle` double DEFAULT NULL,
+  `max_payload_idle` int(11) DEFAULT NULL,
+  `non_max_retransmit_idle` int(11) DEFAULT NULL,
+  `non_timeout_idle` double DEFAULT NULL,
+  `non_receive_timeout_idle` double DEFAULT NULL,
+  `non_probing_wait_idle` double DEFAULT NULL,
+  `non_partial_wait_idle` double DEFAULT NULL,
   `created` datetime DEFAULT NULL,
   `updated` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -395,6 +407,7 @@ DROP TABLE IF EXISTS `data_acls`;
 CREATE TABLE `data_acls` (
   `id` BIGINT(20) NOT NULL AUTO_INCREMENT,
   `data_client_id` BIGINT(20) NOT NULL,
+  `priority` INT(11) NOT NULL,
   `name` VARCHAR(255) NOT NULL,
   `content` TEXT NOT NULL,
   `valid_through` DATETIME NOT NULL,
@@ -539,8 +552,8 @@ DROP TABLE IF EXISTS `telemetry_configuration`;
 CREATE TABLE `telemetry_configuration` (
   `id`                           bigint(20)   NOT NULL AUTO_INCREMENT,
   `tele_setup_id`                bigint(20)   NOT NULL,
-  `measurement_interval`         enum('HOUR','DAY','WEEK','MONTH') NOT NULL,
-  `measurement_sample`           enum('SECOND','5_SECONDS','30_SECONDS','ONE_MINUTE','5_MINUTES','10_MINUTES','30_MINUTES','ONE_HOUR') NOT NULL,
+  `measurement_interval`         enum('5-minutes','10-minutes','30-minutes','hour','day','week','month') NOT NULL,
+  `measurement_sample`           enum('second','5-seconds','30-seconds','minute','5-minutes','10-minutes','30-minutes','hour') NOT NULL,
   `low_percentile`               double       DEFAULT NULL,
   `mid_percentile`               double       DEFAULT NULL,
   `high_percentile`              double       DEFAULT NULL,
@@ -559,7 +572,7 @@ DROP TABLE IF EXISTS `unit_configuration`;
 CREATE TABLE `unit_configuration` (
   `id`             bigint(20) NOT NULL AUTO_INCREMENT,
   `tele_config_id` bigint(20) NOT NULL,
-  `unit`           enum('PACKETS_PS','BITS_PS','BYTES_PS') NOT NULL,
+  `unit`           enum('packet-ps','bit-ps','byte-ps') NOT NULL,
   `unit_status`    tinyint(1) DEFAULT NULL,
   `created`        datetime   DEFAULT NULL,
   `updated`        datetime   DEFAULT NULL,
@@ -575,8 +588,8 @@ CREATE TABLE `total_pipe_capacity` (
   `id`            bigint(20)   NOT NULL AUTO_INCREMENT,
   `tele_setup_id` bigint(20)   NOT NULL,
   `link_id`       varchar(255) DEFAULT NULL,
-  `capacity`      int(11)      DEFAULT NULL,
-  `unit`          enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
+  `capacity`      bigint(20)   DEFAULT NULL,
+  `unit`          enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
   `created`       datetime     DEFAULT NULL,
   `updated`       datetime     DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -658,13 +671,13 @@ CREATE TABLE `traffic` (
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `type_id`           bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -678,14 +691,14 @@ CREATE TABLE `traffic_per_protocol` (
   `type`              enum('TELEMETRY','TELEMETRY_SETUP') NOT NULL,
   `type_id`           bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
   `protocol`          int(11)     NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -699,14 +712,14 @@ CREATE TABLE `traffic_per_port` (
   `type`              enum('TELEMETRY','TELEMETRY_SETUP') NOT NULL,
   `type_id`           bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
   `port`              int(11)     NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -716,21 +729,21 @@ CREATE TABLE `traffic_per_port` (
 DROP TABLE IF EXISTS `total_connection_capacity`;
 
 CREATE TABLE `total_connection_capacity` (
-  `id`                        bigint(20)   NOT NULL AUTO_INCREMENT,
-  `tele_baseline_id`          bigint(20)   NOT NULL,
-  `protocol`                  int(11)      NOT NULL,
-  `connection`                int(11)      DEFAULT NULL,
-  `connection_client`         int(11)      DEFAULT NULL,
-  `embryonic`                 int(11)      DEFAULT NULL,
-  `embryonic_client`          int(11)      DEFAULT NULL,
-  `connection_ps`             int(11)      DEFAULT NULL,
-  `connection_client_ps`      int(11)      DEFAULT NULL,
-  `request_ps`                int(11)      DEFAULT NULL,
-  `request_client_ps`         int(11)      DEFAULT NULL,
-  `partial_request_ps`        int(11)      DEFAULT NULL,
-  `partial_request_client_ps` int(11)      DEFAULT NULL,
-  `created`                   datetime     DEFAULT NULL,
-  `updated`                   datetime     DEFAULT NULL,
+  `id`                         bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_baseline_id`           bigint(20) NOT NULL,
+  `protocol`                   int(11)    NOT NULL,
+  `connection`                 bigint(20) DEFAULT NULL,
+  `connection_client`          bigint(20) DEFAULT NULL,
+  `embryonic`                  bigint(20) DEFAULT NULL,
+  `embryonic_client`           bigint(20) DEFAULT NULL,
+  `connection_ps`              bigint(20) DEFAULT NULL,
+  `connection_client_ps`       bigint(20) DEFAULT NULL,
+  `request_ps`                 bigint(20) DEFAULT NULL,
+  `request_client_ps`          bigint(20) DEFAULT NULL,
+  `partial_request_max`        bigint(20) DEFAULT NULL,
+  `partial_request_client_max` bigint(20) DEFAULT NULL,
+  `created`                    datetime   DEFAULT NULL,
+  `updated`                    datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -740,158 +753,22 @@ CREATE TABLE `total_connection_capacity` (
 DROP TABLE IF EXISTS `total_connection_capacity_per_port`;
 
 CREATE TABLE `total_connection_capacity_per_port` (
-  `id`                        bigint(20)   NOT NULL AUTO_INCREMENT,
-  `tele_baseline_id`          bigint(20)   NOT NULL,
-  `protocol`                  int(11)      NOT NULL,
-  `port`                      int(11)      NOT NULL,
-  `connection`                int(11)      DEFAULT NULL,
-  `connection_client`         int(11)      DEFAULT NULL,
-  `embryonic`                 int(11)      DEFAULT NULL,
-  `embryonic_client`          int(11)      DEFAULT NULL,
-  `connection_ps`             int(11)      DEFAULT NULL,
-  `connection_client_ps`      int(11)      DEFAULT NULL,
-  `request_ps`                int(11)      DEFAULT NULL,
-  `request_client_ps`         int(11)      DEFAULT NULL,
-  `partial_request_ps`        int(11)      DEFAULT NULL,
-  `partial_request_client_ps` int(11)      DEFAULT NULL,
-  `created`                   datetime     DEFAULT NULL,
-  `updated`                   datetime     DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-# telemetry_pre_mitigation
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `telemetry_pre_mitigation`;
-
-CREATE TABLE `telemetry_pre_mitigation` (
-  `id`          bigint(20)   NOT NULL AUTO_INCREMENT,
-  `customer_id` int(11)      NOT NULL,
-  `cuid`        varchar(255) NOT NULL,
-  `cdid`        varchar(255) DEFAULT NULL,
-  `tmid`        int(11)      NOT NULL,
-  `created`     datetime     DEFAULT NULL,
-  `updated`     datetime     DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-# telemetry_pre_mitigation trigger when any attribute of telemetry_pre_mitigation change
-# ------------------------------------------------------------------------------
-
-DELIMITER @@
-CREATE TRIGGER telemetry_pre_mitigation_trigger AFTER UPDATE ON telemetry_pre_mitigation
-FOR EACH ROW
-BEGIN
-  IF NEW.updated <> OLD.updated THEN
-    SELECT MySQLNotification('telemetry_pre_mitigation', NEW.id) INTO @x;
-  END IF;
-END@@
-DELIMITER ;
-
-# total_attack_connection
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `total_attack_connection`;
-
-CREATE TABLE `total_attack_connection` (
-  `id`                bigint(20) NOT NULL AUTO_INCREMENT,
-  `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
-  `prefix_type_id`    bigint(20) NOT NULL,
-  `percentile_type`   enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
-  `protocol`          int(11)  NOT NULL,
-  `connection`        int(11)  DEFAULT NULL,
-  `embryonic`         int(11)  DEFAULT NULL,
-  `connection_ps`     int(11)  DEFAULT NULL,
-  `request_ps`        int(11)  DEFAULT NULL,
-  `partial_request_ps`int(11)  DEFAULT NULL,
-  `created`           datetime DEFAULT NULL,
-  `updated`           datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-# total_attack_connection_port
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `total_attack_connection_port`;
-
-CREATE TABLE `total_attack_connection_port` (
-  `id`                     bigint(20) NOT NULL AUTO_INCREMENT,
-  `tele_pre_mitigation_id` bigint(20) NOT NULL,
-  `percentile_type`        enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
-  `protocol`               int(11)  NOT NULL,
-  `port`                   int(11)  NOT NULL,
-  `connection`             int(11)  DEFAULT NULL,
-  `embryonic`              int(11)  DEFAULT NULL,
-  `connection_ps`          int(11)  DEFAULT NULL,
-  `request_ps`             int(11)  DEFAULT NULL,
-  `partial_request_ps`     int(11)  DEFAULT NULL,
-  `created`                datetime DEFAULT NULL,
-  `updated`                datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-# attack_detail
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `attack_detail`;
-
-CREATE TABLE `attack_detail` (
-  `id`                     bigint(20)   NOT NULL AUTO_INCREMENT,
-  `tele_pre_mitigation_id` bigint(20),
-  `vendor_id`              int(11)      NOT NULL,
-  `attack_id`              int(11) NOT NULL,
-  `attack_name`            varchar(255),
-  `attack_severity`        enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') NOT NULL,
-  `start_time`             int(11),
-  `end_time`               int(11),
-  `created`                datetime DEFAULT NULL,
-  `updated`                datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-# source_count
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `source_count`;
-
-CREATE TABLE `source_count` (
-  `id`                    bigint(20) NOT NULL AUTO_INCREMENT,
-  `tele_attack_detail_id` bigint(20) NOT NULL,
-  `low_percentile_g`      int(11),
-  `mid_percentile_g`      int(11),
-  `high_percentile_g`     int(11),
-  `peak_g`                int(11),
-  `created`               datetime DEFAULT NULL,
-  `updated`               datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-# top_talker
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `top_talker`;
-
-CREATE TABLE `top_talker` (
-  `id`                    bigint(20) NOT NULL AUTO_INCREMENT,
-  `tele_attack_detail_id` bigint(20) NOT NULL,
-  `spoofed_status`        tinyint(1),
-  `created`               datetime DEFAULT NULL,
-  `updated`               datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
-# telemetry_icmp_type_range
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `telemetry_icmp_type_range`;
-
-CREATE TABLE `telemetry_icmp_type_range` (
-  `id`                 bigint(20) NOT NULL AUTO_INCREMENT,
-  `tele_top_talker_id` bigint(20) NOT NULL,
-  `lower_type`         int(11)    NOT NULL,
-  `upper_type`         int(11)    DEFAULT NULL,
-  `created`            datetime   DEFAULT NULL,
-  `updated`            datetime   DEFAULT NULL,
+  `id`                         bigint(20) NOT NULL AUTO_INCREMENT,
+  `tele_baseline_id`           bigint(20) NOT NULL,
+  `protocol`                   int(11)    NOT NULL,
+  `port`                       int(11)    NOT NULL,
+  `connection`                 bigint(20) DEFAULT NULL,
+  `connection_client`          bigint(20) DEFAULT NULL,
+  `embryonic`                  bigint(20) DEFAULT NULL,
+  `embryonic_client`           bigint(20) DEFAULT NULL,
+  `connection_ps`              bigint(20) DEFAULT NULL,
+  `connection_client_ps`       bigint(20) DEFAULT NULL,
+  `request_ps`                 bigint(20) DEFAULT NULL,
+  `request_client_ps`          bigint(20) DEFAULT NULL,
+  `partial_request_max`        bigint(20) DEFAULT NULL,
+  `partial_request_client_max` bigint(20) DEFAULT NULL,
+  `created`                    datetime   DEFAULT NULL,
+  `updated`                    datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -905,20 +782,34 @@ CREATE TABLE `telemetry_traffic` (
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `prefix_type_id`    bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `protocol`          int(11)     NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `current_g`         bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `telemetry_traffic` (`id`, `prefix_type`, `prefix_type_id`, `traffic_type`, `unit`, `protocol`, `low_percentile_g`, `mid_percentile_g`, `high_percentile_g`, `peak_g`, `created`, `updated`)
+INSERT INTO `telemetry_traffic` (`id`, `prefix_type`, `prefix_type_id`, `traffic_type`, `unit`, `low_percentile_g`, `mid_percentile_g`, `high_percentile_g`, `peak_g`, `current_g`, `created`, `updated`)
 VALUES
-  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'PACKETS_PS', 6, 0, 100, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+  (1, 'TARGET_PREFIX', 1, 'TOTAL_TRAFFIC', 'packet-ps', 0, 100, 0, 0, 0, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+
+# telemetry_traffic trigger when any attribute of telemetry_traffic change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_traffic_trigger AFTER UPDATE ON telemetry_traffic
+FOR EACH ROW
+BEGIN
+  IF NEW.unit <> OLD.unit OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g
+     OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
+    SELECT MySQLNotification('telemetry_traffic', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
 
 # telemetry_total_attack_connection
 # ------------------------------------------------------------
@@ -929,20 +820,34 @@ CREATE TABLE `telemetry_total_attack_connection` (
   `id`                bigint(20) NOT NULL AUTO_INCREMENT,
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `prefix_type_id`    bigint(20) NOT NULL,
-  `percentile_type`   enum('LOW_PERCENTILE_C','MID_PERCENTILE_C','HIGH_PERCENTILE_C','PEAK_C') NOT NULL,
-  `connection`        int(11)  DEFAULT NULL,
-  `embryonic`         int(11)  DEFAULT NULL,
-  `connection_ps`     int(11)  DEFAULT NULL,
-  `request_ps`        int(11)  DEFAULT NULL,
-  `partial_request_ps`int(11)  DEFAULT NULL,
+  `type`              enum('CONNECTION-C','EMBRYONIC-C','CONNECTION-PS-C','REQUEST-PS-C','PARTIAL-REQUEST-C') DEFAULT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `current_g`         bigint(20) DEFAULT NULL,
   `created`           datetime DEFAULT NULL,
   `updated`           datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `telemetry_total_attack_connection` (`id`, `prefix_type`, `prefix_type_id`, `percentile_type`, `connection`, `embryonic`, `connection_ps`, `request_ps`, `partial_request_ps`, `created`, `updated`)
+INSERT INTO `telemetry_total_attack_connection` (`id`, `prefix_type`, `prefix_type_id`, `type`, `low_percentile_g`, `mid_percentile_g`, `high_percentile_g`, `peak_g`, `current_g`, `created`, `updated`)
 VALUES
-  (1, 'TARGET_PREFIX', 1, 'LOW_PERCENTILE_C', 200, 201, 202, 203, 204, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+  (1, 'TARGET_PREFIX', 1, 'CONNECTION-C', 200, 201, 202, 203, 204, '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+
+# telemetry_total_attack_connection trigger when any attribute of telemetry_total_attack_connection change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_total_attack_connection_trigger AFTER UPDATE ON telemetry_total_attack_connection
+FOR EACH ROW
+BEGIN
+  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g
+    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
+    SELECT MySQLNotification('telemetry_total_attack_connection', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
 
 # telemetry_attack_detail
 # ------------------------------------------------------------
@@ -954,10 +859,10 @@ CREATE TABLE `telemetry_attack_detail` (
   `mitigation_scope_id` bigint(20) NOT NULL,
   `vendor_id`           int(11)    NOT NULL,
   `attack_id`           int(11)    NOT NULL,
-  `attack_name`         varchar(255),
-  `attack_severity`     enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') NOT NULL,
-  `start_time`          int(11),
-  `end_time`            int(11),
+  `attack_description`  varchar(255),
+  `attack_severity`     enum('none','low','medium','high','unknown') NOT NULL,
+  `start_time`          bigint(20),
+  `end_time`            bigint(20),
   `created`             datetime DEFAULT NULL,
   `updated`             datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -970,7 +875,8 @@ DELIMITER @@
 CREATE TRIGGER telemetry_attack_detail_trigger AFTER UPDATE ON telemetry_attack_detail
 FOR EACH ROW
 BEGIN
-  IF NEW.updated <> OLD.updated THEN
+  IF NEW.vendor_id <> OLD.vendor_id OR NEW.attack_id <> OLD.attack_id OR NEW.attack_description <> OLD.attack_description OR NEW.attack_severity <> OLD.attack_severity
+     OR NEW.start_time <> OLD.start_time OR NEW.end_time <> OLD.end_time THEN
     SELECT MySQLNotification('telemetry_attack_detail', NEW.mitigation_scope_id) INTO @x;
   END IF;
 END@@
@@ -984,14 +890,28 @@ DROP TABLE IF EXISTS `telemetry_source_count`;
 CREATE TABLE `telemetry_source_count` (
   `id`                    bigint(20) NOT NULL AUTO_INCREMENT,
   `tele_attack_detail_id` bigint(20) NOT NULL,
-  `low_percentile_g`      int(11),
-  `mid_percentile_g`      int(11),
-  `high_percentile_g`     int(11),
-  `peak_g`                int(11),
+  `low_percentile_g`      bigint(20),
+  `mid_percentile_g`      bigint(20),
+  `high_percentile_g`     bigint(20),
+  `peak_g`                bigint(20),
+  `current_g`             bigint(20),
   `created`               datetime DEFAULT NULL,
   `updated`               datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# telemetry_source_count trigger when any attribute of telemetry_source_count change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_source_count_trigger AFTER UPDATE ON telemetry_source_count
+FOR EACH ROW
+BEGIN
+  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
+    SELECT MySQLNotification('telemetry_source_count', NEW.tele_attack_detail_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
 
 # telemetry_top_talker
 # ------------------------------------------------------------
@@ -1006,6 +926,19 @@ CREATE TABLE `telemetry_top_talker` (
   `updated`               datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# telemetry_top_talker trigger when any attribute of telemetry_top_talker change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_top_talker_trigger AFTER UPDATE ON telemetry_top_talker
+FOR EACH ROW
+BEGIN
+  IF NEW.spoofed_status <> OLD.spoofed_status THEN
+    SELECT MySQLNotification('telemetry_top_talker', NEW.tele_attack_detail_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
 
 # telemetry_source_prefix
 # ------------------------------------------------------------
@@ -1022,6 +955,18 @@ CREATE TABLE `telemetry_source_prefix` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8;
 
+# telemetry_source_prefix trigger when any attribute of telemetry_source_prefix change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_source_prefix_trigger AFTER UPDATE ON telemetry_source_prefix
+FOR EACH ROW
+BEGIN
+  IF NEW.addr <> OLD.addr OR NEW.prefix_len <> OLD.prefix_len THEN
+    SELECT MySQLNotification('telemetry_source_prefix', NEW.tele_top_talker_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
 
 # telemetry_source_port_range
 # ------------------------------------------------------------
@@ -1038,6 +983,19 @@ CREATE TABLE `telemetry_source_port_range` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+# telemetry_source_port_range trigger when any attribute of telemetry_source_port_range change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_source_port_range_trigger AFTER UPDATE ON telemetry_source_port_range
+FOR EACH ROW
+BEGIN
+  IF NEW.lower_port <> OLD.lower_port OR NEW.upper_port <> OLD.upper_port THEN
+    SELECT MySQLNotification('telemetry_source_port_range', NEW.tele_top_talker_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
+
 # telemetry_source_icmp_type_range
 # ------------------------------------------------------------
 
@@ -1052,6 +1010,19 @@ CREATE TABLE `telemetry_source_icmp_type_range` (
   `updated`            datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+# telemetry_source_icmp_type_range trigger when any attribute of telemetry_source_icmp_type_range change
+# ------------------------------------------------------------------------------
+
+DELIMITER @@
+CREATE TRIGGER telemetry_source_icmp_type_range_trigger AFTER UPDATE ON telemetry_source_icmp_type_range
+FOR EACH ROW
+BEGIN
+  IF NEW.lower_type <> OLD.lower_type OR NEW.upper_type <> OLD.upper_type THEN
+    SELECT MySQLNotification('telemetry_source_icmp_type_range', NEW.tele_top_talker_id) INTO @x;
+  END IF;
+END@@
+DELIMITER ;
 
 # uri_filtering_telemetry_pre_mitigation
 # ------------------------------------------------------------
@@ -1085,13 +1056,14 @@ CREATE TABLE `uri_filtering_traffic` (
   `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
   `prefix_type_id`    bigint(20)   NOT NULL,
   `traffic_type`      enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`              enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `low_percentile_g`  int(11)     DEFAULT NULL,
-  `mid_percentile_g`  int(11)     DEFAULT NULL,
-  `high_percentile_g` int(11)     DEFAULT NULL,
-  `peak_g`            int(11)     DEFAULT NULL,
-  `created`           datetime    DEFAULT NULL,
-  `updated`           datetime    DEFAULT NULL,
+  `unit`              enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `low_percentile_g`  bigint(20) DEFAULT NULL,
+  `mid_percentile_g`  bigint(20) DEFAULT NULL,
+  `high_percentile_g` bigint(20) DEFAULT NULL,
+  `peak_g`            bigint(20) DEFAULT NULL,
+  `current_g`         bigint(20) DEFAULT NULL,
+  `created`           datetime   DEFAULT NULL,
+  `updated`           datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1103,7 +1075,7 @@ CREATE TRIGGER uri_filtering_traffic_trigger AFTER UPDATE ON uri_filtering_traff
 FOR EACH ROW
 BEGIN
   IF NEW.unit <> OLD.unit OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g
-     OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+     OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('uri_filtering_traffic', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
   END IF;
 END@@
@@ -1119,14 +1091,15 @@ CREATE TABLE `uri_filtering_traffic_per_protocol` (
   `id`                     bigint(20)   NOT NULL AUTO_INCREMENT,
   `tele_pre_mitigation_id` bigint(20)   NOT NULL,
   `traffic_type`           enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`                   enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `protocol`               int(11)     NOT NULL,
-  `low_percentile_g`       int(11)     DEFAULT NULL,
-  `mid_percentile_g`       int(11)     DEFAULT NULL,
-  `high_percentile_g`      int(11)     DEFAULT NULL,
-  `peak_g`                 int(11)     DEFAULT NULL,
-  `created`                datetime    DEFAULT NULL,
-  `updated`                datetime    DEFAULT NULL,
+  `unit`                   enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `protocol`               int(11)    NOT NULL,
+  `low_percentile_g`       bigint(20) DEFAULT NULL,
+  `mid_percentile_g`       bigint(20) DEFAULT NULL,
+  `high_percentile_g`      bigint(20) DEFAULT NULL,
+  `peak_g`                 bigint(20) DEFAULT NULL,
+  `current_g`              bigint(20) DEFAULT NULL,
+  `created`                datetime   DEFAULT NULL,
+  `updated`                datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1138,7 +1111,7 @@ CREATE TRIGGER uri_filtering_traffic_per_protocol_trigger AFTER UPDATE ON uri_fi
 FOR EACH ROW
 BEGIN
   IF NEW.unit <> OLD.unit OR NEW.protocol <> OLD.protocol OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g 
-    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('uri_filtering_traffic_per_protocol', NEW.tele_pre_mitigation_id) INTO @x;
   END IF;
 END@@
@@ -1153,14 +1126,15 @@ CREATE TABLE `uri_filtering_traffic_per_port` (
   `id`                     bigint(20)   NOT NULL AUTO_INCREMENT,
   `tele_pre_mitigation_id` bigint(20)   NOT NULL,
   `traffic_type`           enum('TOTAL_TRAFFIC_NORMAL','TOTAL_ATTACK_TRAFFIC','TOTAL_TRAFFIC') NOT NULL,
-  `unit`                   enum('PACKETS_PS','BITS_PS','BYTES_PS','KILOPACKETS_PS','KILOBITS_PS','KILOBYTES_PS','MEGAPACKETS_PS','MEGABITS_PS','MEGABYTES_PS','GIGAPACKETS_PS','GIGABITS_PS','GIGABYTES_PS','TERAPACKETS_PS','TERABITS_PS','TERABYTES_PS') NOT NULL,
-  `port`                   int(11)     NOT NULL,
-  `low_percentile_g`       int(11)     DEFAULT NULL,
-  `mid_percentile_g`       int(11)     DEFAULT NULL,
-  `high_percentile_g`      int(11)     DEFAULT NULL,
-  `peak_g`                 int(11)     DEFAULT NULL,
-  `created`                datetime    DEFAULT NULL,
-  `updated`                datetime    DEFAULT NULL,
+  `unit`                   enum('packet-ps','bit-ps','byte-ps','kilopacket-ps','kilobit-ps','kilobytes-ps','megapacket-ps','megabit-ps','megabyte-ps','gigapacket-ps','gigabit-ps','gigabyte-ps','terapacket-ps','terabit-ps','terabyte-ps') NOT NULL,
+  `port`                   int(11)    NOT NULL,
+  `low_percentile_g`       bigint(20) DEFAULT NULL,
+  `mid_percentile_g`       bigint(20) DEFAULT NULL,
+  `high_percentile_g`      bigint(20) DEFAULT NULL,
+  `peak_g`                 bigint(20) DEFAULT NULL,
+  `current_g`              bigint(20) DEFAULT NULL,
+  `created`                datetime   DEFAULT NULL,
+  `updated`                datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1172,43 +1146,43 @@ CREATE TRIGGER uri_filtering_traffic_per_port_trigger AFTER UPDATE ON uri_filter
 FOR EACH ROW
 BEGIN
   IF NEW.unit <> OLD.unit OR NEW.port <> OLD.port OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g 
-    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('uri_filtering_traffic_per_port', NEW.tele_pre_mitigation_id) INTO @x;
   END IF;
 END@@
 DELIMITER ;
 
-# uri_filtering_total_attack_connection
+# uri_filtering_total_attack_connection_protocol
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `uri_filtering_total_attack_connection`;
+DROP TABLE IF EXISTS `uri_filtering_total_attack_connection_protocol`;
 
-CREATE TABLE `uri_filtering_total_attack_connection` (
-  `id`                bigint(20) NOT NULL AUTO_INCREMENT,
-  `prefix_type`       enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
-  `prefix_type_id`    bigint(20) NOT NULL,
-  `percentile_type`   enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
-  `protocol`          int(11)  NOT NULL,
-  `connection`        int(11)  DEFAULT NULL,
-  `embryonic`         int(11)  DEFAULT NULL,
-  `connection_ps`     int(11)  DEFAULT NULL,
-  `request_ps`        int(11)  DEFAULT NULL,
-  `partial_request_ps`int(11)  DEFAULT NULL,
-  `created`           datetime DEFAULT NULL,
-  `updated`           datetime DEFAULT NULL,
+CREATE TABLE `uri_filtering_total_attack_connection_protocol` (
+  `id`                 bigint(20) NOT NULL AUTO_INCREMENT,
+  `prefix_type`        enum('TARGET_PREFIX','SOURCE_PREFIX') NOT NULL,
+  `prefix_type_id`     bigint(20) NOT NULL,
+  `protocol`           int(11)  NOT NULL,
+  `type`               enum('CONNECTION-C','EMBRYONIC-C','CONNECTION-PS-C','REQUEST-PS-C','PARTIAL-REQUEST-C') DEFAULT NULL,
+  `low_percentile_g`   bigint(20) DEFAULT NULL,
+  `mid_percentile_g`   bigint(20) DEFAULT NULL,
+  `high_percentile_g`  bigint(20) DEFAULT NULL,
+  `peak_g`             bigint(20) DEFAULT NULL,
+  `current_g`          bigint(20) DEFAULT NULL,
+  `created`            datetime   DEFAULT NULL,
+  `updated`            datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-# uri_filtering_total_attack_connection trigger when any attribute of uri_filtering_total_attack_connection change
+# uri_filtering_total_attack_connection_protocol trigger when any attribute of uri_filtering_total_attack_connection_protocol change
 # ------------------------------------------------------------------------------
 
 DELIMITER @@
-CREATE TRIGGER uri_filtering_total_attack_connection_trigger AFTER UPDATE ON uri_filtering_total_attack_connection
+CREATE TRIGGER uri_filtering_total_attack_connection_protocol_trigger AFTER UPDATE ON uri_filtering_total_attack_connection_protocol
 FOR EACH ROW
 BEGIN
-  IF NEW.protocol <> OLD.protocol OR NEW.connection <> OLD.connection OR NEW.embryonic <> OLD.embryonic OR NEW.connection_ps <> OLD.connection_ps
-     OR NEW.request_ps <> OLD.request_ps OR NEW.partial_request_ps <> OLD.partial_request_ps THEN
-    SELECT MySQLNotification('uri_filtering_total_attack_connection', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
+  IF NEW.protocol <> OLD.protocol OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g
+    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
+    SELECT MySQLNotification('uri_filtering_total_attack_connection_protocol', NEW.prefix_type, NEW.prefix_type_id) INTO @x;
   END IF;
 END@@
 DELIMITER ;
@@ -1221,16 +1195,16 @@ DROP TABLE IF EXISTS `uri_filtering_total_attack_connection_port`;
 CREATE TABLE `uri_filtering_total_attack_connection_port` (
   `id`                     bigint(20) NOT NULL AUTO_INCREMENT,
   `tele_pre_mitigation_id` bigint(20) NOT NULL,
-  `percentile_type`        enum('LOW_PERCENTILE_L','MID_PERCENTILE_L','HIGH_PERCENTILE_L','PEAK_L') NOT NULL,
   `protocol`               int(11)  NOT NULL,
   `port`                   int(11)  NOT NULL,
-  `connection`             int(11)  DEFAULT NULL,
-  `embryonic`              int(11)  DEFAULT NULL,
-  `connection_ps`          int(11)  DEFAULT NULL,
-  `request_ps`             int(11)  DEFAULT NULL,
-  `partial_request_ps`     int(11)  DEFAULT NULL,
-  `created`                datetime DEFAULT NULL,
-  `updated`                datetime DEFAULT NULL,
+  `type`                   enum('CONNECTION-C','EMBRYONIC-C','CONNECTION-PS-C','REQUEST-PS-C','PARTIAL-REQUEST-C') NOT NULL,
+  `low_percentile_g`       bigint(20) DEFAULT NULL,
+  `mid_percentile_g`       bigint(20) DEFAULT NULL,
+  `high_percentile_g`      bigint(20) DEFAULT NULL,
+  `peak_g`                 bigint(20) DEFAULT NULL,
+  `current_g`              bigint(20) DEFAULT NULL,
+  `created`                datetime   DEFAULT NULL,
+  `updated`                datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1241,8 +1215,8 @@ DELIMITER @@
 CREATE TRIGGER uri_filtering_total_attack_connection_port_trigger AFTER UPDATE ON uri_filtering_total_attack_connection_port
 FOR EACH ROW
 BEGIN
-  IF NEW.protocol <> OLD.protocol OR NEW.port <> OLD.port OR NEW.connection <> OLD.connection OR NEW.embryonic <> OLD.embryonic OR NEW.connection_ps <> OLD.connection_ps
-     OR NEW.request_ps <> OLD.request_ps OR NEW.partial_request_ps <> OLD.partial_request_ps THEN
+  IF NEW.protocol <> OLD.protocol OR NEW.port <> OLD.port OR NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g
+    OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('uri_filtering_total_attack_connection_port', NEW.tele_pre_mitigation_id) INTO @x;
   END IF;
 END@@
@@ -1258,10 +1232,11 @@ CREATE TABLE `uri_filtering_attack_detail` (
   `tele_pre_mitigation_id` bigint(20),
   `vendor_id`              int(11)      NOT NULL,
   `attack_id`              int(11)      NOT NULL,
-  `attack_name`            varchar(255),
-  `attack_severity`        enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') NOT NULL,
-  `start_time`             int(11),
-  `end_time`               int(11),
+  `description_lang`       varchar(255),
+  `attack_description`     varchar(255),
+  `attack_severity`        enum('none','low','medium','high','unknown') NOT NULL,
+  `start_time`             bigint(20),
+  `end_time`               bigint(20),
   `created`                datetime DEFAULT NULL,
   `updated`                datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1274,8 +1249,8 @@ DELIMITER @@
 CREATE TRIGGER uri_filtering_attack_detail_trigger AFTER UPDATE ON uri_filtering_attack_detail
 FOR EACH ROW
 BEGIN
-  IF NEW.vendor_id <> OLD.vendor_id OR NEW.attack_id <> OLD.attack_id OR NEW.attack_name <> OLD.attack_name OR NEW.attack_severity <> OLD.attack_severity
-     OR NEW.start_time <> OLD.start_time OR NEW.end_time <> OLD.end_time THEN
+  IF NEW.vendor_id <> OLD.vendor_id OR NEW.attack_id <> OLD.attack_id OR NEW.description_lang <> OLD.description_lang OR NEW.attack_description <> OLD.attack_description
+  OR NEW.attack_severity <> OLD.attack_severity OR NEW.start_time <> OLD.start_time OR NEW.end_time <> OLD.end_time THEN
     SELECT MySQLNotification('uri_filtering_attack_detail', NEW.tele_pre_mitigation_id) INTO @x;
   END IF;
 END@@
@@ -1289,10 +1264,11 @@ DROP TABLE IF EXISTS `uri_filtering_source_count`;
 CREATE TABLE `uri_filtering_source_count` (
   `id`                    bigint(20) NOT NULL AUTO_INCREMENT,
   `tele_attack_detail_id` bigint(20) NOT NULL,
-  `low_percentile_g`      int(11),
-  `mid_percentile_g`      int(11),
-  `high_percentile_g`     int(11),
-  `peak_g`                int(11),
+  `low_percentile_g`      bigint(20),
+  `mid_percentile_g`      bigint(20),
+  `high_percentile_g`     bigint(20),
+  `peak_g`                bigint(20),
+  `current_g`             bigint(20),
   `created`               datetime DEFAULT NULL,
   `updated`               datetime DEFAULT NULL,
   PRIMARY KEY (`id`)
@@ -1306,7 +1282,7 @@ DELIMITER @@
 CREATE TRIGGER uri_filtering_source_count_trigger AFTER UPDATE ON uri_filtering_source_count
 FOR EACH ROW
 BEGIN
-  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g THEN
+  IF NEW.low_percentile_g <> OLD.low_percentile_g OR NEW.mid_percentile_g <> OLD.mid_percentile_g OR NEW.high_percentile_g <> OLD.high_percentile_g OR NEW.peak_g <> OLD.peak_g OR NEW.current_g <> OLD.current_g THEN
     SELECT MySQLNotification('uri_filtering_source_count', NEW.tele_attack_detail_id) INTO @x;
   END IF;
 END@@
@@ -1429,11 +1405,14 @@ DELIMITER ;
 DROP TABLE IF EXISTS `vendor_mapping`;
 
 CREATE TABLE `vendor_mapping` (
-  `id`             bigint(20) NOT NULL AUTO_INCREMENT,
-  `data_client_id` bigint(20) NOT NULL,
-  `vendor_id`      int(11)    NOT NULL,
-  `created`        datetime   DEFAULT NULL,
-  `updated`        datetime   DEFAULT NULL,
+  `id`               bigint(20) NOT NULL AUTO_INCREMENT,
+  `data_client_id`   bigint(20) NOT NULL,
+  `vendor_id`        int(11)    NOT NULL,
+  `vendor_name`      varchar(255),
+  `description_lang` varchar(255),
+  `last_updated`     bigint(20) NOT NULL,
+  `created`          datetime   DEFAULT NULL,
+  `updated`          datetime   DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
@@ -1443,11 +1422,11 @@ CREATE TABLE `vendor_mapping` (
 DROP TABLE IF EXISTS `attack_mapping`;
 
 CREATE TABLE `attack_mapping` (
-  `id`                bigint(20)   NOT NULL AUTO_INCREMENT,
-  `vendor_mapping_id` bigint(20)   NOT NULL,
-  `attack_id`         int(11)      NOT NULL,
-  `attack_name`       varchar(255) NOT NULL,
-  `created`           datetime     DEFAULT NULL,
-  `updated`           datetime     DEFAULT NULL,
+  `id`                 bigint(20)   NOT NULL AUTO_INCREMENT,
+  `vendor_mapping_id`  bigint(20)   NOT NULL,
+  `attack_id`          int(11)      NOT NULL,
+  `attack_description` varchar(255) NOT NULL,
+  `created`            datetime     DEFAULT NULL,
+  `updated`            datetime     DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;

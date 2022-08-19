@@ -1,8 +1,8 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
-#include <coap2/coap.h>
+#cgo LDFLAGS: -lcoap-3-openssl
+#include <coap3/coap.h>
 */
 import "time"
 import cache "github.com/patrickmn/go-cache"

@@ -6,7 +6,7 @@ import "github.com/go-xorm/xorm"
 type UnitConfiguration struct {
 	Id           int64     `xorm:"'id' pk autoincr"`
 	TeleConfigId int64     `xorm:"'tele_config_id' not null"`
-	Unit         string    `xorm:"'unit' enum('PACKETS_PS','BITS_PS','BYTES_PS') not null"`
+	Unit         string    `xorm:"'unit' enum('packet-ps','bit-ps','byte-ps') not null"`
 	UnitStatus   bool      `xorm:"'unit_status'"`
 	Created      time.Time `xorm:"created"`
 	Updated      time.Time `xorm:"updated"`

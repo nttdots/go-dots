@@ -1,9 +1,9 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
+#cgo LDFLAGS: -lcoap-3-openssl
 #cgo darwin LDFLAGS: -L /usr/local/opt/openssl@1.1/lib
-#include <coap2/coap.h>
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -25,7 +25,7 @@ type SessionConfig struct {
     isSentHeartBeat          bool
     isReceivedPreMitigation  bool
     isNotification           bool
-    isSentNotification       bool
+    isWaitNotification       bool
     missing_hb_allowed       int
     current_missing_hb       int
 }
@@ -41,7 +41,7 @@ func (session *Session) SessionRelease() {
 }
 
 func (session *Session) SetMaxRetransmit (value int) {
-    C.coap_session_set_max_retransmit(session.ptr, C.uint(value))
+    C.coap_session_set_max_retransmit(session.ptr, C.uint16_t(value))
 }
 
 func (session *Session) SetAckTimeout (value decimal.Decimal) {
@@ -68,6 +68,40 @@ func (session *Session) SetAckRandomFactor (value decimal.Decimal) {
     }
 
     C.coap_session_set_ack_random_factor (session.ptr, C.coap_fixed_point_t{C.uint16_t(intPart), C.uint16_t(fraction * 1000)})
+}
+
+func (session *Session) SetMaxPayLoads(value int) {
+    C.coap_session_set_max_payloads(session.ptr, C.uint16_t(value))
+}
+
+func (session *Session) SetNonMaxRetransmit(value int) {
+    C.coap_session_set_non_max_retransmit(session.ptr, C.uint16_t(value))
+}
+
+func (session *Session) SetNonTimeout(value decimal.Decimal) {
+    valStr := value.String()
+    parts := strings.Split(valStr, ".")
+    intPart,_ := strconv.Atoi(parts[0])
+    var fraction float64
+    if len(parts) > 1 {
+        fractionPart,_ := strconv.Atoi(parts[1])
+        fraction = float64(fractionPart) * (math.Pow10(-len(parts[1])))
+    }
+
+    C.coap_session_set_non_timeout(session.ptr, C.coap_fixed_point_t{C.uint16_t(intPart), C.uint16_t(fraction * 1000)})
+}
+
+func (session *Session) SetNonReceiveTimeout(value decimal.Decimal) {
+    valStr := value.String()
+    parts := strings.Split(valStr, ".")
+    intPart,_ := strconv.Atoi(parts[0])
+    var fraction float64
+    if len(parts) > 1 {
+        fractionPart,_ := strconv.Atoi(parts[1])
+        fraction = float64(fractionPart) * (math.Pow10(-len(parts[1])))
+    }
+
+    C.coap_session_set_non_receive_timeout(session.ptr, C.coap_fixed_point_t{C.uint16_t(intPart), C.uint16_t(fraction * 1000)})
 }
 
 /*
@@ -251,20 +285,20 @@ func (session *Session) SetIsNotification(isNotification bool) {
 }
 
 /*
- * Get session is sent notitication
- * return: isSentNotification
+ * Get session is wait notitication
+ * return: isWaitNotification
  */
- func (session *Session) GetIsSentNotification() bool {
-    return session.sessionConfig.isSentNotification
+ func (session *Session) IsWaitNotification() bool {
+    return session.sessionConfig.isWaitNotification
 }
 
 /*
- * Set session is sent notification
+ * Set session is wait notification
  * parameter:
- *  isSentNotification
+ *  isWaitNotification
  */
-func (session *Session) SetIsSentNotification(isSentNotification bool) {
-    session.sessionConfig.isSentNotification = isSentNotification
+func (session *Session) SetIsWaitNotification(isWaitNotification bool) {
+    session.sessionConfig.isWaitNotification = isWaitNotification
 }
 
 
@@ -323,4 +357,12 @@ func (session *Session) HandleForgetNotification(pdu *Pdu) {
     if err == nil {
         C.coap_send_rst(session.ptr, pdut)
     }
+}
+
+// Get session from resource
+func GetSessionFromResource(resource *Resource) *Session {
+    if resource != nil {
+        return resource.session
+    }
+    return nil
 }

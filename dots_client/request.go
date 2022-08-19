@@ -51,6 +51,27 @@ type Response struct {
 	data       []byte
 }
 
+type ActiveRequest struct {
+	RequestName string
+	LastUse     time.Time
+}
+
+var acMap map[string]ActiveRequest = make(map[string]ActiveRequest)
+
+func AddActiveRequest(reqName string, lastUse time.Time) {
+	ac, isPresent := acMap[reqName]
+	if isPresent {
+		ac.LastUse = lastUse.Truncate(time.Second)
+		acMap[reqName] = ac
+	} else {
+		ac = ActiveRequest{
+			reqName,
+			lastUse,
+		}
+		acMap[reqName] = ac
+	}
+}
+
 /*
  * Request constructor.
  */
@@ -169,12 +190,24 @@ func (r *Request) CreateRequest() {
 					r.env.AddRequestQuery(string(r.pdu.Token), &reqQuery)
 				}
 			} else {
-				if token != nil {
+				isExist := libcoap.IsExistedUriQuery(r.queryParams)
+				if r.requestName == "session_configuration" && code == libcoap.RequestGet {
+					if token != nil {
+						r.pdu.Token = token
+					}
+					queryString := task.QueryParamsToString(r.queryParams)
+					reqQuery := task.RequestQuery{ queryString, nil }
+					r.env.AddRequestQuery(string(r.pdu.Token), &reqQuery)
+				} else if token != nil && !isExist {
 					r.pdu.Token = token
 					r.env.RemoveRequestQuery(string(token))
 				}
 			}
 		}
+	} else if r.requestName == "session_configuration" && code == libcoap.RequestGet {
+		queryString := task.QueryParamsToString(r.queryParams)
+		reqQuery := task.RequestQuery{ queryString, nil }
+		r.env.AddRequestQuery(string(r.pdu.Token), &reqQuery)
 	}
 
 SKIP_OBSERVE:
@@ -183,16 +216,23 @@ SKIP_OBSERVE:
 	}
 
 	// Block 2 option
-	if (r.requestName == "mitigation_request") && (r.method == "GET") {
+	if r.method == "GET" {
 		blockSize := r.env.InitialRequestBlockSize()
+		qBlockSize := r.env.QBlockSize()
 		if blockSize != nil {
 			block := &libcoap.Block{}
 			block.NUM = 0
 			block.M   = 0
 			block.SZX = *blockSize
 			r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+		} else if qBlockSize != nil {
+			block := &libcoap.Block{}
+			block.NUM = 0
+			block.M   = 1
+			block.SZX = *qBlockSize
+			r.pdu.SetOption(libcoap.OptionQBlock2, uint32(block.ToInt()))
 		} else {
-			log.Debugf("Not set block 2 option")
+			log.Debug("Not set Block2 option or QBlock2 option")
 		}
 	}
 
@@ -204,7 +244,7 @@ SKIP_OBSERVE:
 	requestQueryPaths := strings.Split(r.RequestCode.PathString(), "/")
 	requestQueryPaths = append(requestQueryPaths, r.queryParams...)
 	r.pdu.SetPath(requestQueryPaths)
-	log.Debugf("r.pdu=%+v", r.pdu)
+	log.Debugf("r.pdu=%s", r.pdu.ToString())
 }
 
 /*
@@ -220,8 +260,8 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 	// else display data received from server
 	if isMoreBlock {
 		r.pdu.MessageID = r.env.CoapSession().NewMessageID()
+		r.pdu.RemoveOption(libcoap.OptionObserve)
 		r.pdu.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
-		r.pdu.SetOption(libcoap.OptionEtag, uint32(*eTag))
 
 		// Add block2 option for waiting for response
 		r.options[messages.BLOCK2] = block.ToString()
@@ -229,37 +269,30 @@ func (r *Request) handleResponse(task *task.MessageTask, response *libcoap.Pdu, 
 		r.env.Run(task)
 	} else {
 		if eTag != nil && block.NUM > 0 {
-			blockKey := strconv.Itoa(*eTag) + string(response.Token)
+			blockKey := *eTag + string(response.Token)
 			response = r.env.GetBlockData(blockKey)
 			delete(r.env.Blocks(), blockKey)
 		}
-		if response.Type == libcoap.TypeNon {
-			log.Debugf("Success incoming PDU(HandleResponse): %+v", response)
-		}
+		log.Debugf("Success incoming PDU(HandleResponse): %s", response.ToString())
 
 		// Skip set analyze response data if it is the ping response
 		if response.Code != 0 {
 			task.AddResponse(response)
 		}
-	}
-
-	// Handle Session config task and ping task after receive response message 
-	// If this is response of Get session config without abnormal, restart ping task with latest parameters
-	// Check if the request does not contains sid option -> if not, does not restart ping task when receive response
-	// Else if this is response of Put session config with code Created -> stop the current session config task
-	// Else if this is response of Delete session config with code Deleted -> stop the current session config task
-	log.Debugf("r.queryParam=%v", r.queryParams)
-	if (r.requestName == "session_configuration") {
-		if (r.method == "GET") && (response.Code == libcoap.ResponseContent) && len(r.queryParams) > 0 {
-			log.Debug("Get with sid - Client update new values to system session configuration and restart ping task.")
-			RestartHeartBeatTask(response, r.env)
-			RefreshSessionConfig(response, r.env, r.pdu)
-		} else if (r.method == "PUT") && (response.Code == libcoap.ResponseCreated) {
-			log.Debug("The new session configuration has been created. Stop the current session config task")
-			RefreshSessionConfig(response, r.env, r.pdu)
-		} else if (r.method == "DELETE") && (response.Code == libcoap.ResponseDeleted) {
-			log.Debug("The current session configuration has been deleted. Stop the current session config task")
-			RefreshSessionConfig(response, r.env, r.pdu)
+		// Handle Session config task and ping task after receive response message
+		// If this is response of Get session config without abnormal, restart ping task with latest parameters
+		// Check if the request does not contains sid option -> if not, does not restart ping task when receive response
+		// Else if this is response of Delete session config with code Deleted -> stop the current session config task
+		log.Debugf("r.queryParam=%v", r.queryParams)
+		if (r.requestName == "session_configuration") {
+			if (r.method == "GET") && (response.Code == libcoap.ResponseContent) && len(r.queryParams) > 0 {
+				log.Debug("Get with sid - Client update new values to system session configuration and restart ping task.")
+				RestartHeartBeatTask(response, r.env)
+				env.StopSessionConfig()
+				RefreshSessionConfig(response, r.env, r.pdu, true)
+			} else if r.method == "DELETE" && response.Code == libcoap.ResponseDeleted {
+				env.StopSessionConfig()
+			}
 		}
 	}
 }
@@ -314,11 +347,25 @@ func (r *Request) Send() (res Response) {
 	} else if r.pdu.Type == libcoap.TypeCon {
 		config = dots_config.GetSystemConfig().ConfirmableMessageTask
 	}
+	qBlock2Config := dots_config.GetSystemConfig().QBlockOption
+	block2Config := dots_config.GetSystemConfig().InitialRequestBlockSize
+	isQBlock2 := true
+	if block2Config != nil {
+		isQBlock2 = false
+	}
+	// Set config for message task
+	interval := config.TaskInterval
+	retryNumber := config.TaskRetryNumber
+	timeout := config.TaskTimeout
+	if r.method == "GET" && isQBlock2 {
+		interval = 0
+		retryNumber = 0
+	}
 	task := task.NewMessageTask(
 		r.pdu,
-		time.Duration(config.TaskInterval) * time.Second,
-		config.TaskRetryNumber,
-		time.Duration(config.TaskTimeout) * time.Second,
+		time.Duration(interval) * time.Second,
+		retryNumber,
+		time.Duration(timeout) * time.Second,
 		false,
 		false,
 		r.handleResponse,
@@ -335,21 +382,28 @@ func (r *Request) Send() (res Response) {
 		res = Response{ libcoap.ResponseInternalServerError, []byte(str) }
 	} else {
 		res = Response{ pdu.Code, data }
+		// Set the last use of method GET
+		if r.method == "GET" && qBlock2Config != nil {
+			AddActiveRequest(r.requestName, time.Now())
+		}
 	}
 	return
 }
 
 func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 	var err error
-	var logStr string
 
 	if pdu == nil {
 		return
 	}
 
 	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
-	maxAgeRes := pdu.GetOptionStringValue(libcoap.OptionMaxage)
-	if maxAgeRes != "" {
+	maxAgeRes, err := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
+	if err != nil {
+		log.WithError(err).Warn("Get max-age option value failed.")
+		return
+	}
+	if maxAgeRes > 0 {
 		log.Infof("Max-Age Option: %v", maxAgeRes)
 	}
 
@@ -384,8 +438,7 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			var v messages.MitigationResponse
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 			r.env.SetCountMitigation(v, string(pdu.Token))
 			log.Debugf("Request query with token as key in map: %+v", r.env.GetAllRequestQuery())
 		case "PUT":
@@ -393,35 +446,25 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 				var v messages.MitigationResponseServiceUnavailable
 				err = dec.Decode(&v)
 				if err != nil { goto CBOR_DECODE_FAILED }
-				data, err = json.Marshal(v)
-				logStr = v.String()
+				data, err = json.MarshalIndent(v, "", "   ")
 			} else {
 				var v messages.MitigationResponsePut
 				err = dec.Decode(&v)
 				if err != nil { goto CBOR_DECODE_FAILED }
-				data, err = json.Marshal(v)
-				logStr = v.String()
+				data, err = json.MarshalIndent(v, "", "   ")
 			}
 		default:
 			var v messages.MitigationRequest
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 		}
 	case "session_configuration":
 		if r.method == "GET" {
 			var v messages.ConfigurationResponse
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
-		} else {
-			var v messages.SignalConfigRequest
-			err = dec.Decode(&v)
-			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 		}
 	case "telemetry_setup_request":
 		switch r.method {
@@ -429,14 +472,28 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			var v messages.TelemetrySetupResponse
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			var tscList []messages.TelemetryResponse
+			for _, tsc := range v.TelemetrySetup.Telemetry {
+				index := messages.ContainTsidInTelemetrySetup(tsc.Tsid, tscList)
+				if index >= 0 {
+					if tsc.CurrentConfig != nil {
+						tscList[index].CurrentConfig = tsc.CurrentConfig
+					} else if len(tsc.TotalPipeCapacity) > 0 {
+						tscList[index].TotalPipeCapacity = tsc.TotalPipeCapacity
+					} else if len(tsc.Baseline) > 0 {
+						tscList[index].Baseline = tsc.Baseline
+					}
+				} else {
+					tscList = append(tscList, tsc)
+				}
+			}
+			v.TelemetrySetup.Telemetry = tscList
+			data, err = json.MarshalIndent(v, "", "   ")
 		case "PUT":
 			var v messages.TelemetrySetupResponseConflict
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 		}
 	case "telemetry_pre_mitigation_request":
 		switch r.method {
@@ -444,15 +501,14 @@ func (r *Request) analyzeResponseData(pdu *libcoap.Pdu) (data []byte) {
 			var v messages.TelemetryPreMitigationResponse
 			err = dec.Decode(&v)
 			if err != nil { goto CBOR_DECODE_FAILED }
-			data, err = json.Marshal(v)
-			logStr = v.String()
+			data, err = json.MarshalIndent(v, "", "   ")
 		}
 	}
 	if err != nil {
 		log.WithError(err).Warn("Parse object to JSON failed.")
 		return
 	}
-	log.Infof("        CBOR decoded: %s", logStr)
+	log.Infof("        CBOR decoded: %s", string(data))
 	return
 
 CBOR_DECODE_FAILED:
@@ -510,8 +566,7 @@ func RestartHeartBeatTask(pdu *libcoap.Pdu, env *task.Env) {
 
 /*
  * Refresh session config
- * 1. Stop current session config task
- * 2. Check timeFresh = 'maxAgeOption' - 'intervalBeforeMaxAge'
+ * Check timeFresh = 'maxAgeOption' - 'intervalBeforeMaxAge'
  *    If timeFresh > 0, Run new session config task
  *    Else, Not run new session config task
  * parameter:
@@ -519,10 +574,22 @@ func RestartHeartBeatTask(pdu *libcoap.Pdu, env *task.Env) {
  *    env: env of session config
  *    message: request message
  */
-func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu) {
-	env.StopSessionConfig()
-	maxAgeRes, _ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
+func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu, isGet bool) {
+	maxAgeRes, _ := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
+	// If Max-Age Option is not returned in a response, the DOTS client initiates GET requests to refresh the configuration parameters each 60 seconds
+	if maxAgeRes < 0 && isGet {
+		maxAgeRes = 60
+	}
 	timeFresh := maxAgeRes - env.IntervalBeforeMaxAge()
+	// Block 2 option
+	blockSize := env.InitialRequestBlockSize()
+	if blockSize != nil {
+		block := &libcoap.Block{}
+		block.NUM = 0
+		block.M   = 0
+		block.SZX = *blockSize
+		message.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+	}
 	if timeFresh > 0 {
 		env.Run(task.NewSessionConfigTask(
 			message,
@@ -531,6 +598,13 @@ func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu)
 			sessionConfigTimeoutHandler))
 	} else {
 		log.Infof("Max-Age Option has value %+v <= %+v value of intervalBeforeMaxAge. Don't refresh session config", maxAgeRes, env.IntervalBeforeMaxAge())
+		reqQuery := env.GetRequestQuery(string(message.Token))
+		if reqQuery != nil {
+			tokenReq, _ := env.GetTokenAndRequestQuery(reqQuery.Query)
+			if len(tokenReq) > 0 {
+				env.RemoveRequestQuery(string(tokenReq))
+			}
+		}
 	}
 }
 
@@ -545,28 +619,79 @@ func RefreshSessionConfig(pdu *libcoap.Pdu, env *task.Env, message *libcoap.Pdu)
  *    env: env session config
  */
 func sessionConfigResponseHandler(t *task.SessionConfigTask, pdu *libcoap.Pdu, env *task.Env) {
-	log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
-	maxAgeRes, _ := strconv.Atoi(pdu.GetOptionStringValue(libcoap.OptionMaxage))
-	log.Infof("Max-Age Option: %v", maxAgeRes)
-	log.Infof("        Raw payload: %s", pdu.Data)
-	log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
-
 	// Check if the response body data is a string message (not an object)
 	if pdu.IsMessageResponse() {
 		return
 	}
+    isMoreBlock, eTag, block := env.CheckBlock(pdu)
+    var blockKey string
+    if eTag != nil {
+        blockKey = *eTag + string(pdu.Token)
+    }
 
-	dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
-	var v messages.ConfigurationResponse
-	err := dec.Decode(&v)
-	if err != nil {
-		log.WithError(err).Warn("CBOR Decode failed.")
-		return
-	}
-	log.Infof("        CBOR decoded: %+v", v.String())
-	if pdu.Code == libcoap.ResponseContent {
-		RestartHeartBeatTask(pdu, env)
-		RefreshSessionConfig(pdu, env, t.MessageTask())
+    if !isMoreBlock {
+        if eTag != nil && block.NUM > 0 {
+            pdu = env.GetBlockData(blockKey)
+            delete(env.Blocks(), blockKey)
+		}
+		if pdu.Code == libcoap.ResponseNotFound {
+			log.Debugf("Resource is deleted. Incoming PDU: %s", pdu.ToString())
+		} else {
+			log.Debugf("Success incoming PDU(HandleResponse): %s", pdu.ToString())
+			log.Infof("Message Code: %v (%+v)", pdu.Code, pdu.CoapCode())
+			maxAgeRes, err := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
+			if err != nil {
+				log.WithError(err).Warn("Get max-age option value failed.")
+				return
+			}
+			log.Infof("Max-Age Option: %v", maxAgeRes)
+			log.Infof("        Raw payload: %s", pdu.Data)
+			log.Infof("        Raw payload hex: \n%s", hex.Dump(pdu.Data))
+
+			dec := codec.NewDecoder(bytes.NewReader(pdu.Data), dots_common.NewCborHandle())
+			var v messages.ConfigurationResponse
+			err = dec.Decode(&v)
+			if err != nil {
+				log.WithError(err).Warn("CBOR Decode failed.")
+				return
+			}
+			data, err := json.MarshalIndent(v, "", "   ")
+			if err != nil {
+				log.WithError(err).Warn("Parse object to JSON failed.")
+				return
+			}
+			log.Infof("        CBOR decoded: %+v", string(data))
+			if pdu.Code == libcoap.ResponseContent {
+				RestartHeartBeatTask(pdu, env)
+			}
+		}
+	} else {
+		// Re-create request for block-wise transfer
+		req := &libcoap.Pdu{}
+		req.MessageID = env.CoapSession().NewMessageID()
+
+		req.Type = libcoap.TypeCon
+		req.Code = libcoap.RequestGet
+
+		// Create uri-path for block-wise transfer request from observation request query
+		reqQuery := env.GetRequestQuery(string(pdu.Token))
+		if reqQuery == nil {
+			log.Error("Failed to get query param for re-request notification blocks")
+			return
+		}
+		messageCode := messages.SESSION_CONFIGURATION
+		path := messageCode.PathString() + reqQuery.Query
+		req.SetPathString(path)
+
+		// Renew token value to re-request remaining blocks
+		req.Token = pdu.Token
+		req.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
+		// Run new message task for re-request remaining blocks of notification
+		env.Run(task.NewSessionConfigTask(
+			req,
+			time.Duration(0) * time.Second,
+			sessionConfigResponseHandler,
+			sessionConfigTimeoutHandler))
 	}
 }
 
@@ -597,7 +722,7 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
     }
 
     var err error
-    var logStr string
+	var data []byte
     var req *libcoap.Pdu
     if task != nil {
         req = task.GetMessage()
@@ -612,8 +737,12 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
     }
     log.WithField("Observe Value:", observe).Info("Notification Message")
 
-	maxAgeRes := pdu.GetOptionStringValue(libcoap.OptionMaxage)
-	if maxAgeRes != "" {
+	maxAgeRes, err := pdu.GetOptionIntegerValue(libcoap.OptionMaxage)
+	if err != nil {
+		log.WithError(err).Warn("Get max-age option value failed.")
+		return
+	}
+	if maxAgeRes > 0 {
 		log.Infof("Max-Age Option: %v", maxAgeRes)
 	}
 
@@ -623,7 +752,7 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
 
 	// Check if the response body data is a string message (not an object)
 	if pdu.IsMessageResponse() {
-		log.Debugf("Server send notification with error message: %+v", pdu.Data)
+		log.Debugf("Server send notification with error message: %s", pdu.Data)
 		return
 	}
 
@@ -632,36 +761,64 @@ func logNotification(env *task.Env, task *task.MessageTask, pdu *libcoap.Pdu) {
     // Identify response is mitigation or session configuration by cbor data in heximal
     if strings.Contains(hex, string(libcoap.IETF_MITIGATION_SCOPE_HEX)) {
         var v messages.MitigationResponse
-        err = dec.Decode(&v)
-        logStr = v.String()
+		err = dec.Decode(&v)
+		if err != nil {
+			log.Error("Failed to decode value.")
+			return
+		}
+		data, err = json.MarshalIndent(v, "", "   ")
+		if err != nil {
+			log.WithError(err).Warn("Parse object to JSON failed.")
+			return
+		}
+
         env.UpdateCountMitigation(req, v, string(pdu.Token))
-        log.Debugf("Request query with token as key in map: %+v", env.GetAllRequestQuery())
+		log.Debugf("Request query with token as key in map: %+v", env.GetAllRequestQuery())
+		// if status is 6, add token of the deleted resource
+		if err == nil {
+			scopes := v.MitigationScope.Scopes
+			if scopes != nil && *scopes[0].Status == 6 {
+				env.AddTokenOfDeletedResource(string(pdu.Token))
+			}
+		}
     } else if strings.Contains(hex, string(libcoap.IETF_SESSION_CONFIGURATION_HEX)) {
         var v messages.ConfigurationResponse
-        err = dec.Decode(&v)
-        logStr = v.String()
+		err = dec.Decode(&v)
+		if err != nil {
+			log.Error("Failed to decode value.")
+			return
+		}
+		data, err = json.MarshalIndent(v, "", "   ")
+		if err != nil {
+			log.WithError(err).Warn("Parse object to JSON failed.")
+			return
+		}
         log.Debug("Receive session notification - Client update new values to system session configuration and restart ping task.")
 		RestartHeartBeatTask(pdu, env)
 
 		// Not refresh session config in case session config task is nil (server send notification after reset by expired Max-age)
 		sessionTask := env.SessionConfigTask()
 		if sessionTask != nil {
-			RefreshSessionConfig(pdu, env, sessionTask.MessageTask())
+			env.StopSessionConfig()
+			RefreshSessionConfig(pdu, env, sessionTask.MessageTask(), true)
 		}
 	} else if strings.Contains(hex, string(libcoap.IETF_TELEMETRY_PRE_MITIGATION)) {
         var v messages.TelemetryPreMitigationResponse
-        err = dec.Decode(&v)
-        logStr = v.String()
+		err = dec.Decode(&v)
+		if err != nil {
+			log.Error("Failed to decode value.")
+			return
+		}
+		data, err = json.MarshalIndent(v, "", "   ")
+		if err != nil {
+			log.WithError(err).Warn("Parse object to JSON failed.")
+			return
+		}
         log.Debug("Receive telemetry pre-mitigation notification.")
-    }else {
+    } else {
         log.Warnf("Unknown notification is received.")
     }
-
-    if err != nil {
-        log.WithError(err).Warn("CBOR Decode failed.")
-        return
-    }
-    log.Infof("        CBOR decoded: %s", logStr)
+    log.Infof("        CBOR decoded: %s", string(data))
 }
 
 /*
@@ -677,17 +834,20 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
     isMoreBlock, eTag, block := env.CheckBlock(pdu)
     var blockKey string
     if eTag != nil {
-        blockKey = strconv.Itoa(*eTag) + string(pdu.Token)
+        blockKey = *eTag + string(pdu.Token)
     }
 
-    if !isMoreBlock || pdu.Type != libcoap.TypeNon {
+    if !isMoreBlock {
         if eTag != nil && block.NUM > 0 {
             pdu = env.GetBlockData(blockKey)
             delete(env.Blocks(), blockKey)
-        }
-
-        log.Debugf("Success incoming PDU (NotificationResponse): %+v", pdu)
-        logNotification(env, messageTask, pdu)
+		}
+		if pdu.Code == libcoap.ResponseNotFound {
+			log.Debugf("Resource is deleted. Incoming PDU: %s", pdu.ToString())
+		} else {
+			log.Debugf("Success incoming PDU (NotificationResponse): %s", pdu.ToString())
+			logNotification(env, messageTask, pdu)
+		}
     } else if isMoreBlock {
         // Re-create request for block-wise transfer
         req := &libcoap.Pdu{}
@@ -699,8 +859,11 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
             req = messageTask.GetMessage()
         } else {
             log.Debug("Success incoming PDU notification of first block. Re-request to retrieve remaining blocks of notification")
-
-            req.Type = pdu.Type
+            if pdu.Type == libcoap.TypeAck {
+                req.Type = libcoap.TypeCon
+            } else {
+                req.Type = pdu.Type
+            }
             req.Code = libcoap.RequestGet
 
             // Create uri-path for block-wise transfer request from observation request query
@@ -709,21 +872,25 @@ func handleNotification(env *task.Env, messageTask *task.MessageTask, pdu *libco
                 log.Error("Failed to get query param for re-request notification blocks")
                 return
             }
-            messageCode := messages.MITIGATION_REQUEST
-            path := messageCode.PathString() + reqQuery.Query
-            req.SetPathString(path)
+
+			// Set uri-path and uri-query (if existed) for the get remain block
+			path := pdu.Path()
+			queries := pdu.Queries()
+			if len(queries) > 0 {
+				path = append(path, queries...)
+			}
+			req.SetPath(path)
 
             // Renew token value to re-request remaining blocks
-            req.Token = dots_common.RandStringBytes(8)
+            req.Token = pdu.Token
             if eTag != nil {
                 delete(env.Blocks(), blockKey)
-                newBlockKey := strconv.Itoa(*eTag) + string(req.Token)
+                newBlockKey := *eTag + string(req.Token)
                 env.Blocks()[newBlockKey] = pdu
             }
         }
 
         req.SetOption(libcoap.OptionBlock2, uint32(block.ToInt()))
-        req.SetOption(libcoap.OptionEtag, uint32(*eTag))
 
         // Run new message task for re-request remaining blocks of notification
         newTask := task.NewMessageTask(

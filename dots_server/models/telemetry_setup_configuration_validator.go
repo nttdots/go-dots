@@ -84,19 +84,34 @@ func ValidateTelemetryConfiguration(customerID int, cuid string, tsid int, data 
 	if data.HighPercentile != nil {
 		highPercentile, _ = data.HighPercentile.Float64()
 	}
-	if data.MeasurementInterval != nil && *data.MeasurementInterval != int(Hour) && *data.MeasurementInterval != int(Day) &&
-	  * data.MeasurementInterval != int(Week) && *data.MeasurementInterval != int(Month) {
-		errMsg = fmt.Sprintf("Invalid measurement-interval value: %+v. Expected values include 1:hour, 2:day, 3:week, 4:month", *data.MeasurementInterval)
+	if data.MeasurementInterval != nil && (*data.MeasurementInterval < messages.FiveMinutesInterval || *data.MeasurementInterval > messages.Month) {
+		errMsg = fmt.Sprintf("Invalid measurement-interval value: %+v. Expected values include 1:%s, 2:%s, 3:%s, 4:%s, 5:%s, 6:%s, 7:%s",
+				*data.MeasurementInterval, messages.FIVE_MINUTES_INTERVAL, messages.TEN_MINUTES_INTERVAL, messages.THIRTY_MINUTES_INTERVAL, messages.HOUR,
+			    messages.DAY, messages.WEEK, messages.MONTH)
 		log.Error(errMsg)
 		isUnprocessableEntity = true
 		return
 	}
-	if data.MeasurementSample != nil && *data.MeasurementSample != int(Second) && *data.MeasurementSample != int(FiveSeconds) &&
-	  *data.MeasurementSample != int(ThirtySeconds) && *data.MeasurementSample != int(OneMinute) && *data.MeasurementSample != int(FiveMinutes) &&
-	  *data.MeasurementSample != int(TenMinutes) && *data.MeasurementSample != int(ThirtyMinutes) && *data.MeasurementSample != int(OneHour) {
-		errMsg = fmt.Sprintf("Invalid measurement-sample value: %+v. Expected values include 1:Second, 2:5-seconds, 3:30-seconds, 4:minute, 5:5-minutes, 6:10-minutes, 7:30-minutes, 8:hour", *data.MeasurementSample)
+	if data.MeasurementSample != nil && (*data.MeasurementSample < messages.Second || *data.MeasurementSample > messages.OneHour) {
+		errMsg = fmt.Sprintf("Invalid measurement-sample value: %+v. Expected values include 1:%s, 2:%s, 3:%s, 4:%s, 5:%s, 6:%s, 7:%s, 8:%s",
+				*data.MeasurementSample, messages.SECOND, messages.FIVE_SECONDS, messages.THIRTY_SECONDDS, messages.ONE_MINUTE, messages.FIVE_MINUTES,
+				messages.TEN_MINUTES, messages.THIRTY_MINUTES, messages.HOUR)
 		log.Error(errMsg)
 		isUnprocessableEntity = true
+		return
+	}
+	defaultValue := dots_config.GetServerSystemConfig().DefaultTelemetryConfiguration
+	interval := messages.ConvertMeasurementIntervalToString(messages.IntervalString(defaultValue.MeasurementInterval))
+	sample := messages.ConvertMeasurementSampleToString(messages.SampleString(defaultValue.MeasurementSample))
+	if data.MeasurementInterval != nil {
+		interval = messages.ConvertMeasurementIntervalToString(*data.MeasurementInterval)
+	}
+	if data.MeasurementSample !=nil {
+		sample = messages.ConvertMeasurementSampleToString(*data.MeasurementSample)
+	}
+	if ConvertToSecond(interval) <= ConvertToSecond(sample) {
+		errMsg = "The measurement sample value must be less than the measurement interval value"
+		log.Error(errMsg)
 		return
 	}
 	if midPercentile < lowPercentile {
@@ -119,7 +134,7 @@ func ValidateTelemetryConfiguration(customerID int, cuid string, tsid int, data 
 			log.Error(errMsg)
 			return
 		}
-		if *config.Unit != int(PacketsPerSecond) && *config.Unit != int(BitsPerSecond) && *config.Unit != int(BytesPerSecond) {
+		if config.Unit != nil && (*config.Unit < messages.PacketsPerSecond || *config.Unit > messages.BytesPerSecond) {
 			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps", *config.Unit)
 			log.Error(errMsg)
 			isUnprocessableEntity = true
@@ -161,6 +176,7 @@ func ValidateTotalPipeCapacity(customerID int, cuid string, tsid int, data []mes
 	// default value
 	isPresent = false
 	isUnprocessableEntity = false
+	zeroValueCount := 0
 
 	// Get telemetry setup by customerId and setup type is 'pipe'
 	currentTelemetrySetupList, err := GetTelemetrySetupByCustomerIdAndSetupType(customerID, string(PIPE))
@@ -188,16 +204,24 @@ func ValidateTotalPipeCapacity(customerID int, cuid string, tsid int, data []mes
 			isUnprocessableEntity = true
 			return
 		}
-		if *v.Unit != int(PacketsPerSecond) && *v.Unit != int(BitsPerSecond) && *v.Unit != int(BytesPerSecond) &&
-			*v.Unit != int(KiloPacketsPerSecond) && *v.Unit != int(KiloBitsPerSecond) && *v.Unit != int(KiloBytesPerSecond) &&
-			*v.Unit != int(MegaPacketsPerSecond) && *v.Unit != int(MegaBitsPerSecond) && *v.Unit != int(MegaBytesPerSecond) &&
-			*v.Unit != int(GigaPacketsPerSecond) && *v.Unit != int(GigaBitsPerSecond) && *v.Unit != int(GigaBytesPerSecond) &&
-			*v.Unit != int(TeraPacketsPerSecond) && *v.Unit != int(TeraBitsPerSecond) && *v.Unit != int(TeraBytesPerSecond) {
-			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps, 4:kilopackets-ps, 5:kilobits-ps, 6:kilobytes-ps, 7:megapackets-ps, 8:megabits-ps, 9:megabytes-ps, 10:gigapackets-ps, 11:gigabits-ps, 12:gigabyte-ps, 13:terapackets-ps, 14:terabits-ps, 15:terabytes-ps", *v.Unit)
+		if *v.Capacity == 0 {
+			zeroValueCount ++
+		}
+		if v.Unit!= nil && (*v.Unit < messages.PacketsPerSecond || *v.Unit > messages.ZettaBytesPerSecond) {
+			errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:%s, 2:%s, 3:%s, 4:%s, 5:%s, 6:%s, 7:%s, 8:%s, 9:%s, 10:%s, 11:%s, 12:%s, 13:%s, 14:%s, 15:%s, 16:%s, 17:%s, 18:%s, 19:%s, 20:%s, 21:%s, 22:%s, 23:%s, 24:%s",
+					*v.Unit, messages.PACKETS_PER_SECOND, messages.BITS_PER_SECOND, messages.BYTES_PER_SECOND, messages.KILOPACKETS_PER_SECOND, messages.KILOBITS_PER_SECOND, messages.KILOBYTES_PER_SECOND, messages.MEGAPACKETS_PER_SECOND,
+					messages.MEGABITS_PER_SECOND, messages.MEGABYTES_PER_SECOND, messages.GIGAPACKETS_PER_SECOND, messages.GIGABITS_PER_SECOND, messages.GIGABYTES_PER_SECOND, messages.TERAPACKETS_PER_SECOND, messages.TERABITS_PER_SECOND,
+					messages.TERABYTES_PER_SECOND, messages.PETAPACKETS_PER_SECOND, messages.PETABITS_PER_SECOND, messages.PETABYTES_PER_SECOND, messages.EXAPACKETS_PER_SECOND, messages.EXABITS_PER_SECOND, messages.EXABYTES_PER_SECOND,
+					messages.ZETTAPACKETS_PER_SECOND, messages.ZETTABITS_PER_SECOND, messages.ZETTABYTES_PER_SECOND)
 			log.Error(errMsg)
 			isUnprocessableEntity = true
 			return
 		}
+	}
+	if zeroValueCount == len(data) {
+		errMsg = "If the PUT request with a 'capacity' attribute set to 0 for all included links, DOTS server MUST reject the request"
+		log.Error(errMsg)
+		return
 	}
 	return
 }
@@ -369,18 +393,18 @@ func ValidateProtocolList(protocolList []int) (errMsg string) {
 }
 
 // Validate unit
-func ValidateUnit(unit *int) (isUnprocessableEntity bool, errMsg string) {
+func ValidateUnit(unit *messages.UnitString) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
 	if unit == nil {
 		errMsg = "Missing required 'unit' attribute"
 		return
 	}
-	if *unit != int(PacketsPerSecond) && *unit != int(BitsPerSecond) && *unit != int(BytesPerSecond) &&
-		*unit != int(KiloPacketsPerSecond) && *unit != int(KiloBitsPerSecond) && *unit != int(KiloBytesPerSecond) &&
-		*unit != int(MegaPacketsPerSecond) && *unit != int(MegaBitsPerSecond) && *unit != int(MegaBytesPerSecond) &&
-		*unit != int(GigaPacketsPerSecond) && *unit != int(GigaBitsPerSecond) && *unit != int(GigaBytesPerSecond) &&
-		*unit != int(TeraPacketsPerSecond) && *unit != int(TeraBitsPerSecond) && *unit != int(TeraBytesPerSecond) {
-		errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:packets-ps, 2:bits-ps, 3:byte-ps, 4:kilopackets-ps, 5:kilobits-ps, 6:kilobytes-ps, 7:megapackets-ps, 8:megabits-ps, 9:megabytes-ps, 10:gigapackets-ps, 11:gigabits-ps, 12:gigabyte-ps, 13:terapackets-ps, 14:terabits-ps, 15:terabytes-ps", *unit)
+	if *unit < messages.PacketsPerSecond || *unit > messages.ZettaBytesPerSecond {
+		errMsg = fmt.Sprintf("Invalid unit value: %+v. Expected values include 1:%s, 2:%s, 3:%s, 4:%s, 5:%s, 6:%s, 7:%s, 8:%s, 9:%s, 10:%s, 11:%s, 12:%s, 13:%s, 14:%s, 15:%s, 16:%s, 17:%s, 18:%s, 19:%s, 20:%s, 21:%s, 22:%s, 23:%s, 24:%s",
+					*unit, messages.PACKETS_PER_SECOND, messages.BITS_PER_SECOND, messages.BYTES_PER_SECOND, messages.KILOPACKETS_PER_SECOND, messages.KILOBITS_PER_SECOND, messages.KILOBYTES_PER_SECOND, messages.MEGAPACKETS_PER_SECOND,
+					messages.MEGABITS_PER_SECOND, messages.MEGABYTES_PER_SECOND, messages.GIGAPACKETS_PER_SECOND, messages.GIGABITS_PER_SECOND, messages.GIGABYTES_PER_SECOND, messages.TERAPACKETS_PER_SECOND, messages.TERABITS_PER_SECOND,
+					messages.TERABYTES_PER_SECOND, messages.PETAPACKETS_PER_SECOND, messages.PETABITS_PER_SECOND, messages.PETABYTES_PER_SECOND, messages.EXAPACKETS_PER_SECOND, messages.EXABITS_PER_SECOND, messages.EXABYTES_PER_SECOND,
+					messages.ZETTAPACKETS_PER_SECOND, messages.ZETTABITS_PER_SECOND, messages.ZETTABYTES_PER_SECOND)
 		isUnprocessableEntity = true
 		return
 	}
@@ -489,3 +513,20 @@ func ValidateTotalConnectionCapacityPerPort(tccList []messages.TotalConnectionCa
 	return
 }
 
+// Convert the interval(string) or the sample(string) to second(int)
+func ConvertToSecond(stringValue string) (second int) {
+	switch stringValue {
+	case string(messages.SECOND):          second = 1
+	case string(messages.FIVE_SECONDS):    second = 5
+	case string(messages.THIRTY_SECONDDS): second = 30
+	case string(messages.ONE_MINUTE):      second = 60
+	case string(messages.FIVE_MINUTES):    second = 5*60
+	case string(messages.TEN_MINUTES):     second = 10*60
+	case string(messages.THIRTY_MINUTES):  second = 30*60
+	case string(messages.HOUR):            second = 60*60
+	case string(messages.DAY):             second = 24*60*60
+	case string(messages.WEEK):            second = 7*24*60*60
+	case string(messages.MONTH):           second = 30*24*60*60
+	}
+	return second
+}

@@ -34,7 +34,7 @@ func WithTransaction(f func(*Tx) (interface{}, error)) (interface{}, error) {
   ret, err := f(&Tx{ engine, session })
   if err != nil {
     session.Rollback()
-    return nil, err
+    return ret, nil
   }
 
   err = session.Commit()

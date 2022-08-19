@@ -9,15 +9,18 @@
                 },
                 "total-attack-traffic":[
                     {
-                        "unit":1,
-                        "mid-percentile-g":900
+                        "unit":"megapacket-ps",
+                        "mid-percentile-g":"900"
                     }
                 ],
-                "attack-detail":{
-                    "attack-id": "attack-id-1",
-                    "start-time":1957811234,
-                    "attack-severity":2
-                }
+                "attack-detail":[
+                    {
+                        "vendor-id":345,
+                        "attack-id":1,
+                        "start-time":"1957811234",
+                        "attack-severity":"low"
+                    }
+                ]
             }
         ]
     }

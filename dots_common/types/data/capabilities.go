@@ -12,7 +12,7 @@ type Capabilities struct {
   UDP                *Capabilities_UDP  `yang:"nonconfig" json:"udp"`
   ICMP               *Capabilities_ICMP `yang:"nonconfig" json:"icmp"`
 
-  VendorMappingEnabled *bool `yang:"nonconfig" json:"vendor_mapping_enabled"`
+  VendorMappingEnabled *bool `yang:"nonconfig" json:"ietf-dots-mapping:vendor-mapping-enabled"`
 }
 
 type Capabilities_IPv4 struct {
@@ -61,7 +61,7 @@ type Capabilities_TCP struct {
 type Capabilities_UDP struct {
   Length          *bool `yang:"nonconfig" json:"length"`
   SourcePort      *bool `yang:"nonconfig" json:"source-port"`
-  DestinationPort *bool `yang:"nonconfig" json:"destination-port-"`
+  DestinationPort *bool `yang:"nonconfig" json:"destination-port"`
   PortRange       *bool `yang:"nonconfig" json:"port-range"`
 }
 

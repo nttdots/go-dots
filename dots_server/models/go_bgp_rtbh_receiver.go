@@ -8,12 +8,12 @@ import (
 
 	"fmt"
 	"github.com/nttdots/go-dots/dots_server/db_models"
-	"github.com/osrg/gobgp/pkg/packet/bgp"
+	"github.com/osrg/gobgp/v3/pkg/packet/bgp"
 	"google.golang.org/grpc"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/proto"
-	api "github.com/osrg/gobgp/api"
+	api "github.com/osrg/gobgp/v3/api"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -223,7 +223,7 @@ BGP_ROLLBACK:
 
 /*
  * Establish the connection to this GoBGP router.
- * Base on func newClient(), packet "github.com/osrg/gobgp/cmd/gobgp" from GoBGP open source
+ * Base on func newClient(), packet "github.com/osrg/gobgp/v3/cmd/gobgp" from GoBGP open source
  */
 func (g *GoBgpRtbhReceiver) connect() (bgpClient api.GobgpApiClient, conn *grpc.ClientConn ,err error) {
 	return connect(g.timeout, g.Host(), g.Port())
@@ -231,7 +231,7 @@ func (g *GoBgpRtbhReceiver) connect() (bgpClient api.GobgpApiClient, conn *grpc.
 
 /*
  * Establish the connection to this GoBGP router.
- * Base on func newClient(), packet "github.com/osrg/gobgp/cmd/gobgp" from GoBGP open source
+ * Base on func newClient(), packet "github.com/osrg/gobgp/v3/cmd/gobgp" from GoBGP open source
  */
 func connect(timeout int, host string, port string) (bgpClient api.GobgpApiClient, conn *grpc.ClientConn ,err error) {
 	options := make([]grpc.DialOption, 0)
@@ -405,7 +405,7 @@ func NewRTBHProtection(base ProtectionBase, params []db_models.GoBgpParameter) *
 
 /*
  * Marshal nlri
- * Base on func MarshalNLRI(), packet "github.com/osrg/gobgp/internal/pkg/apiutil" from GoBGP open source
+ * Base on func MarshalNLRI(), packet "github.com/osrg/gobgp/v3/internal/pkg/apiutil" from GoBGP open source
  */
 func MarshalNLRI(value bgp.AddrPrefixInterface) *any.Any {
 	var nlri proto.Message
@@ -436,7 +436,7 @@ func MarshalNLRI(value bgp.AddrPrefixInterface) *any.Any {
 
 /*
  * Marshal path attributes
- * Base on func MarshalPathAttributes(), packet "github.com/osrg/gobgp/internal/pkg/apiutil" from GoBGP open source
+ * Base on func MarshalPathAttributes(), packet "github.com/osrg/gobgp/v3/internal/pkg/apiutil" from GoBGP open source
  */
 func MarshalPathAttributes(attrList []bgp.PathAttributeInterface) []*any.Any {
 	anyList := make([]*any.Any, 0, len(attrList))

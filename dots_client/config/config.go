@@ -20,10 +20,12 @@ type ClientSystemConfig struct {
 	DefaultSessionConfiguration   *DefaultSessionConfiguration   `yaml:"defaultSessionConfiguration"`
 	NonConfirmableMessageTask     *MessageTaskConfiguration      `yaml:"nonConfirmableMessageTask"`
 	ConfirmableMessageTask        *MessageTaskConfiguration      `yaml:"confirmableMessageTask"`
+	SecureFile                    *SecureFile                    `yaml:"secureFile"`
 	IntervalBeforeMaxAge           int                           `yaml:"intervalBeforeMaxAge"`
 	InitialRequestBlockSize       *int                           `yaml:"initialRequestBlockSize"`
 	SecondRequestBlockSize        *int                           `yaml:"secondRequestBlockSize"`
 	PinnedCertificate             *PinnedCertificate             `yaml:"pinnedCertificate"`
+	QBlockOption                  *QBlockOption                  `yaml:"qBlockOption"`
 }
 type DefaultSessionConfiguration struct {
 	HeartbeatInterval int `yaml:"heartbeatInterval"`
@@ -39,6 +41,12 @@ type MessageTaskConfiguration struct {
 	TaskTimeout     int `yaml:"taskTimeout"`
 }
 
+type SecureFile struct {
+	ClientCertFile string `yaml:"clientCertFile"`
+	ClientKeyFile  string `yaml:"clientKeyFile"`
+	CertFile       string `yaml:"certFile"`
+}
+
 type ClientRestfulApiConfiguration struct {
 	RestfulApiPort        string `yaml:"restfulApiPort"`
 	RestfulApiPath        string `yaml:"restfulApiPath"`
@@ -48,6 +56,14 @@ type ClientRestfulApiConfiguration struct {
 type PinnedCertificate struct {
 	ReferenceIdentifier   string `yaml:"referenceIdentifier"`
 	PresentIdentifierList string `yaml:"presentIdentifierList"`
+}
+
+type QBlockOption struct {
+	QBlockSize        int     `yaml:"qBlockSize"`
+	MaxPayloads       int     `yaml:"maxPayloads"`
+	NonMaxRetransmit  int     `yaml:"nonMaxRetransmit"`
+	NonTimeout        float64 `yaml:"nonTimeout"`
+	NonReceiveTimeout float64 `yaml:"nonReceiveTimeout"`
 }
 
 /**
@@ -111,6 +127,13 @@ func (config *ClientSystemConfig) String() (result string) {
 		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskRetryNumber", confirmableMessageTask.TaskRetryNumber)
 		result += fmt.Sprintf("%s%s: %d\n", spaces6, "taskTimeout", confirmableMessageTask.TaskTimeout)
 	}
+	if config.SecureFile != nil {
+		secureFile := config.SecureFile
+		result += fmt.Sprintf("%s%s:\n", spaces3, "secureFile")
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "clientCertFile", secureFile.ClientCertFile)
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "clientKeyFile", secureFile.ClientKeyFile)
+		result += fmt.Sprintf("%s%s: %s\n", spaces6, "certFile", secureFile.CertFile)
+	}
 	result += fmt.Sprintf("%s%s: %d\n", spaces3, "intervalBeforeMaxAge", config.IntervalBeforeMaxAge)
 	if config.InitialRequestBlockSize != nil {
 		result += fmt.Sprintf("%s%s: %d\n", spaces3, "initialRequestBlockSize", *config.InitialRequestBlockSize)
@@ -123,6 +146,15 @@ func (config *ClientSystemConfig) String() (result string) {
 		result += fmt.Sprintf("%s%s:\n", spaces3, "pinnedCertificate")
 		result += fmt.Sprintf("%s%s: %s\n", spaces6, "referenceIdentifier", pinnedCertificate.ReferenceIdentifier)
 		result += fmt.Sprintf("%s%s: %s\n", spaces6, "presentIdentifierList", pinnedCertificate.PresentIdentifierList)
+	}
+	if config.QBlockOption != nil {
+		qBlock := config.QBlockOption
+		result += fmt.Sprintf("%s%s:\n", spaces3, "qBlockOption")
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "qBlockSize", qBlock.QBlockSize)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "maxPayloads", qBlock.MaxPayloads)
+		result += fmt.Sprintf("%s%s: %d\n", spaces6, "nonMaxRetransmit", qBlock.NonMaxRetransmit)
+		result += fmt.Sprintf("%s%s: %.2f\n", spaces6, "nonTimeout", qBlock.NonTimeout)
+		result += fmt.Sprintf("%s%s: %.2f\n", spaces6, "nonReceiveTimeout", qBlock.NonReceiveTimeout)
 	}
 	return
 }

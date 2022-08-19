@@ -1,8 +1,8 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl -lssl -lcrypto
-#include <coap2/coap.h>
+#cgo LDFLAGS: -lcoap-3-openssl -lssl -lcrypto
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -11,7 +11,7 @@ import "unsafe"
 
 type ResponseHandler func(*Context, *Session, *Pdu, *Pdu)
 
-type NackHandler func(*Context, *Session, *Pdu, NackReason)
+type NackHandler func(*Session, *Pdu, NackReason)
 
 type NackReason C.coap_nack_reason_t
 const (
@@ -88,7 +88,7 @@ func (session *Session) Send(pdu *Pdu) (err error) {
     if err != nil {
         return
     }
-    if C.COAP_INVALID_TID == C.coap_send(session.ptr, cpdu) {
+    if C.COAP_INVALID_MID == C.coap_send(session.ptr, cpdu) {
         err = errors.New("coap_session() -> COAP_INVALID_TID")
         return
     }
@@ -96,12 +96,15 @@ func (session *Session) Send(pdu *Pdu) (err error) {
 }
 
 //export export_response_handler
-func export_response_handler(ctx      *C.coap_context_t,
-                             sess     *C.coap_session_t,
+func export_response_handler(sess     *C.coap_session_t,
                              sent     *C.coap_pdu_t,
                              received *C.coap_pdu_t,
-                             id       C.coap_tid_t) {
-
+                             id        C.coap_mid_t) (response C.coap_response_t) {
+    response = C.COAP_RESPONSE_FAIL
+    ctx := C.coap_session_get_context(sess)
+    if ctx == nil {
+        return
+    }
     context, ok := contexts[ctx]
     if !ok {
         return
@@ -128,18 +131,22 @@ func export_response_handler(ctx      *C.coap_context_t,
 
     if context.handler != nil {
         context.handler(context, session, req, res)
+        response = C.COAP_RESPONSE_OK
     }
+    return
 }
 
 //export export_method_from_server_handler
-func export_method_from_server_handler(ctx   *C.coap_context_t,
-                           rsrc  *C.coap_resource_t,
+func export_method_from_server_handler(rsrc  *C.coap_resource_t,
                            sess  *C.coap_session_t,
                            req   *C.coap_pdu_t,
-                           tok   *C.coap_string_t,
                            query *C.coap_string_t,
                            resp  *C.coap_pdu_t) {
 
+    ctx := C.coap_session_get_context(sess)
+    if ctx == nil {
+        return
+    }
     context, ok := contexts[ctx]
     if !ok {
         return
@@ -160,6 +167,7 @@ func export_method_from_server_handler(ctx   *C.coap_context_t,
         return
     }
 
+    tok := C.coap_get_token_from_request_pdu(req)
     token := tok.toBytes()
     queryString := query.toString()
 
@@ -168,17 +176,20 @@ func export_method_from_server_handler(ctx   *C.coap_context_t,
     if ok {
         handler(context, resource, session, request, token, queryString, &response)
     }
-    response.fillC(resp)
+    response.fillC(resp, nil)
 }
 
 //export export_nack_handler
-func export_nack_handler(ctx *C.coap_context_t,
-	sess *C.coap_session_t,
+func export_nack_handler(sess *C.coap_session_t,
 	sent *C.coap_pdu_t,
 	reason C.coap_nack_reason_t,
-	id C.coap_tid_t) {
+	id C.coap_mid_t) {
 
-	context, ok := contexts[ctx]
+    ctx := C.coap_session_get_context(sess)
+    if ctx == nil {
+        return
+    }
+    context, ok := contexts[ctx]
 	if !ok {
 		return
 	}
@@ -195,7 +206,7 @@ func export_nack_handler(ctx *C.coap_context_t,
 
     // If previous message is Ping message or Session Config message
 	if context.nackHandler != nil && req.Type == C.COAP_MESSAGE_CON {
-		context.nackHandler(context, session, req, NackReason(reason))
+		context.nackHandler(session, req, NackReason(reason))
 	}
 }
 
@@ -211,5 +222,5 @@ func (context *Context) RegisterNackHandler(handler NackHandler) {
 
 func (resource *Resource) RegisterServerHandler(method Code, handler MethodHandler) {
     resource.handlers[method] = handler
-    C.coap_register_handler(resource.ptr, C.uchar(method), C.coap_method_handler_t(C.method_from_server_handler))
+    C.coap_register_handler(resource.ptr, C.coap_request_t(method), C.coap_method_handler_t(C.method_from_server_handler))
 }

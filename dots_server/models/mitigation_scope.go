@@ -84,6 +84,8 @@ const (
 	OVERLAPPING_TARGETS       ConflictCause = iota+1
 	WHITELIST_ACL_COLLISION
 	CUID_COLLISION
+	UNDEFINED
+	OVERLAPPING_PIPE_SCOPE
 )
 
 type ACL struct {
@@ -93,7 +95,7 @@ type ACL struct {
 
 type ControlFiltering struct {
 	ACLName        string
-	ActivationType *int
+	ActivationType *messages.ActivationTypeString
 }
 
 type ActivationType int
@@ -342,7 +344,7 @@ func (conflictScope *ConflictScope) ParseToResponse() (*messages.ConflictScope) 
 
 	// Convert target port-range to port-range response
 	for i, portRange := range conflictScope.TargetPortRange {
-		res.TargetPortRange[i] = messages.PortRangeResponse{ LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort }
+		res.TargetPortRange[i] = messages.PortRangeResponse{ LowerPort: portRange.LowerPort, UpperPort: &portRange.UpperPort }
 	}
 	return res
 }

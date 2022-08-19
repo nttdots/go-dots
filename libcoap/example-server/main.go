@@ -39,7 +39,7 @@ func main() {
 //    systemCerts := "/etc/ssl/certs"
 //    dtls := libcoap.DtlsParam{ nil, &systemCerts, &certFile, &keyFile }
 
-    ctx := libcoap.NewContextDtls(nil, &dtls, int(libcoap.SERVER_PEER))
+    ctx := libcoap.NewContextDtls(nil, &dtls, int(libcoap.SERVER_PEER), nil)
     if ctx == nil {
         log.Println("NewContext() -> nil")
         return

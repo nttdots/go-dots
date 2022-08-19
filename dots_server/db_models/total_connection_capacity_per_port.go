@@ -5,22 +5,22 @@ import "time"
 import "github.com/go-xorm/xorm"
 
 type TotalConnectionCapacityPerPort struct {
-	Id                     int64     `xorm:"'id' pk autoincr"`
-	TeleBaselineId         int64     `xorm:"'tele_baseline_id' not null"`
-	Protocol               int       `xorm:"'protocol' not null"`
-	Port                   int       `xorm:"'port' not null"`
-	Connection             int       `xorm:"'connection'"`
-	ConnectionClient       int       `xorm:"'connection_client'"`
-	Embryonic              int       `xorm:"'embryonic'"`
-	EmbryonicClient        int       `xorm:"'embryonic_client'"`
-	ConnectionPs           int       `xorm:"'connection_ps'"`
-	ConnectionClientPs     int       `xorm:"'connection_client_ps'"`
-	RequestPs              int       `xorm:"'request_ps'"`
-	RequestClientPs        int       `xorm:"'request_client_ps'"`
-	PartialRequestPs       int       `xorm:"'partial_request_ps'"`
-	PartialRequestClientPs int       `xorm:"'partial_request_client_ps'"`
-	Created                time.Time `xorm:"created"`
-	Updated                time.Time `xorm:"updated"`
+	Id                      int64     `xorm:"'id' pk autoincr"`
+	TeleBaselineId          int64     `xorm:"'tele_baseline_id' not null"`
+	Protocol                int       `xorm:"'protocol' not null"`
+	Port                    int       `xorm:"'port' not null"`
+	Connection              uint64    `xorm:"'connection'"`
+	ConnectionClient        uint64    `xorm:"'connection_client'"`
+	Embryonic               uint64    `xorm:"'embryonic'"`
+	EmbryonicClient         uint64    `xorm:"'embryonic_client'"`
+	ConnectionPs            uint64    `xorm:"'connection_ps'"`
+	ConnectionClientPs      uint64    `xorm:"'connection_client_ps'"`
+	RequestPs               uint64    `xorm:"'request_ps'"`
+	RequestClientPs         uint64    `xorm:"'request_client_ps'"`
+	PartialRequestMax       uint64    `xorm:"'partial_request_max'"`
+	PartialRequestClientMax uint64    `xorm:"'partial_request_client_max'"`
+	Created                 time.Time `xorm:"created"`
+	Updated                 time.Time `xorm:"updated"`
 }
 
 // Get total connection capacity per port by teleBaselineId

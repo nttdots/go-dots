@@ -1,16 +1,22 @@
 {
-    "ietf-dots-telemetry:telemetry-setup":{
-      "telemetry":[
-        {
-          "current-config":{
-            "measurement-interval":1,
-            "measurement-sample":2,
-            "low-percentile":5.00,
-            "mid-percentile":65.00,
-            "high-percentile":95.00,
-            "telemetry-notify-interval":1
-          }
+  "ietf-dots-telemetry:telemetry-setup":{
+    "telemetry":[
+      {
+        "current-config":{
+          "measurement-interval":"week",
+          "measurement-sample":"5-minutes",
+          "low-percentile":5.00,
+          "mid-percentile":65.00,
+          "high-percentile":95.00,
+          "telemetry-notify-interval":1,
+          "unit-config":[
+            {
+              "unit":"packet-ps",
+              "unit-status":true
+            }
+          ]
         }
-      ]
-    }
+      }
+    ]
+  }
 }

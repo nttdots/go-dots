@@ -4,19 +4,21 @@ import (
   "encoding/json"
   "time"
   "errors"
-  log "github.com/sirupsen/logrus"
 
-  types "github.com/nttdots/go-dots/dots_common/types/data"
+  "github.com/go-xorm/xorm"
   "github.com/nttdots/go-dots/dots_server/db"
   "github.com/nttdots/go-dots/dots_server/db_models/data"
   "github.com/nttdots/go-dots/dots_server/models"
   "github.com/nttdots/go-dots/dots_common/messages"
   "github.com/nttdots/go-dots/dots_common"
+  log "github.com/sirupsen/logrus"
+  types "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
 type ACL struct {
   Id           int64
   Client       *Client
+  Priority     int
   ACL          types.ACL
   ValidThrough time.Time
 }
@@ -48,6 +50,7 @@ func (acl *ACL) Save(tx *db.Tx) error {
   a := data_db_models.ACL{}
   a.Id           = acl.Id
   a.ClientId     = acl.Client.Id
+  a.Priority     = acl.Priority
   a.Name         = acl.ACL.Name
   a.ACL          = data_db_models.DataACL(acl.ACL)
   a.ValidThrough = acl.ValidThrough
@@ -108,7 +111,7 @@ func (acl *ACL) ToTypesACL(now time.Time) (*types.ACL, error) {
 
 func FindACLs(tx *db.Tx, client *Client, now time.Time) (ACLs, error) {
   acls := make(ACLs, 0)
-  err := tx.Session.Where("data_client_id = ? AND ? <= valid_through", client.Id, db.AsDateTime(now)).Iterate(&data_db_models.ACL{}, func(i int, bean interface{}) error {
+  err := tx.Session.Where("data_client_id = ? AND ? <= valid_through", client.Id, db.AsDateTime(now)).OrderBy("priority ASC").Iterate(&data_db_models.ACL{}, func(i int, bean interface{}) error {
     a := bean.(*data_db_models.ACL)
     acls = append(acls, ACL{
       Id:           a.Id,
@@ -183,6 +186,7 @@ func FindACLByName(tx *db.Tx, client *Client, name string, now time.Time) (*ACL,
   return &ACL{
     Id:           a.Id,
     Client:       client,
+    Priority:     a.Priority,
     ACL:          types.ACL(a.ACL),
     ValidThrough: a.ValidThrough,
   }, nil
@@ -557,4 +561,20 @@ func GetDataChannelAclAcceptList(customer *models.Customer, cuid string) ([]stri
     }
   }
   return aclSourcePrefixList, nil
+}
+
+// Get priority is max value
+func GetMaxPriority(engine *xorm.Engine) (maxPriority int, err error) {
+  _, err = engine.SQL("select MAX(priority) from data_acls").Get(&maxPriority)
+  if err != nil {
+    log.Errorf("Failed to get max priority. Err: %+v,", err)
+    return 0, err
+  }
+  return maxPriority, nil
+}
+
+// Update priority of acl
+func UpdatePriorityAcl(session *xorm.Session, lenNewAcl int, pointPriority int) (err error) {
+  _, err = session.Exec("Update data_acls set priority = priority + ? where priority >= ?", lenNewAcl, pointPriority)
+  return
 }

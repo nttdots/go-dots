@@ -1,16 +1,19 @@
 {
     "ietf-dots-mapping:vendor-mapping":{
-        "ietf-dots-mapping:vendor":[
+        "vendor":[
             {
-                "ietf-dots-mapping:vendor-id":345,
-                "ietf-dots-mapping:attack-mapping":[
+                "vendor-id":123,
+                "vendor-name":"mitigator-c",
+                "description-lang": "en",
+                "last-updated":"1576812345",
+                "attack-mapping":[
                     {
-                        "ietf-dots-mapping:attack-id":1,
-                        "ietf-dots-mapping:attack-name":"Include a description of this attack"
+                        "attack-id":1,
+                        "attack-description":"attack-description 1"
                     },
                     {
-                        "ietf-dots-mapping:attack-id":2,
-                        "ietf-dots-mapping:attack-name":"Again, include a description of the attack"
+                        "attack-id":2,
+                        "attack-description":"attack-description 2"
                     }
                 ]
             }

@@ -2,6 +2,8 @@ package data_messages
 
 import (
 	"fmt"
+	"strconv"
+	"github.com/nttdots/go-dots/dots_server/models"
 	types "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
@@ -20,7 +22,7 @@ func ValidateWithVendorId(vendorId int, req *VendorMappingRequest) (errMsg strin
 		return
 	}
 	vendor := req.VendorMapping.Vendor[0]
-	if int(*vendor.VendorId) != vendorId {
+	if vendor.VendorId != nil && int(*vendor.VendorId) != vendorId {
 		errMsg = fmt.Sprintf("Request/URI vendor-id mismatch : (%v) / (%v)", int(*vendor.VendorId), vendorId)
 		return
 	}
@@ -30,20 +32,32 @@ func ValidateWithVendorId(vendorId int, req *VendorMappingRequest) (errMsg strin
 // Validate vendor-mapping (Post/Put request)
 func ValidateVendorMapping(req *VendorMappingRequest) (errMsg string) {
 	for _, vendor := range req.VendorMapping.Vendor {
-	if vendor.VendorId == nil {
-		errMsg = fmt.Sprintf("Missing 'vendor-id' required attribute")
-		return
-	}
-	for _, attack := range vendor.AttackMapping {
-		if attack.AttackId == nil {
-			errMsg = fmt.Sprintf("Missing 'attack-id' required attribute")
+		if vendor.VendorId == nil {
+			errMsg = fmt.Sprintln("Missing 'vendor-id' required attribute")
 			return
 		}
-		if attack.AttackName == nil {
-			errMsg = fmt.Sprintf("Missing 'attack-name' required attribute")
+		if vendor.DescriptionLang != nil {
+			_, errMsg = models.ValidateDescriptionLang(*vendor.DescriptionLang)
 			return
 		}
-	}
+		if vendor.LastUpdated == nil {
+			errMsg = fmt.Sprintln("Missing 'last-updated' required attribute")
+			return
+		}
+		if _, err := strconv.ParseUint(*vendor.LastUpdated, 10, 64); err != nil {
+			errMsg = fmt.Sprintln("The type of 'last-updated' is not uint")
+			return
+		}
+		for _, attack := range vendor.AttackMapping {
+			if attack.AttackId == nil {
+				errMsg = fmt.Sprintln("Missing 'attack-id' required attribute")
+				return
+			}
+			if attack.AttackDescription == nil {
+				errMsg = fmt.Sprintln("Missing 'attack-description' required attribute")
+				return
+			}
+		}
 	}
 	return
 }

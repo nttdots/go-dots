@@ -11,10 +11,10 @@ import (
 
 type Env struct {
 	context       *libcoap.Context
-	session       *libcoap.Session
 	channel       chan Event
-	hbMessageTask *HeartBeatMessageTask
+	heartBeatList map[*libcoap.Session] *HeartBeatMessageTask
 }
+
 
 var env *Env
 
@@ -28,9 +28,8 @@ var env *Env
 func NewEnv(context *libcoap.Context) *Env {
 	return &Env{
 		context,
-		nil,
 		make(chan Event, 32),
-		nil,
+		make(map[*libcoap.Session] *HeartBeatMessageTask),
 	}
 }
 
@@ -44,10 +43,14 @@ func NewEnv(context *libcoap.Context) *Env {
  */
 func (env *Env) RenewEnv(context *libcoap.Context, currentSession *libcoap.Session) *Env {
 	env.context = context
-	env.session = currentSession
 	env.channel = make(chan Event, 32)
-	env.hbMessageTask = nil
+	env.heartBeatList = make(map[*libcoap.Session] *HeartBeatMessageTask)
 	return env
+}
+
+// Remove session in env
+func (env *Env) RemoveSession(session *libcoap.Session) {
+	delete(env.heartBeatList, session)
 }
 
 /*
@@ -55,35 +58,30 @@ func (env *Env) RenewEnv(context *libcoap.Context, currentSession *libcoap.Sessi
  * parameter:
  *  task       the task need run
  */
-func (env *Env) Run(task Task) {
-	switch t := task.(type) {
-	case *HeartBeatMessageTask:
-		env.hbMessageTask = t
-	}
+func (env *Env) Run(session *libcoap.Session, task Task) {
 	go task.run(env.channel)
 }
 
-func (env *Env) HandleResponse(pdu *libcoap.Pdu) {
-	t := env.hbMessageTask
-
-	if !env.session.GetIsHeartBeatTask() {
+func (env *Env) HandleResponse(session *libcoap.Session, pdu *libcoap.Pdu) {
+	t := env.heartBeatList[session]
+	if !session.GetIsHeartBeatTask() {
 		log.Info("Unexpected PDU: %v", pdu)
-	} else {
-		env.session.SetIsHeartBeatTask(false)
+	} else if !t.isStop {
+		session.SetIsHeartBeatTask(false)
 		if pdu.Code == libcoap.ResponseChanged {
-			env.session.SetIsReceiveResponseContent(true)
+			session.SetIsReceiveResponseContent(true)
 		}
 		t.stop()
 		t.responseHandler(t, pdu)
 		// Reset current_missing_hb
-		env.session.SetCurrentMissingHb(0)
+		session.SetCurrentMissingHb(0)
 	}
 }
 
-func (env *Env) HandleTimeout(sent *libcoap.Pdu) {
-	t := env.hbMessageTask
+func (env *Env) HandleTimeout(session *libcoap.Session, sent *libcoap.Pdu) {
+	t := env.heartBeatList[session]
 
-	if !env.session.GetIsHeartBeatTask() {
+	if !session.GetIsHeartBeatTask() {
 		log.Info("Unexpected PDU: %v", sent)
 	} else {
 		t.stop()
@@ -100,19 +98,6 @@ func (env *Env) CoapContext() *libcoap.Context {
 	return env.context
 }
 
-/*
- * Get env current session
- * return:
- *  currentSession           the current session
- */
-func (env *Env) CoapSession() *libcoap.Session {
-	return env.session
-}
-
-// Set env session
-func (env *Env) SetCoapSession(session *libcoap.Session) {
-	env.session = session
-}
 
 /*
  * Get env event
@@ -121,16 +106,6 @@ func (env *Env) SetCoapSession(session *libcoap.Session) {
  */
 func (env *Env) EventChannel() chan Event {
 	return env.channel
-}
-
-/*
- * Check if the missing heartbeat allowed is out
- * return:
- *  true           missing-hb-allowed is out
- *  false          missing-hb-allowed is not out
- */
-func (env *Env) IsHeartbeatAllowed() bool {
-	return env.session.IsHeartbeatAllowed()
 }
 
 /*
@@ -152,15 +127,6 @@ func GetEnv() *Env {
 }
 
 /*
- * Get env heartbeat message task
- * return:
- *  hbMessageTask           the heartbeat mesage task
- */
-func (env *Env) GetHbMessageTask() *HeartBeatMessageTask {
-	return env.hbMessageTask
-}
-
-/*
  * the response handler
  * parameter:
  *  pdu       the response model
@@ -177,12 +143,18 @@ func heartbeatResponseHandler(t *HeartBeatMessageTask, pdu *libcoap.Pdu) {
  * parameter:
  *  env       the env
  */
-func heartbeatTimeoutHandler(_ *HeartBeatMessageTask, env *Env) {
-	log.Debugf("HeartBeat Timeout")
+func heartbeatTimeoutHandler(task *HeartBeatMessageTask, env *Env) {
+	log.Debugf("Handle HeartBeat Timeout")
     log.Debug("Exceeded missing_hb_allowed. Stop heartbeat task...")
 
-    // Get dot peer common name from current session
-    cn, err := env.session.DtlsGetPeerCommonName()
+	// Get dot peer common name from current session
+	var session *libcoap.Session
+	for k, v := range env.heartBeatList {
+		if v == task {
+			session = k
+		}
+	}
+    cn, err := session.DtlsGetPeerCommonName()
     if err != nil {
         log.WithError(err).Error("DtlsGetPeercCommonName() failed")
         return
@@ -196,7 +168,7 @@ func heartbeatTimeoutHandler(_ *HeartBeatMessageTask, env *Env) {
     }
 
 	// If DOTS server heartbeat timeout and doesn't receive heartbeat from DOTS client, DOTS server will start trigger mitigation
-	if env.CoapSession().GetIsReceiveHeartBeat() == false {
+	if !session.GetIsReceiveHeartBeat() {
 		// Trigger mitigation mechanism is active
 		log.Debug("Start Trigger Mitigation mechanism.")
 		err = controllers.TriggerMitigation(customer)
@@ -205,11 +177,10 @@ func heartbeatTimeoutHandler(_ *HeartBeatMessageTask, env *Env) {
 			return
 		}
 	}
-    env.session.SetIsHeartBeatTask(false)
+    session.SetIsHeartBeatTask(false)
 
     // log.Debugf("DTLS session: %+v has already disconnected. Terminate session...", env.session.String())
     // env.session.TerminateConnectingSession(env.context)
-    return
 }
 
 // Handle heartbeat from server to client
@@ -222,20 +193,33 @@ func (env *Env) HeartBeatMechaism(session *libcoap.Session, customer *models.Cus
 		if sessions[session.GetSessionPtr()] == nil {
 			return
 		}
-		env.session = session
+		// Get mitigationIds with status is 2
+		mids, err := models.GetMitigationIdsByCustomer(customer.Id)
+		if err != nil {
+			return
+		}
 		// Get session configuration of this session by customer id
 		sessionConfig, err := controllers.GetSessionConfig(customer)
 		if err != nil {
 			log.Errorf("[Session Mngt Thread]: Get session configuration failed.")
 			return
 		}
+		// Set value for heartbeat
+		retry := sessionConfig.MissingHbAllowedIdle
+		interval := sessionConfig.HeartbeatIntervalIdle
+		timeout := sessionConfig.AckTimeoutIdle
+		if len(mids) > 0 {
+			retry = sessionConfig.MissingHbAllowed
+			interval = sessionConfig.HeartbeatInterval
+			timeout = sessionConfig.AckTimeout
+		}
 		// If DOTS server receives 2.04 but DOTS server doesn't recieve heartbeat from DOTS client,  DOTS server set 'peer-hb-status' to false
         // Else  DOTS server set 'peer-hb-status' to true
 		hbValue := true
-		if session.GetIsReceiveResponseContent() == true && session.GetIsReceiveHeartBeat() == false {
+		if session.GetIsReceiveResponseContent() && !session.GetIsReceiveHeartBeat() {
 			hbValue = false
 		}
-		hbMessage, err := messages.NewHeartBeatMessage(*env.CoapSession(), messages.JSON_HEART_BEAT_SERVER, hbValue)
+		hbMessage, err := messages.NewHeartBeatMessage(*session, messages.JSON_HEART_BEAT_SERVER, hbValue)
 		if err != nil {
 			log.Errorf("Failed to create heartbeat message")
 			return
@@ -244,18 +228,21 @@ func (env *Env) HeartBeatMechaism(session *libcoap.Session, customer *models.Cus
 			log.Errorf("[Session Mngt Thread]: Failed to create new heartbeat message. Error: %+v", err)
 			return
 		}
-		if env.CoapSession().GetIsHeartBeatTask() == true {
-			log.Debugf("[Session Mngt Thread]: Waiting for current heartbeat task (id = %+v)", env.hbMessageTask.message.MessageID)
+		if session.GetIsHeartBeatTask() {
+			log.Debugf("[Session Mngt Thread]: Waiting for current heartbeat task (id = %+v)", env.heartBeatList[session].message.MessageID)
 		} else {
 			log.Debugf("[Session Mngt Thread]: Create new heartbeat message (id = %+v) to check client connection", hbMessage.MessageID)
-			env.Run(NewHeartBeatMessageTask(hbMessage, sessionConfig.MissingHbAllowedIdle,
-				time.Duration(sessionConfig.AckTimeoutIdle) * time.Second,
-				time.Duration(sessionConfig.HeartbeatIntervalIdle) * time.Second,
-				heartbeatResponseHandler, heartbeatTimeoutHandler))
+			task := NewHeartBeatMessageTask(hbMessage,
+				retry,
+				time.Duration(timeout) * time.Second,
+				time.Duration(interval) * time.Second,
+				heartbeatResponseHandler, heartbeatTimeoutHandler)
+			env.heartBeatList[session] = task
+			env.Run(session, task)
 
 			session.SetIsReceiveResponseContent(false)
 			session.SetIsReceiveHeartBeat(false)
 		}
-		time.Sleep(time.Duration(sessionConfig.HeartbeatIntervalIdle) * time.Second)
+		time.Sleep(time.Duration(interval) * time.Second)
 	}
 }

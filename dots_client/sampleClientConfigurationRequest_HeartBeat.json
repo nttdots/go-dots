@@ -1,0 +1,9 @@
+{
+    "session-config-heartbeat": {
+        "heartbeat-interval": 30,
+        "missing-hb-allowed": 15,
+        "max-retransmit": 3,
+        "ack-timeout": 2.00,
+        "ack-random-factor": 1.50
+    }
+}

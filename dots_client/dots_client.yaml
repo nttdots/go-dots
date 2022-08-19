@@ -26,16 +26,28 @@ system:
     taskRetryNumber: 0
     taskTimeout: 10
 
+  secureFile:
+    clientCertFile: ../certs/client-cert.pem
+    clientKeyFile: ../certs/client-key.pem
+    certFile: ../certs/ca-cert.pem
 
   # Time (seconds) before max-age to refresh Get session config
   intervalBeforeMaxAge: 15
 
   # Client request with block2 option at the first time
-  initialRequestBlockSize: 3
+  # initialRequestBlockSize: 3
 
   # Client request without the block2 option at the first time.
   # If client does not accept with the recommended block size from server, client can send a request with block2 option (new block size)
   secondRequestBlockSize: 5
+
+  # Config of QBlock option
+  qBlockOption:
+    qBlockSize: 1
+    maxPayloads: 10
+    nonMaxRetransmit: 4
+    nonTimeout: 2
+    nonReceiveTimeout: 4
 
   # The pinned certificates into the cache.
   # If the 'referenceIdentifier' is one of the reference identifiers, the client pin each element in the 'presentIdentifierList' in to cache as key

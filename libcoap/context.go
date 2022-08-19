@@ -1,11 +1,9 @@
 package libcoap
 
-import "C"
-
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
+#cgo LDFLAGS: -lcoap-3-openssl
 #cgo darwin LDFLAGS: -L /usr/local/opt/openssl@1.1/lib
-#include <coap2/coap.h>
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
@@ -101,7 +99,7 @@ func export_validate_cn_call_back(presentIdentifier *C.char, depth C.uint, refer
     return 0
 }
 
-func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
+func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int, sessionTimeout *int) *Context {
     var caddr *C.coap_address_t = nil
     if addr != nil {
       caddr = &addr.value
@@ -116,7 +114,7 @@ func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
         setupData.version = C.COAP_DTLS_PKI_SETUP_VERSION
         setupData.pki_key.key_type = C.COAP_PKI_KEY_PEM
         setupData.verify_peer_cert        = 1
-        setupData.require_peer_cert       = 1
+        setupData.check_common_ca         = 1
         setupData.allow_self_signed       = 1
         setupData.allow_expired_certs     = 1
         setupData.cert_chain_validation   = 1
@@ -159,6 +157,10 @@ func NewContextDtls(addr *Address, dtls *DtlsParam, ctxPeer int) *Context {
         ok := C.coap_context_set_pki(ptr, setupData)
 
         if ok == 1 {
+            if sessionTimeout != nil && *sessionTimeout > 0 {
+                C.coap_context_set_session_timeout(ptr, C.uint(*sessionTimeout))
+            }
+            C.coap_context_set_block_mode(ptr, C.COAP_BLOCK_USE_LIBCOAP| C.COAP_BLOCK_TRY_Q_BLOCK)
             context := &Context{ ptr, nil, nil, nil, setupData }
             contexts[ptr] = context
             return context            
@@ -215,27 +217,33 @@ func (context *Context) CanExit() bool {
 }
 
 func (context *Context) RunOnce(timeout time.Duration) time.Duration {
-    d := C.coap_run_once(context.ptr, C.uint(timeout / time.Millisecond))
+    d := C.coap_io_process(context.ptr, C.uint(timeout / time.Millisecond))
     return time.Duration(d) * time.Millisecond
 }
 
 /*
  * Enable resource dirty and return the resource
  */
-func (context *Context) EnableResourceDirty(query string) (resource *Resource) {
-    log.Debugf("[EnableDirty]: Enable resource dirty: query: %+v", query)
-
-    // Get sub-resource corresponding to uriPath
-    resource = context.GetResourceByQuery(&query)
+func (context *Context) EnableResourceDirty(resource *Resource) int {
     if (resource != nil) {
         log.Debugf("[EnableDirty]: Found resource to notify (uriPath=%+v)", resource.UriPath())
         // Mark resource as dirty and do notifying
         log.Debug("[EnableDirty]: Set resource dirty.")
-        C.coap_set_dirty(resource.ptr, C.CString(""), 0)
+        dirty := C.coap_set_dirty(resource.ptr, C.CString(""), 0)
+        return int(dirty)
     } else {
         log.Warn("[EnableDirty]: Not found any resource to set dirty.")
+        return 0
     }
-    return
+}
+
+// Check dirty of resource
+func (context *Context) CheckResourceDirty(resource *Resource) bool {
+    if resource.ptr != nil {
+        dirty := int(C.coap_set_dirty(resource.ptr, C.CString(""), 0))
+        return dirty == 1
+    }
+    return false
 }
 
 /*

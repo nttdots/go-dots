@@ -133,8 +133,8 @@ func UpdateTelemetryConfiguration(customerId int, cuid string, cdid string, tsid
 	}
 
 	// Updated telemetry configuration
-	updateTelemetryConfiguration.MeasurementInterval = ConvertMesurementIntervalToString(telemetryConfiguration.MeasurementInterval)
-	updateTelemetryConfiguration.MeasurementSample = ConvertMesurementSampleToString(telemetryConfiguration.MeasurementSample)
+	updateTelemetryConfiguration.MeasurementInterval = messages.ConvertMeasurementIntervalToString(telemetryConfiguration.MeasurementInterval)
+	updateTelemetryConfiguration.MeasurementSample = messages.ConvertMeasurementSampleToString(telemetryConfiguration.MeasurementSample)
 	updateTelemetryConfiguration.LowPercentile = telemetryConfiguration.LowPercentile
 	updateTelemetryConfiguration.MidPercentile = telemetryConfiguration.MidPercentile
 	updateTelemetryConfiguration.HighPercentile = telemetryConfiguration.HighPercentile
@@ -226,7 +226,7 @@ func CreateTotalPipeCapacity(customerId int, cuid string, cdid string, tsid int,
 						return isConflict, err
 					}
 					lenCurrentPipeList--
-				} else if pipe.LinkId == currentPipe.LinkId && ConvertUnitToString(pipe.Unit) == currentPipe.Unit {
+				} else if pipe.LinkId == currentPipe.LinkId && messages.ConvertUnitToString(pipe.Unit) == currentPipe.Unit {
 					if currentSetup.Cuid == cuid && currentSetup.Tsid < tsid {
 						log.Debugf("[Overlap] Overlapping link_id = %+v and unit_id = %+v. DOTS server will delete total_pipe_capacity id = %+v", 
 						currentPipe.LinkId, currentPipe.Unit, currentPipe.Id)
@@ -570,8 +570,8 @@ func RegisterTelemetrySetup(session *xorm.Session, customerId int, cuid string, 
 func RegisterTelemetryConfiguration(session *xorm.Session, teleSetupId int64, telemetryConfiguration *TelemetryConfiguration) (*db_models.TelemetryConfiguration, error) {
 	newTelemetryConfiguration := db_models.TelemetryConfiguration{
 		TeleSetupId:               teleSetupId,
-		MeasurementInterval:       ConvertMesurementIntervalToString(telemetryConfiguration.MeasurementInterval),
-		MeasurementSample:         ConvertMesurementSampleToString(telemetryConfiguration.MeasurementSample),
+		MeasurementInterval:       messages.ConvertMeasurementIntervalToString(telemetryConfiguration.MeasurementInterval),
+		MeasurementSample:         messages.ConvertMeasurementSampleToString(telemetryConfiguration.MeasurementSample),
 		LowPercentile:             telemetryConfiguration.LowPercentile,
 		MidPercentile:             telemetryConfiguration.MidPercentile,
 		HighPercentile:            telemetryConfiguration.HighPercentile,
@@ -594,8 +594,8 @@ func RegisterTotalPipecapacity(session *xorm.Session, teleSetupId int64, pipeLis
 			newTotalPipeCapacity := db_models.TotalPipeCapacity{
 				TeleSetupId: teleSetupId,
 				LinkId:      pipe.LinkId,
-				Capacity:    pipe.Capacity,
-				Unit:        ConvertUnitToString(pipe.Unit),
+				Capacity:    uint64(pipe.Capacity),
+				Unit:        messages.ConvertUnitToString(pipe.Unit),
 			}
 			newTotalPipeCapacityList = append(newTotalPipeCapacityList, newTotalPipeCapacity)
 		}
@@ -635,7 +635,7 @@ func RegisterBaseline(session *xorm.Session, teleSetupId int64, baseline Baselin
 func RegisterUnitConfiguration(session *xorm.Session, tConID int64, unitConfigList []UnitConfig) (err error) {
 	newUnitConfigList := []db_models.UnitConfiguration{}
 	for _, config := range unitConfigList {
-		unit := ConvertUnitToString(config.Unit)
+		unit := messages.ConvertUnitToString(config.Unit)
 		newUnitConfig := db_models.CreateUnitConfiguration(tConID, unit, config.UnitStatus)
 		newUnitConfigList = append(newUnitConfigList, *newUnitConfig)
 	}
@@ -776,11 +776,11 @@ func RegisterTraffic(session *xorm.Session, tType string, prefixType string, typ
 			PrefixType:      prefixType,
 			TypeId:          typeId,
 			TrafficType:     trafficType,
-			Unit:            ConvertUnitToString(vTraffic.Unit),
-			LowPercentileG:  vTraffic.LowPercentileG,
-			MidPercentileG:  vTraffic.MidPercentileG,
-			HighPercentileG: vTraffic.HighPercentileG,
-			PeakG:           vTraffic.PeakG,
+			Unit:            messages.ConvertUnitToString(vTraffic.Unit),
+			LowPercentileG:  uint64(vTraffic.LowPercentileG),
+			MidPercentileG:  uint64(vTraffic.MidPercentileG),
+			HighPercentileG: uint64(vTraffic.HighPercentileG),
+			PeakG:           uint64(vTraffic.PeakG),
 		}
 		newTrafficList = append(newTrafficList, newTraffic)
 	}
@@ -802,12 +802,12 @@ func RegisterTrafficPerProtocol(session *xorm.Session, tType string, typeId int6
 			Type:            tType,
 			TypeId:          typeId,
 			TrafficType:     trafficType,
-			Unit:            ConvertUnitToString(vTraffic.Unit),
+			Unit:            messages.ConvertUnitToString(vTraffic.Unit),
 			Protocol:        vTraffic.Protocol,
-			LowPercentileG:  vTraffic.LowPercentileG,
-			MidPercentileG:  vTraffic.MidPercentileG,
-			HighPercentileG: vTraffic.HighPercentileG,
-			PeakG:           vTraffic.PeakG,
+			LowPercentileG:  uint64(vTraffic.LowPercentileG),
+			MidPercentileG:  uint64(vTraffic.MidPercentileG),
+			HighPercentileG: uint64(vTraffic.HighPercentileG),
+			PeakG:           uint64(vTraffic.PeakG),
 		}
 		newTrafficList = append(newTrafficList, newTraffic)
 	}
@@ -829,12 +829,12 @@ func RegisterTrafficPerPort(session *xorm.Session, tType string, typeId int64, t
 			Type:            tType,
 			TypeId:          typeId,
 			TrafficType:     trafficType,
-			Unit:            ConvertUnitToString(vTraffic.Unit),
+			Unit:            messages.ConvertUnitToString(vTraffic.Unit),
 			Port:            vTraffic.Port,
-			LowPercentileG:  vTraffic.LowPercentileG,
-			MidPercentileG:  vTraffic.MidPercentileG,
-			HighPercentileG: vTraffic.HighPercentileG,
-			PeakG:           vTraffic.PeakG,
+			LowPercentileG:  uint64(vTraffic.LowPercentileG),
+			MidPercentileG:  uint64(vTraffic.MidPercentileG),
+			HighPercentileG: uint64(vTraffic.HighPercentileG),
+			PeakG:           uint64(vTraffic.PeakG),
 		}
 		newTrafficList = append(newTrafficList, newTraffic)
 	}
@@ -853,18 +853,18 @@ func RegisterTotalConnectionCapacity(session *xorm.Session, teleBaselineId int64
 	newTccList := []db_models.TotalConnectionCapacity{}
 	for _, vTcc := range tccs {
 		newTcc  := db_models.TotalConnectionCapacity {
-			TeleBaselineId:         teleBaselineId,
-			Protocol:               vTcc.Protocol,
-			Connection:             vTcc.Connection,
-			ConnectionClient:       vTcc.ConnectionClient,
-			Embryonic:              vTcc.Embryonic,
-			EmbryonicClient:        vTcc.EmbryonicClient,
-			ConnectionPs:           vTcc.ConnectionPs,
-			ConnectionClientPs:     vTcc.ConnectionClientPs,
-			RequestPs:              vTcc.RequestPs,
-			RequestClientPs:        vTcc.RequestClientPs,
-			PartialRequestPs:       vTcc.PartialRequestPs,
-			PartialRequestClientPs: vTcc.PartialRequestClientPs,
+			TeleBaselineId:          teleBaselineId,
+			Protocol:                vTcc.Protocol,
+			Connection:              uint64(vTcc.Connection),
+			ConnectionClient:        uint64(vTcc.ConnectionClient),
+			Embryonic:               uint64(vTcc.Embryonic),
+			EmbryonicClient:         uint64(vTcc.EmbryonicClient),
+			ConnectionPs:            uint64(vTcc.ConnectionPs),
+			ConnectionClientPs:      uint64(vTcc.ConnectionClientPs),
+			RequestPs:               uint64(vTcc.RequestPs),
+			RequestClientPs:         uint64(vTcc.RequestClientPs),
+			PartialRequestMax:       uint64(vTcc.PartialRequestMax),
+			PartialRequestClientMax: uint64(vTcc.PartialRequestClientMax),
 		}
 		newTccList = append(newTccList, newTcc)
 	}
@@ -883,19 +883,19 @@ func RegisterTotalConnectionCapacityPerPort(session *xorm.Session, teleBaselineI
 	newTccList := []db_models.TotalConnectionCapacityPerPort{}
 	for _, vTcc := range tccs {
 		newTcc  := db_models.TotalConnectionCapacityPerPort {
-			TeleBaselineId:         teleBaselineId,
-			Protocol:               vTcc.Protocol,
-			Port:                   vTcc.Port,
-			Connection:             vTcc.Connection,
-			ConnectionClient:       vTcc.ConnectionClient,
-			Embryonic:              vTcc.Embryonic,
-			EmbryonicClient:        vTcc.EmbryonicClient,
-			ConnectionPs:           vTcc.ConnectionPs,
-			ConnectionClientPs:     vTcc.ConnectionClientPs,
-			RequestPs:              vTcc.RequestPs,
-			RequestClientPs:        vTcc.RequestClientPs,
-			PartialRequestPs:       vTcc.PartialRequestPs,
-			PartialRequestClientPs: vTcc.PartialRequestClientPs,
+			TeleBaselineId:          teleBaselineId,
+			Protocol:                vTcc.Protocol,
+			Port:                    vTcc.Port,
+			Connection:              uint64(vTcc.Connection),
+			ConnectionClient:        uint64(vTcc.ConnectionClient),
+			Embryonic:               uint64(vTcc.Embryonic),
+			EmbryonicClient:         uint64(vTcc.EmbryonicClient),
+			ConnectionPs:            uint64(vTcc.ConnectionPs),
+			ConnectionClientPs:      uint64(vTcc.ConnectionClientPs),
+			RequestPs:               uint64(vTcc.RequestPs),
+			RequestClientPs:         uint64(vTcc.RequestClientPs),
+			PartialRequestMax:       uint64(vTcc.PartialRequestMax),
+			PartialRequestClientMax: uint64(vTcc.PartialRequestClientMax),
 		}
 		newTccList = append(newTccList, newTcc)
 	}
@@ -925,8 +925,8 @@ func GetTelemetryConfiguration(teleSetupId int64) (telemetryConfiguration *Telem
 		return nil, err
 	}
 	telemetryConfiguration = &TelemetryConfiguration{}
-	telemetryConfiguration.MeasurementInterval       = ConvertMesurementIntervalToInt(dbTelemetryConfiguration.MeasurementInterval)
-	telemetryConfiguration.MeasurementSample         = ConvertMesurementSampleToInt(dbTelemetryConfiguration.MeasurementSample)
+	telemetryConfiguration.MeasurementInterval       = messages.ConvertMeasurementIntervalToInt(dbTelemetryConfiguration.MeasurementInterval)
+	telemetryConfiguration.MeasurementSample         = messages.ConvertMeasurementSampleToInt(dbTelemetryConfiguration.MeasurementSample)
 	telemetryConfiguration.LowPercentile             = dbTelemetryConfiguration.LowPercentile
 	telemetryConfiguration.MidPercentile             = dbTelemetryConfiguration.MidPercentile
 	telemetryConfiguration.HighPercentile            = dbTelemetryConfiguration.HighPercentile
@@ -941,7 +941,7 @@ func GetTelemetryConfiguration(teleSetupId int64) (telemetryConfiguration *Telem
 	}
 	for _, v := range dbUnitConfigurationList {
 		unitConfig := UnitConfig{}
-		unitConfig.Unit       = ConvertUnitToInt(v.Unit)
+		unitConfig.Unit       = messages.ConvertUnitToInt(v.Unit)
 		unitConfig.UnitStatus = v.UnitStatus
 		telemetryConfiguration.UnitConfigList = append(telemetryConfiguration.UnitConfigList, unitConfig)
 	}
@@ -967,8 +967,8 @@ func GetTotalPipeCapacity(teleSetupId int64) (totalPipeCapacityList []TotalPipeC
 	for _, dbPipe := range dbPipeList {
 		totalPipeCapacity := TotalPipeCapacity{}
 		totalPipeCapacity.LinkId   = dbPipe.LinkId
-		totalPipeCapacity.Capacity = dbPipe.Capacity
-		totalPipeCapacity.Unit     = ConvertUnitToInt(dbPipe.Unit)
+		totalPipeCapacity.Capacity = messages.Uint64String(dbPipe.Capacity)
+		totalPipeCapacity.Unit     = messages.ConvertUnitToInt(dbPipe.Unit)
 		totalPipeCapacityList      = append(totalPipeCapacityList, totalPipeCapacity)
 	}
 	return totalPipeCapacityList, nil
@@ -1330,11 +1330,11 @@ func GetTraffic(engine *xorm.Engine, tType string, typeId int64, prefixType stri
 	trafficList = []Traffic{}
 	for _, vTraffic := range traffics {
 		traffic := Traffic{}
-		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
-		traffic.LowPercentileG  = vTraffic.LowPercentileG
-		traffic.MidPercentileG  = vTraffic.MidPercentileG
-		traffic.HighPercentileG = vTraffic.HighPercentileG
-		traffic.PeakG           = vTraffic.PeakG
+		traffic.Unit            = messages.ConvertUnitToInt(vTraffic.Unit)
+		traffic.LowPercentileG  = messages.Uint64String(vTraffic.LowPercentileG)
+		traffic.MidPercentileG  = messages.Uint64String(vTraffic.MidPercentileG)
+		traffic.HighPercentileG = messages.Uint64String(vTraffic.HighPercentileG)
+		traffic.PeakG           = messages.Uint64String(vTraffic.PeakG)
 		trafficList             = append(trafficList, traffic)
 	}
 	return trafficList, nil
@@ -1350,12 +1350,12 @@ func GetTrafficPerProtocol(engine *xorm.Engine, tType string, typeId int64, traf
 	trafficList = []TrafficPerProtocol{}
 	for _, vTraffic := range traffics {
 		traffic := TrafficPerProtocol{}
-		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
+		traffic.Unit            = messages.ConvertUnitToInt(vTraffic.Unit)
 		traffic.Protocol        = vTraffic.Protocol
-		traffic.LowPercentileG  = vTraffic.LowPercentileG
-		traffic.MidPercentileG  = vTraffic.MidPercentileG
-		traffic.HighPercentileG = vTraffic.HighPercentileG
-		traffic.PeakG           = vTraffic.PeakG
+		traffic.LowPercentileG  = messages.Uint64String(vTraffic.LowPercentileG)
+		traffic.MidPercentileG  = messages.Uint64String(vTraffic.MidPercentileG)
+		traffic.HighPercentileG = messages.Uint64String(vTraffic.HighPercentileG)
+		traffic.PeakG           = messages.Uint64String(vTraffic.PeakG)
 		trafficList             = append(trafficList, traffic)
 	}
 	return trafficList, nil
@@ -1371,12 +1371,12 @@ func GetTrafficPerPort(engine *xorm.Engine, tType string, typeId int64, trafficT
 	trafficList = []TrafficPerPort{}
 	for _, vTraffic := range traffics {
 		traffic := TrafficPerPort{}
-		traffic.Unit            = ConvertUnitToInt(vTraffic.Unit)
+		traffic.Unit            = messages.ConvertUnitToInt(vTraffic.Unit)
 		traffic.Port            = vTraffic.Port
-		traffic.LowPercentileG  = vTraffic.LowPercentileG
-		traffic.MidPercentileG  = vTraffic.MidPercentileG
-		traffic.HighPercentileG = vTraffic.HighPercentileG
-		traffic.PeakG           = vTraffic.PeakG
+		traffic.LowPercentileG  = messages.Uint64String(vTraffic.LowPercentileG)
+		traffic.MidPercentileG  = messages.Uint64String(vTraffic.MidPercentileG)
+		traffic.HighPercentileG = messages.Uint64String(vTraffic.HighPercentileG)
+		traffic.PeakG           = messages.Uint64String(vTraffic.PeakG)
 		trafficList             = append(trafficList, traffic)
 	}
 	return trafficList, nil
@@ -1392,18 +1392,18 @@ func GetTotalConnectionCapacity(engine *xorm.Engine, teleBaselineId int64) (tccL
 	tccList = []TotalConnectionCapacity{}
 	for _, vTcc := range tccs {
 		tcc := TotalConnectionCapacity{}
-		tcc.Protocol               = vTcc.Protocol
-		tcc.Connection             = vTcc.Connection
-		tcc.ConnectionClient       = vTcc.ConnectionClient
-		tcc.Embryonic              = vTcc.Embryonic
-		tcc.EmbryonicClient        = vTcc.EmbryonicClient
-		tcc.ConnectionPs           = vTcc.ConnectionPs
-		tcc.ConnectionClientPs     = vTcc.ConnectionClientPs
-		tcc.RequestPs              = vTcc.RequestPs
-		tcc.RequestClientPs        = vTcc.RequestClientPs
-		tcc.PartialRequestPs       = vTcc.PartialRequestPs
-		tcc.PartialRequestClientPs = vTcc.PartialRequestClientPs
-		tccList                    = append(tccList, tcc)
+		tcc.Protocol                = vTcc.Protocol
+		tcc.Connection              = messages.Uint64String(vTcc.Connection)
+		tcc.ConnectionClient        = messages.Uint64String(vTcc.ConnectionClient)
+		tcc.Embryonic               = messages.Uint64String(vTcc.Embryonic)
+		tcc.EmbryonicClient         = messages.Uint64String(vTcc.EmbryonicClient)
+		tcc.ConnectionPs            = messages.Uint64String(vTcc.ConnectionPs)
+		tcc.ConnectionClientPs      = messages.Uint64String(vTcc.ConnectionClientPs)
+		tcc.RequestPs               = messages.Uint64String(vTcc.RequestPs)
+		tcc.RequestClientPs         = messages.Uint64String(vTcc.RequestClientPs)
+		tcc.PartialRequestMax       = messages.Uint64String(vTcc.PartialRequestMax)
+		tcc.PartialRequestClientMax = messages.Uint64String(vTcc.PartialRequestClientMax)
+		tccList                     = append(tccList, tcc)
 	}
 	return tccList, nil
 }
@@ -1418,19 +1418,19 @@ func GetTotalConnectionCapacityPerPort(engine *xorm.Engine, teleBaselineId int64
 	tccList = []TotalConnectionCapacityPerPort{}
 	for _, vTcc := range tccs {
 		tcc := TotalConnectionCapacityPerPort{}
-		tcc.Protocol               = vTcc.Protocol
-		tcc.Port                   = vTcc.Port
-		tcc.Connection             = vTcc.Connection
-		tcc.ConnectionClient       = vTcc.ConnectionClient
-		tcc.Embryonic              = vTcc.Embryonic
-		tcc.EmbryonicClient        = vTcc.EmbryonicClient
-		tcc.ConnectionPs           = vTcc.ConnectionPs
-		tcc.ConnectionClientPs     = vTcc.ConnectionClientPs
-		tcc.RequestPs              = vTcc.RequestPs
-		tcc.RequestClientPs        = vTcc.RequestClientPs
-		tcc.PartialRequestPs       = vTcc.PartialRequestPs
-		tcc.PartialRequestClientPs = vTcc.PartialRequestClientPs
-		tccList                    = append(tccList, tcc)
+		tcc.Protocol                = vTcc.Protocol
+		tcc.Port                    = vTcc.Port
+		tcc.Connection              = messages.Uint64String(vTcc.Connection)
+		tcc.ConnectionClient        = messages.Uint64String(vTcc.ConnectionClient)
+		tcc.Embryonic               = messages.Uint64String(vTcc.Embryonic)
+		tcc.EmbryonicClient         = messages.Uint64String(vTcc.EmbryonicClient)
+		tcc.ConnectionPs            = messages.Uint64String(vTcc.ConnectionPs)
+		tcc.ConnectionClientPs      = messages.Uint64String(vTcc.ConnectionClientPs)
+		tcc.RequestPs               = messages.Uint64String(vTcc.RequestPs)
+		tcc.RequestClientPs         = messages.Uint64String(vTcc.RequestClientPs)
+		tcc.PartialRequestMax       = messages.Uint64String(vTcc.PartialRequestMax)
+		tcc.PartialRequestClientMax = messages.Uint64String(vTcc.PartialRequestClientMax)
+		tccList                     = append(tccList, tcc)
 	}
 	return tccList, nil
 }
@@ -1715,8 +1715,8 @@ func CheckOverlapTargetList(requestTargets []Target, currentTargets []Target) bo
 func DefaultValueTelemetryConfiguration() (telemetryConfiguration *TelemetryConfiguration) {
 	defaultValue := dots_config.GetServerSystemConfig().DefaultTelemetryConfiguration
 	telemetryConfiguration = &TelemetryConfiguration{}
-	telemetryConfiguration.MeasurementInterval       = defaultValue.MeasurementInterval
-	telemetryConfiguration.MeasurementSample         = defaultValue.MeasurementSample
+	telemetryConfiguration.MeasurementInterval       = messages.IntervalString(defaultValue.MeasurementInterval)
+	telemetryConfiguration.MeasurementSample         = messages.SampleString(defaultValue.MeasurementSample)
 	telemetryConfiguration.LowPercentile             = defaultValue.LowPercentile
 	telemetryConfiguration.MidPercentile             = defaultValue.MidPercentile
 	telemetryConfiguration.HighPercentile            = defaultValue.HighPercentile
@@ -1724,7 +1724,7 @@ func DefaultValueTelemetryConfiguration() (telemetryConfiguration *TelemetryConf
 	telemetryConfiguration.TelemetryNotifyInterval   = defaultValue.TelemetryNotifyInterval
 
 	unitConfig := UnitConfig{}
-	unitConfig.Unit       = defaultValue.Unit
+	unitConfig.Unit       = messages.UnitString(defaultValue.Unit)
 	unitConfig.UnitStatus = defaultValue.UnitStatus
 	telemetryConfiguration.UnitConfigList = append(telemetryConfiguration.UnitConfigList, unitConfig)
 	return 
@@ -1736,8 +1736,8 @@ func DefaultTotalPipeCapacity() (pipeList []TotalPipeCapacity) {
 	pipeList = []TotalPipeCapacity{}
 	pipe := TotalPipeCapacity{}
 	pipe.LinkId   = defaultValue.LinkId
-	pipe.Capacity = defaultValue.Capacity
-	pipe.Unit     = defaultValue.Unit
+	pipe.Capacity = messages.Uint64String(defaultValue.Capacity)
+	pipe.Unit     = messages.UnitString(defaultValue.Unit)
 	pipeList = append(pipeList, pipe)
 	return
 }
@@ -1769,26 +1769,26 @@ func DefaultBaseline() (baselineList []Baseline, err error) {
 
 	// total_traffic_normal
 	traffic := Traffic{}
-	traffic.Unit            = defaultTtnbValue.Unit
-	traffic.LowPercentileG  = defaultTtnbValue.LowPercentileG
-	traffic.MidPercentileG  = defaultTtnbValue.MidPercentileG
-	traffic.HighPercentileG = defaultTtnbValue.HighPercentileG
-	traffic.PeakG           = defaultTtnbValue.PeakG
+	traffic.Unit            = messages.UnitString(defaultTtnbValue.Unit)
+	traffic.LowPercentileG  = messages.Uint64String(defaultTtnbValue.LowPercentileG)
+	traffic.MidPercentileG  = messages.Uint64String(defaultTtnbValue.MidPercentileG)
+	traffic.HighPercentileG = messages.Uint64String(defaultTtnbValue.HighPercentileG)
+	traffic.PeakG           = messages.Uint64String(defaultTtnbValue.PeakG)
 	baseline.TotalTrafficNormal = append(baseline.TotalTrafficNormal, traffic)
 
 	// total_connection_capacity
 	tcc := TotalConnectionCapacity{}
-	tcc.Protocol               = defaultTccValue.Protocol
-	tcc.Connection             = defaultTccValue.Connection
-	tcc.ConnectionClient       = defaultTccValue.ConnectionClient
-	tcc.Embryonic              = defaultTccValue.EmbryOnic
-	tcc.EmbryonicClient        = defaultTccValue.EmbryOnicClient
-	tcc.ConnectionPs           = defaultTccValue.ConnectionPs
-	tcc.ConnectionClientPs     = defaultTccValue.ConnectionClientPs
-	tcc.RequestPs              = defaultTccValue.RequestPs
-	tcc.RequestClientPs        = defaultTccValue.RequestClientPs
-	tcc.PartialRequestPs       = defaultTccValue.PartialRequestPs
-	tcc.PartialRequestClientPs = defaultTccValue.PartialRequestClientPs
+	tcc.Protocol                = defaultTccValue.Protocol
+	tcc.Connection              = messages.Uint64String(defaultTccValue.Connection)
+	tcc.ConnectionClient        = messages.Uint64String(defaultTccValue.ConnectionClient)
+	tcc.Embryonic               = messages.Uint64String(defaultTccValue.EmbryOnic)
+	tcc.EmbryonicClient         = messages.Uint64String(defaultTccValue.EmbryOnicClient)
+	tcc.ConnectionPs            = messages.Uint64String(defaultTccValue.ConnectionPs)
+	tcc.ConnectionClientPs      = messages.Uint64String(defaultTccValue.ConnectionClientPs)
+	tcc.RequestPs               = messages.Uint64String(defaultTccValue.RequestPs)
+	tcc.RequestClientPs         = messages.Uint64String(defaultTccValue.RequestClientPs)
+	tcc.PartialRequestMax       = messages.Uint64String(defaultTccValue.PartialRequestMax)
+	tcc.PartialRequestClientMax = messages.Uint64String(defaultTccValue.PartialRequestClientMax)
 	baseline.TotalConnectionCapacity = append(baseline.TotalConnectionCapacity, tcc)
 	baselineList = append(baselineList, baseline)
 	return baselineList, nil
@@ -1841,100 +1841,4 @@ func GetAliasByName(engine *xorm.Engine, customerId int, cuid string, aliasNames
 		aliases.Alias = append(aliases.Alias, aliasTmp)
 	}
 	return aliases, nil
-}
-
-// Convert measurement_interval from int to string
-func ConvertMesurementIntervalToString(measurementInterval int) (measurementIntervalStr string) {
-	switch measurementInterval {
-	case int(Hour): measurementIntervalStr = string(messages.HOUR)
-	case int(Day):  measurementIntervalStr = string(messages.DAY)
-	case int(Week): measurementIntervalStr = string(messages.WEEK)
-	case int(Month):measurementIntervalStr = string(messages.MONTH)
-	}
-	return
-}
-
-// Convert measurement_sample from int to string
-func ConvertMesurementSampleToString(measurementSample int) (measurementSampleStr string) {
-	switch measurementSample {
-	case int(Second):       measurementSampleStr = string(messages.SECOND)
-	case int(FiveSeconds):  measurementSampleStr = string(messages.FIVE_SECONDS)
-	case int(ThirtySeconds):measurementSampleStr = string(messages.THIRTY_SECONDDS)
-	case int(OneMinute):    measurementSampleStr = string(messages.ONE_MINUTE)
-	case int(FiveMinutes):  measurementSampleStr = string(messages.FIVE_MINUTES)
-	case int(TenMinutes):   measurementSampleStr = string(messages.TEN_MINUTES)
-	case int(ThirtyMinutes):measurementSampleStr = string(messages.THIRTY_MINUTES)
-	case int(OneHour):      measurementSampleStr = string(messages.ONE_HOUR)
-	}
-	return
-}
-
-// Convert unit from int to string
-func ConvertUnitToString(unit int) (unitStr string) {
-	switch unit {
-	case int(PacketsPerSecond):     unitStr = string(messages.PACKETS_PER_SECOND)
-	case int(BitsPerSecond):        unitStr = string(messages.BITS_PER_SECOND)
-	case int(BytesPerSecond):       unitStr = string(messages.BYTES_PER_SECOND)
-	case int(KiloPacketsPerSecond): unitStr = string(messages.KILOPACKETS_PER_SECOND)
-	case int(KiloBitsPerSecond):    unitStr = string(messages.KILOBITS_PER_SECOND)
-	case int(KiloBytesPerSecond):   unitStr = string(messages.KILOBYTES_PER_SECOND)
-	case int(MegaPacketsPerSecond): unitStr = string(messages.MEGAPACKETS_PER_SECOND)
-	case int(MegaBitsPerSecond):    unitStr = string(messages.MEGABITS_PER_SECOND)
-	case int(MegaBytesPerSecond):   unitStr = string(messages.MEGABYTES_PER_SECOND)
-	case int(GigaPacketsPerSecond): unitStr = string(messages.GIGAPACKETS_PER_SECOND)
-	case int(GigaBitsPerSecond):    unitStr = string(messages.GIGABITS_PER_SECOND)
-	case int(GigaBytesPerSecond):   unitStr = string(messages.GIGABYTES_PER_SECOND)
-	case int(TeraPacketsPerSecond): unitStr = string(messages.TERAPACKETS_PER_SECOND)
-	case int(TeraBitsPerSecond):    unitStr = string(messages.TERABITS_PER_SECOND)
-	case int(TeraBytesPerSecond):   unitStr = string(messages.TERABYTES_PER_SECOND)
-	}
-	return
-}
-
-// Convert measurement_interval from string to int
-func ConvertMesurementIntervalToInt(measurementInterval string) (measurementIntervalInt int) {
-	switch measurementInterval {
-	case string(messages.HOUR):  measurementIntervalInt = int(Hour)
-	case string(messages.DAY):   measurementIntervalInt = int(Day)
-	case string(messages.WEEK):  measurementIntervalInt = int(Week)
-	case string(messages.MONTH): measurementIntervalInt = int(Month)
-	}
-	return
-}
-
-// Convert measurement_sample from string to int
-func ConvertMesurementSampleToInt(measurementSample string) (measurementSampleInt int) {
-	switch measurementSample {
-	case string(messages.SECOND):         measurementSampleInt = int(Second)
-	case string(messages.FIVE_SECONDS):   measurementSampleInt = int(FiveSeconds)
-	case string(messages.THIRTY_SECONDDS): measurementSampleInt = int(ThirtySeconds)
-	case string(messages.ONE_MINUTE):     measurementSampleInt = int(OneMinute)
-	case string(messages.FIVE_MINUTES):   measurementSampleInt = int(FiveMinutes)
-	case string(messages.TEN_MINUTES):    measurementSampleInt = int(TenMinutes)
-	case string(messages.THIRTY_MINUTES): measurementSampleInt = int(ThirtyMinutes)
-	case string(messages.ONE_HOUR):       measurementSampleInt = int(OneHour)
-	}
-	return
-}
-
-// Convert sample from string to int
-func ConvertUnitToInt(unit string) (unitInt int) {
-	switch unit {
-	case string(messages.PACKETS_PER_SECOND):     unitInt = int(PacketsPerSecond)
-	case string(messages.BITS_PER_SECOND):        unitInt = int(BitsPerSecond)
-	case string(messages.BYTES_PER_SECOND):       unitInt = int(BytesPerSecond)
-	case string(messages.KILOPACKETS_PER_SECOND): unitInt = int(KiloPacketsPerSecond)
-	case string(messages.KILOBITS_PER_SECOND):    unitInt = int(KiloBitsPerSecond)
-	case string(messages.KILOBYTES_PER_SECOND):   unitInt = int(KiloBytesPerSecond)
-	case string(messages.MEGAPACKETS_PER_SECOND): unitInt = int(MegaPacketsPerSecond)
-	case string(messages.MEGABITS_PER_SECOND):    unitInt = int(MegaBitsPerSecond)
-	case string(messages.MEGABYTES_PER_SECOND):   unitInt = int(MegaBytesPerSecond)
-	case string(messages.GIGAPACKETS_PER_SECOND): unitInt = int(GigaPacketsPerSecond)
-	case string(messages.GIGABITS_PER_SECOND):    unitInt = int(GigaBitsPerSecond)
-	case string(messages.GIGABYTES_PER_SECOND):   unitInt = int(GigaBytesPerSecond)
-	case string(messages.TERAPACKETS_PER_SECOND): unitInt = int(TeraPacketsPerSecond)
-	case string(messages.TERABITS_PER_SECOND):    unitInt = int(TeraBitsPerSecond)
-	case string(messages.TERABYTES_PER_SECOND):   unitInt = int(TeraBytesPerSecond)
-	}
-	return
 }

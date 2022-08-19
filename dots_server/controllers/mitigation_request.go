@@ -61,6 +61,26 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 		return
 	}
 
+	// Validate query parameters
+	content := ""
+	if len(request.Queries) > 0 {
+		errMessage = validateQueryParameter(request.Queries)
+		if errMessage != "" {
+			log.Error(errMessage)
+			res = Response {
+				Type: common.NonConfirmable,
+				Code: common.BadRequest,
+				Body: errMessage,
+			}
+			return
+		}
+		for _, query := range request.Queries {
+			if (strings.HasPrefix(query, "c=")){
+				content = query[strings.Index(query, "c=")+2:]
+			}
+		}
+	}
+
 	var mpp []mpPair
 	mpp, err = loadMitigations(customer, cuid, mid, request.Queries)
 	if err != nil {
@@ -71,82 +91,75 @@ func (m *MitigationRequest) HandleGet(request Request, customer *models.Customer
 	scopes := make([]messages.ScopeStatus, 0)
 
 	for _, mp := range mpp {
-
-		// Check expired mitigation
-		if mp.mitigation.Lifetime == 0 {
-			// Skip this mitigation, monitor lifetime thread will delete it later
-			continue
-		}
-
-		var startedAt int64
+		var startedAt messages.Uint64String
 		var bytesDropped, pktsDropped, bpsDropped, ppsDropped int
 		log.WithField("protection", mp.protection).Debug("Protection: ")
 		if mp.protection != nil {
-			startedAt = mp.protection.StartedAt().Unix()
+			startedAt = messages.Uint64String(mp.protection.StartedAt().Unix())
 			bytesDropped = mp.protection.DroppedDataInfo().BytesDropped()
 			bpsDropped = mp.protection.DroppedDataInfo().BpsDropped()
 			pktsDropped = mp.protection.DroppedDataInfo().PacketDropped()
 			ppsDropped = mp.protection.DroppedDataInfo().PpsDropped()
 		}
-		scopeStates := messages.ScopeStatus {
-			MitigationId: mp.mitigation.MitigationId,
-			MitigationStart: uint64(startedAt),
-			Lifetime: mp.mitigation.Lifetime,
-			Status: mp.mitigation.Status,
-			TriggerMitigation: mp.mitigation.TriggerMitigation,
-			AliasName: mp.mitigation.AliasName.List(),
-			FQDN: mp.mitigation.FQDN.List(),
-			URI: mp.mitigation.URI.List(),
-			BytesDropped: bytesDropped,
-			BpsDropped: bpsDropped,
-			PktsDropped: pktsDropped,
-			PpsDropped: ppsDropped }
-		scopeStates.TargetProtocol = make([]int, 0, len(mp.mitigation.TargetProtocol))
-		for k := range mp.mitigation.TargetProtocol {
-			scopeStates.TargetProtocol = append(scopeStates.TargetProtocol, k)
-		}
-		// Set TargetPrefix, TargetPortRange
-		scopeStates.TargetPrefix = make([]string, 0, len(mp.mitigation.TargetPrefix))
-		scopeStates.TargetPortRange = make([]messages.PortRangeResponse, 0, len(mp.mitigation.TargetPortRange))
-		for _, item := range mp.mitigation.TargetPrefix {
-			scopeStates.TargetPrefix = append(scopeStates.TargetPrefix, item.String())
-		}
-		for _, item := range mp.mitigation.TargetPortRange {
-			portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
-			scopeStates.TargetPortRange = append(scopeStates.TargetPortRange, portRange)
-		}
-
-		// Set SourcePrefix, SourcePortRange, SourceICMPTypeRange
-		scopeStates.SourcePrefix = make([]string, 0, len(mp.mitigation.SourcePrefix))
-		scopeStates.SourcePortRange = make([]messages.PortRangeResponse, 0, len(mp.mitigation.SourcePortRange))
-		scopeStates.SourceICMPTypeRange = make([]messages.ICMPTypeRangeResponse, 0, len(mp.mitigation.SourceICMPTypeRange))
-		for _, item := range mp.mitigation.SourcePrefix {
-			scopeStates.SourcePrefix = append(scopeStates.SourcePrefix, item.String())
-		}
-		for _, item := range mp.mitigation.SourcePortRange {
-			portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: item.UpperPort}
-			scopeStates.SourcePortRange = append(scopeStates.SourcePortRange, portRange)
-		}
-		for _, item := range mp.mitigation.SourceICMPTypeRange {
-			typeRange := messages.ICMPTypeRangeResponse{LowerType: item.LowerType, UpperType: item.UpperType}
-			scopeStates.SourceICMPTypeRange = append(scopeStates.SourceICMPTypeRange, typeRange)
-		}
-
-		// Set Acl list into response
-		scopeStates.AclList = make([]messages.ACL, 0, len(mp.mitigation.ControlFilteringList))
-		for _, item := range mp.mitigation.ControlFilteringList {
-			aclList := messages.ACL{AclName: item.ACLName, ActivationType: item.ActivationType}
-			scopeStates.AclList = append(scopeStates.AclList, aclList)
-		}
+		scopeStates := messages.ScopeStatus {}
+		scopeStates.MitigationId = mp.mitigation.MitigationId
 		// Set telemetry attributes to response
-		scopeStates.TotalTraffic = convertToTelemetryTrafficResponse(mp.mitigation.TelemetryTotalTraffic)
-		scopeStates.TotalAttackTraffic = convertToTelemetryTrafficResponse(mp.mitigation.TelemetryTotalAttackTraffic)
-		if !reflect.DeepEqual(models.GetModelsTelemetryTotalAttackConnection(&mp.mitigation.TelemetryTotalAttackConnection), models.GetModelsTelemetryTotalAttackConnection(nil)) {
-			scopeStates.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(mp.mitigation.TelemetryTotalAttackConnection)
-		} else {
-			scopeStates.TotalAttackConnection = nil
+		// 'c' query is null, all or config
+		if content == "" || content == string(messages.ALL) || content == string(messages.CONFIG) {
+			scopeStates.Lifetime = &mp.mitigation.Lifetime
+			scopeStates.TriggerMitigation = &mp.mitigation.TriggerMitigation
+			scopeStates.AliasName = mp.mitigation.AliasName.List()
+			scopeStates.TargetProtocol = mp.mitigation.TargetProtocol.List()
+			scopeStates.FQDN = mp.mitigation.FQDN.List()
+			scopeStates.URI = mp.mitigation.URI.List()
+			// Set TargetPrefix, TargetPortRange
+			scopeStates.TargetPrefix = make([]string, 0, len(mp.mitigation.TargetPrefix))
+			scopeStates.TargetPortRange = make([]messages.PortRangeResponse, 0, len(mp.mitigation.TargetPortRange))
+			for _, item := range mp.mitigation.TargetPrefix {
+				scopeStates.TargetPrefix = append(scopeStates.TargetPrefix, item.String())
+			}
+			for _, item := range mp.mitigation.TargetPortRange {
+				portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: &item.UpperPort}
+				scopeStates.TargetPortRange = append(scopeStates.TargetPortRange, portRange)
+			}
+
+			// Set SourcePrefix, SourcePortRange, SourceICMPTypeRange
+			scopeStates.SourcePrefix = make([]string, 0, len(mp.mitigation.SourcePrefix))
+			scopeStates.SourcePortRange = make([]messages.PortRangeResponse, 0, len(mp.mitigation.SourcePortRange))
+			scopeStates.SourceICMPTypeRange = make([]messages.ICMPTypeRangeResponse, 0, len(mp.mitigation.SourceICMPTypeRange))
+			for _, item := range mp.mitigation.SourcePrefix {
+				scopeStates.SourcePrefix = append(scopeStates.SourcePrefix, item.String())
+			}
+			for _, item := range mp.mitigation.SourcePortRange {
+				portRange := messages.PortRangeResponse{LowerPort: item.LowerPort, UpperPort: &item.UpperPort}
+				scopeStates.SourcePortRange = append(scopeStates.SourcePortRange, portRange)
+			}
+			for _, item := range mp.mitigation.SourceICMPTypeRange {
+				typeRange := messages.ICMPTypeRangeResponse{LowerType: item.LowerType, UpperType: &item.UpperType}
+				scopeStates.SourceICMPTypeRange = append(scopeStates.SourceICMPTypeRange, typeRange)
+			}
+
+			// Set Acl list into response
+			scopeStates.AclList = make([]messages.ACL, 0, len(mp.mitigation.ControlFilteringList))
+			for _, item := range mp.mitigation.ControlFilteringList {
+				activationType := messages.ActivationTypeString(*item.ActivationType)
+				aclList := messages.ACL{AclName: item.ACLName, ActivationType: &activationType }
+				scopeStates.AclList = append(scopeStates.AclList, aclList)
+			}
 		}
-		scopeStates.AttackDetail = convertToTelemetryAttackDetailResponse(mp.mitigation.TelemetryAttackDetail)
+		// 'c' query is null, all or non-config
+		if content == "" || content == string(messages.ALL) || content == string(messages.NON_CONFIG) {
+			scopeStates.MitigationStart = &startedAt
+			scopeStates.Status = &mp.mitigation.Status
+			scopeStates.BytesDropped = &bytesDropped
+			scopeStates.BpsDropped = &bpsDropped
+			scopeStates.PktsDropped = &pktsDropped
+			scopeStates.PpsDropped = &ppsDropped
+			scopeStates.TotalTraffic = convertToTrafficResponse(mp.mitigation.TelemetryTotalTraffic)
+			scopeStates.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(mp.mitigation.TelemetryTotalAttackConnection)
+			scopeStates.TotalAttackTraffic = convertToTrafficResponse(mp.mitigation.TelemetryTotalAttackTraffic)
+			scopeStates.AttackDetail = convertToTelemetryAttackDetailResponse(mp.mitigation.TelemetryAttackDetail)
+		}
 		scopes = append(scopes, scopeStates)
 	}
 
@@ -279,7 +292,7 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 		body.UpdateMitigationId(mid)
 
 		var currentScope *models.MitigationScope
-		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(), *mid, models.AnyMitigationScopeId)
+		currentScope, err = models.GetMitigationScope(customer.Id, body.EffectiveClientIdentifier(), *mid, models.AnyMitigationScopeId, nil)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope load error.")
 			return Response{}, err
@@ -429,7 +442,8 @@ func (m *MitigationRequest) HandlePut(request Request, customer *models.Customer
 			}
 			return res, nil
 		} else {
-			log.Warnf("Not found any mitigation request (cuid=%+v, mid=%+v) for efficacy update", cuid, *mid)
+			errorMessage = fmt.Sprintf("Not found any mitigation request (cuid=%+v, mid=%+v) for efficacy update", cuid, *mid)
+			log.Warnf(errorMessage)
 			goto ResponseNG
 		}
 		
@@ -485,7 +499,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 	}
 
 	var mitigationScope *models.MitigationScope
-	mitigationScope, err = models.GetMitigationScope(customer.Id, cuid, *mid, models.AnyMitigationScopeId)
+	mitigationScope, err = models.GetMitigationScope(customer.Id, cuid, *mid, models.AnyMitigationScopeId, nil)
 	if err != nil {
 		log.WithError(err).Error("MitigationScope load error.")
 		return Response{}, err
@@ -501,7 +515,7 @@ func (m *MitigationRequest) HandleDelete(request Request, customer *models.Custo
 		mitigationScope.Lifetime = config.ActiveButTerminatingPeriod
 		mitigationScope.Status = models.ActiveButTerminating
 
-		err = models.UpdateMitigationScope(*mitigationScope, *customer, false)
+		err = models.UpdateMitigationScope(*mitigationScope, *customer, false, true)
 		if err != nil {
 			log.WithError(err).Error("MitigationScope update error.")
 			return Response{}, err
@@ -568,10 +582,7 @@ func newMitigationScope(req messages.Scope, c *models.Customer, clientIdentifier
 	m.ControlFilteringList = newControlFiltering(req.AclList)
 
 	if isIfMatchOption {
-		m.TelemetryTotalAttackTraffic, err = models.NewTelemetryTotalAttackTraffic(req.TotalAttackTraffic)
-		if err != nil {
-			return
-		}
+		m.TelemetryTotalAttackTraffic = models.NewTelemetryTotalAttackTraffic(req.TotalAttackTraffic)
 		m.TelemetryAttackDetail, err = models.NewTelemetryAttackDetail(req.AttackDetail)
 		if err != nil {
 			return
@@ -674,7 +685,7 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 
 	// if Uri-Path mid is empty, get all DOTS mitigation request
 	if mitigationId == nil {
-		mids, err := models.GetMitigationIds(customer.Id, clientIdentifier, queries)
+		mids, err := models.GetMitigationIds(customer.Id, clientIdentifier)
 		if err != nil {
 			return nil, err
 		}
@@ -683,23 +694,21 @@ func loadMitigations(customer *models.Customer, clientIdentifier string, mitigat
 			mitigationIds = filterDuplicate(mids)
 		}
 	} else {
-		mid, err := models.GetMitigationId(customer.Id, clientIdentifier, *mitigationId, queries)
-		if err != nil {
-			return nil, err
-		}
-		if mid != nil {
-			mitigationIds = append(mitigationIds, *mid)
-		}
+		mitigationIds = append(mitigationIds, *mitigationId)
 	}
 
 	for _, mid := range mitigationIds {
-		s, err := models.GetMitigationScope(customer.Id, clientIdentifier, mid, models.AnyMitigationScopeId)
+		s, err := models.GetMitigationScope(customer.Id, clientIdentifier, mid, models.AnyMitigationScopeId, queries)
 		if err != nil {
 			return nil, err
 		}
 		if s == nil {
-			log.WithField("mitigation_id", mid).Warn("mitigation_scope not found.")
-			continue
+			if len(queries) > 0 {
+				break
+			} else {
+				log.WithField("mitigation_id", mid).Warn("mitigation_scope not found.")
+				continue
+			}
 		}
 
 		// If mitigation request's status is active (1,2,3,4,5), get its active protection
@@ -733,40 +742,10 @@ func deleteMitigationByMessage(req *messages.MitigationRequest, customer *models
 /*
  * Terminate the mitigation.
  */
-func cancelMitigationByMessage(req *messages.MitigationRequest, customer *models.Customer) error {
-	ids := make([]int, len(req.MitigationScope.Scopes))
-	for i, scope := range req.MitigationScope.Scopes {
-		ids[i] = *scope.MitigationId
-	}
-	return cancelMitigationByIds(ids, req.EffectiveClientIdentifier(), customer)
-}
-
-/*
- * Terminate the mitigation.
- */
-func cancelMitigationByModel(scope *models.MitigationScope, clientIdentifier string, customer *models.Customer) error {
-	ids := make([]int, 1)
-	ids[0] = scope.MitigationId
-	return cancelMitigationByIds(ids, clientIdentifier, customer)
-}
-
-/*
- * Terminate the mitigations.
- */
-func cancelMitigationByIds(mitigationIds []int, clientIdentifier string, customer *models.Customer) (err error) {
-	for _, mitigationId := range mitigationIds {
-		err = cancelMitigationById(mitigationId, clientIdentifier, customer.Id, models.AnyMitigationScopeId)
-	}
-	return
-}
-
-/*
- * Terminate the mitigation.
- */
 func cancelMitigationById(mitigationId int, clientIdentifier string, customerId int, mitigationScopeId int64) (err error) {
 
 	// DB search
-	s, err := models.GetMitigationScope(customerId, clientIdentifier, mitigationId, mitigationScopeId)
+	s, err := models.GetMitigationScope(customerId, clientIdentifier, mitigationId, mitigationScopeId, nil)
 	if err != nil {
 		log.WithError(err).Error("models.GetMitigationScope()")
 		return err
@@ -1001,7 +980,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 
 	// Skip validating mitigation request when efficacy update
 	var aliases types.Aliases
-	if isIfMatchOption == false {
+	if !isIfMatchOption {
 		// Get data alias from data channel
 		aliases, err = data_controllers.GetDataAliasesByName(customer, body.EffectiveClientIdentifier(), body.MitigationScope.Scopes[0].AliasName)
 		if err != nil {
@@ -1020,7 +999,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 	}
 
 	// cancel mitigation scope when refresh mitigation with trigger-mitigation is false
-	if currentScope != nil && currentScope.IsActive() && requestScope.TriggerMitigation == false {
+	if currentScope != nil && currentScope.IsActive() && !requestScope.TriggerMitigation {
 		// Cancel blocker asynchronously only in case blocker type is Arista ACL
 		if blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_RTBH || blockerConfig.BlockerType == models.BLOCKER_TYPE_GoBGP_FLOWSPEC {
 			err = handleCancelBlocker(currentScope.MitigationId, body.EffectiveClientIdentifier(), customer.Id, currentScope.MitigationScopeId)
@@ -1034,14 +1013,14 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
 	if currentScope != nil { requestScope.Status = currentScope.Status }
 
 	// store mitigation request into the mitigationScope table
-	if requestScope.TriggerMitigation == false { requestScope.Status = models.Triggered }
+	if !requestScope.TriggerMitigation { requestScope.Status = models.Triggered }
 	mitigationScope, err := models.CreateMitigationScope(*requestScope, *customer, isIfMatchOption)
 	if err != nil {
 		return nil, err
 	}
 
 	// call blocker mitigation scope when create mitigation or refresh mitigation with trigger-mitigation is true
-	if (currentScope == nil || (currentScope != nil && !currentScope.IsActive())) && requestScope.TriggerMitigation == true {
+	if (currentScope == nil || (currentScope != nil && !currentScope.IsActive())) && requestScope.TriggerMitigation {
 		requestScope.MitigationScopeId = mitigationScope.Id
 		if currentScope != nil && requestScope.MitigationScopeId == 0 {
 			requestScope.MitigationScopeId = currentScope.MitigationScopeId
@@ -1083,7 +1062,7 @@ func CreateMitigation(body *messages.MitigationRequest, customer *models.Custome
  *  error      the error
  */
 func UpdateMitigationStatus(customerId int, cuid string, mid int, mitigationScopeId int64, newStatus int, isCheckActiveProtection bool) (error) {
-	currentScope, err := models.GetMitigationScope(customerId, cuid, mid, mitigationScopeId)
+	currentScope, err := models.GetMitigationScope(customerId, cuid, mid, mitigationScopeId, nil)
 	if err != nil {
 		log.WithError(err).Error("MitigationScope load error.")
 		return err
@@ -1137,6 +1116,10 @@ func UpdateMitigationStatus(customerId int, cuid string, mid int, mitigationScop
 
 		if currentScope.Status == newStatus {
 			log.Debugf("The Mitigation with id %+v have already had status: %+v.", mitigationScopeId, newStatus)
+			if newStatus == models.Terminated {
+				DeleteMitigation(customerId, cuid, mid, mitigationScopeId)
+				models.RemoveActiveMitigationRequest(currentScope.MitigationScopeId)
+			}
 			return nil
 		}
 
@@ -1219,7 +1202,7 @@ func handleCallBlocker(customer *models.Customer, currentScope *models.Mitigatio
 
 
 	// Set Status to InProgress
-	if currentScope == nil || (currentScope != nil && currentScope.TriggerMitigation == false){
+	if currentScope == nil || (currentScope != nil && !currentScope.TriggerMitigation){
 		err = UpdateMitigationStatus(customer.Id, requestScope.ClientIdentifier, requestScope.MitigationId,
 			requestScope.MitigationScopeId, models.SuccessfullyMitigated, false)
 		if err != nil {
@@ -1298,6 +1281,71 @@ func validateForEfficacyUpdate(optionValue []byte, customer *models.Customer, bo
 		}
 	}
 
+	// Validate telemetry attributes
+	for _, v := range body.MitigationScope.Scopes[0].TotalAttackTraffic {
+		_, errMessage = models.ValidateUnit(v.Unit)
+		if errMessage != "" {
+			log.Errorf(errMessage)
+			return false, errMessage
+		}
+	}
+	for _, v := range body.MitigationScope.Scopes[0].AttackDetail {
+		if v.VendorId == nil {
+			errMessage = "Missing required 'vendor-id' attribute"
+			log.Error(errMessage)
+			return false, errMessage
+		}
+		if v.AttackId == nil {
+			errMessage = "Missing required 'attack-id' attribute"
+			log.Error(errMessage)
+			return false, errMessage
+		}
+		if v.AttackSeverity != nil && (*v.AttackSeverity < messages.None || *v.AttackSeverity > messages.Unknown) {
+			errMessage = fmt.Sprintf("Invalid 'attack-severity' value %+v. Expected values include 1:None, 2:Low, 3:Medium, 4:High, 5:Unknown", *v.AttackSeverity)
+			log.Error(errMessage)
+			return false, errMessage
+		}
+		if v.TopTalKer != nil {
+			for _, talker := range v.TopTalKer.Talker {
+				if talker.SourcePrefix == nil {
+					errMessage = "Missing required 'source-prefix' attribute"
+					log.Error(errMessage)
+					return false, errMessage
+				}
+				for _, portRange := range talker.SourcePortRange {
+					if portRange.LowerPort == nil {
+						errMessage = "Missing required 'lower-port' attribute"
+						log.Error(errMessage)
+						return false, errMessage
+					}
+					if portRange.UpperPort != nil && *portRange.LowerPort > *portRange.UpperPort {
+						errMessage = "'upper-port' MUST greater than 'lower-port'"
+						log.Error(errMessage)
+						return false, errMessage
+					}
+				}
+				for _, icmpTypeRange := range talker.SourceIcmpTypeRange {
+					if icmpTypeRange.LowerType == nil {
+						errMessage = "Missing required 'lower-type' attribute"
+						log.Error(errMessage)
+						return false, errMessage
+					}
+					if icmpTypeRange.UpperType != nil && *icmpTypeRange.LowerType > *icmpTypeRange.UpperType {
+						errMessage = "'upper-type' MUST greater than 'lower-type'"
+						log.Error(errMessage)
+						return false, errMessage
+					}
+				}
+				for _, tat := range talker.TotalAttackTraffic {
+					_, errMessage = models.ValidateUnit(tat.Unit)
+					if errMessage != "" {
+						log.Errorf(errMessage)
+						return false, errMessage
+					}
+				}
+			}
+		}
+	}
 	return true, errMessage
 }
 
@@ -1468,7 +1516,7 @@ func GetOtherActiveMitigations(currentMitigationScopeId *int64) (scopes []models
 			if remainingLifetime <= 0 { continue }
 		}
 		// get mitigation scope by mitigation scope id
-		mitigation, err := models.GetMitigationScope(0, "", 0, acm.MitigationScopeId)
+		mitigation, err := models.GetMitigationScope(0, "", 0, acm.MitigationScopeId, nil)
 		if err != nil || mitigation == nil{
 			return nil, err
 		}
@@ -1619,7 +1667,7 @@ func ValidateAndCheckOverlap(customer *models.Customer, requestScope *models.Mit
 			if err != nil {
 				log.Errorf("Terminate expired mitigation (id = %+v) failed. Error: %+v", overridedMitigation.MitigationId, err)
 			}
-		} else if overridedMitigation.TriggerMitigation == false {
+		} else if !overridedMitigation.TriggerMitigation {
 			// The current mitigation will be withdrawn
 			log.Debugf("[Overlap]: The current mitigation: %+v will be deactivated because overlap with the request mitigation: %+v", overridedMitigation.MitigationId, requestScope.MitigationId)
 			UpdateMitigationStatus(overridedMitigation.Customer.Id, overridedMitigation.ClientIdentifier,
@@ -1646,7 +1694,7 @@ func TriggerMitigation(customer *models.Customer) (error) {
 
 	// Get all pre-configured mitigation ids from DB of this customer by id
 	for _, scopeId := range mitigationscopeIds {
-		s, err := models.GetMitigationScope(customer.Id, "", 0, scopeId)
+		s, err := models.GetMitigationScope(customer.Id, "", 0, scopeId, nil)
 		if err != nil {
 			return err
 		}
@@ -1776,7 +1824,7 @@ func HandleControlFiltering(customer *models.Customer, cuid string, mid *int, ac
 	for i, acl := range aclList {
 		if acl.AclName != "" {
 			if acl.ActivationType == nil {
-				actType := int(models.ActiveWhenMitigating)
+				actType := messages.ActivateWhenMitigating
 				acl.ActivationType = &actType
 			}
 			controlFiltering := models.ControlFiltering{ ACLName: acl.AclName, ActivationType: acl.ActivationType }
@@ -1890,7 +1938,7 @@ func RecheckIpRangeForMitigations(customer *models.Customer) error {
 
 	// Get all pre-configured mitigation ids from DB of this customer by id
 	for _, scopeId := range mitigationscopeIds {
-		mitigation, err := models.GetMitigationScope(customer.Id, "", 0, scopeId)
+		mitigation, err := models.GetMitigationScope(customer.Id, "", 0, scopeId, nil)
 		if err != nil {
 			return err
 		}
@@ -1998,12 +2046,12 @@ func validateForCallHome(customer *models.Customer, scope messages.Scope) (bool,
 	sourceOnlyIPv4 := true
 	sourceOnlyIPv6 := true
 	if scope.TriggerMitigation != nil && !*scope.TriggerMitigation {
-		msg = fmt.Sprintf("Call Home DOTS clients MUST NOT send requests with 'trigger-mitigation' set to 'false'")
+		msg = fmt.Sprintln("Call Home DOTS clients MUST NOT send requests with 'trigger-mitigation' set to 'false'")
 		log.Error(msg)
 		return isActive, msg
 	}
 	if scope.TargetPrefix == nil {
-		msg = fmt.Sprintf("Missing required the 'target-prefix' attribute")
+		msg = fmt.Sprintln("Missing required the 'target-prefix' attribute")
 		log.Error(msg)
 		return isActive, msg
 	}
@@ -2027,11 +2075,11 @@ func validateForCallHome(customer *models.Customer, scope messages.Scope) (bool,
 	// If target-prefix only contains IPv4 and source-prefix only contains IPv6, the server will return 400 Bad Request
 	// If target-prefix only contains IPv6 and source-prefix only contains IPv4, the server will return 400 Bad Request
 	if targetOnlyIPv4 && sourceOnlyIPv6 {
-		msg = fmt.Sprintf("Failed to the 'target-prefix' only contains IPv4 and the 'source-prefix' only contains IPv6")
+		msg = fmt.Sprintln("Failed to the 'target-prefix' only contains IPv4 and the 'source-prefix' only contains IPv6")
 		log.Error(msg)
 		return isActive, msg
 	} else if targetOnlyIPv6 && sourceOnlyIPv4 {
-		msg = fmt.Sprintf("Failed to the 'target-prefix' only contains IPv6 and the 'source-prefix' only contains IPv4")
+		msg = fmt.Sprintln("Failed to the 'target-prefix' only contains IPv6 and the 'source-prefix' only contains IPv4")
 		log.Error(msg)
 		return isActive, msg
 	}

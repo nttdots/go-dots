@@ -143,8 +143,8 @@ func (t *TelemetryPreMitigationRequest) HandlePut(request Request, customer *mod
 				for _, vendor := range vendorMapping.Vendor {
 					if *attackDetail.VendorId == *vendor.VendorId {
 						for _, attack := range vendor.AttackMapping {
-							if *attackDetail.AttackId == *attack.AttackId && attackDetail.AttackName != nil {
-								errMsg = fmt.Sprintf("Existed vendor-mapping with vendor-id: %+v, attack-id: %+v. DOTS agents MUST NOT include 'attack-name'", *vendor.VendorId, *attack.AttackId)
+							if *attackDetail.AttackId == *attack.AttackId && attackDetail.AttackDescription != nil {
+								errMsg = fmt.Sprintf("Existed vendor-mapping with vendor-id: %+v, attack-id: %+v. DOTS agents MUST NOT include 'attack-description'", *vendor.VendorId, *attack.AttackId)
 								log.Errorf(errMsg)
 								res = Response {
 									Type: common.NonConfirmable,
@@ -153,7 +153,7 @@ func (t *TelemetryPreMitigationRequest) HandlePut(request Request, customer *mod
 								}
 								return res, nil
 							} else if *attackDetail.AttackId == *attack.AttackId {
-								preMitigation.AttackDetail[k].AttackName = attack.AttackName
+								preMitigation.AttackDetail[k].AttackDescription = attack.AttackDescription
 							}
 						}
 					}
@@ -222,11 +222,11 @@ func (t *TelemetryPreMitigationRequest) HandleGet(request Request, customer *mod
 	}
 	if tmid != nil {
 		log.Debug("Handle get one telemetry pre-mitigation")
-		res, err = handleGetOneTelemetryPreMitigation(customer, cuid, tmid, request.Queries)
+		res, err = handleGetTelemetryPreMitigation(customer, cuid, tmid, request.Queries)
 		return
 	}
 	log.Debug("Handle get all telemetry pre-mitigation")
-	res, err = handleGetAllTelemetryPreMitigation(customer, cuid, request.Queries)
+	res, err = handleGetTelemetryPreMitigation(customer, cuid, nil, request.Queries)
 	return
 }
 
@@ -270,15 +270,11 @@ func (t *TelemetryPreMitigationRequest) HandleDelete(request Request, customer *
 	}
 	if tmid != nil {
 		log.Debug("Delete one telemetry pre-mitigation")
-		telePreMitigation, err := models.GetTelemetryPreMitigationByTmid(customer.Id, cuid, *tmid)
-		if err != nil {
-			return Response{}, err
-		}
 		uriFilterPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, tmid, nil)
 		if err != nil {
 			return Response{}, err
 		}
-		if telePreMitigation.Id <= 0 && len(uriFilterPreMitigation) < 1{
+		if len(uriFilterPreMitigation) < 1{
 			errMsg := fmt.Sprintf("Not found telemetry pre-mitigation with tmid = %+v", *tmid)
 			log.Error(errMsg)
 			res = Response{
@@ -288,7 +284,7 @@ func (t *TelemetryPreMitigationRequest) HandleDelete(request Request, customer *
 			}
 			return res, nil
 		}
-		err = models.DeleteOneTelemetryPreMitigation(customer.Id, cuid, *tmid, telePreMitigation.Id)
+		err = models.DeleteOneTelemetryPreMitigation(customer.Id, cuid, *tmid)
 		if err != nil {
 			return Response{}, err
 		}
@@ -306,39 +302,13 @@ func (t *TelemetryPreMitigationRequest) HandleDelete(request Request, customer *
 	}
 	return res, nil
 }
-// Handle get one telemetry pre-mitigation
-func handleGetOneTelemetryPreMitigation(customer *models.Customer, cuid string, tmid *int, queries []string) (res Response, err error) {
+
+// Handle get telemetry pre-mitigation
+func handleGetTelemetryPreMitigation(customer *models.Customer, cuid string, tmid *int, queries []string) (res Response, err error) {
 	var errMsg string
-	telePreMitigation, err := models.GetTelemetryPreMitigationByTmid(customer.Id, cuid, *tmid)
-	if err != nil {
-		return Response{}, err
-	}
 	telePreMitigationResp := messages.TelemetryPreMitigationResponse{}
-	preMitigationResp := messages.PreOrOngoingMitigationResponse{}
-	if telePreMitigation.Id > 0 {
-		// Handle Get 7.2
-		log.Debugf("Get telemetry pre-mitigation aggregated by client")
-		if len(queries) > 0 {
-			errMsg = "The telemetry pre-mitigation aggregated by client MUST NOT support Uri-Query"
-			log.Error(errMsg)
-			res = Response {
-				Type: common.NonConfirmable,
-				Code: common.BadRequest,
-				Body: errMsg,
-			}
-			return res, nil
-		}
-		preMitigation, err := models.GetTelemetryPreMitigationAttributes(customer.Id, cuid, telePreMitigation.Id)
-		if err != nil {
-			return Response{}, err
-		}
-		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigation)
-		if err != nil {
-			return Response{}, err
-		}
-	} else {
-		// Handle Get 7.3
-		log.Debugf("Get telemetry pre-mitigation aggregated by server")
+	// Handle Get 7.2 or 7.3
+	if len(queries) > 0 {
 		errMsg = validateQueryParameter(queries)
 		if errMsg != "" {
 			log.Error(errMsg)
@@ -349,99 +319,43 @@ func handleGetOneTelemetryPreMitigation(customer *models.Customer, cuid string, 
 			}
 			return res, nil
 		}
-		ufPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, tmid, queries)
-		if err != nil {
-			return Response{}, err
-		}
-		if len(ufPreMitigation) < 1 {
+	}
+	ufPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, tmid, queries)
+	if err != nil {
+		return Response{}, err
+	}
+	if len(ufPreMitigation) < 1 {
+		if tmid != nil {
 			errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v, tmid: %+v, query: %+v", cuid, *tmid, queries)
-			log.Error(errMsg)
-			res = Response{
-				Type: common.NonConfirmable,
-				Code: common.NotFound,
-				Body: errMsg,
-			}
-			return res, nil
+		} else {
+			errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v, query: %+v", cuid, queries)
 		}
+		log.Error(errMsg)
+		res = Response{
+			Type: common.NonConfirmable,
+			Code: common.NotFound,
+			Body: errMsg,
+		}
+		return res, nil
+	}
 
-		preMitigationList, err := models.GetUriFilteringTelemetryPreMitigationAttributes(customer.Id, cuid, ufPreMitigation)
-		if err != nil {
-			return Response{}, err
+	preMitigationList, err := models.GetUriFilteringTelemetryPreMitigationAttributes(customer.Id, cuid, ufPreMitigation)
+	if err != nil {
+		return Response{}, err
+	}
+
+	content := ""
+	for _, query := range queries {
+		if (strings.HasPrefix(query, "c=")){
+			content = query[strings.Index(query, "c=")+2:]
 		}
-		preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, *tmid, preMitigationList[0])
-		if err != nil {
-			return Response{}, err
-		}
+	}
+	preMitigationRespList, err := convertToTelemetryPreMitigationRespone(customer.Id, cuid, preMitigationList, content)
+	if err != nil {
+		return Response{}, err
 	}
 	preMitigation := messages.TelemetryPreMitigationResp{}
-	preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
-	telePreMitigationResp.TelemetryPreMitigation = &preMitigation
-	res = Response{
-		Type: common.NonConfirmable,
-		Code: common.Content,
-		Body: telePreMitigationResp,
-	}
-	return res, nil
-}
-
-// Handle get all telemetry pre-mitigation
-func handleGetAllTelemetryPreMitigation(customer *models.Customer, cuid string, queries []string) (res Response, err error) {
-	var errMsg string
-	telePreMitigationResp := messages.TelemetryPreMitigationResponse{}
-	preMitigationResp := messages.PreOrOngoingMitigationResponse{}
-	preMitigation := messages.TelemetryPreMitigationResp{}
-	if len(queries) < 1 {
-		// Handle get 7.2 and 7.3 when get all without uri-query
-		telePreMitigationList, err := models.GetTelemetryPreMitigationByCustomerIdAndCuid(customer.Id, cuid)
-		if err != nil {
-			return Response{}, err
-		}
-		ufPreMitigation, err := models.GetUriFilteringTelemetryPreMitigation(customer.Id, cuid, nil, nil)
-		if err != nil {
-			return Response{}, err
-		}
-		if len(telePreMitigationList) < 1 && len(ufPreMitigation) < 1 {
-			errMsg = fmt.Sprintf("Not found telemetry pre-mitigation with cuid: %+v", cuid)
-			log.Error(errMsg)
-			res = Response{
-				Type: common.NonConfirmable,
-				Code: common.NotFound,
-				Body: errMsg,
-			}
-			return res, nil
-		}
-		if len(telePreMitigationList) >= 1 {
-			log.Debugf("Get telemetry pre-mitigation aggregated by client")
-			for _, telePreMitigation := range telePreMitigationList {
-				log.Debugf("Get telemetry pre-mitigation with id = %+v", telePreMitigation.Id)
-				tmpPreMitigation, err := models.GetTelemetryPreMitigationAttributes(customer.Id, cuid, telePreMitigation.Id)
-				if err != nil {
-					return Response{}, err
-				}
-				preMitigationResp, err := convertToTelemetryPreMitigationRespone(customer.Id, cuid, telePreMitigation.Tmid, tmpPreMitigation)
-				if err != nil {
-					return Response{}, err
-				}
-				preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
-			}
-		}
-		if len(ufPreMitigation) >= 1 {
-			log.Debugf("Get telemetry pre-mitigation aggregated by server")
-			preMitigationList, err := models.GetUriFilteringTelemetryPreMitigationAttributes(customer.Id, cuid, ufPreMitigation)
-			if err != nil {
-				return Response{}, err
-			}
-			for _, v := range preMitigationList {
-				preMitigationResp, err = convertToTelemetryPreMitigationRespone(customer.Id, cuid, v.Tmid, v)
-				if err != nil {
-					return Response{}, err
-				}
-				preMitigation.PreOrOngoingMitigation = append(preMitigation.PreOrOngoingMitigation, preMitigationResp)
-			}
-		}
-	} else {
-		log.Warnf("In the current, Dots server doesn't support the Get all with uri-query")
-	}
+	preMitigation.PreOrOngoingMitigation = preMitigationRespList
 	telePreMitigationResp.TelemetryPreMitigation = &preMitigation
 	res = Response{
 		Type: common.NonConfirmable,
@@ -452,40 +366,40 @@ func handleGetAllTelemetryPreMitigation(customer *models.Customer, cuid string, 
 }
 
 // Covert telemetryPreMitigation to PreMitigationResponse
-func convertToTelemetryPreMitigationRespone(customerId int, cuid string, tmid int, preMitigation models.TelemetryPreMitigation) (preMitigationResp messages.PreOrOngoingMitigationResponse, err error) {
-	preMitigationResp = messages.PreOrOngoingMitigationResponse{}
-	preMitigationResp.Tmid = tmid
-	// targets response
-	preMitigationResp.Target = convertToTargetResponse(preMitigation.Targets)
-	// total traffic response
-	preMitigationResp.TotalTraffic = convertToTrafficResponse(preMitigation.TotalTraffic)
-	// total traffic protocol response
-	preMitigationResp.TotalTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalTrafficProtocol)
-	// total traffic port response
-	preMitigationResp.TotalTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalTrafficPort)
-	// total attack traffic response
-	preMitigationResp.TotalAttackTraffic = convertToTrafficResponse(preMitigation.TotalAttackTraffic)
-	// total attack traffic protocol response
-	preMitigationResp.TotalAttackTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalAttackTrafficProtocol)
-	// total attack traffic port response
-	preMitigationResp.TotalAttackTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalAttackTrafficPort)
-	// total attack connection response
-	if len(preMitigation.TotalAttackConnection.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnection.MidPercentileL) > 0 ||
-	   len(preMitigation.TotalAttackConnection.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnection.PeakL) > 0 {
-		preMitigationResp.TotalAttackConnection = convertToTotalAttackConnectionResponse(preMitigation.TotalAttackConnection)
-	} else {
-		preMitigationResp.TotalAttackConnection = nil
+func convertToTelemetryPreMitigationRespone(customerId int, cuid string, preMitigationList []models.TelemetryPreMitigation, content string) (preMitigationRespList []messages.PreOrOngoingMitigationResponse, err error) {
+	preMitigationRespList = []messages.PreOrOngoingMitigationResponse{}
+	for _, preMitigation := range preMitigationList {
+		preMitigationResp := messages.PreOrOngoingMitigationResponse{}
+		preMitigationResp.Tmid = preMitigation.Tmid
+		// 'c' query is null, all or config
+		if content == "" || content == string(messages.ALL) || content == string(messages.CONFIG) {
+			// targets response
+			preMitigationResp.Target = convertToTargetResponse(preMitigation.Targets)
+		}
+		// 'c' query is null, all or non-config
+		if content == "" || content == string(messages.ALL) || content == string(messages.NON_CONFIG) {
+			// total traffic response
+			preMitigationResp.TotalTraffic = convertToTrafficResponse(preMitigation.TotalTraffic)
+			// total traffic protocol response
+			preMitigationResp.TotalTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalTrafficProtocol)
+			// total traffic port response
+			preMitigationResp.TotalTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalTrafficPort)
+			// total attack traffic response
+			preMitigationResp.TotalAttackTraffic = convertToTrafficResponse(preMitigation.TotalAttackTraffic)
+			// total attack traffic protocol response
+			preMitigationResp.TotalAttackTrafficProtocol = convertToTrafficPerProtocolResponse(preMitigation.TotalAttackTrafficProtocol)
+			// total attack traffic port response
+			preMitigationResp.TotalAttackTrafficPort = convertToTrafficPerPortResponse(preMitigation.TotalAttackTrafficPort)
+			// total attack connection protocol response
+			preMitigationResp.TotalAttackConnectionProtocol = convertToTotalAttackConnectionProtocolResponse(preMitigation.TotalAttackConnectionProtocol)
+			// total attack connection port response
+			preMitigationResp.TotalAttackConnectionPort = convertToTotalAttackConnectionPortResponse(preMitigation.TotalAttackConnectionPort)
+			// Get attack detail response
+			preMitigationResp.AttackDetail = convertToAttackDetailResponse(preMitigation.AttackDetail)
+		}
+		preMitigationRespList = append(preMitigationRespList, preMitigationResp)
 	}
-	// total attack connection port response
-	if len(preMitigation.TotalAttackConnectionPort.LowPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.MidPercentileL) > 0 ||
-	   len(preMitigation.TotalAttackConnectionPort.HighPercentileL) > 0 || len(preMitigation.TotalAttackConnectionPort.PeakL) > 0 {
-		preMitigationResp.TotalAttackConnectionPort = convertToTotalAttackConnectionPortResponse(preMitigation.TotalAttackConnectionPort)
-	} else {
-		preMitigationResp.TotalAttackConnection = nil
-	}
-	// Get attack detail response
-	preMitigationResp.AttackDetail = convertToAttackDetailResponse(preMitigation.AttackDetail)
-	return preMitigationResp, nil
+	return preMitigationRespList, nil
 }
 
 // Convert targets to TargetResponse(target_prefix, target_port_range, target_fqdn, target_uri, alias_name)
@@ -495,20 +409,12 @@ func convertToTargetResponse(target models.Targets) (targetResp *messages.Target
 		targetResp.TargetPrefix = append(targetResp.TargetPrefix, v.String())
 	}
 	for _, v := range target.TargetPortRange {
-		targetResp.TargetPortRange = append(targetResp.TargetPortRange, messages.PortRangeResponse{LowerPort: v.LowerPort, UpperPort: v.UpperPort})
+		targetResp.TargetPortRange = append(targetResp.TargetPortRange, messages.PortRangeResponse{LowerPort: v.LowerPort, UpperPort: &v.UpperPort})
 	}
-	for _, v := range target.TargetProtocol.List() {
-		targetResp.TargetProtocol = append(targetResp.TargetProtocol, v)
-	}
-	for _, v := range target.FQDN.List() {
-		targetResp.FQDN = append(targetResp.FQDN, v)
-	}
-	for _, v := range target.URI.List() {
-		targetResp.URI = append(targetResp.URI, v)
-	}
-	for _, v := range target.AliasName.List() {
-		targetResp.AliasName = append(targetResp.AliasName, v)
-	}
+	targetResp.TargetProtocol = append(targetResp.TargetProtocol, target.TargetProtocol.List()...)
+	targetResp.FQDN = append(targetResp.FQDN, target.FQDN.List()...)
+	targetResp.URI = append(targetResp.URI, target.URI.List()...)
+	targetResp.AliasName = append(targetResp.AliasName, target.AliasName.List()...)
 	return
 }
 
@@ -519,16 +425,24 @@ func convertToTrafficResponse(traffics []models.Traffic) (trafficRespList []mess
 		trafficResp := messages.TrafficResponse{}
 		trafficResp.Unit = v.Unit
 		if v.LowPercentileG > 0 {
-			trafficResp.LowPercentileG = &v.LowPercentileG
+			lowPercentileG := v.LowPercentileG
+			trafficResp.LowPercentileG = &lowPercentileG
 		}
 		if v.MidPercentileG > 0 {
-			trafficResp.MidPercentileG = &v.MidPercentileG
+			midPercentileG := v.MidPercentileG
+			trafficResp.MidPercentileG = &midPercentileG
 		}
 		if v.HighPercentileG > 0 {
-			trafficResp.HighPercentileG = &v.HighPercentileG
+			highPercentileG := v.HighPercentileG
+			trafficResp.HighPercentileG = &highPercentileG
 		}
 		if v.PeakG > 0 {
-			trafficResp.PeakG = &v.PeakG
+			peakG := v.PeakG
+			trafficResp.PeakG = &peakG
+		}
+		if v.CurrentG > 0 {
+			currentG := v.CurrentG
+			trafficResp.CurrentG = &currentG
 		}
 		trafficRespList = append(trafficRespList, trafficResp)
 	}
@@ -543,16 +457,24 @@ func convertToTrafficPerProtocolResponse(traffics []models.TrafficPerProtocol) (
 		trafficResp.Unit = v.Unit
 		trafficResp.Protocol = v.Protocol
 		if v.LowPercentileG > 0 {
-			trafficResp.LowPercentileG = &v.LowPercentileG
+			lowPercentileG := v.LowPercentileG
+			trafficResp.LowPercentileG = &lowPercentileG
 		}
 		if v.MidPercentileG > 0 {
-			trafficResp.MidPercentileG = &v.MidPercentileG
+			midPercentileG := v.MidPercentileG
+			trafficResp.MidPercentileG = &midPercentileG
 		}
 		if v.HighPercentileG > 0 {
-			trafficResp.HighPercentileG = &v.HighPercentileG
+			highPercentileG := v.HighPercentileG
+			trafficResp.HighPercentileG = &highPercentileG
 		}
 		if v.PeakG > 0 {
-			trafficResp.PeakG = &v.PeakG
+			peakG := v.PeakG
+			trafficResp.PeakG = &peakG
+		}
+		if v.CurrentG > 0 {
+			currentG := v.CurrentG
+			trafficResp.CurrentG = &currentG
 		}
 		trafficRespList = append(trafficRespList, trafficResp)
 	}
@@ -567,16 +489,24 @@ func convertToTrafficPerPortResponse(traffics []models.TrafficPerPort) (trafficR
 		trafficResp.Unit = v.Unit
 		trafficResp.Port = v.Port
 		if v.LowPercentileG > 0 {
-			trafficResp.LowPercentileG = &v.LowPercentileG
+			lowPercentileG := v.LowPercentileG
+			trafficResp.LowPercentileG = &lowPercentileG
 		}
 		if v.MidPercentileG > 0 {
-			trafficResp.MidPercentileG = &v.MidPercentileG
+			midPercentileG := v.MidPercentileG
+			trafficResp.MidPercentileG = &midPercentileG
 		}
 		if v.HighPercentileG > 0 {
-			trafficResp.HighPercentileG = &v.HighPercentileG
+			highPercentileG := v.HighPercentileG
+			trafficResp.HighPercentileG = &highPercentileG
 		}
 		if v.PeakG > 0 {
-			trafficResp.PeakG = &v.PeakG
+			peakG := v.PeakG
+			trafficResp.PeakG = &peakG
+		}
+		if v.CurrentG > 0 {
+			currentG := v.CurrentG
+			trafficResp.CurrentG = &currentG
 		}
 		trafficRespList = append(trafficRespList, trafficResp)
 	}
@@ -590,34 +520,44 @@ func convertToTotalConnectionCapacityResponse(tccs []models.TotalConnectionCapac
 		tcc := messages.TotalConnectionCapacityResponse{}
 		tcc.Protocol = vTcc.Protocol
 		if vTcc.Connection > 0 {
-			tcc.Connection = &vTcc.Connection
+			connection := vTcc.Connection
+			tcc.Connection = &connection
 		}
 		if vTcc.ConnectionClient > 0 {
-			tcc.ConnectionClient = &vTcc.ConnectionClient
+			connectionClient := vTcc.ConnectionClient
+			tcc.ConnectionClient = &connectionClient
 		}
 		if vTcc.Embryonic > 0 {
-			tcc.Embryonic = &vTcc.Embryonic
+			embryonic := vTcc.Embryonic
+			tcc.Embryonic = &embryonic
 		}
 		if vTcc.EmbryonicClient > 0 {
-			tcc.EmbryonicClient = &vTcc.EmbryonicClient
+			embryonicClient := vTcc.EmbryonicClient
+			tcc.EmbryonicClient = &embryonicClient
 		}
 		if vTcc.ConnectionPs > 0 {
-			tcc.ConnectionPs = &vTcc.ConnectionPs
+			connectionPs := vTcc.ConnectionPs
+			tcc.ConnectionPs = &connectionPs
 		}
 		if vTcc.ConnectionClientPs > 0 {
-			tcc.ConnectionClientPs = &vTcc.ConnectionClientPs
+			connectionClientPs := vTcc.ConnectionClientPs
+			tcc.ConnectionClientPs = &connectionClientPs
 		}
 		if vTcc.RequestPs > 0 {
-			tcc.RequestPs = &vTcc.RequestPs
+			requestPs := vTcc.RequestPs
+			tcc.RequestPs = &requestPs
 		}
 		if vTcc.RequestClientPs > 0 {
-			tcc.RequestClientPs = &vTcc.RequestClientPs
+			requestClientPs := vTcc.RequestClientPs
+			tcc.RequestClientPs = &requestClientPs
 		}
-		if vTcc.PartialRequestPs > 0 {
-			tcc.PartialRequestPs = &vTcc.PartialRequestPs
+		if vTcc.PartialRequestMax > 0 {
+			partialRequestMax := vTcc.PartialRequestMax
+			tcc.PartialRequestMax = &partialRequestMax
 		}
-		if vTcc.PartialRequestClientPs > 0 {
-			tcc.PartialRequestClientPs = &vTcc.PartialRequestClientPs
+		if vTcc.PartialRequestClientMax > 0 {
+			partialRequestClientMax := vTcc.PartialRequestClientMax
+			tcc.PartialRequestClientMax = &partialRequestClientMax
 		}
 		tccList = append(tccList, tcc)
 	}
@@ -632,109 +572,112 @@ func convertToTotalConnectionCapacityPerPortResponse(tccs []models.TotalConnecti
 		tcc.Protocol = vTcc.Protocol
 		tcc.Port = vTcc.Port
 		if vTcc.Connection > 0 {
-			tcc.Connection = &vTcc.Connection
+			connection := vTcc.Connection
+			tcc.Connection = &connection
 		}
 		if vTcc.ConnectionClient > 0 {
-			tcc.ConnectionClient = &vTcc.ConnectionClient
+			connectionClient := vTcc.ConnectionClient
+			tcc.ConnectionClient = &connectionClient
 		}
 		if vTcc.Embryonic > 0 {
-			tcc.Embryonic = &vTcc.Embryonic
+			embryonic := vTcc.Embryonic
+			tcc.Embryonic = &embryonic
 		}
 		if vTcc.EmbryonicClient > 0 {
-			tcc.EmbryonicClient = &vTcc.EmbryonicClient
+			embryonicClient := vTcc.EmbryonicClient
+			tcc.EmbryonicClient = &embryonicClient
 		}
 		if vTcc.ConnectionPs > 0 {
-			tcc.ConnectionPs = &vTcc.ConnectionPs
+			connectionPS := vTcc.ConnectionPs
+			tcc.ConnectionPs = &connectionPS
 		}
 		if vTcc.ConnectionClientPs > 0 {
-			tcc.ConnectionClientPs = &vTcc.ConnectionClientPs
+			connectionClientPs := vTcc.ConnectionClientPs
+			tcc.ConnectionClientPs = &connectionClientPs
 		}
 		if vTcc.RequestPs > 0 {
-			tcc.RequestPs = &vTcc.RequestPs
+			requestPs := vTcc.RequestPs
+			tcc.RequestPs = &requestPs
 		}
 		if vTcc.RequestClientPs > 0 {
-			tcc.RequestClientPs = &vTcc.RequestClientPs
+			requestClientPs := vTcc.RequestClientPs
+			tcc.RequestClientPs = &requestClientPs
 		}
-		if vTcc.PartialRequestPs > 0 {
-			tcc.PartialRequestPs = &vTcc.PartialRequestPs
+		if vTcc.PartialRequestMax > 0 {
+			partialRequestMax := vTcc.PartialRequestMax
+			tcc.PartialRequestMax = &partialRequestMax
 		}
-		if vTcc.PartialRequestClientPs > 0 {
-			tcc.PartialRequestClientPs = &vTcc.PartialRequestClientPs
+		if vTcc.PartialRequestClientMax > 0 {
+			partialRequestClientPs := vTcc.PartialRequestClientMax
+			tcc.PartialRequestClientMax = &partialRequestClientPs
 		}
 		tccList = append(tccList, tcc)
 	}
 	return
 }
 
-// Convert TotalAttackConnection to TotalAttackConnectionResponse
-func convertToTotalAttackConnectionResponse(tac models.TotalAttackConnection) (tacResp *messages.TotalAttackConnectionResponse) {
-	tacResp = &messages.TotalAttackConnectionResponse{}
-	tacResp.LowPercentileL  = convertToConnectionProtocolPercentileResponse(tac.LowPercentileL)
-	tacResp.MidPercentileL  = convertToConnectionProtocolPercentileResponse(tac.MidPercentileL)
-	tacResp.HighPercentileL = convertToConnectionProtocolPercentileResponse(tac.HighPercentileL)
-	tacResp.PeakL           = convertToConnectionProtocolPercentileResponse(tac.PeakL)
-	return
-}
-
-// Convert TotalAttackConnectionPort to TotalAttackConnectionPortResponse
-func convertToTotalAttackConnectionPortResponse(tac models.TotalAttackConnectionPort) (tacResp *messages.TotalAttackConnectionPortResponse) {
-	tacResp = &messages.TotalAttackConnectionPortResponse{}
-	tacResp.LowPercentileL  = convertToConnectionProtocolPortPercentileResponse(tac.LowPercentileL)
-	tacResp.MidPercentileL  = convertToConnectionProtocolPortPercentileResponse(tac.MidPercentileL)
-	tacResp.HighPercentileL = convertToConnectionProtocolPortPercentileResponse(tac.HighPercentileL)
-	tacResp.PeakL           = convertToConnectionProtocolPortPercentileResponse(tac.PeakL)
-	return
-}
-
-// Convert ConnectionProtocolPercentile to ConnectionProtocolPercentileResponse
-func convertToConnectionProtocolPercentileResponse(cpps []models.ConnectionProtocolPercentile) (cppRespList []messages.ConnectionProtocolPercentileResponse) {
-	cppRespList = []messages.ConnectionProtocolPercentileResponse{}
-	for _, v := range cpps {
-		cppResp := messages.ConnectionProtocolPercentileResponse{}
-		cppResp.Protocol = v.Protocol
-		if v.Connection > 0 {
-			cppResp.Connection = &v.Connection
+// Convert to TotalAttackConnectionProtocolResponse
+func convertToTotalAttackConnectionProtocolResponse(tacs []models.TotalAttackConnectionProtocol) (tacResps []messages.TotalAttackConnectionProtocolResponse) {
+	tacResps = []messages.TotalAttackConnectionProtocolResponse{}
+	for _, tac := range tacs {
+		tacResp := messages.TotalAttackConnectionProtocolResponse{}
+		// protocol
+		tacResp.Protocol = uint8(tac.Protocol)
+		// connection-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.ConnectionC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.ConnectionC = convertToPercentilePeakAndCurrentResponse(tac.ConnectionC)
 		}
-		if v.Embryonic > 0 {
-			cppResp.Embryonic = &v.Embryonic
+		// embryonic-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.EmbryonicC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.EmbryonicC = convertToPercentilePeakAndCurrentResponse(tac.EmbryonicC)
 		}
-		if v.ConnectionPs > 0 {
-			cppResp.ConnectionPs = &v.ConnectionPs
+		// conection-ps-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.ConnectionPsC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.ConnectionPsC = convertToPercentilePeakAndCurrentResponse(tac.ConnectionPsC)
 		}
-		if v.RequestPs > 0 {
-			cppResp.RequestPs = &v.RequestPs
+		// request-ps-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.RequestPsC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.RequestPsC = convertToPercentilePeakAndCurrentResponse(tac.RequestPsC)
 		}
-		if v.PartialRequestPs > 0 {
-			cppResp.PartialRequestPs = &v.PartialRequestPs
+		// partial-request-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.PartialRequestC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.PartialRequestC = convertToPercentilePeakAndCurrentResponse(tac.PartialRequestC)
 		}
-		cppRespList = append(cppRespList, cppResp)
+		tacResps = append(tacResps, tacResp)
 	}
 	return
 }
 
-// Convert ConnectionProtocolPortPercentile to ConnectionProtocolPortPercentileResponse
-func convertToConnectionProtocolPortPercentileResponse(cpps []models.ConnectionProtocolPortPercentile) (cppRespList []messages.ConnectionProtocolPortPercentileResponse) {
-	cppRespList = []messages.ConnectionProtocolPortPercentileResponse{}
-	for _, v := range cpps {
-		cppResp := messages.ConnectionProtocolPortPercentileResponse{}
-		cppResp.Protocol = v.Protocol
-		cppResp.Port = v.Port
-		if v.Connection > 0 {
-			cppResp.Connection = &v.Connection
+// Convert TotalAttackConnectionPort to TotalAttackConnectionPortResponse
+func convertToTotalAttackConnectionPortResponse(tacs []models.TotalAttackConnectionPort) (tacResps []messages.TotalAttackConnectionPortResponse) {
+	tacResps = []messages.TotalAttackConnectionPortResponse{}
+	for _, tac := range tacs {
+		tacResp := messages.TotalAttackConnectionPortResponse{}
+		// protocol
+		tacResp.Protocol = uint8(tac.Protocol)
+		// port
+		tacResp.Port = tac.Port
+		// connection-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.ConnectionC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.ConnectionC = convertToPercentilePeakAndCurrentResponse(tac.ConnectionC)
 		}
-		if v.Embryonic > 0 {
-			cppResp.Embryonic = &v.Embryonic
+		// embryonic-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.EmbryonicC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.EmbryonicC = convertToPercentilePeakAndCurrentResponse(tac.EmbryonicC)
 		}
-		if v.ConnectionPs > 0 {
-			cppResp.ConnectionPs = &v.ConnectionPs
+		// conection-ps-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.ConnectionPsC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.ConnectionPsC = convertToPercentilePeakAndCurrentResponse(tac.ConnectionPsC)
 		}
-		if v.RequestPs > 0 {
-			cppResp.RequestPs = &v.RequestPs
+		// request-ps-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.RequestPsC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.RequestPsC = convertToPercentilePeakAndCurrentResponse(tac.RequestPsC)
 		}
-		if v.PartialRequestPs > 0 {
-			cppResp.PartialRequestPs = &v.PartialRequestPs
+		// partial-request-c
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.PartialRequestC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			tacResp.PartialRequestC = convertToPercentilePeakAndCurrentResponse(tac.PartialRequestC)
 		}
-		cppRespList = append(cppRespList, cppResp)
+		tacResps = append(tacResps, tacResp)
 	}
 	return
 }
@@ -750,32 +693,26 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 		if attackDetail.AttackId > 0 {
 			attackDetailResp.AttackId = attackDetail.AttackId
 		}
-		if attackDetail.AttackName != "" {
-			attackDetailResp.AttackName = &attackDetail.AttackName
+		if attackDetail.DescriptionLang != "" {
+			attackDetailResp.DescriptionLang = &attackDetail.DescriptionLang
+		}
+		if attackDetail.AttackDescription != "" {
+			attackDescription := attackDetail.AttackDescription
+			attackDetailResp.AttackDescription = &attackDescription
 		}
 		if attackDetail.AttackSeverity > 0 {
-			attackDetailResp.AttackSeverity = attackDetail.AttackSeverity
+			attackDetailResp.AttackSeverity = messages.AttackSeverityString(attackDetail.AttackSeverity)
 		}
 		if attackDetail.StartTime > 0 {
-			attackDetailResp.StartTime = &attackDetail.StartTime
+			startTime := attackDetail.StartTime
+			attackDetailResp.StartTime = &startTime
 		}
 		if attackDetail.EndTime > 0 {
-			attackDetailResp.EndTime = &attackDetail.EndTime
+			endTime := attackDetail.EndTime
+			attackDetailResp.EndTime = &endTime
 		}
-		if !reflect.DeepEqual(models.GetModelsSourceCount(&attackDetail.SourceCount), models.GetModelsSourceCount(nil)) {
-			sourceCount := &messages.SourceCountResponse{}
-			if attackDetail.SourceCount.LowPercentileG > 0 {
-				sourceCount.LowPercentileG = &attackDetail.SourceCount.LowPercentileG
-			}
-			if attackDetail.SourceCount.MidPercentileG > 0 {
-				sourceCount.MidPercentileG = &attackDetail.SourceCount.MidPercentileG
-			}
-			if attackDetail.SourceCount.HighPercentileG > 0 {
-				sourceCount.HighPercentileG = &attackDetail.SourceCount.HighPercentileG
-			}
-			if attackDetail.SourceCount.PeakG > 0 {
-				sourceCount.PeakG = &attackDetail.SourceCount.PeakG
-			}
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&attackDetail.SourceCount), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			sourceCount := convertToPercentilePeakAndCurrentResponse(attackDetail.SourceCount)
 			attackDetailResp.SourceCount = sourceCount
 		}
 		topTalker := &messages.TopTalkerResponse{}
@@ -785,16 +722,13 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 				talkerResp.SpoofedStatus = v.SpoofedStatus
 				talkerResp.SourcePrefix = v.SourcePrefix.String()
 				for _, portRange := range v.SourcePortRange {
-					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.PortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort})
+					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.PortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: &portRange.UpperPort})
 				}
 				for _, typeRange := range v.SourceIcmpTypeRange {
-					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.SourceICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: typeRange.UpperType})
+					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.ICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: &typeRange.UpperType})
 				}
 				talkerResp.TotalAttackTraffic = convertToTrafficResponse(v.TotalAttackTraffic)
-				if len(v.TotalAttackConnection.LowPercentileL) > 0 || len(v.TotalAttackConnection.MidPercentileL) > 0 ||
-				len(v.TotalAttackConnection.HighPercentileL) > 0 || len(v.TotalAttackConnection.PeakL) > 0 {
-					talkerResp.TotalAttackConnection = convertToTotalAttackConnectionResponse(v.TotalAttackConnection)
-				}
+				talkerResp.TotalAttackConnectionProtocol = convertToTotalAttackConnectionProtocolResponse(v.TotalAttackConnectionProtocol)
 				topTalker.Talker = append(topTalker.Talker, talkerResp)
 			}
 		} else {
@@ -806,61 +740,32 @@ func convertToAttackDetailResponse(attackDetails []models.AttackDetail) (attackD
 	return
 }
 
-// Convert traffic to TelemetryTrafficResponse
-func convertToTelemetryTrafficResponse(traffics []models.Traffic) (trafficRespList []messages.TelemetryTrafficResponse) {
-	trafficRespList = []messages.TelemetryTrafficResponse{}
-	for _, v := range traffics {
-		trafficResp := messages.TelemetryTrafficResponse{}
-		trafficResp.Unit = v.Unit
-		if v.LowPercentileG > 0 {
-			trafficResp.LowPercentileG = &v.LowPercentileG
-		}
-		if v.MidPercentileG > 0 {
-			trafficResp.MidPercentileG = &v.MidPercentileG
-		}
-		if v.HighPercentileG > 0 {
-			trafficResp.HighPercentileG = &v.HighPercentileG
-		}
-		if v.PeakG > 0 {
-			trafficResp.PeakG = &v.PeakG
-		}
-		trafficRespList = append(trafficRespList, trafficResp)
-	}
-	return
-}
-
 // Convert TelemetryTotalAttackConnection to TelemetryTotalAttackConnectionResponse
 func convertToTelemetryTotalAttackConnectionResponse(tac models.TelemetryTotalAttackConnection) (tacResp *messages.TelemetryTotalAttackConnectionResponse) {
 	tacResp = &messages.TelemetryTotalAttackConnectionResponse{}
-	if !reflect.DeepEqual(models.GetModelsTelemetryConnectionPercentile(&tac.LowPercentileC), models.GetModelsTelemetryConnectionPercentile(nil)) {
-		tacResp.LowPercentileC  = convertToTelemetryConnectionPercentileResponse(tac.LowPercentileC)
+	// connection-c
+	if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.ConnectionC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+		tacResp.ConnectionC = convertToPercentilePeakAndCurrentResponse(tac.ConnectionC)
 	}
-	if !reflect.DeepEqual(models.GetModelsTelemetryConnectionPercentile(&tac.MidPercentileC), models.GetModelsTelemetryConnectionPercentile(nil)) {
-		tacResp.MidPercentileC  = convertToTelemetryConnectionPercentileResponse(tac.MidPercentileC)
+	// embryonic-c
+	if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.EmbryonicC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+		tacResp.EmbryonicC = convertToPercentilePeakAndCurrentResponse(tac.EmbryonicC)
 	}
-	if !reflect.DeepEqual(models.GetModelsTelemetryConnectionPercentile(&tac.HighPercentileC), models.GetModelsTelemetryConnectionPercentile(nil)) {
-		tacResp.HighPercentileC  = convertToTelemetryConnectionPercentileResponse(tac.HighPercentileC)
+	// conection-ps-c
+	if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.ConnectionPsC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+		tacResp.ConnectionPsC = convertToPercentilePeakAndCurrentResponse(tac.ConnectionPsC)
 	}
-	if !reflect.DeepEqual(models.GetModelsTelemetryConnectionPercentile(&tac.PeakC), models.GetModelsTelemetryConnectionPercentile(nil)) {
-		tacResp.PeakC  = convertToTelemetryConnectionPercentileResponse(tac.PeakC)
+	// request-ps-c
+	if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.RequestPsC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+		tacResp.RequestPsC = convertToPercentilePeakAndCurrentResponse(tac.RequestPsC)
 	}
-	return
-}
-
-// Convert ConnectionPercentile to TelemetryConnectionPercentileResponse
-func convertToTelemetryConnectionPercentileResponse(cp models.ConnectionPercentile) (cpResp *messages.TelemetryConnectionPercentileResponse) {
-	cpResp = &messages.TelemetryConnectionPercentileResponse{}
-	if cp.Embryonic > 0 {
-		cpResp.Embryonic = &cp.Embryonic
+	// partial-request-c
+	if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&tac.PartialRequestC), models.GetModelsPercentilePeakAndCurrent(nil)) {
+		tacResp.PartialRequestC = convertToPercentilePeakAndCurrentResponse(tac.PartialRequestC)
 	}
-	if cp.ConnectionPs > 0 {
-		cpResp.ConnectionPs = &cp.ConnectionPs
-	}
-	if cp.RequestPs > 0 {
-		cpResp.RequestPs = &cp.RequestPs
-	}
-	if cp.PartialRequestPs > 0 {
-		cpResp.PartialRequestPs = &cp.PartialRequestPs
+	if tacResp.ConnectionC == nil && tacResp.EmbryonicC == nil && tacResp.ConnectionPsC == nil &&
+	   tacResp.RequestPsC == nil && tacResp.PartialRequestC == nil {
+		   tacResp = nil
 	}
 	return
 }
@@ -876,32 +781,23 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 		if attackDetail.AttackId > 0 {
 			attackDetailResp.AttackId = attackDetail.AttackId
 		}
-		if attackDetail.AttackName != "" {
-			attackDetailResp.AttackName = &attackDetail.AttackName
+		if attackDetail.AttackDescription != "" {
+			attackDescription := attackDetail.AttackDescription
+			attackDetailResp.AttackDescription = &attackDescription
 		}
 		if attackDetail.AttackSeverity > 0 {
-			attackDetailResp.AttackSeverity = attackDetail.AttackSeverity
+			attackDetailResp.AttackSeverity = messages.AttackSeverityString(attackDetail.AttackSeverity)
 		}
 		if attackDetail.StartTime > 0 {
-			attackDetailResp.StartTime = &attackDetail.StartTime
+			startTime := attackDetail.StartTime
+			attackDetailResp.StartTime = &startTime
 		}
 		if attackDetail.EndTime > 0 {
-			attackDetailResp.EndTime = &attackDetail.EndTime
+			endTime := attackDetail.EndTime
+			attackDetailResp.EndTime = &endTime
 		}
-		if !reflect.DeepEqual(models.GetModelsSourceCount(&attackDetail.SourceCount), models.GetModelsSourceCount(nil)) {
-			sourceCount := &messages.TelemetrySourceCountResponse{}
-			if attackDetail.SourceCount.LowPercentileG > 0 {
-				sourceCount.LowPercentileG = &attackDetail.SourceCount.LowPercentileG
-			}
-			if attackDetail.SourceCount.MidPercentileG > 0 {
-				sourceCount.MidPercentileG = &attackDetail.SourceCount.MidPercentileG
-			}
-			if attackDetail.SourceCount.HighPercentileG > 0 {
-				sourceCount.HighPercentileG = &attackDetail.SourceCount.HighPercentileG
-			}
-			if attackDetail.SourceCount.PeakG > 0 {
-				sourceCount.PeakG = &attackDetail.SourceCount.PeakG
-			}
+		if !reflect.DeepEqual(models.GetModelsPercentilePeakAndCurrent(&attackDetail.SourceCount), models.GetModelsPercentilePeakAndCurrent(nil)) {
+			sourceCount := convertToPercentilePeakAndCurrentResponse(attackDetail.SourceCount)
 			attackDetailResp.SourceCount = sourceCount
 		}
 		topTalker := &messages.TelemetryTopTalkerResponse{}
@@ -911,15 +807,13 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 				talkerResp.SpoofedStatus = v.SpoofedStatus
 				talkerResp.SourcePrefix = v.SourcePrefix.String()
 				for _, portRange := range v.SourcePortRange {
-					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.TelemetrySourcePortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: portRange.UpperPort})
+					talkerResp.SourcePortRange = append(talkerResp.SourcePortRange, messages.PortRangeResponse{LowerPort: portRange.LowerPort, UpperPort: &portRange.UpperPort})
 				}
 				for _, typeRange := range v.SourceIcmpTypeRange {
-					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.TelemetrySourceICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: typeRange.UpperType})
+					talkerResp.SourceIcmpTypeRange = append(talkerResp.SourceIcmpTypeRange, messages.ICMPTypeRangeResponse{LowerType: typeRange.LowerType, UpperType: &typeRange.UpperType})
 				}
-				talkerResp.TotalAttackTraffic = convertToTelemetryTrafficResponse(v.TotalAttackTraffic)
-				if !reflect.DeepEqual(models.GetModelsTelemetryTotalAttackConnection(&v.TotalAttackConnection), models.GetModelsTelemetryTotalAttackConnection(nil)) {
-					talkerResp.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(v.TotalAttackConnection)
-				}
+				talkerResp.TotalAttackTraffic = convertToTrafficResponse(v.TotalAttackTraffic)
+				talkerResp.TotalAttackConnection = convertToTelemetryTotalAttackConnectionResponse(v.TotalAttackConnection)
 				topTalker.Talker = append(topTalker.Talker, talkerResp)
 			}
 		} else {
@@ -929,6 +823,32 @@ func convertToTelemetryAttackDetailResponse(attackDetails []models.TelemetryAtta
 		attackDetailRespList = append(attackDetailRespList, attackDetailResp)
 	}
 	return
+}
+
+// Convert to PercentilePeakAndCurrentResponse
+func convertToPercentilePeakAndCurrentResponse(ppac models.PercentilePeakAndCurrent) *messages.PercentilePeakAndCurrentResponse {
+	ppacResp := &messages.PercentilePeakAndCurrentResponse{}
+	if ppac.LowPercentileG > 0 {
+		lowPercentileG := ppac.LowPercentileG
+		ppacResp.LowPercentileG = &lowPercentileG
+	}
+	if ppac.MidPercentileG > 0 {
+		midPercentileG := ppac.MidPercentileG
+		ppacResp.MidPercentileG = &midPercentileG
+	}
+	if ppac.HighPercentileG > 0 {
+		highPercentileG := ppac.HighPercentileG
+		ppacResp.HighPercentileG = &highPercentileG
+	}
+	if ppac.PeakG > 0 {
+		peakG := ppac.PeakG
+		ppacResp.PeakG = &peakG
+	}
+	if ppac.CurrentG > 0 {
+		currentG := ppac.CurrentG
+		ppacResp.CurrentG = &currentG
+	}
+	return ppacResp
 }
 
 // Validate query parameter
@@ -954,7 +874,7 @@ func validateQueryParameter(queries []string) (errMsg string) {
 		return
 	}
 	// Get query values from uri-query
-	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, sourcePrefix, sourcePort, sourceIcmpType, errMsg := models.GetQueriesFromUriQuery(queries)
+	targetPrefix, targetPort, targetProtocol, targetFqdn, targetUri, aliasName, sourcePrefix, sourcePort, sourceIcmpType, content, errMsg := models.GetQueriesFromUriQuery(queries)
 	if errMsg != "" {
 		return
 	}
@@ -1018,6 +938,11 @@ func validateQueryParameter(queries []string) (errMsg string) {
 	// source-icmp-type
 	if strings.Contains(sourceIcmpType, "*") {
 		errMsg = "The 'source-icmp-type' query MUST NOT contain wildcard names"
+		return
+	}
+	// content
+	if content != "" && content != string(messages.CONFIG) && content != string(messages.NON_CONFIG) && content != string(messages.ALL) {
+		errMsg = fmt.Sprintf("Invalid 'c' (content) value %+v. Expected values include 'c':config, 'n':non-config, 'a':all", content)
 		return
 	}
 	return

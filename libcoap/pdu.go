@@ -1,14 +1,16 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
-#include <coap2/coap.h>
+#cgo LDFLAGS: -lcoap-3-openssl
+#include <coap3/coap.h>
+#include "callback.h"
 */
 import "C"
 import "fmt"
 import "errors"
 import "sort"
 import "strings"
+import "encoding/hex"
 import "unsafe"
 import "reflect"
 import "net/http"
@@ -96,7 +98,8 @@ type HexCBOR string
 const (
     IETF_MITIGATION_SCOPE_HEX      HexCBOR = "a1 01"       // "ietf-dots-signal-channel:mitigation-scope"
     IETF_SESSION_CONFIGURATION_HEX HexCBOR = "a1 18 1e"    // "ietf-dots-signal-channel:signal-config"
-    IETF_TELEMETRY_PRE_MITIGATION  HexCBOR = "a1 19 80 92" // "ietf-dots-telemetry:telemetry"
+    IETF_TELEMETRY_PRE_MITIGATION  HexCBOR = "a1 18 d0 a1" // "ietf-dots-telemetry:telemetry"
+    IETF_TELEMETRY_SETUP_HEX       HexCBOR = "a1 18 cb a1" // "ietf-dots-telemetry:telemetry-setup"
 )
 
 // MediaType specifies the content type of a message.
@@ -123,6 +126,7 @@ const (
     SourcePrefix   UriQuery = "source-prefix"
     SourcePort     UriQuery = "source-port"
     SourceIcmpType UriQuery = "source-icmp-type"
+    Content        UriQuery = "c="
 )
 
 type Pdu struct {
@@ -132,6 +136,12 @@ type Pdu struct {
     Token     []byte
     Options   []Option
     Data      []byte
+}
+
+// Convert the pdu to text format
+func (pdu *Pdu) ToString() string {
+    return fmt.Sprintf("{Type:%d, Code:%d, MessageID:%d, Token:%+v, Options:[%s], Data: %+v}",
+		   pdu.Type, pdu.Code, pdu.MessageID, pdu.Token, OptionsToString(pdu.Options), pdu.Data)
 }
 
 func (src *C.coap_pdu_t) toGo() (_ *Pdu, err error) {
@@ -150,7 +160,7 @@ func (src *C.coap_pdu_t) toGo() (_ *Pdu, err error) {
             break
         }
 
-        k := OptionKey(it._type)
+        k := OptionKey(it.number)
         v := C.GoBytes(unsafe.Pointer(C.coap_opt_value(opt)), C.int(C.coap_opt_length(opt)))
         options = append(options, Option{ k, v })
     }
@@ -165,7 +175,7 @@ func (src *C.coap_pdu_t) toGo() (_ *Pdu, err error) {
     pdu := Pdu{
         Type(src._type),
         Code(src.code),
-        uint16(src.tid),
+        uint16(src.mid),
         token,
         options,
         data,
@@ -174,13 +184,13 @@ func (src *C.coap_pdu_t) toGo() (_ *Pdu, err error) {
 }
 
 func (src *Pdu) toC(session *Session) (_ *C.coap_pdu_t, err error) {
-    p := C.coap_new_pdu(session.ptr)
+    p := C.coap_new_pdu(C.coap_pdu_type_t(src.Type), C.coap_pdu_code_t(src.Code), session.ptr)
     if p == nil {
         err = errors.New("coap_new_pdu() failed.")
         return
     }
 
-    err = src.fillC(p)
+    err = src.fillC(p, session)
     if err != nil {
         return
     }
@@ -210,17 +220,18 @@ func (s *optsSorter) Minus(okey OptionKey) optsSorter {
 	return rv
 }
 
-func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
-    p._type = C.uint8_t(src.Type)
-    p.code  = C.uint8_t(src.Code)
-    p.tid   = C.uint16_t(src.MessageID)
+func (src *Pdu) fillC(p *C.coap_pdu_t, session *Session) (err error) {
+    p._type = C.coap_pdu_type_t(src.Type)
+    p.code  = C.coap_pdu_code_t(src.Code)
+    p.mid   = C.int(src.MessageID)
     // Set this field for coap_add_token()
     p.used_size = 0
-
+    token_len := C.size_t(len(src.Token))
     if 0 < len(src.Token) {
-        if 0 == C.coap_add_token(p,
-                                 C.size_t(len(src.Token)),
-                                 (*C.uint8_t)(unsafe.Pointer(&src.Token[0]))) {
+        if session != nil {
+            C.coap_session_init_token(session.ptr, token_len, (*C.uint8_t)(unsafe.Pointer(&src.Token[0])))
+        }
+        if 0 == C.coap_add_token(p, token_len, (*C.uint8_t)(unsafe.Pointer(&src.Token[0]))) {
             err = errors.New("coap_add_token() failed.")
             return
         }
@@ -241,18 +252,30 @@ func (src *Pdu) fillC(p *C.coap_pdu_t) (err error) {
                     return
                 }
             } else {
-                if 0 == C.coap_add_option(p,
+                if src.Type == TypeAck && (o.Key == OptionBlock2 || o.Key == OptionMaxage) {
+                    continue
+                }
+                if o.Key == OptionObserve || o.Key == OptionEtag || o.Key == OptionBlock2 ||
+                   o.Key == OptionQBlock2 {
+                    value, _ := o.Uint()
+                    if 0 == C.coap_handle_add_option(p, C.uint16_t(o.Key), C.uint(value)) {
+                        err = errors.New("coap_add_option() failed.")
+                        return
+                    }
+                } else {
+                    if 0 == C.coap_add_option(p,
                                         C.uint16_t(o.Key),
                                         C.size_t(len(o.Value)),
                                         (*C.uint8_t)(unsafe.Pointer(&o.Value[0]))) {
-                    err = errors.New("coap_add_option() failed.")
-                    return
+                        err = errors.New("coap_add_option() failed.")
+                        return
+                    }
                 }
             }
         }
     }
 
-    if (src.Code != ResponseContent || src.Type != TypeNon) && 0 < len(src.Data) {
+    if src.Code != ResponseContent && 0 < len(src.Data) {
         if 0 == C.coap_add_data(p,
                                 C.size_t(len(src.Data)),
                                 (*C.uint8_t)(unsafe.Pointer(&src.Data[0]))) {
@@ -299,7 +322,8 @@ func (pdu *Pdu) SetPath(path []string) {
         if 0 < len(s) {
             if strings.Contains(s,string(TargetPrefix)) || strings.Contains(s,string(TargetPort)) || strings.Contains(s,string(TargetProtocol)) ||
                strings.Contains(s,string(TargetFqdn)) || strings.Contains(s,string(TargetUri)) || strings.Contains(s,string(AliasName)) ||
-               strings.Contains(s,string(SourcePrefix)) || strings.Contains(s,string(SourcePort)) || strings.Contains(s,string(SourceIcmpType)) {
+               strings.Contains(s,string(SourcePrefix)) || strings.Contains(s,string(SourcePort)) || strings.Contains(s,string(SourceIcmpType)) || 
+               strings.Contains(s,string(Content)) {
                 opts = append(opts, OptionUriQuery.String(s))
             } else {
                 opts = append(opts, OptionUriPath.String(s))
@@ -343,6 +367,17 @@ func (pdu *Pdu) GetOptionStringValue(key OptionKey) (value string) {
     return ""
 }
 
+// Get value of option with type is opaque
+func (pdu *Pdu) GetOptionOpaqueValue(key OptionKey) (opaqueValue string) {
+    for _, option := range pdu.Options {
+        if key == option.Key {
+            opaqueValue = strings.ToUpper(hex.EncodeToString(option.Value))
+            return
+        }
+    }
+    return ""
+}
+
 // Options gets all the values for the given option.
 func (pdu *Pdu) OptionValues(o OptionKey) []interface{} {
 	var rv []interface{}
@@ -368,7 +403,14 @@ func (pdu *Pdu) AddOption(key OptionKey, val interface{}) {
     var err error
 	iv := reflect.ValueOf(val)
 	if iv.Kind() == reflect.String {
-		option = key.String(val.(string))
+        if key == C.COAP_OPTION_ETAG {
+            option, err = key.Opaque(val.(string))
+            if err != nil {
+                log.Errorf("Binary read data failed: %+v", err)
+            }
+        } else {
+            option = key.String(val.(string))
+        }
 	} else if iv.Kind() == reflect.Uint8 || iv.Kind() == reflect.Uint16 || iv.Kind() == reflect.Uint32 {
         option, err = key.Uint(val)
         if err != nil {
@@ -397,6 +439,21 @@ func (pdu *Pdu) AsMapKey() string {
     // return fmt.Sprintf("%d[%x]", pdu.MessageID, pdu.Token)
     return fmt.Sprintf("%x", pdu.Token)
     // return fmt.Sprintf("%d", pdu.MessageID)
+}
+
+// Checking uri-query is exist
+func IsExistedUriQuery(queryParams []string) bool {
+    for _, s := range queryParams {
+        if 0 < len(s) {
+            if strings.Contains(s,string(TargetPrefix)) || strings.Contains(s,string(TargetPort)) || strings.Contains(s,string(TargetProtocol)) ||
+               strings.Contains(s,string(TargetFqdn)) || strings.Contains(s,string(TargetUri)) || strings.Contains(s,string(AliasName)) ||
+               strings.Contains(s,string(SourcePrefix)) || strings.Contains(s,string(SourcePort)) || strings.Contains(s,string(SourceIcmpType)) ||
+               strings.Contains(s,string(Content)) {
+                return true
+            }
+        }
+    }
+    return false
 }
 
 /*
@@ -464,7 +521,7 @@ func (code Code) HttpCode() int {
         case ResponseCreated:              return http.StatusCreated
         case ResponseDeleted:              return http.StatusOK
         case ResponseValid:                return http.StatusNotModified
-        case ResponseChanged:              return http.StatusOK
+        case ResponseChanged:              return http.StatusNoContent
         case ResponseContent:              return http.StatusOK
         case ResponseBadRequest:           return http.StatusBadRequest
         case ResponseUnauthorized:         return http.StatusUnauthorized

@@ -1,19 +1,32 @@
 package libcoap
 
 /*
-#cgo LDFLAGS: -lcoap-2-openssl
-#include <coap2/coap.h>
+#cgo LDFLAGS: -lcoap-3-openssl
+#include <coap3/coap.h>
 #include "callback.h"
 */
 import "C"
-import "unsafe"
+import (
+	"strings"
+	"time"
+	"unsafe"
+)
+
+// import log "github.com/sirupsen/logrus"
 
 type Resource struct {
     ptr      *C.coap_resource_t
     handlers map[Code]MethodHandler
+    session  *Session
+    isObserved  bool
+    observe     int
     isRemovable bool
+    blockSize   *int
+    isQBlock2   bool
     isBlockwiseInProgress bool
     customerId   *int
+    checkDeleted bool
+    isNotification bool
 }
 
 type ResourceFlags int
@@ -26,7 +39,7 @@ type Attr struct {
     ptr   *C.coap_attr_t
 }
 
-var uriFilter = make(map[string]int)
+var uriFilter = make(map[string]string)
 var resources = make(map[*C.coap_resource_t] *Resource)
 
 func GetAllResource() map[*C.coap_resource_t] *Resource {
@@ -48,7 +61,7 @@ func ResourceInit(uri *string, flags ResourceFlags) *Resource {
     uripath := C.coap_new_str_const((*C.uint8_t)(unsafe.Pointer(curi)), C.size_t(urilen))
     ptr := C.coap_resource_init(uripath, C.int(flags) | C.COAP_RESOURCE_FLAGS_RELEASE_URI)
 
-    resource := &Resource{ ptr, make(map[Code]MethodHandler), false, false, nil}
+    resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, 0, false, nil, false, false, nil, false, false}
     resources[ptr] = resource
     return resource
 }
@@ -57,7 +70,7 @@ func ResourceUnknownInit() *Resource {
 
 	ptr := C.coap_resource_unknown_init(nil)
 
-	resource := &Resource{ ptr, make(map[Code]MethodHandler), false, false, nil}
+	resource := &Resource{ ptr, make(map[Code]MethodHandler), nil, false, 0, false, nil, false, false, nil, false, false}
 	resources[ptr] = resource
 	return resource
 
@@ -71,19 +84,11 @@ func (context *Context) DeleteResource(resource *Resource) {
     ptr := resource.ptr
     delete(resources, ptr)
     resource.ptr = nil
+    if !strings.Contains(resource.UriPath(), "/mid=") {
+        time.Sleep(time.Duration(100)*time.Millisecond)
+    }
 
     C.coap_delete_resource(context.ptr, ptr)
-}
-
-func (context *Context) DeleteAllResources() {
-
-    deleted := make(map[*C.coap_resource_t] *Resource)
-
-    resources, deleted = deleted, resources
-    for _, r := range deleted {
-        r.ptr = nil
-    }
-    C.coap_delete_all_resources(context.ptr)
 }
 
 func (resource *Resource) AddAttr(name string, value *string) *Attr {
@@ -123,31 +128,6 @@ func (context *Context) GetResourceByQuery(query *string) (res *Resource) {
     return nil
 }
 
-func (resource *Resource) AddObserver(session *Session, query *string, token []byte, sizeBlock *int) {
-    temp := string(token)
-    tokenStr := &C.coap_binary_t{}
-    tokenStr.s = (*C.uint8_t)(unsafe.Pointer(C.CString(temp)))
-    tokenStr.length = C.size_t(len(temp))
-    cquery, clen := cstringOrNil(query)
-    if cquery == nil { return }
-    queryStr := C.coap_new_string(C.size_t(clen))
-    queryStr.s = (*C.uint8_t)(unsafe.Pointer(cquery))
-    if sizeBlock == nil {
-        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, 0, C.coap_block_t{})
-    } else {
-        block2 := C.coap_create_block(0, 0, C.uint(*sizeBlock))
-        C.coap_add_observer(resource.ptr, session.ptr, tokenStr, queryStr, 1, block2)
-    }
-}
-
-func (resource *Resource) DeleteObserver(session *Session, token []byte) {
-    temp := string(token)
-    tokenStr := &C.coap_binary_t{}
-    tokenStr.s = (*C.uint8_t)(unsafe.Pointer(C.CString(temp)))
-    tokenStr.length = C.size_t(len(temp))
-    C.coap_delete_observer(resource.ptr, session.ptr, tokenStr)
-}
-
 func (resource *Resource) ToRemovableResource() {
     resource.isRemovable = true
 }
@@ -173,21 +153,18 @@ func (resource *Resource) UriPath() string {
     return ""
 }
 
-func (resource *Resource) IsObserved() bool {
-    isObserved := C.coap_check_subscribers(resource.ptr)
-    if isObserved == 1 {
-        return true
-    } else {
-        return false
-    }
+// Set session for resource
+func (resource *Resource) SetSession(session *Session) {
+    resource.session = session
 }
 
-func (resource *Resource) IsNotifying() bool {
-    if C.coap_check_dirty(resource.ptr) == 1 {
-        return true
-    } else {
-        return false
-    }
+// Set resource is observed
+func (resource *Resource) SetIsObserved(isObserved bool) {
+    resource.isObserved = isObserved
+}
+
+func (resource *Resource) IsObserved() bool {
+    return resource.isObserved
 }
 
 /*
@@ -221,26 +198,84 @@ func (resource *Resource) GetCustomerId() *int {
 }
 
 // Set uri filter
-func SetUriFilter(key string, value int) {
+func SetUriFilter(key string, value string) {
     uriFilter[key] = value
 }
 
-// Get uri filter by value
-func GetUriFilterByValue(value int) []string {
-    var keys []string
-    for k, v:= range uriFilter {
-        if v == value {
-            keys = append(keys, k)
+// Get uri filter by key
+func GetUriFilterByKey(key string) (values []string) {
+    for k, value:= range uriFilter {
+        if k == key {
+            values = append(values, value)
         }
     }
-    return keys
+    return
 }
 
 // Delete uri filter by value
-func DeleteUriFilterByValue(value int) {
+func DeleteUriFilterByValue(value string) {
     for k, v:= range uriFilter {
         if v == value {
             delete(uriFilter, k)
         }
     }
+}
+
+// Delete uri filter by key
+func DeleteUriFilterByKey(key string) {
+    for k, _:= range uriFilter {
+        if k == key {
+            delete(uriFilter, k)
+        }
+    }
+}
+
+// Set block size
+func (resource *Resource) SetBlockSize(blockSize *int) {
+    resource.blockSize = blockSize
+}
+
+// Get block size
+func (resource *Resource) GetBlockSize() *int {
+    return resource.blockSize
+}
+
+// Set is q-block 2
+func (resource *Resource) SetQBlock2(isQBlock2 bool) {
+    resource.isQBlock2 = isQBlock2
+}
+
+// Get is q-block 2
+func (resource *Resource) IsQBlock2() bool {
+    return resource.isQBlock2
+}
+
+// Increase observe number
+func (resource *Resource) IncreaseObserveNumber() {
+    resource.observe ++
+}
+
+// Get observe number
+func (resource *Resource) GetObserveNumber() int {
+    return resource.observe
+}
+
+// Set check deleted
+func (resource *Resource) SetCheckDeleted(checkDeleted bool) {
+    resource.checkDeleted = checkDeleted
+}
+
+// Get check deleted
+func (resource *Resource) CheckDeleted() bool {
+    return resource.checkDeleted
+}
+
+// Set is notification
+func (resource *Resource) SetIsNotification(isNotification bool) {
+    resource.isNotification = isNotification
+}
+
+// Get is notification
+func (resource *Resource) IsNotification() bool {
+    return resource.isNotification
 }

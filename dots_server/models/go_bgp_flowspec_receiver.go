@@ -12,12 +12,12 @@ import (
 	"github.com/nttdots/go-dots/dots_server/db_models"
 	log "github.com/sirupsen/logrus"
 	types "github.com/nttdots/go-dots/dots_common/types/data"
-	"github.com/osrg/gobgp/pkg/packet/bgp"
+	"github.com/osrg/gobgp/v3/pkg/packet/bgp"
 	"google.golang.org/grpc"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
 	"github.com/golang/protobuf/proto"
-	api "github.com/osrg/gobgp/api"
+	api "github.com/osrg/gobgp/v3/api"
 )
 
 const (
@@ -330,7 +330,7 @@ func (g *GoBgpFlowSpecReceiver) StopProtection(p Protection) (err error) {
 
 /*
  * Establish the connection to this GoBGP router.
- * Base on func newClient(), packet "github.com/osrg/gobgp/cmd/gobgp" from GoBGP open source
+ * Base on func newClient(), packet "github.com/osrg/gobgp/v3/cmd/gobgp" from GoBGP open source
  */
  func (g *GoBgpFlowSpecReceiver) connect() (bgpClient api.GobgpApiClient, conn *grpc.ClientConn ,err error) {
 	return connect(g.timeout, g.host, g.port)
@@ -1242,7 +1242,7 @@ func (mapping *FlowSpecMapping) CreateExtendedCommunities() (bgp.PathAttributeIn
 
 /*
  * Marshal Flowspec Rules
- * Base on func MarshalFlowSpecRules(), packet "github.com/osrg/gobgp/internal/pkg/apiutil" from GoBGP open source
+ * Base on func MarshalFlowSpecRules(), packet "github.com/osrg/gobgp/v3/internal/pkg/apiutil" from GoBGP open source
  */
 func MarshalFlowSpecRules(values []bgp.FlowSpecComponentInterface) []*any.Any {
 	rules := make([]*any.Any, 0, len(values))
@@ -1296,7 +1296,7 @@ func MarshalFlowSpecRules(values []bgp.FlowSpecComponentInterface) []*any.Any {
 
 /*
  * New Redirect Extended Communities Attribute
- * Base on func redirectParser() and, packet "github.com/osrg/gobgp/cmd/gobgp" from GoBGP open source
+ * Base on func redirectParser() and, packet "github.com/osrg/gobgp/v3/cmd/gobgp" from GoBGP open source
  */
 func NewRedirectExtendedCommunitiesAttribute(routeStr string) (bgp.PathAttributeInterface, error) {
 	extAttrs := make([]bgp.ExtendedCommunityInterface, 0)
@@ -1327,7 +1327,7 @@ func NewRedirectExtendedCommunitiesAttribute(routeStr string) (bgp.PathAttribute
 
 /*
  * New Extended Communities Attribute
- * Base on func NewExtendedCommunitiesAttributeFromNative(), packet "github.com/osrg/gobgp/internal/pkg/apiutil" from GoBGP open source
+ * Base on func NewExtendedCommunitiesAttributeFromNative(), packet "github.com/osrg/gobgp/v3/internal/pkg/apiutil" from GoBGP open source
  */
 func NewExtendedCommunitiesAttributeFromNative(a *bgp.PathAttributeExtendedCommunities) *api.ExtendedCommunitiesAttribute {
 	communities := make([]*any.Any, 0, len(a.Value))
@@ -1336,7 +1336,7 @@ func NewExtendedCommunitiesAttributeFromNative(a *bgp.PathAttributeExtendedCommu
 		switch v := value.(type) {
 		case *bgp.TrafficRateExtended:
 			community = &api.TrafficRateExtended{
-				As:   uint32(v.AS),
+				Asn:  uint32(v.AS),
 				Rate: v.Rate,
 			}
 		case *bgp.TrafficActionExtended:
@@ -1346,7 +1346,7 @@ func NewExtendedCommunitiesAttributeFromNative(a *bgp.PathAttributeExtendedCommu
 			}
 		case *bgp.RedirectTwoOctetAsSpecificExtended:
 			community = &api.RedirectTwoOctetAsSpecificExtended{
-				As:         uint32(v.AS),
+				Asn:        uint32(v.AS),
 				LocalAdmin: v.LocalAdmin,
 			}
 		case *bgp.RedirectIPv4AddressSpecificExtended:
@@ -1356,7 +1356,7 @@ func NewExtendedCommunitiesAttributeFromNative(a *bgp.PathAttributeExtendedCommu
 			}
 		case *bgp.RedirectFourOctetAsSpecificExtended:
 			community = &api.RedirectFourOctetAsSpecificExtended{
-				As:         v.AS,
+				Asn:        v.AS,
 				LocalAdmin: uint32(v.LocalAdmin),
 			}
 		case *bgp.TrafficRemarkExtended:
@@ -1380,7 +1380,7 @@ func NewExtendedCommunitiesAttributeFromNative(a *bgp.PathAttributeExtendedCommu
 
 /*
  * New IP6 Extended Communities Attribute
- * Base on func NewIP6ExtendedCommunitiesAttributeFromNative(), packet "github.com/osrg/gobgp/internal/pkg/apiutil" from GoBGP open source
+ * Base on func NewIP6ExtendedCommunitiesAttributeFromNative(), packet "github.com/osrg/gobgp/v3/internal/pkg/apiutil" from GoBGP open source
  */
 func NewIP6ExtendedCommunitiesAttributeFromNative(a *bgp.PathAttributeIP6ExtendedCommunities) *api.IP6ExtendedCommunitiesAttribute {
 	communities := make([]*any.Any, 0, len(a.Value))

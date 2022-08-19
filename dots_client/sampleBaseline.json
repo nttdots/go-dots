@@ -10,7 +10,7 @@
               ],
               "total-traffic-normal":[
                 {
-                  "unit":2,
+                  "unit":"megapacket-ps",
                   "peak-g":50
                 }
               ]

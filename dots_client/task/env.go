@@ -4,7 +4,6 @@ import (
     "time"
     "reflect"
     "strings"
-    "strconv"
     "github.com/shopspring/decimal"
     "github.com/nttdots/go-dots/libcoap"
     "github.com/nttdots/go-dots/dots_common/messages"
@@ -29,11 +28,17 @@ type Env struct {
     intervalBeforeMaxAge int
     initialRequestBlockSize *int
     secondRequestBlockSize  *int
+    qBlockSize *int
 
     // The new connected session that will replace the current
     replacingSession *libcoap.Session
 
     isServerStopped bool
+
+    // the token of the deleted resource
+    tokenOfDeletedResource []string
+
+    isPartialBlock bool
 }
 
 type RequestQuery struct {
@@ -58,6 +63,9 @@ func NewEnv(context *libcoap.Context, session *libcoap.Session) *Env {
         nil,
         nil,
         nil,
+        nil,
+        false,
+        nil,
         false,
     }
 }
@@ -80,6 +88,15 @@ func (env *Env) SetRetransmitParams(maxRetransmit int, ackTimeout decimal.Decima
     env.session.SetMaxRetransmit(maxRetransmit)
     env.session.SetAckTimeout(ackTimeout)
     env.session.SetAckRandomFactor(ackRandomFactor)
+}
+
+func (env *Env) SetRetransmitParamsForQBlock(qblockSize int, maxPayload int, nonMaxRetransmit int,
+    nonTimeout float64, nonReceiveTimeout float64) {
+    env.qBlockSize = &qblockSize
+    env.session.SetMaxPayLoads(maxPayload)
+    env.session.SetNonMaxRetransmit(nonMaxRetransmit)
+    env.session.SetNonTimeout(decimal.NewFromFloat(nonTimeout).Round((2)))
+    env.session.SetNonReceiveTimeout(decimal.NewFromFloat(nonReceiveTimeout).Round((2)))
 }
 
 func (env *Env) SetMissingHbAllowed(missing_hb_allowed int) {
@@ -126,6 +143,10 @@ func (env *Env) SecondRequestBlockSize() *int {
     return env.secondRequestBlockSize
 }
 
+func (env *Env) QBlockSize() *int {
+    return env.qBlockSize
+}
+
 func (env *Env) SetReplacingSession(session *libcoap.Session) {
     env.replacingSession = session
 }
@@ -157,7 +178,9 @@ func (env *Env) Run(task Task) {
         env.heartbeatTask = t
 
     case *SessionConfigTask:
-        env.sessionConfigTask = t
+        if t.interval != 0 {
+            env.sessionConfigTask = t
+        }
     }
     go task.run(env.channel)
 }
@@ -207,6 +230,14 @@ func (env *Env) SetIsServerStopped(isServerStopped bool) {
     env.isServerStopped = isServerStopped
 }
 
+func (env *Env) IsPartialBlock() bool {
+    return env.isPartialBlock
+}
+
+func (env *Env) SetIsPartialBlock(isPartialBlock bool) {
+    env.isPartialBlock = isPartialBlock
+}
+
 
 func (env *Env) AddRequestQuery(token string, requestQuery *RequestQuery) {
     env.requestQueries[token] = requestQuery
@@ -219,6 +250,28 @@ func (env *Env) GetTokenAndRequestQuery(query string) ([]byte, *RequestQuery) {
         }
     }
     return nil, nil
+}
+
+func (env *Env) AddTokenOfDeletedResource(token string) {
+    env.tokenOfDeletedResource = append(env.tokenOfDeletedResource, token)
+}
+
+func (env *Env) IsDeletedResource(token string) bool {
+    for _, value := range env.tokenOfDeletedResource {
+        if value == token {
+            return true
+        }
+    }
+    return false
+}
+
+func (env *Env) DeleteTokenOfDeletedResource(token string) {
+    for k, v := range env.tokenOfDeletedResource {
+        if v == token {
+            env.tokenOfDeletedResource = append(env.tokenOfDeletedResource[:k], env.tokenOfDeletedResource[k+1:]...)
+            return
+        }
+    }
 }
 
 func (env *Env) RemoveRequestQuery(token string) {
@@ -237,7 +290,7 @@ func QueryParamsToString(queryParams []string) (str string) {
 	str = ""
 	for _, query := range queryParams {
         if strings.Contains(query, string(libcoap.TargetPrefix)) || strings.Contains(query, string(libcoap.TargetPort)) || strings.Contains(query, string(libcoap.TargetProtocol)) ||
-           strings.Contains(query, string(libcoap.TargetFqdn)) || strings.Contains(query, string(libcoap.TargetUri)) || strings.Contains(query, string(libcoap.AliasName)) {
+           strings.Contains(query, string(libcoap.TargetFqdn)) || strings.Contains(query, string(libcoap.TargetUri)) || strings.Contains(query, string(libcoap.AliasName)) || strings.Contains(query, string(libcoap.Content)) {
                continue
         }
         str += "/" + query
@@ -266,6 +319,7 @@ func (env *Env) WaitingForResponse(task *MessageTask) (pdu *libcoap.Pdu) {
         return pdu
     case <- timeout:
         log.Warnf("<<Waiting for response timeout>>")
+        task.isStop = true
         return nil
     }
 }
@@ -294,7 +348,7 @@ func (env *Env) CheckSessionReplacement() (bool) {
  *   etag(*int): etag option received from server
  *   block(Block): block option sent to server
  */
-func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *int, *libcoap.Block) {
+func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *string, *libcoap.Block) {
     blockValue, err := pdu.GetOptionIntegerValue(libcoap.OptionBlock2)
     if err != nil {
         log.WithError(err).Warn("Get block2 option value failed.")
@@ -308,15 +362,11 @@ func (env *Env) CheckBlock(pdu *libcoap.Pdu) (bool, *int, *libcoap.Block) {
         return false, nil, nil
     }
 
-    eTag, err := pdu.GetOptionIntegerValue(libcoap.OptionEtag)
-    if err != nil {
-        log.WithError(err).Warn("Get Etag option value failed.")
-        return false, nil, nil
-    }
+    eTag := pdu.GetOptionOpaqueValue(libcoap.OptionEtag)
 
     if block != nil {
         isMoreBlock := true
-        blockKey := strconv.Itoa(eTag) + string(pdu.Token)
+        blockKey := eTag + string(pdu.Token)
         // If block.M = 1, block is more block. If block.M = 0, block is last block
         if block.M == libcoap.MORE_BLOCK {
             log.Debugf("Response block is comming (eTag=%+v, block=%+v, size2=%+v) for request (token=%+v), waiting for the next block.", eTag, block.ToString(), size2Value, pdu.Token)
@@ -406,7 +456,7 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
 
     // check mitigation status from notification to count the number of mitigations that are being observed
     tokenReq, queryReq := env.GetTokenAndRequestQuery(query)
-    if tokenReq != nil && queryReq != nil && scopes[0].Status == 6 {
+    if tokenReq != nil && queryReq != nil && queryReq.CountMitigation != nil && scopes!= nil && *scopes[0].Status == 6 {
         // The notification indicate that a mitigation is expired
         if *queryReq.CountMitigation >= 1 {
             lenScopeReq := *queryReq.CountMitigation - 1
@@ -417,12 +467,11 @@ func (env *Env) UpdateCountMitigation(req *libcoap.Pdu, v messages.MitigationRes
         if *queryReq.CountMitigation == 0 {
             env.RemoveRequestQuery(string(tokenReq))
         }
-
-    } else if tokenReq != nil && queryReq != nil && scopes[0].Status == 2 {
+        log.Debugf("The current number of observed mitigations is changed to: %+v", *queryReq.CountMitigation)
+    } else if tokenReq != nil && queryReq != nil && queryReq.CountMitigation != nil && scopes !=nil && *scopes[0].Status == 2 {
         // The notification indicate that a mitigation is created
         lenScopeReq := *queryReq.CountMitigation + 1
         queryReq.CountMitigation = &lenScopeReq
+        log.Debugf("The current number of observed mitigations is changed to: %+v", *queryReq.CountMitigation)
     }
-
-    log.Debugf("The current number of observed mitigations is changed to: %+v", *queryReq.CountMitigation)
 }

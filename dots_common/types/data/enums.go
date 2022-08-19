@@ -14,9 +14,9 @@ const (
 type ForwardingAction string
 
 const (
-  ForwardingAction_Accept ForwardingAction = "accept"
-  ForwardingAction_Drop   ForwardingAction = "drop"
-  ForwardingAction_Reject ForwardingAction = "reject"
+  ForwardingAction_Accept    ForwardingAction = "accept"
+  ForwardingAction_Drop      ForwardingAction = "drop"
+  ForwardingAction_RateLimit ForwardingAction = "rate-limit"
 )
 
 type ACLType string
@@ -90,6 +90,14 @@ const (
   TCPFlag_FIN TCPFlag = "fin"
 )
 
+type Insert string
+const (
+  FIRST   Insert = "first"
+  LAST    Insert = "last"
+  BEFORE  Insert = "before"
+  AFTER   Insert = "after"
+)
+
 func (e AddressFamily) String() string {
   return string(e)
 }
@@ -139,8 +147,8 @@ func (p *ForwardingAction) UnmarshalJSON(data []byte) error {
   case string(ForwardingAction_Drop):
     *p = ForwardingAction_Drop
     return nil
-  case string(ForwardingAction_Reject):
-    *p = ForwardingAction_Reject
+  case string(ForwardingAction_RateLimit):
+    *p = ForwardingAction_RateLimit
     return nil
   default:
     return fmt.Errorf("Unexpected ForwardingAction: %v", s)

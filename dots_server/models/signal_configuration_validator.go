@@ -7,28 +7,6 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// define config file json struct
-type signalConfigurationParameterConfigJson struct {
-	ValidateValue struct {
-		HeartbeatInterval configurationParameterRangeJson `json:"heartbeat_interval"`
-		MissingHbAllowed  configurationParameterRangeJson `json:"missing_hb_allowed"`
-		MaxRetransmit     configurationParameterRangeJson `json:"max_retransmit"`
-		AckTimeout        configurationParameterRangeJson `json:"ack_timeout"`
-		AckRandomFactor   configurationParameterRangeJson `json:"ack_random_factor"`
-		HeartbeatIntervalIdle configurationParameterRangeJson `json:"heartbeat_interval_idle"`
-		MissingHbAllowedIdle  configurationParameterRangeJson `json:"missing_hb_allowed_idle"`
-		MaxRetransmitIdle     configurationParameterRangeJson `json:"max_retransmit_idle"`
-		AckTimeoutIdle        configurationParameterRangeJson `json:"ack_timeout_idle"`
-		AckRandomFactorIdle   configurationParameterRangeJson `json:"ack_random_factor_idle"`
-	} `json:"signal_configuration_parameter_validate_value"`
-}
-
-// define configurationParameterRange structure
-type configurationParameterRangeJson struct {
-	MinValue float64 `json:"min_value"`
-	MaxValue float64 `json:"max_value"`
-}
-
 // implements SignalSessionConfigurationValidator
 type SignalConfigurationValidator struct {
 	SignalConfigurationParameter SignalConfigurationParameter
@@ -42,36 +20,72 @@ func getCompareDataSource() *SignalConfigurationParameter {
 	config := dots_config.GetServerSystemConfig().SignalConfigurationParameter
 
 	return &SignalConfigurationParameter{
-		heartbeat_interval: ConfigurationParameterRange{
+		heartbeat_interval: ConfigurationParameterRange {
 			min_value: float64(config.HeartbeatInterval.Start().(int)),
 			max_value: float64(config.HeartbeatInterval.End().(int))},
-		missing_hb_allowed: ConfigurationParameterRange{
+		missing_hb_allowed: ConfigurationParameterRange {
 			min_value: float64(config.MissingHbAllowed.Start().(int)),
 			max_value: float64(config.MissingHbAllowed.End().(int))},
-		max_retransmit: ConfigurationParameterRange{
+		max_retransmit: ConfigurationParameterRange {
 			min_value: float64(config.MaxRetransmit.Start().(int)),
 			max_value: float64(config.MaxRetransmit.End().(int))},
-		ack_timeout: ConfigurationParameterRange{
+		ack_timeout: ConfigurationParameterRange {
 			min_value: config.AckTimeout.Start().(float64),
 			max_value: config.AckTimeout.End().(float64)},
-		ack_random_factor: ConfigurationParameterRange{
+		ack_random_factor: ConfigurationParameterRange {
 			min_value: config.AckRandomFactor.Start().(float64),
 			max_value: config.AckRandomFactor.End().(float64)},
-		heartbeat_interval_idle: ConfigurationParameterRange{
+		max_payload: ConfigurationParameterRange {
+			min_value: float64(config.MaxPayload.Start().(int)),
+			max_value: float64(config.MaxPayload.End().(int))},
+		non_max_retransmit: ConfigurationParameterRange {
+			min_value: float64(config.NonMaxRetransmit.Start().(int)),
+			max_value: float64(config.NonMaxRetransmit.End().(int))},
+		non_timeout: ConfigurationParameterRange {
+			min_value: config.NonTimeout.Start().(float64),
+			max_value: config.NonTimeout.End().(float64)},
+		non_receive_timeout: ConfigurationParameterRange {
+			min_value: config.NonReceiveTimeout.Start().(float64),
+			max_value: config.NonReceiveTimeout.End().(float64)},
+		non_probing_wait: ConfigurationParameterRange {
+			min_value: config.NonProbingWait.Start().(float64),
+			max_value: config.NonProbingWait.End().(float64)},
+		non_partial_wait: ConfigurationParameterRange {
+			min_value: config.NonPartialWait.Start().(float64),
+			max_value: config.NonPartialWait.End().(float64)},
+		heartbeat_interval_idle: ConfigurationParameterRange {
 			min_value: float64(config.HeartbeatIntervalIdle.Start().(int)),
 			max_value: float64(config.HeartbeatIntervalIdle.End().(int))},
-		missing_hb_allowed_idle: ConfigurationParameterRange{
+		missing_hb_allowed_idle: ConfigurationParameterRange {
 			min_value: float64(config.MissingHbAllowedIdle.Start().(int)),
 			max_value: float64(config.MissingHbAllowedIdle.End().(int))},
-		max_retransmit_idle: ConfigurationParameterRange{
+		max_retransmit_idle: ConfigurationParameterRange {
 			min_value: float64(config.MaxRetransmitIdle.Start().(int)),
 			max_value: float64(config.MaxRetransmitIdle.End().(int))},
-		ack_timeout_idle: ConfigurationParameterRange{
+		ack_timeout_idle: ConfigurationParameterRange {
 			min_value: config.AckTimeoutIdle.Start().(float64),
 			max_value: config.AckTimeoutIdle.End().(float64)},
-		ack_random_factor_idle: ConfigurationParameterRange{
+		ack_random_factor_idle: ConfigurationParameterRange {
 			min_value: config.AckRandomFactorIdle.Start().(float64),
 			max_value: config.AckRandomFactorIdle.End().(float64)},
+		max_payload_idle: ConfigurationParameterRange {
+			min_value: float64(config.MaxPayloadIdle.Start().(int)),
+			max_value: float64(config.MaxPayloadIdle.End().(int))},
+		non_max_retransmit_idle: ConfigurationParameterRange {
+			min_value: float64(config.NonMaxRetransmitIdle.Start().(int)),
+			max_value: float64(config.NonMaxRetransmitIdle.End().(int))},
+		non_timeout_idle: ConfigurationParameterRange {
+			min_value: config.NonTimeoutIdle.Start().(float64),
+			max_value: config.NonTimeoutIdle.End().(float64)},
+		non_receive_timeout_idle: ConfigurationParameterRange {
+			min_value: config.NonReceiveTimeoutIdle.Start().(float64),
+			max_value: config.NonReceiveTimeoutIdle.End().(float64)},
+		non_probing_wait_idle: ConfigurationParameterRange {
+			min_value: config.NonProbingWaitIdle.Start().(float64),
+			max_value: config.NonProbingWaitIdle.End().(float64)},
+		non_partial_wait_idle: ConfigurationParameterRange {
+			min_value: config.NonPartialWaitIdle.Start().(float64),
+			max_value: config.NonPartialWaitIdle.End().(float64)},
 	}
 }
 
@@ -110,12 +124,24 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (is
 				compareSource.missing_hb_allowed.Includes(float64(sc.MissingHbAllowed)) &&
 				compareSource.max_retransmit.Includes(float64(sc.MaxRetransmit)) &&
 				compareSource.ack_timeout.Includes(sc.AckTimeout) &&
-				compareSource.ack_random_factor.Includes(sc.AckRandomFactor)) ||
+				compareSource.ack_random_factor.Includes(sc.AckRandomFactor) &&
+				compareSource.max_payload.Includes(float64(sc.MaxPayload)) &&
+				compareSource.non_max_retransmit.Includes(float64(sc.NonMaxRetransmit)) &&
+				compareSource.non_timeout.Includes(sc.NonTimeout) &&
+				compareSource.non_receive_timeout.Includes(sc.NonReceiveTimeout) &&
+				compareSource.non_probing_wait.Includes(sc.NonProbingWait) &&
+				compareSource.non_partial_wait.Includes(sc.NonPartialWait)) ||
 				!(compareSource.heartbeat_interval_idle.Includes(float64(sc.HeartbeatIntervalIdle)) &&
 				compareSource.missing_hb_allowed_idle.Includes(float64(sc.MissingHbAllowedIdle)) &&
 				compareSource.max_retransmit_idle.Includes(float64(sc.MaxRetransmitIdle)) &&
 				compareSource.ack_timeout_idle.Includes(sc.AckTimeoutIdle) &&
-				compareSource.ack_random_factor_idle.Includes(sc.AckRandomFactorIdle)) {
+				compareSource.ack_random_factor_idle.Includes(sc.AckRandomFactorIdle) &&
+				compareSource.max_payload_idle.Includes(float64(sc.MaxPayloadIdle)) &&
+				compareSource.non_max_retransmit_idle.Includes(float64(sc.NonMaxRetransmitIdle)) &&
+				compareSource.non_timeout_idle.Includes(sc.NonTimeoutIdle) &&
+				compareSource.non_receive_timeout_idle.Includes(sc.NonReceiveTimeoutIdle) &&
+				compareSource.non_probing_wait_idle.Includes(sc.NonProbingWaitIdle) &&
+				compareSource.non_partial_wait_idle.Includes(sc.NonPartialWaitIdle)) {
 					errMessage = "Config values are out of range."
 					log.Error(errMessage)
 					isUnprocessableEntity = true

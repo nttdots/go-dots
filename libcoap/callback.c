@@ -1,86 +1,114 @@
 
 #include "callback.h"
+#include "string.h"
 
-extern void export_response_handler(coap_context_t *ctx,
-                            coap_session_t *sess,
+/* Copied from the internal file in the libcoap */
+#define COAP_FREE_TYPE(Type, Object) coap_free(Object)
+#define LL_FOREACH(head,el)                                                                    \
+    LL_FOREACH2(head,el,next)
+
+#define LL_FOREACH2(head,el,next)                                                              \
+    for ((el) = (head); el; (el) = (el)->next)
+
+#define COAP_MALLOC_TYPE(Type) \
+  ((coap_##Type##_t *)coap_malloc(sizeof(coap_##Type##_t)))
+
+#define min(a,b) ((a) < (b) ? (a) : (b))
+
+#define LL_PREPEND(head,add)                                                                   \
+    LL_PREPEND2(head,add,next)
+
+#define LL_PREPEND2(head,add,next)                                                             \
+do {                                                                                           \
+  (add)->next = (head);                                                                        \
+  (head) = (add);                                                                              \
+} while (0)
+
+#define LL_DELETE(head,del)                                                                    \
+    LL_DELETE2(head,del,next)
+
+#define LL_DELETE2(head,del,next)                                                              \
+do {                                                                                           \
+  LDECLTYPE(head) _tmp;                                                                        \
+  if ((head) == (del)) {                                                                       \
+    (head)=(head)->next;                                                                       \
+  } else {                                                                                     \
+    _tmp = (head);                                                                             \
+    while (_tmp->next && (_tmp->next != (del))) {                                              \
+      _tmp = _tmp->next;                                                                       \
+    }                                                                                          \
+    if (_tmp->next) {                                                                          \
+      _tmp->next = (del)->next;                                                                \
+    }                                                                                          \
+  }                                                                                            \
+} while (0)
+
+#define LDECLTYPE(x) __typeof(x)
+/* End copied */
+
+extern coap_response_t export_response_handler( coap_session_t *sess,
                             coap_pdu_t *sent,
                             coap_pdu_t *received,
-                            coap_tid_t id);
+                            coap_mid_t id);
 
-extern void export_method_handler(coap_context_t *ctx,
-                           coap_resource_t *rsrc,
+extern void export_method_handler(coap_resource_t *rsrc,
                            coap_session_t *sess,
                            coap_pdu_t *req,
-                           coap_string_t *tok,
                            coap_string_t *query,
                            coap_pdu_t *resp);
-extern void export_method_from_server_handler(coap_context_t *ctx,
-                           coap_resource_t *rsrc,
+extern void export_method_from_server_handler(coap_resource_t *rsrc,
                            coap_session_t *sess,
                            coap_pdu_t *req,
-                           coap_string_t *tok,
                            coap_string_t *query,
                            coap_pdu_t *resp);
 
-extern void export_nack_handler(coap_context_t *ctx,
-                    coap_session_t *sess,
+extern void export_nack_handler(coap_session_t *sess,
                     coap_pdu_t *sent,
                     coap_nack_reason_t reason,
-                    coap_tid_t id);
+                    coap_mid_t id);
 
-extern void export_event_handler(coap_context_t *ctx,
-                    coap_event_t event,
-                    coap_session_t *sess);
+extern void export_event_handler(coap_session_t *sess, coap_event_t event);
 
 extern int export_validate_cn_call_back(const char *cn,
                         unsigned depth,
                         coap_strlist_t *cn_list);
 
-void response_handler(coap_context_t *context,
-                      coap_session_t *session,
+coap_response_t response_handler(coap_session_t *session,
                       coap_pdu_t *sent,
                       coap_pdu_t *received,
-                      const coap_tid_t id) {
+                      const coap_mid_t id) {
 
-    export_response_handler(context, session, sent, received, id);
+    export_response_handler(session, sent, received, id);
 }
 
-void method_handler(coap_context_t *context,
-                    coap_resource_t *resource,
+void method_handler(coap_resource_t *resource,
                     coap_session_t *session,
                     coap_pdu_t *request,
-                    coap_string_t *token,
                     coap_string_t *queryString,
                     coap_pdu_t *response) {
 
-    export_method_handler(context, resource, session, request, token, queryString, response);
+    export_method_handler(resource, session, request, queryString, response);
 }
 
-void method_from_server_handler(coap_context_t *context,
-                    coap_resource_t *resource,
+void method_from_server_handler(coap_resource_t *resource,
                     coap_session_t *session,
                     coap_pdu_t *request,
-                    coap_string_t *token,
                     coap_string_t *queryString,
                     coap_pdu_t *response) {
 
-    export_method_from_server_handler(context, resource, session, request, token, queryString, response);
+    export_method_from_server_handler(resource, session, request, queryString, response);
 }
 
-void nack_handler(coap_context_t *context,
-                    coap_session_t *session,
-                    coap_pdu_t *sent,
-                    coap_nack_reason_t reason,
-                    const coap_tid_t id){
+void nack_handler(coap_session_t *session,
+                  coap_pdu_t *sent,
+                  coap_nack_reason_t reason,
+                  const coap_mid_t id){
 
-    export_nack_handler(context, session, sent, reason, id);
+    export_nack_handler(session, sent, reason, id);
 }
 
-void event_handler(coap_context_t *context,
-                      coap_event_t event,
-                      void *data) {
-
-    export_event_handler(context, event, (coap_session_t *)data);
+void event_handler(void *data, coap_event_t event) {
+    export_event_handler((coap_session_t *)data, event);
 }
 
 int validate_cn_call_back(const char *cn,
@@ -140,14 +168,14 @@ int coap_dtls_get_peer_common_name(coap_session_t *session,
     X509_NAME *name;
     int cn_len;
 
-    coap_openssl_context_t *ctx = (coap_openssl_context_t *)session->context->dtls_context;
+    coap_context_t *context = coap_session_get_context(session);
+    coap_openssl_context_t *ctx = (coap_openssl_context_t *)context->dtls_context;
     coap_dtls_pki_t *setup_data = &ctx->setup_data;
 
     if (session->tls == NULL) {
         return -1;
     }
-    ssl = (SSL *)session->tls;
-
+    ssl = (SSL *)coap_session_get_tls(session, NULL);
     long verify_result = SSL_get_verify_result(ssl);
     switch (verify_result) {
     case X509_V_ERR_CERT_NOT_YET_VALID:
@@ -192,19 +220,23 @@ int coap_dtls_get_peer_common_name(coap_session_t *session,
 
 }
 
-void coap_set_dirty(coap_resource_t *resource, char *key, int length) {
+int coap_set_dirty(coap_resource_t *resource, char *key, int length) {
     if (*key == '\0' && length == 0) {
-        coap_resource_notify_observers(resource, NULL);
+        return coap_resource_notify_observers(resource, NULL);
     } else {
         coap_string_t *query = coap_new_string(length);
         query->s = (uint8_t*)key;
         query->length = (size_t)length;
-        coap_resource_notify_observers(resource, query);
+        return coap_resource_notify_observers(resource, query);
     }
 }
 
 int coap_check_subscribers(coap_resource_t *resource) {
-    return !(resource->subscribers == NULL);
+    // coap_subscription_t *subscribers = resource->subscribers;
+    if (resource->subscribers != NULL && resource->user_data != NULL) {
+        return 1;
+    }
+    return 0;
 }
 
 int coap_check_dirty(coap_resource_t *resource) {
@@ -224,7 +256,7 @@ char* coap_get_token_subscribers(coap_resource_t *resource) {
 int coap_get_size_block2_subscribers(coap_resource_t *resource) {
     coap_subscription_t *subscriber = resource->subscribers;
     if (subscriber != NULL) {
-        coap_block_t block2 = subscriber->block2;
+        coap_block_t block2 = subscriber->block;
         return block2.szx;
     }
     return 0;
@@ -256,6 +288,23 @@ coap_strlist_t* coap_common_name(coap_strlist_t* head, coap_strlist_t* tail, cha
 
 // handle release session
 void coap_session_handle_release(coap_session_t *session) {
-    session->context->handle_event = NULL;
+    coap_context_t *context = coap_session_get_context(session);
+    coap_register_event_handler(context, NULL);
     coap_session_release(session);
+}
+
+// Handle add option
+size_t coap_handle_add_option(coap_pdu_t *pdu, uint16_t type, unsigned int val) {
+    unsigned char buf[4];
+    size_t t;
+    t = coap_add_option(pdu, type, coap_encode_var_safe(buf, sizeof(buf), val), buf);
+    return t;
+}
+
+// Handle get token from pdu request
+coap_string_t * coap_get_token_from_request_pdu (coap_pdu_t *pdu) {
+    coap_string_t *str = coap_new_string(sizeof(pdu->token));
+    str->length = sizeof(pdu->token);
+    str->s = pdu->token;
+    return str;
 }

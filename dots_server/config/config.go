@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hashicorp/hcl"
 	"gopkg.in/yaml.v2"
+	types "github.com/nttdots/go-dots/dots_common/types/data"
 )
 
 /*
@@ -39,11 +39,23 @@ type SignalConfigurationParameterNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	MaxPayload        string `yaml:"maxPayload"`
+	NonMaxRetransmit  string `yaml:"nonMaxRetransmit"`
+	NonTimeout        string `yaml:"nonTimeout"`
+	NonReceiveTimeout string `yaml:"nonReceiveTimeout"`
+	NonProbingWait    string `yaml:"nonProbingWait"`
+	NonPartialWait    string `yaml:"nonPartialWait"`
 	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
 	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
 	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
 	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
 	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
+	MaxPayloadIdle        string `yaml:"maxPayloadIdle"`
+	NonMaxRetransmitIdle  string `yaml:"nonMaxRetransmitIdle"`
+	NonTimeoutIdle        string `yaml:"nonTimeoutIdle"`
+	NonReceiveTimeoutIdle string `yaml:"nonReceiveTimeoutIdle"`
+	NonProbingWaitIdle    string `yaml:"nonProbingWaitIdle"`
+	NonPartialWaitIdle    string `yaml:"nonPartialWaitIdle"`
 }
 
 type DefaultSignalConfigurationNode struct {
@@ -52,11 +64,23 @@ type DefaultSignalConfigurationNode struct {
 	MaxRetransmit     string `yaml:"maxRetransmit"`
 	AckTimeout        string `yaml:"ackTimeout"`
 	AckRandomFactor   string `yaml:"ackRandomFactor"`
+	MaxPayload        string `yaml:"maxPayload"`
+	NonMaxRetransmit  string `yaml:"nonMaxRetransmit"`
+	NonTimeout        string `yaml:"nonTimeout"`
+	NonReceiveTimeout string `yaml:"nonReceiveTimeout"`
+	NonProbingWait    string `yaml:"nonProbingWait"`
+	NonPartialWait    string `yaml:"nonPartialWait"`
 	HeartbeatIntervalIdle string `yaml:"heartbeatIntervalIdle"`
 	MissingHbAllowedIdle  string `yaml:"missingHbAllowedIdle"`
 	MaxRetransmitIdle     string `yaml:"maxRetransmitIdle"`
 	AckTimeoutIdle        string `yaml:"ackTimeoutIdle"`
 	AckRandomFactorIdle   string `yaml:"ackRandomFactorIdle"`
+	MaxPayloadIdle        string `yaml:"maxPayloadIdle"`
+	NonMaxRetransmitIdle  string `yaml:"nonMaxRetransmitIdle"`
+	NonTimeoutIdle        string `yaml:"nonTimeoutIdle"`
+	NonReceiveTimeoutIdle string `yaml:"nonReceiveTimeoutIdle"`
+	NonProbingWaitIdle    string `yaml:"nonProbingWaitIdle"`
+	NonPartialWaitIdle    string `yaml:"nonPartialWaitIdle"`
 }
 
 type TelemetryConfigurationParameterNode struct {
@@ -108,17 +132,17 @@ type DefaultTotalTrafficNormalBaselineNode struct {
 }
 
 type DefaultTotalConnectionCapacityNode struct {
-	Protocol               string `yaml:"protocol"`
-	Connection             string `yaml:"connection"`
-	ConnectionClient       string `yaml:"connectionClient"`
-	EmbryOnic              string `yaml:"embryonic"`
-	EmbryOnicClient        string `yaml:"embryonicClient"`
-	ConnectionPs           string `yaml:"connectionPs"`
-	ConnectionClientPs     string `yaml:"connectionClientPs"`
-	RequestPs              string `yaml:"requestPs"`
-	RequestClientPs        string `yaml:"requestClientPs"`
-	PartialRequestPs       string `yaml:"partialRequestPs"`
-	PartialRequestClientPs string `yaml:"partialRequestClientPs"`
+	Protocol                string `yaml:"protocol"`
+	Connection              string `yaml:"connection"`
+	ConnectionClient        string `yaml:"connectionClient"`
+	EmbryOnic               string `yaml:"embryonic"`
+	EmbryOnicClient         string `yaml:"embryonicClient"`
+	ConnectionPs            string `yaml:"connectionPs"`
+	ConnectionClientPs      string `yaml:"connectionClientPs"`
+	RequestPs               string `yaml:"requestPs"`
+	RequestClientPs         string `yaml:"requestClientPs"`
+	PartialRequestMax       string `yaml:"partialRequestMax"`
+	PartialRequestClientMax string `yaml:"partialRequestClientMax"`
 }
 
 type LifetimeConfigurationNode struct {
@@ -126,6 +150,45 @@ type LifetimeConfigurationNode struct {
 	MaxActiveButTerminatingPeriod string `yaml:"maxActiveButTerminatingPeriod"`
 	ManageLifetimeInterval        string `yaml:"manageLifetimeInterval"`
 	ConflictRetryTimer            string `yaml:"conflictRetryTimer"`
+}
+
+type CapabilitiesNode struct {
+	AddressFamily      string   `yaml:"addressFamily"`
+	ForwardingActions  string   `yaml:"forwardingActions"`
+	RateLimit          bool     `yaml:"rateLimit"`
+	TransportProtocols string   `yaml:"transportProtocols"`
+	IPv4               IPNode   `yaml:"ipv4"`
+	IPv6               IPNode   `yaml:"ipv6"`
+	TCP                TCPNode  `yaml:"tcp"`
+	UDP                UDPNode  `yaml:"udp"`
+	ICMP               ICMPNode `yaml:"icmp"`
+}
+
+type IPNode struct {
+	Length            bool `yaml:"length"`
+	Protocol          bool `yaml:"protocol"`
+	DestinationPrefix bool `yaml:"destinationPrefix"`
+	SourcePrefix      bool `yaml:"sourcePrefix"`
+	Fragment          bool `yaml:"fragment"`
+}
+
+type TCPNode struct {
+	FlagsBitmask    bool `yaml:"flagsBitmask"`
+	SourcePort      bool `yaml:"sourcePort"`
+	DestinationPort bool `yaml:"destinationPort"`
+	PortRange       bool `yaml:"portRange"`
+}
+
+type UDPNode struct {
+	Length          bool `yaml:"length"`
+	SourcePort      bool `yaml:"sourcePort"`
+	DestinationPort bool `yaml:"destinationPort"`
+	PortRange       bool `yaml:"portRange"`
+}
+
+type ICMPNode struct {
+	Type bool `yaml:"type"`
+	Code bool `yaml:"code"`
 }
 
 func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
@@ -149,6 +212,30 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	maxPayload, err := parseIntegerParameterRange(scpn.MaxPayload)
+	if err != nil {
+		return nil, err
+	}
+	nonMaxRetransmit, err := parseIntegerParameterRange(scpn.NonMaxRetransmit)
+	if err != nil {
+		return nil, err
+	}
+	nonTimeout, err := parseFloatParameterRange(scpn.NonTimeout)
+	if err != nil {
+		return nil, err
+	}
+	nonReceiveTimeout, err := parseFloatParameterRange(scpn.NonReceiveTimeout)
+	if err != nil {
+		return nil, err
+	}
+	nonProbingWait, err := parseFloatParameterRange(scpn.NonProbingWait)
+	if err != nil {
+		return nil, err
+	}
+	nonPartialWait, err := parseFloatParameterRange(scpn.NonPartialWait)
+	if err != nil {
+		return nil, err
+	}
 	heartbeatIntervalIdle, err := parseIntegerParameterRange(scpn.HeartbeatIntervalIdle)
 	if err != nil {
 		return nil, err
@@ -169,17 +256,53 @@ func (scpn SignalConfigurationParameterNode) Convert() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	maxPayloadIdle, err := parseIntegerParameterRange(scpn.MaxPayloadIdle)
+	if err != nil {
+		return nil, err
+	}
+	nonMaxRetransmitIdle, err := parseIntegerParameterRange(scpn.NonMaxRetransmitIdle)
+	if err != nil {
+		return nil, err
+	}
+	nonTimeoutIdle, err := parseFloatParameterRange(scpn.NonTimeoutIdle)
+	if err != nil {
+		return nil, err
+	}
+	nonReceiveTimeoutIdle, err := parseFloatParameterRange(scpn.NonReceiveTimeoutIdle)
+	if err != nil {
+		return nil, err
+	}
+	nonProbingWaitIdle, err := parseFloatParameterRange(scpn.NonProbingWaitIdle)
+	if err != nil {
+		return nil, err
+	}
+	nonPartialWaitIdle, err := parseFloatParameterRange(scpn.NonPartialWaitIdle)
+	if err != nil {
+		return nil, err
+	}
 	return &SignalConfigurationParameter{
 		HeartbeatInterval: heartbeatInterval,
 		MissingHbAllowed:  missingHbAllowed,
 		MaxRetransmit:     maxRetransmit,
 		AckTimeout:        ackTimeout,
 		AckRandomFactor:   ackRandomFactor,
+		MaxPayload:        maxPayload,
+		NonMaxRetransmit:  nonMaxRetransmit,
+		NonTimeout:        nonTimeout,
+		NonReceiveTimeout: nonReceiveTimeout,
+		NonProbingWait:    nonProbingWait,
+		NonPartialWait:    nonPartialWait,
 		HeartbeatIntervalIdle: heartbeatIntervalIdle,
 		MissingHbAllowedIdle:  missingHbAllowedIdle,
 		MaxRetransmitIdle:     maxRetransmitIdle,
 		AckTimeoutIdle:        ackTimeoutIdle,
 		AckRandomFactorIdle:   ackRandomFactorIdle,
+		MaxPayloadIdle:        maxPayloadIdle,
+		NonMaxRetransmitIdle:  nonMaxRetransmitIdle,
+		NonTimeoutIdle:        nonTimeoutIdle,
+		NonReceiveTimeoutIdle: nonReceiveTimeoutIdle,
+		NonProbingWaitIdle:    nonProbingWaitIdle,
+		NonPartialWaitIdle:    nonPartialWaitIdle,
 	}, nil
 }
 
@@ -190,11 +313,23 @@ func (dscn DefaultSignalConfigurationNode) Convert() (interface{}, error) {
 		MaxRetransmit:     parseIntegerValue(dscn.MaxRetransmit),
 		AckTimeout:        parseFloatValue(dscn.AckTimeout),
 		AckRandomFactor:   parseFloatValue(dscn.AckRandomFactor),
+		MaxPayload:        parseIntegerValue(dscn.MaxPayload),
+		NonMaxRetransmit:  parseIntegerValue(dscn.NonMaxRetransmit),
+		NonTimeout:        parseFloatValue(dscn.NonTimeout),
+		NonReceiveTimeout: parseFloatValue(dscn.NonReceiveTimeout),
+		NonProbingWait:    parseFloatValue(dscn.NonProbingWait),
+		NonPartialWait:    parseFloatValue(dscn.NonPartialWait),
 		HeartbeatIntervalIdle: parseIntegerValue(dscn.HeartbeatIntervalIdle),
 		MissingHbAllowedIdle:  parseIntegerValue(dscn.MissingHbAllowedIdle),
 		MaxRetransmitIdle:     parseIntegerValue(dscn.MaxRetransmitIdle),
 		AckTimeoutIdle:        parseFloatValue(dscn.AckTimeoutIdle),
 		AckRandomFactorIdle:   parseFloatValue(dscn.AckRandomFactorIdle),
+		MaxPayloadIdle:        parseIntegerValue(dscn.MaxPayloadIdle),
+		NonMaxRetransmitIdle:  parseIntegerValue(dscn.NonMaxRetransmitIdle),
+		NonTimeoutIdle:        parseFloatValue(dscn.NonTimeoutIdle),
+		NonReceiveTimeoutIdle: parseFloatValue(dscn.NonReceiveTimeoutIdle),
+		NonProbingWaitIdle:    parseFloatValue(dscn.NonProbingWaitIdle),
+		NonPartialWaitIdle:    parseFloatValue(dscn.NonPartialWaitIdle),
 	}, nil
 }
 
@@ -300,10 +435,10 @@ func (dtn DefaultTargetNode) Convert() (interface{}, error) {
 func (dttnbn DefaultTotalTrafficNormalBaselineNode) Convert() (interface{}, error) {
 	unit            := parseIntegerValue(dttnbn.Unit)
 	protocol        := parseIntegerValue(dttnbn.Protocol)
-	lowPercentileG  := parseIntegerValue(dttnbn.LowPercrentileG)
-	midPercentileG  := parseIntegerValue(dttnbn.MidPercrentileG)
-	highPercentileG := parseIntegerValue(dttnbn.HighPercrentileG)
-	peakG           := parseIntegerValue(dttnbn.PeakG)
+	lowPercentileG  := parseUint64Value(dttnbn.LowPercrentileG)
+	midPercentileG  := parseUint64Value(dttnbn.MidPercrentileG)
+	highPercentileG := parseUint64Value(dttnbn.HighPercrentileG)
+	peakG           := parseUint64Value(dttnbn.PeakG)
 	if unit < 1 || unit > 15 {
 		return nil, errors.New("'unit' MUST be between 1 and 15")
 	}
@@ -335,17 +470,17 @@ func (dtccn DefaultTotalConnectionCapacityNode) Convert() (interface{}, error) {
 		return nil, errors.New("'protocol' MUST be between 0 and 255")
 	}
 	return &DefaultTotalConnectionCapacity{
-		Protocol:               protocol,
-		Connection:             parseIntegerValue(dtccn.Connection),
-		ConnectionClient:       parseIntegerValue(dtccn.ConnectionClient),
-		EmbryOnic:              parseIntegerValue(dtccn.EmbryOnic),
-		EmbryOnicClient:        parseIntegerValue(dtccn.EmbryOnicClient),
-		ConnectionPs:           parseIntegerValue(dtccn.ConnectionPs),
-		ConnectionClientPs:     parseIntegerValue(dtccn.ConnectionClientPs),
-		RequestPs:              parseIntegerValue(dtccn.RequestPs),
-		RequestClientPs:        parseIntegerValue(dtccn.RequestClientPs),
-		PartialRequestPs:       parseIntegerValue(dtccn.PartialRequestPs),
-		PartialRequestClientPs: parseIntegerValue(dtccn.PartialRequestClientPs),
+		Protocol:                protocol,
+		Connection:              parseUint64Value(dtccn.Connection),
+		ConnectionClient:        parseUint64Value(dtccn.ConnectionClient),
+		EmbryOnic:               parseUint64Value(dtccn.EmbryOnic),
+		EmbryOnicClient:         parseUint64Value(dtccn.EmbryOnicClient),
+		ConnectionPs:            parseUint64Value(dtccn.ConnectionPs),
+		ConnectionClientPs:      parseUint64Value(dtccn.ConnectionClientPs),
+		RequestPs:               parseUint64Value(dtccn.RequestPs),
+		RequestClientPs:         parseUint64Value(dtccn.RequestClientPs),
+		PartialRequestMax:       parseUint64Value(dtccn.PartialRequestMax),
+		PartialRequestClientMax: parseUint64Value(dtccn.PartialRequestClientMax),
 	}, nil
 }
 
@@ -355,6 +490,85 @@ func (lcn LifetimeConfigurationNode) Convert() (interface{}, error) {
 		MaxActiveButTerminatingPeriod: parseIntegerValue(lcn.MaxActiveButTerminatingPeriod),
 		ManageLifetimeInterval:        parseIntegerValue(lcn.ManageLifetimeInterval),
 		ConflictRetryTimer:            parseIntegerValue(lcn.ConflictRetryTimer),
+	}, nil
+}
+
+func (cn CapabilitiesNode) Convert() (interface{}, error) {
+	var addressFamily      []string
+	var forwardingActions  []string
+	var transportProtocols []uint8
+	var ipv4 IP
+	var ipv6 IP
+	var tcp  TCP
+	var udp  UDP
+	var icmp ICMP
+	// address-family
+	addressFamilyList := strings.Split(cn.AddressFamily, ",")
+	if len(addressFamilyList) > 1 {
+		for _, af := range addressFamilyList {
+			if af != string(types.AddressFamily_IPv4) && af != string(types.AddressFamily_IPv6) {
+				errStr := fmt.Sprintf("Invalid address-family with value: %+v", af)
+				return nil, errors.New(errStr)
+			}
+			addressFamily = append(addressFamily, af)
+		}
+	} else {
+		addressFamily = append(addressFamily, cn.AddressFamily)
+	}
+	// forwarding-actions
+	forwardingActionList := strings.Split(cn.ForwardingActions, ",")
+	if len(forwardingActionList) > 1 {
+		for _, fa := range forwardingActionList {
+			if fa != string(types.ForwardingAction_Accept) && fa != string(types.ForwardingAction_Drop) && fa != string(types.ForwardingAction_RateLimit) {
+				errStr := fmt.Sprintf("Invalid forwarding-actions with value: %+v", fa)
+				return nil, errors.New(errStr)
+			}
+			forwardingActions = append(forwardingActions, fa)
+		}
+	} else {
+		forwardingActions = append(forwardingActions, cn.ForwardingActions)
+	}
+	// transport-protocols
+	transportProtocolList := strings.Split(cn.TransportProtocols, ",")
+	if len(transportProtocolList) > 1 {
+		for _, tp := range transportProtocolList {
+			protocol, err := strconv.Atoi(tp)
+			if err != nil {
+				return nil, err
+			}
+			if protocol < 0 || protocol > 255 {
+				errStr := fmt.Sprintf("Invalid transport-protocols with value: %+v", protocol)
+				return nil, errors.New(errStr)
+			}
+			transportProtocols = append(transportProtocols, uint8(protocol))
+		}
+	} else {
+		protocol, err := strconv.Atoi(cn.TransportProtocols)
+			if err != nil {
+				return nil, err
+			}
+		transportProtocols = append(transportProtocols, uint8(protocol))
+	}
+	// ipv4
+	ipv4 = IP{cn.IPv4.Length, cn.IPv4.Protocol, cn.IPv4.DestinationPrefix, cn.IPv4.SourcePrefix, cn.IPv4.Fragment}
+	// ipv6
+	ipv6 = IP{cn.IPv6.Length, cn.IPv6.Protocol, cn.IPv6.DestinationPrefix, cn.IPv6.SourcePrefix, cn.IPv6.Fragment}
+	// tcp
+	tcp = TCP{cn.TCP.FlagsBitmask, cn.TCP.SourcePort, cn.TCP.DestinationPort, cn.TCP.PortRange}
+	// udp
+	udp = UDP{cn.UDP.Length, cn.UDP.SourcePort, cn.UDP.DestinationPort, cn.UDP.PortRange}
+	// icmp
+	icmp = ICMP{cn.ICMP.Type, cn.ICMP.Code}
+	return &Capabilities{
+		AddressFamily:      addressFamily,
+		ForwardingActions:  forwardingActions,
+		RateLimit:          cn.RateLimit,
+		TransportProtocols: transportProtocols,
+		IPv4:               ipv4,
+		IPv6:               ipv6,
+		TCP:                tcp,
+		UDP:                udp,
+		ICMP:               icmp,
 	}, nil
 }
 
@@ -525,8 +739,6 @@ func (dc *Database) Store() {
 	GetServerSystemConfig().setDatabase(*dc)
 }
 
-//
-
 // System global configuration container
 type ServerSystemConfig struct {
 	SignalConfigurationParameter      *SignalConfigurationParameter
@@ -541,10 +753,13 @@ type ServerSystemConfig struct {
 	Network                           *Network
 	Database                          *Database
 	LifetimeConfiguration             *LifetimeConfiguration
+	Capabilities                      *Capabilities
 	MaxAgeOption                      uint
+	IsCacheBlockwiseTransfer          bool
 	CacheInterval                     int
 	QueryType                         []int
 	VendorMappingEnabled              bool
+	SessionTimeout                    int
 }
 
 func (sc *ServerSystemConfig) Store() {
@@ -560,10 +775,13 @@ func (sc *ServerSystemConfig) Store() {
 	GetServerSystemConfig().setNetwork(*sc.Network)
 	GetServerSystemConfig().setDatabase(*sc.Database)
 	GetServerSystemConfig().setLifetimeConfiguration(*sc.LifetimeConfiguration)
+	GetServerSystemConfig().setCapabilities(*sc.Capabilities)
 	GetServerSystemConfig().setMaxAgeOption(sc.MaxAgeOption)
+	GetServerSystemConfig().setIsCacheBlockwiseTransfer(sc.IsCacheBlockwiseTransfer)
 	GetServerSystemConfig().setCacheInterval(sc.CacheInterval)
 	GetServerSystemConfig().setQueryType(sc.QueryType)
 	GetServerSystemConfig().setVendorMappingEnabled(sc.VendorMappingEnabled)
+	GetServerSystemConfig().setSessionTimeout(sc.SessionTimeout)
 }
 
 type ServerSystemConfigNode struct {
@@ -579,10 +797,13 @@ type ServerSystemConfigNode struct {
 	Network                           NetworkNode                           `yaml:"network"`
 	Database                          DatabaseNode                          `yaml:"database"`
 	LifetimeConfiguration             LifetimeConfigurationNode             `yaml:"lifetimeConfiguration"`
+	Capabilities                      CapabilitiesNode                      `yaml:"capabilities"`
 	MaxAgeOption                      string                                `yaml:"maxAgeOption"`
+	IsCacheBlockwiseTransfer          bool                                  `yaml:"isCacheBlockwiseTransfer"`
 	CacheInterval                     string                                `yaml:"cacheInterval"`
 	QueryType                         string                                `yaml:"queryType"`
 	VendorMappingEnabled              bool                                  `yaml:"vendorMappingEnabled"`
+	SessionTimeout                    string                                `yaml:"sessionTimeout"`
 }
 
 func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
@@ -646,6 +867,11 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		return nil, err
 	}
 
+	capabilities, err := scn.Capabilities.Convert()
+	if err != nil {
+		return nil, err
+	}
+
 	maxAgeOption, err := ConvertMaxAge(scn.MaxAgeOption)
 	if err != nil {
 		return nil, err
@@ -656,6 +882,7 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+	sessionTimeout := parseIntegerValue(scn.SessionTimeout)
 
 	return &ServerSystemConfig{
 		SignalConfigurationParameter:      signalConfigurationParameter.(*SignalConfigurationParameter),
@@ -670,10 +897,13 @@ func (scn ServerSystemConfigNode) Convert() (interface{}, error) {
 		Network:                           network.(*Network),
 		Database:                          database.(*Database),
 		LifetimeConfiguration:             lifetimeConfiguration.(*LifetimeConfiguration),
+		Capabilities:                      capabilities.(*Capabilities),
 		MaxAgeOption:                      maxAgeOption,
+		IsCacheBlockwiseTransfer:          scn.IsCacheBlockwiseTransfer,
 		CacheInterval:                     cacheInterval,
 		QueryType:                         queryType,
-		VendorMappingEnabled:               scn.VendorMappingEnabled,
+		VendorMappingEnabled:              scn.VendorMappingEnabled,
+		SessionTimeout:                    sessionTimeout,
 	}, nil
 }
 
@@ -725,8 +955,16 @@ func (sc *ServerSystemConfig) setLifetimeConfiguration(parameter LifetimeConfigu
 	sc.LifetimeConfiguration = &parameter
 }
 
+func (sc *ServerSystemConfig) setCapabilities(parameter Capabilities) {
+	sc.Capabilities = &parameter
+}
+
 func (sc *ServerSystemConfig) setMaxAgeOption(parameter uint) {
 	sc.MaxAgeOption = parameter
+}
+
+func (sc *ServerSystemConfig) setIsCacheBlockwiseTransfer(parameter bool) {
+	sc.IsCacheBlockwiseTransfer = parameter
 }
 
 func (sc *ServerSystemConfig) setCacheInterval(parameter int) {
@@ -741,6 +979,10 @@ func (sc *ServerSystemConfig) setVendorMappingEnabled(parameter bool) {
 	sc.VendorMappingEnabled = parameter
 }
 
+func (sc *ServerSystemConfig) setSessionTimeout(parameter int) {
+	sc.SessionTimeout = parameter
+}
+
 var systemConfigInstance *ServerSystemConfig
 
 func GetServerSystemConfig() *ServerSystemConfig {
@@ -749,20 +991,6 @@ func GetServerSystemConfig() *ServerSystemConfig {
 		systemConfigInstance = &ServerSystemConfig{}
 	}
 	return systemConfigInstance
-}
-
-func parseHcl(hclText []byte) (*ServerConfigTree, error) {
-	hclParseTree, err := hcl.Parse(string(hclText))
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := &ServerConfigTree{}
-	if err := hcl.DecodeObject(&cfg, hclParseTree); err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
 }
 
 func parseServerYaml(configText []byte) (*ServerConfigTree, error) {
@@ -977,6 +1205,18 @@ func parseIntegerValue(input string) (res int) {
 	return
 }
 
+// Parse value to string to uint64
+func parseUint64Value(input string) (res uint64) {
+	var err error
+
+	res, err = strconv.ParseUint(input, 10, 64)
+	if err != nil {
+		// negative values must be dropped here
+		return
+	}
+	return
+}
+
 // input format examples: "1.5"
 // error input examples:  "-1.5"
 // return 0 on the parseServerConfig failures
@@ -1001,11 +1241,23 @@ type SignalConfigurationParameter struct {
 	MaxRetransmit     *IntegerParameterRange
 	AckTimeout        *FloatParameterRange
 	AckRandomFactor   *FloatParameterRange
+	MaxPayload        *IntegerParameterRange
+	NonMaxRetransmit  *IntegerParameterRange
+	NonTimeout        *FloatParameterRange
+	NonReceiveTimeout *FloatParameterRange
+	NonProbingWait    *FloatParameterRange
+	NonPartialWait    *FloatParameterRange
 	HeartbeatIntervalIdle *IntegerParameterRange
 	MissingHbAllowedIdle  *IntegerParameterRange
 	MaxRetransmitIdle     *IntegerParameterRange
 	AckTimeoutIdle        *FloatParameterRange
 	AckRandomFactorIdle   *FloatParameterRange
+	MaxPayloadIdle        *IntegerParameterRange
+	NonMaxRetransmitIdle  *IntegerParameterRange
+	NonTimeoutIdle        *FloatParameterRange
+	NonReceiveTimeoutIdle *FloatParameterRange
+	NonProbingWaitIdle    *FloatParameterRange
+	NonPartialWaitIdle    *FloatParameterRange
 }
 
 type DefaultSignalConfiguration struct {
@@ -1014,11 +1266,23 @@ type DefaultSignalConfiguration struct {
 	MaxRetransmit     int
 	AckTimeout        float64
 	AckRandomFactor   float64
+	MaxPayload        int
+	NonMaxRetransmit  int
+	NonTimeout        float64
+	NonReceiveTimeout float64
+	NonProbingWait    float64
+	NonPartialWait    float64
 	HeartbeatIntervalIdle int
 	MissingHbAllowedIdle  int
 	MaxRetransmitIdle     int
 	AckTimeoutIdle        float64
 	AckRandomFactorIdle   float64
+	MaxPayloadIdle        int
+	NonMaxRetransmitIdle  int
+	NonTimeoutIdle        float64
+	NonReceiveTimeoutIdle float64
+	NonProbingWaitIdle    float64
+	NonPartialWaitIdle    float64
 }
 
 type TelemetryConfigurationParameter struct {
@@ -1063,24 +1327,24 @@ type DefaultTarget struct {
 type DefaultTotalTrafficNormalBaseline struct {
 	Unit            int
 	Protocol        int
-	LowPercentileG  int
-	MidPercentileG  int
-	HighPercentileG int
-	PeakG           int
+	LowPercentileG  uint64
+	MidPercentileG  uint64
+	HighPercentileG uint64
+	PeakG           uint64
 }
 
 type DefaultTotalConnectionCapacity struct {
-	Protocol               int
-	Connection             int
-	ConnectionClient       int
-	EmbryOnic              int
-	EmbryOnicClient        int
-	ConnectionPs           int
-	ConnectionClientPs     int
-	RequestPs              int
-	RequestClientPs        int
-	PartialRequestPs       int
-	PartialRequestClientPs int
+	Protocol                int
+	Connection              uint64
+	ConnectionClient        uint64
+	EmbryOnic               uint64
+	EmbryOnicClient         uint64
+	ConnectionPs            uint64
+	ConnectionClientPs      uint64
+	RequestPs               uint64
+	RequestClientPs         uint64
+	PartialRequestMax       uint64
+	PartialRequestClientMax uint64
 }
 
 
@@ -1089,6 +1353,45 @@ type LifetimeConfiguration struct {
 	MaxActiveButTerminatingPeriod  int
 	ManageLifetimeInterval	       int
 	ConflictRetryTimer             int
+}
+
+type Capabilities struct {
+	AddressFamily      []string
+	ForwardingActions  []string
+	RateLimit          bool
+	TransportProtocols []uint8
+	IPv4               IP
+	IPv6               IP
+	TCP                TCP
+	UDP                UDP
+	ICMP               ICMP
+}
+
+type IP struct {
+	Length            bool
+	Protocol          bool
+	DestinationPrefix bool
+	SourcePrefix      bool
+	Fragment          bool
+}
+
+type TCP struct {
+	FlagsBitmask    bool
+	SourcePort      bool
+	DestinationPort bool
+	PortRange       bool
+}
+
+type UDP struct {
+	Length          bool
+	SourcePort      bool
+	DestinationPort bool
+	PortRange       bool
+}
+
+type ICMP struct {
+	Type bool
+	Code bool
 }
 
 func (scp *SignalConfigurationParameter) Store() {

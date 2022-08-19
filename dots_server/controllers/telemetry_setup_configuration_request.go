@@ -309,7 +309,7 @@ func handlePutTotalPipeCapacity(bodyRequest []messages.TotalPipeCapacity, custom
 	if isConflict {
 		log.Error("[Conflicted] Existed total pipe capacity")
 		conflictInfo = &models.ConflictInformation {
-			ConflictCause:  models.OVERLAPPING_TARGETS,
+			ConflictCause:  models.OVERLAPPING_PIPE_SCOPE,
 			ConflictScope:  nil,
 		}
 		res = Response {
@@ -559,8 +559,10 @@ func getMinMaxConfigValues()(maxConfig *messages.TelemetryConfigurationResponse,
 	config := dots_config.GetServerSystemConfig().TelemetryConfigurationParameter
 	if config != nil {
 		// Set Max of telemetry configuration from config value
-		maxConfig.MeasurementInterval       = config.MeasurementInterval.End().(int)
-		maxConfig.MeasurementSample         = config.MeasurementSample.End().(int)
+		maxInterval := config.MeasurementInterval.End().(int)
+		maxSample   := config.MeasurementSample.End().(int)
+		maxConfig.MeasurementInterval       = messages.IntervalString(maxInterval)
+		maxConfig.MeasurementSample         = messages.SampleString(maxSample)
 		maxConfig.LowPercentile             = decimal.NewFromFloat(config.LowPercentile.End().(float64)).Round(2)
 		maxConfig.MidPercentile             = decimal.NewFromFloat(config.MidPercentile.End().(float64)).Round(2)
 		maxConfig.HighPercentile            = decimal.NewFromFloat(config.HighPercentile.End().(float64)).Round(2)
@@ -569,8 +571,10 @@ func getMinMaxConfigValues()(maxConfig *messages.TelemetryConfigurationResponse,
 		maxConfig.TelemetryNotifyInterval   = &maxTelemetryNotifyInterval
 
 		// Set Min of telemetry configuration from config value
-		minConfig.MeasurementInterval     = config.MeasurementInterval.Start().(int)
-		minConfig.MeasurementSample       = config.MeasurementSample.Start().(int)
+		minInterval := config.MeasurementInterval.Start().(int)
+		minSample   := config.MeasurementSample.Start().(int)
+		minConfig.MeasurementInterval     = messages.IntervalString(minInterval)
+		minConfig.MeasurementSample       = messages.SampleString(minSample)
 		minConfig.LowPercentile           = decimal.NewFromFloat(config.LowPercentile.Start().(float64)).Round(2)
 		minConfig.MidPercentile           = decimal.NewFromFloat(config.MidPercentile.Start().(float64)).Round(2)
 		minConfig.HighPercentile          = decimal.NewFromFloat(config.HighPercentile.Start().(float64)).Round(2)
@@ -578,7 +582,7 @@ func getMinMaxConfigValues()(maxConfig *messages.TelemetryConfigurationResponse,
 		minConfig.TelemetryNotifyInterval = &minTelemetryNotifyInterval
 
 		// Set UnitConfig of telemetry configuration from config value
-		unitConfig := messages.UnitConfigResponse{Unit: config.Unit, UnitStatus: config.UnitStatus}
+		unitConfig := messages.UnitConfigResponse{Unit: messages.UnitString(config.Unit), UnitStatus: config.UnitStatus}
 		supportedUnit.UnitConfigList = append(supportedUnit.UnitConfigList, unitConfig)
 	}
 	return
@@ -602,8 +606,8 @@ func getTelemetryConfiguration(dbTelemetrySetupId int64) (currentConfig *message
 		}
 	}
 	if teleConfig != nil {
-		currentConfig.MeasurementInterval = teleConfig.MeasurementInterval
-		currentConfig.MeasurementSample = teleConfig.MeasurementSample
+		currentConfig.MeasurementInterval = messages.IntervalString(teleConfig.MeasurementInterval)
+		currentConfig.MeasurementSample = messages.SampleString(teleConfig.MeasurementSample)
 		currentConfig.LowPercentile = decimal.NewFromFloat(teleConfig.LowPercentile).Round(2)
 		currentConfig.MidPercentile = decimal.NewFromFloat(teleConfig.MidPercentile).Round(2)
 		currentConfig.HighPercentile = decimal.NewFromFloat(teleConfig.HighPercentile).Round(2)
@@ -675,7 +679,7 @@ func getBaseline(customerId int, cuid string, teleSetupId int64) (baselineList [
 			baseline.TargetPrefix = append(baseline.TargetPrefix, vPrefix.String())
 		}
 		for _, vPortRange := range v.TargetPortRange {
-			baseline.TargetPortRange = append(baseline.TargetPortRange, messages.PortRangeResponse{LowerPort: vPortRange.LowerPort, UpperPort: vPortRange.UpperPort})
+			baseline.TargetPortRange = append(baseline.TargetPortRange, messages.PortRangeResponse{LowerPort: vPortRange.LowerPort, UpperPort: &vPortRange.UpperPort})
 		}
 		for _, vProtocol := range v.TargetProtocol.List() {
 			baseline.TargetProtocol = append(baseline.TargetProtocol, vProtocol)

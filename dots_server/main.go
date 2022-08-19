@@ -51,14 +51,11 @@ func main() {
 	// Thread for monitoring remaining lifetime of mitigation requests
 	go controllers.ManageExpiredMitigation(config.LifetimeConfiguration.ManageLifetimeInterval)
 
-	// Thread for monitoring remaining max-age of signal session configuration
-	go controllers.ManageExpiredSessionMaxAge(config.LifetimeConfiguration.ManageLifetimeInterval)
-
 	// Thread for monitoring remaining lifetime of datachannel alias and acl requests
 	go data_models.ManageExpiredAliasAndAcl(config.LifetimeConfiguration.ManageLifetimeInterval)
 
 	log.Debug("listen Signal with DTLS param: %# v", dtlsParam)
-	signalCtx, err := listenSignal(config.Network.BindAddress, uint16(config.Network.SignalChannelPort), &dtlsParam)
+	signalCtx, err := listenSignal(config.Network.BindAddress, uint16(config.Network.SignalChannelPort), &dtlsParam, config.SessionTimeout)
 	if err != nil {
 		log.Error(err)
 		os.Exit(1)
@@ -81,17 +78,19 @@ func main() {
 
 	// Run Ping task mechanism that monitor client session thread
 	env := task.NewEnv(signalCtx)
-	// Create new cache
-	libcoap.CreateNewCache(int(messages.EXCHANGE_LIFETIME), config.CacheInterval)
+	// If IsCacheBlockwiseTransfer is true, server create new cache
+	if config.IsCacheBlockwiseTransfer {
+		libcoap.CreateNewCache(int(messages.EXCHANGE_LIFETIME), config.CacheInterval)
+	}
 
 	// Register nack handler
-    signalCtx.RegisterNackHandler(func(_ *libcoap.Context, session *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
+    signalCtx.RegisterNackHandler(func(session *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
 			// Pong message
-			env.HandleResponse(sent)
+			env.HandleResponse(session,sent)
 		} else if (reason == libcoap.NackTooManyRetries){
 			// Ping timeout
-			env.HandleTimeout(sent)
+			env.HandleTimeout(session, sent)
 		} else {
 			// Unsupported type
 			log.Infof("nack_handler gets fired with unsupported reason type : %+v.", reason)
@@ -99,8 +98,7 @@ func main() {
 	})
 
 	// Register event handler
-	signalCtx.RegisterEventHandler(func(_ *libcoap.Context, event libcoap.Event, session *libcoap.Session){
-		env.SetCoapSession(session)
+	signalCtx.RegisterEventHandler(func(session *libcoap.Session, event libcoap.Event){
 		if event == libcoap.EventSessionConnected {
 			// Session connected: Add session to map
 			log.Debugf("New session connecting to dots server: %+v", session.String())
@@ -108,6 +106,7 @@ func main() {
 		} else if event == libcoap.EventSessionDisconnected || event == libcoap.EventSessionError {
 			// Session disconnected: Remove session from map
 			log.Debugf("Remove connecting session from dots server: %+v", session.String())
+			env.RemoveSession(session)
 			libcoap.RemoveConnectingSession(session)
 		} else {
 			// Not support yet
@@ -117,10 +116,13 @@ func main() {
 
 	// Set env
 	task.SetEnv(env)
+
+	// Thread for monitoring remaining max-age of signal session configuration
+	go controllers.ManageExpiredSessionMaxAge(signalCtx , config.LifetimeConfiguration.ManageLifetimeInterval)
+
 	// Register response handler
 	signalCtx.RegisterResponseHandler(func(_ *libcoap.Context, session *libcoap.Session, _ *libcoap.Pdu, received *libcoap.Pdu) {
-		env.SetCoapSession(session)
-		env.HandleResponse(received)
+		env.HandleResponse(session, received)
 	})
 	
 	for {
@@ -139,8 +141,23 @@ func main() {
  */
 func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 	for _, resource := range libcoap.GetAllResource() {
-        if resource.GetRemovableResource() == true && (resource.GetIsBlockwiseInProgress() == false || !resource.IsObserved()) {
-			_, cuid, mid, err := messages.ParseURIPath(strings.Split(resource.UriPath(), "/"))
+		isDeleted := false
+		if resource.GetRemovableResource() {
+			if !resource.GetIsBlockwiseInProgress() && !resource.IsQBlock2() {
+				isDeleted = true
+			} else if (resource.GetIsBlockwiseInProgress() || resource.IsQBlock2()) && strings.Contains(resource.UriPath(), "/mid") &&
+			!resource.CheckDeleted() {
+				resource.SetCheckDeleted(true)
+				if resource.IsQBlock2() {
+					go SetQBlock2ToFalse(resource)
+				} else {
+					go CheckRemovedObserved(resource, context)
+				}
+			}
+		}
+		if isDeleted {
+			path := strings.Split(resource.UriPath(), "?")
+			_, cuid, mid, err := messages.ParseURIPath(strings.Split(path[0], "/"))
 			if err != nil {
 				log.Warnf("Failed to parse Uri-Path, error: %s", err)
 			}
@@ -154,11 +171,30 @@ func CheckDeleteMitigationAndRemovableResource(context *libcoap.Context) {
 				resourceAll := context.GetResourceByQuery(&uriPathSplit[0])
 				if resourceAll != nil {
 					resourceAll.SetIsBlockwiseInProgress(false)
+					resourceAll.SetQBlock2(false)
 				}
+				libcoap.DeleteUriFilterByKey(resource.UriPath())
+				libcoap.DeleteUriFilterByValue(resource.UriPath())
 			}
 
 			log.Debugf("Delete the sub-resource (uri-path=%+v)", resource.UriPath())
-            context.DeleteResource(resource)
+			context.DeleteResource(resource)
         }
     }
+}
+
+// Check observe is removed in case RST message
+func CheckRemovedObserved(resource *libcoap.Resource, context *libcoap.Context) {
+	time.Sleep(time.Duration(10)*time.Second)
+	if resource != nil && !context.CheckResourceDirty(resource) {
+		resource.SetIsBlockwiseInProgress(false)
+	}
+}
+
+// Set QBlock2 to False
+func SetQBlock2ToFalse(resource *libcoap.Resource) {
+	time.Sleep(time.Duration(10)*time.Second)
+	if resource != nil {
+		resource.SetQBlock2(false)
+	}
 }

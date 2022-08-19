@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/shopspring/decimal"
 	"bytes"
 	"errors"
 	"flag"
@@ -17,6 +16,8 @@ import (
 	"time"
 	"encoding/json"
 	"encoding/hex"
+	"github.com/shopspring/decimal"
+	"github.com/ugorji/go/codec"
 
 	"github.com/nttdots/go-dots/dots_common/messages"
 	"github.com/nttdots/go-dots/dots_client/task"
@@ -108,7 +109,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 	} else {
 		dtlsParam := libcoap.DtlsParam { &certFile, nil, &clientCertFile, &clientKeyFile, config.PinnedCertificate }
 		if orgEnv == nil {
-			ctx = libcoap.NewContextDtls(nil, &dtlsParam, int(libcoap.CLIENT_PEER))
+			ctx = libcoap.NewContextDtls(nil, &dtlsParam, int(libcoap.CLIENT_PEER), nil)
 			if ctx == nil {
 				log.Error("NewContextDtls() -> nil")
 				err = errors.New("NewContextDtls() -> nil")
@@ -144,7 +145,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 		env = orgEnv
 	}
 
-	ctx.RegisterEventHandler(func(_ *libcoap.Context, event libcoap.Event, session *libcoap.Session){
+	ctx.RegisterEventHandler(func( session *libcoap.Session, event libcoap.Event){
 		if event == libcoap.EventSessionConnected {
 			if orgEnv != nil {
 				orgEnv.SetReplacingSession(session)
@@ -152,12 +153,15 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 			}
 		} else if event == libcoap.EventSessionDisconnected {
 			if orgEnv == nil {
-				log.Warn("Server is stopped. DOTS client can't connect to server")
+				log.Warn("Session is disconnected.")
 				env.SetIsServerStopped(true)
 				return
 			}
 			session.SessionRelease()
 			restartConnection(env)
+		} else if event == libcoap.EventPartialBlock {
+			log.Debugf("Received Partial Block")
+			env.SetIsPartialBlock(true)
 		}
 	})
 
@@ -175,7 +179,7 @@ func connectSignalChannel(orgEnv *task.Env) (env *task.Env, err error) {
 		}
 	})
 
-	ctx.RegisterNackHandler(func(_ *libcoap.Context, _ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
+	ctx.RegisterNackHandler(func(_ *libcoap.Session, sent *libcoap.Pdu, reason libcoap.NackReason) {
 		if (reason == libcoap.NackRst){
 			// Pong message
 			handleResponse(env, sent)
@@ -199,6 +203,15 @@ func heartbeatHandler() libcoap.MethodHandler {
 	return func(ctx *libcoap.Context, rsrc *libcoap.Resource, sess *libcoap.Session, request *libcoap.Pdu, token *[]byte, query *string, response *libcoap.Pdu) {
 		log.Info("Handle receive heartbeat from server")
 		log.Debugf("request.Data=\n%s", hex.Dump(request.Data))
+		// Decode heartbeat message
+		dec := codec.NewDecoder(bytes.NewReader(request.Data), common.NewCborHandle())
+		var v messages.HeartBeatRequest
+		err := dec.Decode(&v)
+		if err != nil {
+			log.WithError(err).Warn("CBOR Decode failed.")
+			return
+		}
+		log.Infof("        CBOR decoded: %+v", v.String())
 		body, errMsg := messages.ValidateHeartBeatMechanism(request)
 		response.MessageID = request.MessageID
         response.Token     = request.Token
@@ -302,21 +315,17 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 			jsonData = buff.Bytes()
 		}
 
-		if r.Method == "POST" && requestName == string(client_message.CLIENTCONFIGURATION) {
-			var clientConfig *client_message.ClientConfigRequest
-			err := json.Unmarshal(jsonData, &clientConfig)
-			if err != nil {
-				log.Errorf("Failed to parse json data : %+v", err)
-				return
-			}
-			mode := clientConfig.SessionConfig.Mode
-			log.Debugf("Session config mode: %+v",mode)
-			if mode == string(client_message.IDLE) || mode == string(client_message.MITIGATING) {
-				log.Debug("Session config mode is valid. Switch to new session config mode")
-				env.SetSessionConfigMode(mode)
-			} else {
-				log.Debug("Session config mode is invalid")
-			}
+		if r.Method == "POST" {
+            switch requestName {
+                case string(client_message.CLIENT_CONFIGURATION):
+                    handleClientConfiguration(jsonData, env);
+                case string(client_message.CLIENT_CONFIGURATION_HEARTBEAT):
+                    handleClientConfigurationHeartBeat(jsonData, env);
+                case string(client_message.CLIENT_CONFIGURATION_QBLOCK):
+                    handleClientConfigurationQblock(jsonData, env);
+                case string(client_message.CLIENT_CONFIGURATION_BLOCK):
+                    handleClientConfigurationBlock(jsonData, env);
+            }
 			return
 		}
 
@@ -336,7 +345,8 @@ func makeServerHandler(env *task.Env) http.HandlerFunc {
 * Check if request name is client config request
 */
 func isClientConfigRequest(requestName string) bool {
-	if requestName == string(client_message.CLIENTCONFIGURATION) {
+	if requestName == string(client_message.CLIENT_CONFIGURATION) || requestName == string(client_message.CLIENT_CONFIGURATION_HEARTBEAT) ||
+	   requestName == string(client_message.CLIENT_CONFIGURATION_QBLOCK) || requestName == string(client_message.CLIENT_CONFIGURATION_BLOCK) {
 		return true
 	}
 	return false
@@ -428,6 +438,11 @@ func restartConnection (env *task.Env) {
  *  env   the client environment data
  */
 func handleResponse(env *task.Env, pdu *libcoap.Pdu) {
+	if env.IsPartialBlock() {
+		log.Debugf("Unexpected incoming PDU: %s", pdu.ToString())
+		env.SetIsPartialBlock(false)
+		return
+	}
     key := pdu.AsMapKey()
     t, ok := env.Requests()[key]
     if !ok {
@@ -445,13 +460,16 @@ func handleResponse(env *task.Env, pdu *libcoap.Pdu) {
 				log.Debug("Handle forget notification")
 				env.CoapSession().HandleForgetNotification(pdu)
 			} else {
-				log.Debugf("Unexpected incoming PDU: %+v", pdu)
+				// Resource is deleted, then dots-client receive the response message from libcoap
+				if pdu.Type == libcoap.TypeNon && pdu.Code == libcoap.ResponseNotFound && env.IsDeletedResource(string(pdu.Token)) {
+					log.Debugf("Resource is deleted. Incoming PDU: %s", pdu.ToString())
+					env.DeleteTokenOfDeletedResource(string(pdu.Token))
+				} else {
+					log.Debugf("Unexpected incoming PDU: %s", pdu.ToString())
+				}
 			}
         }
     } else if !t.IsStop() {
-        if pdu.Type != libcoap.TypeNon {
-            log.Debugf("Success incoming PDU (HandleResponse): %+v", pdu)
-		}
 		delete(env.Requests(), key)
         t.Stop()
         t.GetResponseHandler()(t, pdu, env)
@@ -495,6 +513,12 @@ func loadConfig(env *task.Env) {
 	if config.SecondRequestBlockSize != nil && *config.SecondRequestBlockSize >= 0 {
 		env.SetSecondRequestBlockSize(config.SecondRequestBlockSize)
 	}
+	// Set config of QBlock2 to libcoap
+	if config.QBlockOption != nil {
+		qblock := *config.QBlockOption
+		env.SetRetransmitParamsForQBlock(qblock.QBlockSize, qblock.MaxPayloads, qblock.NonMaxRetransmit,
+		qblock.NonTimeout, qblock.NonReceiveTimeout)
+	}
 }
 
 func main() {
@@ -537,6 +561,12 @@ func main() {
 			log.Fatalf("dots_client.main --  file not found : %s", err.Error())
 			os.Exit(1)
 		}
+	}
+
+	if config.SecureFile != nil {
+		certFile = config.SecureFile.CertFile
+		clientCertFile = config.SecureFile.ClientCertFile
+		clientKeyFile = config.SecureFile.ClientKeyFile
 	}
 
 	for _, filePath := range []string{certFile, clientCertFile, clientKeyFile} {
@@ -617,4 +647,87 @@ func CheckReplacingSession(env *task.Env) {
 				heartbeatResponseHandler,
 				heartbeatTimeoutHandler))
 	}
+}
+
+// Handle set config mode by request from client controller (idle or mitigating)
+func handleClientConfiguration(jsonData []byte, env *task.Env) {
+	var clientConfig *client_message.ClientConfigRequest
+	err := json.Unmarshal(jsonData, &clientConfig)
+	if err != nil {
+		log.Errorf("Failed to parse json data : %+v", err)
+		return
+	}
+	mode := clientConfig.SessionConfig.Mode
+	log.Debugf("Session config mode: %s", mode)
+	if mode == string(client_message.IDLE) || mode == string(client_message.MITIGATING) {
+		log.Debugf("Session config mode is valid. Switch to new session config mode: %s", mode)
+		env.SetSessionConfigMode(mode)
+	} else {
+		log.Debug("Session config mode is invalid")
+	}
+}
+
+// Handle set heart beat parameters by request from client controller
+func handleClientConfigurationHeartBeat(jsonData []byte, env *task.Env) {
+    var clientConfigHeartBeat *client_message.ClientConfigHeartBeatRequest
+	err := json.Unmarshal(jsonData, &clientConfigHeartBeat)
+	if err != nil {
+		log.Errorf("Failed to parse json data : %+v", err)
+		return
+	}
+	heartbeatInterval := clientConfigHeartBeat.SessionConfigHeartBeat.HeartBeatInterval
+	missingHbAllowed := clientConfigHeartBeat.SessionConfigHeartBeat.MissingHbAllowed
+	maxRetransmit := clientConfigHeartBeat.SessionConfigHeartBeat.MaxRetransmit
+	ackTimeout := decimal.NewFromFloat(clientConfigHeartBeat.SessionConfigHeartBeat.AckTimeout).Round(2)
+	ackRandomFactor := decimal.NewFromFloat(clientConfigHeartBeat.SessionConfigHeartBeat.AckRandomFactor).Round(2)
+	log.Debugf("Set new parameter for heart beat. Restart ping task with: \n%s", clientConfigHeartBeat.SessionConfigHeartBeat.String())
+	// Set max-retransmit, ack-timeout, ack-random-factor to libcoap
+	env.SetRetransmitParams(maxRetransmit, ackTimeout, ackRandomFactor)
+	pingTimeout, _ := ackTimeout.Float64()
+	env.StopHeartBeat()
+	env.SetMissingHbAllowed(missingHbAllowed)
+	env.Run(task.NewHeartBeatTask(
+			time.Duration(heartbeatInterval)* time.Second,
+			missingHbAllowed,
+			time.Duration(pingTimeout) * time.Second,
+			heartbeatResponseHandler,
+			heartbeatTimeoutHandler))
+}
+
+// Handle set QBlock paramters by request from client controller
+func handleClientConfigurationQblock(jsonData []byte, env *task.Env) {
+	var clientConfigQBlock *client_message.ClientConfigQBlockRequest
+	err := json.Unmarshal(jsonData, &clientConfigQBlock)
+	if err != nil {
+		log.Errorf("Failed to parse json data : %+v", err)
+		return
+	}
+	qblock := clientConfigQBlock.SessionConfigQBlock
+	// Validate qblock size
+	if qblock.QBlockSize < 0 || qblock.QBlockSize > 7 {
+		log.Errorf("q-block-size: %+v is invalid", qblock.QBlockSize)
+		return
+	}
+	log.Debugf("Set new parameter for qblock option: \n%s", qblock.String())
+	env.SetRetransmitParamsForQBlock(qblock.QBlockSize, qblock.MaxPayload, qblock.NonMaxRetransmit, 
+		qblock.NonTimeout, qblock.NonReceiveTimeout)
+	env.SetInitialRequestBlockSize(nil)
+}
+
+// Handle set Block paramter by request from client controller
+func handleClientConfigurationBlock(jsonData []byte, env *task.Env) {
+	var clientConfigBlock *client_message.ClientConfigBlockRequest
+	err := json.Unmarshal(jsonData, &clientConfigBlock)
+	if err != nil {
+		log.Errorf("Failed to parse json data : %+v", err)
+		return
+	}
+	blockSize := clientConfigBlock.SessionConfigBlock.BlockSize
+	// Validate block size
+	if blockSize < 0 || blockSize > 7 {
+		log.Errorf("block-size: %+v is invalid", blockSize)
+		return
+	}
+	log.Debugf("Set new parameter for block option with block-size: %d", blockSize)
+	env.SetInitialRequestBlockSize(&blockSize)
 }

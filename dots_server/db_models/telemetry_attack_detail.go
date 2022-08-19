@@ -8,10 +8,10 @@ type TelemetryAttackDetail struct {
 	MitigationScopeId int64     `xorm:"'mitigation_scope_id' not null"`
 	VendorId          int       `xorm:"vendor_id"`
 	AttackId          int       `xorm:"'attack_id' not null"`
-	AttackName        string    `xorm:"attack_name"`
-	AttackSeverity    string    `xorm:"'attack_severity' enum('NONE','LOW','MEDIUM','HIGH','UNKNOWN') not null"`
-	StartTime         int       `xorm:"start_time"`
-	EndTime           int       `xorm:"end_time"`
+	AttackDescription string    `xorm:"attack_description"`
+	AttackSeverity    string    `xorm:"'attack_severity' enum('none','low','medium','high','unknown') not null"`
+	StartTime         uint64    `xorm:"start_time"`
+	EndTime           uint64    `xorm:"end_time"`
 	Created           time.Time `xorm:"created"`
 	Updated           time.Time `xorm:"updated"`
 }
