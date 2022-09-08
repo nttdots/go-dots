@@ -278,10 +278,10 @@ All shell-script and sample json files are located in below directory:
 ### Get Root Resource Path
 
     Get root resource:
-    $ ./get_root_resource.sh SERVER_NAME
+    $ ./do_request_from_file.sh GET https://SERVER_NAME/.well-known/host-meta
 
     Example:
-        - Request: $ ./get_root_resource.sh https://127.0.0.1:10443
+        - Request: $ ./do_request_from_file.sh GET https://127.0.0.1:10443/.well-known/host-meta
         - Response:
         <XRD xmlns="https://127.0.0.1">
             <Link rel="restconf" href="https://127.0.0.1:10443/v1/restconf"></Link>
