@@ -49,12 +49,11 @@ Licensed under Apache License 2.0.
 
 To build libcoap for go-dots. We will work as follow:
 
-- Pull and build libcoap. Currenly supported libcoap version : v4.3.0
+- Pull and build libcoap. Currenly supported libcoap version : v4.3.1-rc1 (42d4f793a4be4a9fff0ad980bffa7528f6d639a7)
     ```
     $ git clone https://github.com/nttdots/libcoap.git
     $ cd libcoap
-    $ git fetch origin 4b3ac1f47e66bf25ec720cc186d428c6b0f10ab9
-    $ git checkout 4b3ac1f47e66bf25ec720cc186d428c6b0f10ab9
+    $ git checkout -b q-block origin/q-block
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
     $ sudo make && sudo make install

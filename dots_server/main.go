@@ -108,6 +108,12 @@ func main() {
 			log.Debugf("Remove connecting session from dots server: %+v", session.String())
 			env.RemoveSession(session)
 			libcoap.RemoveConnectingSession(session)
+		} else if event == libcoap.EventSessionNew {
+			log.Debugf("Create new session: %+v", session.String())
+		} else if event == libcoap.EventSessionDelete {
+			log.Debugf("Delete session: %+v", session.String())
+		} else if event == libcoap.EventXmitBlockFail{
+			log.Debug("Xmit block is failed.")
 		} else {
 			// Not support yet
 			log.Warnf("Unsupported event")
