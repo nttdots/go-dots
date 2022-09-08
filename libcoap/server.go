@@ -28,6 +28,9 @@ const (
     EventSessionRenegotiate  Event = C.COAP_EVENT_DTLS_RENEGOTIATE
     EventSessionError        Event = C.COAP_EVENT_DTLS_ERROR
     EventPartialBlock        Event = C.COAP_EVENT_PARTIAL_BLOCK //(Q-)BLOCK receive errors
+    EventSessionNew          Event = C.COAP_EVENT_SERVER_SESSION_NEW
+    EventSessionDelete       Event = C.COAP_EVENT_SERVER_SESSION_DEL
+    EventXmitBlockFail       Event = C.COAP_EVENT_XMIT_BLOCK_FAIL
 )
 
 func (context *Context) ContextSetPSK(identity string, key []byte) {
@@ -204,6 +207,9 @@ func newEvent (ev C.coap_event_t) Event {
     case C.COAP_EVENT_DTLS_RENEGOTIATE: return EventSessionRenegotiate
     case C.COAP_EVENT_DTLS_ERROR:       return EventSessionError
     case C.COAP_EVENT_PARTIAL_BLOCK:    return EventPartialBlock
+    case C.COAP_EVENT_SERVER_SESSION_NEW: return EventSessionNew
+    case C.COAP_EVENT_SERVER_SESSION_DEL: return EventSessionDelete
+    case C.COAP_EVENT_XMIT_BLOCK_FAIL:    return EventXmitBlockFail
     default: return -1
     }
 }

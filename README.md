@@ -49,12 +49,11 @@ Licensed under Apache License 2.0.
 
 To build libcoap for go-dots. We will work as follow:
 
-- Pull and build libcoap. Currenly supported libcoap version : v4.3.0
+- Pull and build libcoap. Currenly supported libcoap version : v4.3.1-rc1 (42d4f793a4be4a9fff0ad980bffa7528f6d639a7)
     ```
     $ git clone https://github.com/nttdots/libcoap.git
     $ cd libcoap
-    $ git fetch origin 4b3ac1f47e66bf25ec720cc186d428c6b0f10ab9
-    $ git checkout 4b3ac1f47e66bf25ec720cc186d428c6b0f10ab9
+    $ git checkout -b q-block origin/q-block
     $ ./autogen.sh
     $ ./configure --disable-documentation --with-openssl
     $ sudo make && sudo make install
@@ -279,10 +278,10 @@ All shell-script and sample json files are located in below directory:
 ### Get Root Resource Path
 
     Get root resource:
-    $ ./get_root_resource.sh SERVER_NAME
+    $ ./do_request_from_file.sh GET https://SERVER_NAME/.well-known/host-meta
 
     Example:
-        - Request: $ ./get_root_resource.sh https://127.0.0.1:10443
+        - Request: $ ./do_request_from_file.sh GET https://127.0.0.1:10443/.well-known/host-meta
         - Response:
         <XRD xmlns="https://127.0.0.1">
             <Link rel="restconf" href="https://127.0.0.1:10443/v1/restconf"></Link>

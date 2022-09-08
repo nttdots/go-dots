@@ -1,11 +1,14 @@
 package models
 
-import  (
+import (
 	"fmt"
+	"math"
 	"strconv"
+	"strings"
+
 	"github.com/nttdots/go-dots/dots_common/messages"
-	log "github.com/sirupsen/logrus"
 	dots_config "github.com/nttdots/go-dots/dots_server/config"
+	log "github.com/sirupsen/logrus"
 )
 
 // declare instance variables
@@ -444,11 +447,51 @@ func ValidatePort(port *int) (isUnprocessableEntity bool, errMsg string) {
 // Validate traffic
 func ValidateTraffic(trafficList []messages.Traffic) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
-	for _, v := range trafficList {
-		isUnprocessableEntity, errMsg = ValidateUnit(v.Unit)
+	lowPercentileList := make(map[messages.UnitString]uint64)
+	midPercentileList := make(map[messages.UnitString]uint64)
+	highPercentileList := make(map[messages.UnitString]uint64)
+	peakPercentileList := make(map[messages.UnitString]uint64)
+	currentPercentileList := make(map[messages.UnitString]uint64)
+	for _, traffic := range trafficList {
+		isUnprocessableEntity, errMsg = ValidateUnit(traffic.Unit)
 		if errMsg != "" {
 			return
 		}
+		unit := *traffic.Unit
+		if traffic.LowPercentileG != nil {
+			errMsg = ValidateConflictForUnit(lowPercentileList, uint64(*traffic.LowPercentileG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.MidPercentileG != nil {
+			errMsg = ValidateConflictForUnit(midPercentileList, uint64(*traffic.MidPercentileG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.HighPercentileG != nil {
+			errMsg = ValidateConflictForUnit(highPercentileList, uint64(*traffic.HighPercentileG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.PeakG != nil {
+			errMsg = ValidateConflictForUnit(peakPercentileList, uint64(*traffic.PeakG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.CurrentG != nil {
+			errMsg = ValidateConflictForUnit(currentPercentileList, uint64(*traffic.CurrentG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+	}
+	errMsg = ValidateConflictScale(lowPercentileList, midPercentileList, highPercentileList, peakPercentileList, currentPercentileList)
+	if errMsg != "" {
+		return
 	}
 	return
 }
@@ -456,15 +499,55 @@ func ValidateTraffic(trafficList []messages.Traffic) (isUnprocessableEntity bool
 // Validate traffic per protocol
 func ValidateTrafficPerProtocol(trafficList []messages.TrafficPerProtocol) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
-	for _, v := range trafficList {
-		isUnprocessableEntity, errMsg = ValidateUnit(v.Unit)
+	lowPercentileList := make(map[messages.UnitString]uint64)
+	midPercentileList := make(map[messages.UnitString]uint64)
+	highPercentileList := make(map[messages.UnitString]uint64)
+	peakPercentileList := make(map[messages.UnitString]uint64)
+	currentPercentileList := make(map[messages.UnitString]uint64)
+	for _, traffic := range trafficList {
+		isUnprocessableEntity, errMsg = ValidateUnit(traffic.Unit)
 		if errMsg != "" {
 			return
 		}
-		isUnprocessableEntity, errMsg = ValidateProtocol(v.Protocol)
+		isUnprocessableEntity, errMsg = ValidateProtocol(traffic.Protocol)
 		if errMsg != "" {
 			return
 		}
+		unit := *traffic.Unit
+		if traffic.LowPercentileG != nil {
+			errMsg = ValidateConflictForUnit(lowPercentileList, uint64(*traffic.LowPercentileG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.MidPercentileG != nil {
+			errMsg = ValidateConflictForUnit(midPercentileList, uint64(*traffic.MidPercentileG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.HighPercentileG != nil {
+			errMsg = ValidateConflictForUnit(highPercentileList, uint64(*traffic.HighPercentileG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.PeakG != nil {
+			errMsg = ValidateConflictForUnit(peakPercentileList, uint64(*traffic.PeakG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.CurrentG != nil {
+			errMsg = ValidateConflictForUnit(currentPercentileList, uint64(*traffic.CurrentG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+	}
+	errMsg = ValidateConflictScale(lowPercentileList, midPercentileList, highPercentileList, peakPercentileList, currentPercentileList)
+	if errMsg != "" {
+		return
 	}
 	return
 }
@@ -472,15 +555,55 @@ func ValidateTrafficPerProtocol(trafficList []messages.TrafficPerProtocol) (isUn
 // Validate traffic per port
 func ValidateTrafficPerPort(trafficList []messages.TrafficPerPort) (isUnprocessableEntity bool, errMsg string) {
 	isUnprocessableEntity = false
-	for _, v := range trafficList {
-		isUnprocessableEntity, errMsg = ValidateUnit(v.Unit)
+	lowPercentileList := make(map[messages.UnitString]uint64)
+	midPercentileList := make(map[messages.UnitString]uint64)
+	highPercentileList := make(map[messages.UnitString]uint64)
+	peakPercentileList := make(map[messages.UnitString]uint64)
+	currentPercentileList := make(map[messages.UnitString]uint64)
+	for _, traffic := range trafficList {
+		isUnprocessableEntity, errMsg = ValidateUnit(traffic.Unit)
 		if errMsg != "" {
 			return
 		}
-		isUnprocessableEntity, errMsg = ValidatePort(v.Port)
+		isUnprocessableEntity, errMsg = ValidatePort(traffic.Port)
 		if errMsg != "" {
 			return
 		}
+		unit := *traffic.Unit
+		if traffic.LowPercentileG != nil {
+			errMsg = ValidateConflictForUnit(lowPercentileList, uint64(*traffic.LowPercentileG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.MidPercentileG != nil {
+			errMsg = ValidateConflictForUnit(midPercentileList, uint64(*traffic.MidPercentileG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.HighPercentileG != nil {
+			errMsg = ValidateConflictForUnit(highPercentileList, uint64(*traffic.HighPercentileG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.PeakG != nil {
+			errMsg = ValidateConflictForUnit(peakPercentileList, uint64(*traffic.PeakG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+		if traffic.CurrentG != nil {
+			errMsg = ValidateConflictForUnit(currentPercentileList, uint64(*traffic.CurrentG), unit)
+			if errMsg != "" {
+				return
+			}
+		}
+	}
+	errMsg = ValidateConflictScale(lowPercentileList, midPercentileList, highPercentileList, peakPercentileList, currentPercentileList)
+	if errMsg != "" {
+		return
 	}
 	return
 }
@@ -529,4 +652,191 @@ func ConvertToSecond(stringValue string) (second int) {
 	case string(messages.MONTH):           second = 30*24*60*60
 	}
 	return second
+}
+
+/**
+ * Validate unit for low-percentile-g, mid-percentile-g, high-percentile-g, peak-g, current-g
+ * parameter:
+ *    lowPercentileList: the list with key is unit, value is value of low-percentile-g
+ *    midPercentileList: the list with key is unit, value is value of mid-percentile-g
+ *    highPercentileList: the list with key is unit, value is value of high-percentile-g
+ *    peakPercentileList: the list with key is unit, value is value of peak-g
+ *    currentPercentileList: the list with key is unit, value is value of current-g
+ * return
+ *    errMsg:
+ *       if unit is not conflict, errMsg is ""
+ *       if unit is conflict, errMsg is not ""
+ */
+func ValidateConflictScale(lowPercentileList map[messages.UnitString]uint64, midPercentileList map[messages.UnitString]uint64,
+	highPercentileList map[messages.UnitString]uint64, peakPercentileList map[messages.UnitString]uint64,
+	currentPercentileList map[messages.UnitString]uint64) (errMsg string) {
+	if len(lowPercentileList) > 1 {
+		errMsg = ValidateConflictScaleForUnit(lowPercentileList)
+		if errMsg != "" {
+			return
+		}
+	}
+	if len(midPercentileList) > 1 {
+		errMsg = ValidateConflictScaleForUnit(midPercentileList)
+		if errMsg != "" {
+			return
+		}
+	}
+	if len(highPercentileList) > 1 {
+		errMsg = ValidateConflictScaleForUnit(highPercentileList)
+		if errMsg != "" {
+			return
+		}
+	}
+	if len(peakPercentileList) > 1 {
+		errMsg = ValidateConflictScaleForUnit(peakPercentileList)
+		if errMsg != "" {
+			return
+		}
+	}
+	if len(currentPercentileList) > 1 {
+		errMsg = ValidateConflictScaleForUnit(currentPercentileList)
+		if errMsg != "" {
+			return
+		}
+	}
+	return
+}
+
+/**
+ * Check conflict for unit
+ * parameter:
+ *    percentileList: the list with key is unit, value is value of
+ *                    low-percentile-g/mid-percentile-g/high-percentile-g/peak-g/current-g
+ *    percentile: the value of low-percentile-g/mid-percentile-g/high-percentile-g/peak-g/current-g
+ *    unit: the unit
+ * return
+ *    errMsg:
+ *       if unit is not conflict, errMsg is ""
+ *       if unit is conflict, errMsg is not ""
+ */
+func ValidateConflictForUnit(percentileList map[messages.UnitString]uint64, percentile uint64, unit messages.UnitString) (errMsg string) {
+	if percentileList[unit] != 0 && percentileList[unit] != percentile {
+		unitStr := messages.ConvertUnitToString(unit)
+		errMsg = fmt.Sprintf("Conflict unit between %d(%s) and %d(%s)", percentileList[unit], unitStr, percentile, unitStr)
+		return
+	} else {
+		percentileList[unit] = percentile
+	}
+	return
+}
+
+/**
+ * Auto scale and check conflict for unit
+ * parameter:
+ *    percentileList: the list with key is unit, value is value of
+ *                    low-percentile-g/mid-percentile-g/high-percentile-g/peak-g/current-g
+ * return
+ *    errMsg:
+ *       if unit is not conflict, errMsg is ""
+ *       if unit is conflict, errMsg is not ""
+ */
+func ValidateConflictScaleForUnit(percentileList map[messages.UnitString]uint64) (errMsg string) {
+	var scaleNumber uint64
+	var indexNumber uint8
+	var percentileOrigin uint64
+	var percentileCompare uint64
+	var unitCompare messages.UnitString
+	for unit, percentile := range percentileList {
+		isByteUnit := false
+		switch unit {
+		case messages.PacketsPerSecond:
+		case messages.BitsPerSecond:
+			indexNumber = 0
+			break
+		case messages.BytesPerSecond:
+			indexNumber = 0
+			isByteUnit = true
+			break
+		case messages.KiloPacketsPerSecond:
+		case messages.KiloBitsPerSecond:
+			indexNumber = 1
+			break
+		case messages.KiloBytesPerSecond:
+			indexNumber = 1
+			isByteUnit = true
+			break
+		case messages.MegaPacketsPerSecond:
+		case messages.MegaBitsPerSecond:
+			indexNumber = 2
+			break
+		case messages.MegaBytesPerSecond:
+			indexNumber = 2
+			isByteUnit = true
+			break
+		case messages.GigaPacketsPerSecond:
+		case messages.GigaBitsPerSecond:
+			indexNumber = 3
+			break
+		case messages.GigaBytesPerSecond:
+			indexNumber = 3
+			isByteUnit = true
+			break
+		case messages.TeraPacketsPerSecond:
+		case messages.TeraBitsPerSecond:
+			indexNumber = 4
+			break
+		case messages.TeraBytesPerSecond:
+			indexNumber = 4
+			isByteUnit = true
+			break
+		case messages.PetaPacketsPerSecond:
+		case messages.PetaBitsPerSecond:
+			indexNumber = 5
+			break
+		case messages.PetaBytesPerSecond:
+			indexNumber = 5
+			isByteUnit = true
+			break
+		case messages.ExaPacketsPerSecond:
+		case messages.ExaBitsPerSecond:
+			indexNumber = 6
+			break
+		case messages.ExaBytesPerSecond:
+			indexNumber = 6
+			isByteUnit = true
+			break
+		case messages.ZettaPacketsPerSecond:
+		case messages.ZettaBitsPerSecond:
+			indexNumber = 7
+			break
+		case messages.ZettaBytesPerSecond:
+			indexNumber = 7
+			isByteUnit = true
+			break
+		}
+
+		if indexNumber >= 1 {
+			scaleNumber = percentile * uint64(math.Pow(1000, float64(indexNumber)))
+			unitStr := messages.ConvertUnitToString(unit)
+			unitConvert := string(messages.BITS_PER_SECOND)
+			if strings.Contains(unitStr, string(messages.PACKETS_PER_SECOND)) {
+				unitConvert = string(messages.PACKETS_PER_SECOND)
+			} else if strings.Contains(unitStr, string(messages.BYTES_PER_SECOND)) {
+				unitConvert = string(messages.BYTES_PER_SECOND)
+			}
+			log.Debugf("Auto scale %d(%s) to %d(%s)", percentile, unitStr, scaleNumber, unitConvert)
+		} else {
+			scaleNumber = percentile
+		}
+		if isByteUnit && unit != unitCompare {
+			scaleNumber = scaleNumber*8
+		}
+
+		if percentileCompare != 0 && percentileCompare != scaleNumber {
+			errMsg = fmt.Sprintf("Conflict unit between %d(%s) and %d(%s)", percentileOrigin,
+				messages.ConvertUnitToString(unitCompare), percentile, messages.ConvertUnitToString(unit))
+			return
+		} else if percentileCompare == 0 {
+			percentileOrigin = percentile
+			percentileCompare = scaleNumber
+			unitCompare = unit
+		}
+	}
+	return
 }
