@@ -471,7 +471,7 @@ CREATE TABLE `blocker_configuration` (
 INSERT INTO `blocker_configuration` (`id`, `customer_id`, `target_type`, `blocker_type`, `created`, `updated`)
 VALUES
 (1, 128, "mitigation_request", "GoBGP-RTBH", '2017-04-13 13:44:34', '2017-04-13 13:44:34'),
-(2, 128, "datachannel_acl", "Arista-ACL", '2017-04-13 13:44:34', '2017-04-13 13:44:34');
+(2, 128, "datachannel_acl", "GoBGP-FlowSpec", '2017-04-13 13:44:34', '2017-04-13 13:44:34');
 
 # blocker_configuration_parameter
 # ------------------------------------------------------------
