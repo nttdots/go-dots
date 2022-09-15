@@ -118,7 +118,7 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (is
 			}
 		}
 
-		// valid attribute value check
+		// Validate attribute value check
 		if compareSource != nil {
 			if !(compareSource.heartbeat_interval.Includes(float64(sc.HeartbeatInterval)) &&
 				compareSource.missing_hb_allowed.Includes(float64(sc.MissingHbAllowed)) &&
@@ -147,6 +147,14 @@ func (v *SignalConfigurationValidator) Validate(m MessageEntity, c Customer) (is
 					isUnprocessableEntity = true
 					return
 			}
+		}
+
+		// Validate max-payload attribute
+		if sc.MaxPayload != sc.MaxPayloadIdle {
+			errMessage = "The max-payload of idle-config and mitigating-config MUST convey the same value."
+			log.Error(errMessage)
+			isUnprocessableEntity = true
+			return
 		}
 	}
 

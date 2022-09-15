@@ -384,6 +384,7 @@ func (m *SessionConfiguration) HandleDelete(newRequest Request, customer *models
 
 func setDefaultValues (data *messages.SignalConfigs) {
 	defaultValue := dots_config.GetServerSystemConfig().DefaultSignalConfiguration
+	// Set default value for mitigating-config
 	if data.MitigatingConfig.HeartbeatInterval.CurrentValue == nil {
 		data.MitigatingConfig.HeartbeatInterval.CurrentValue = &defaultValue.HeartbeatInterval
 	}
@@ -400,9 +401,6 @@ func setDefaultValues (data *messages.SignalConfigs) {
 	if data.MitigatingConfig.AckRandomFactor.CurrentValue == nil {
 		temp := decimal.NewFromFloat(defaultValue.AckRandomFactor)
 		data.MitigatingConfig.AckRandomFactor.CurrentValue = &temp
-	}
-	if data.MitigatingConfig.MaxPayload.CurrentValue == nil {
-		data.MitigatingConfig.MaxPayload.CurrentValue = &defaultValue.MaxPayload
 	}
 	if data.MitigatingConfig.NonMaxRetransmit.CurrentValue == nil {
 		data.MitigatingConfig.NonMaxRetransmit.CurrentValue = &defaultValue.NonMaxRetransmit
@@ -426,6 +424,8 @@ func setDefaultValues (data *messages.SignalConfigs) {
 	if data.IdleConfig.HeartbeatInterval.CurrentValue == nil {
 		data.IdleConfig.HeartbeatInterval.CurrentValue = &defaultValue.HeartbeatIntervalIdle
 	}
+
+	// Set default value for idle-config
 	if data.IdleConfig.MissingHbAllowed.CurrentValue == nil {
 		data.IdleConfig.MissingHbAllowed.CurrentValue = &defaultValue.MissingHbAllowedIdle
 	}
@@ -439,9 +439,6 @@ func setDefaultValues (data *messages.SignalConfigs) {
 	if data.IdleConfig.AckRandomFactor.CurrentValue == nil {
 		temp := decimal.NewFromFloat(defaultValue.AckRandomFactorIdle)
 		data.IdleConfig.AckRandomFactor.CurrentValue = &temp
-	}
-	if data.IdleConfig.MaxPayload.CurrentValue == nil {
-		data.IdleConfig.MaxPayload.CurrentValue = &defaultValue.MaxPayloadIdle
 	}
 	if data.IdleConfig.NonMaxRetransmit.CurrentValue == nil {
 		data.IdleConfig.NonMaxRetransmit.CurrentValue = &defaultValue.NonMaxRetransmitIdle
@@ -463,6 +460,15 @@ func setDefaultValues (data *messages.SignalConfigs) {
 		data.IdleConfig.NonPartialWait.CurrentValue = &temp
 	}
 
+	// Set value for max-payload
+	if data.MitigatingConfig.MaxPayload.CurrentValue == nil && data.IdleConfig.MaxPayload.CurrentValue == nil {
+		data.MitigatingConfig.MaxPayload.CurrentValue = &defaultValue.MaxPayload
+		data.IdleConfig.MaxPayload.CurrentValue = &defaultValue.MaxPayload
+	} else if data.MitigatingConfig.MaxPayload.CurrentValue == nil {
+		data.MitigatingConfig.MaxPayload.CurrentValue = data.IdleConfig.MaxPayload.CurrentValue
+	} else if data.IdleConfig.MaxPayload.CurrentValue == nil {
+		data.IdleConfig.MaxPayload.CurrentValue = data.MitigatingConfig.MaxPayload.CurrentValue
+	}
 }
 
 /*
