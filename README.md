@@ -14,7 +14,7 @@
 * draft-ietf-dots-signal-filter-control-07
 * draft-ietf-dots-signal-call-home-09
 * RFC9244 (was draft-ietf-dots-telemetry-25)
-* draft-ietf-dots-robust-blocks-03
+* draft-ietf-dots-robust-blocks-04
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
