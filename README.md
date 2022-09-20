@@ -167,7 +167,7 @@ In order to handle out-of-order delivery of mitigation requests, 'mid' values MU
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
-### Client Controller [mitigation_retrieve_all_query]
+### Client Controller [mitigation_retrieve_multi_query]
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -targetProtocol=17 -aliasName=https1
@@ -176,6 +176,11 @@ In order to handle out-of-order delivery of mitigation requests, 'mid' values MU
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -targetPrefix=1.2.0.10/32
+
+### Client Controller [mitigation_retrieve_content_query]
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -c=c
 
 ### Client Controller [mitigation_withdraw]
 
