@@ -28,7 +28,7 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.18.1 or later is required. (for the latest GoBGP - v3.0.0)
+  * go 1.18.1 or later is required. (for the latest GoBGP - v3.5.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.1g or higher (for libcoap)
@@ -119,8 +119,8 @@ To install and run gobgp-server, refer to the following link:
 
 Buid gobgp as below:
 
-    $ sudo chmod -R 777 $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.0.0
-    $ cd $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.0.0
+    $ sudo chmod -R 777 $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.5.0
+    $ cd $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.5.0
     $ go build -o $GOPATH/bin ./cmd/gobgp
     $ go build -o $GOPATH/bin ./cmd/gobgpd
 

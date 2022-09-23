@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/mux v1.8.0
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.10.5
-	github.com/osrg/gobgp/v3 v3.0.0
+	github.com/osrg/gobgp/v3 v3.5.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.8.1
