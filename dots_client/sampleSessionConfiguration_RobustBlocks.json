@@ -52,7 +52,7 @@
                 "current-value-decimal":2.50
             },
             "ietf-dots-robust-trans:max-payloads":{
-                "current-value":15
+                "current-value":10
             },
             "ietf-dots-robust-trans:non-max-retransmit":{
                 "current-value":4

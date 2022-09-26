@@ -14,7 +14,7 @@
 * draft-ietf-dots-signal-filter-control-07
 * draft-ietf-dots-signal-call-home-09
 * RFC9244 (was draft-ietf-dots-telemetry-25)
-* draft-ietf-dots-robust-blocks-03
+* draft-ietf-dots-robust-blocks-04
 
 This implementation is not fully compliant with the documents listed above.  For example, we are utilizing CoAP as the data channel protocol while the current version of the data channel document specifies RESTCONF as the data channel protocol.
 
@@ -28,7 +28,7 @@ Licensed under Apache License 2.0.
 * make, autoconf, automake, libtool, pkg-config, pkgconf or pkg-config
 * [git](https://git-scm.com/)
 * [go](https://golang.org/doc/install)
-  * go 1.18.1 or later is required. (for the latest GoBGP - v3.0.0)
+  * go 1.18.1 or later is required. (for the latest GoBGP - v3.5.0)
   * set PATH to go and set $GOPATH, using their instructions.
 * [openssl](https://www.openssl.org/)
   * OpenSSL 1.1.1g or higher (for libcoap)
@@ -119,8 +119,8 @@ To install and run gobgp-server, refer to the following link:
 
 Buid gobgp as below:
 
-    $ sudo chmod -R 777 $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.0.0
-    $ cd $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.0.0
+    $ sudo chmod -R 777 $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.5.0
+    $ cd $GOPATH/pkg/mod/github.com/osrg/gobgp/v3@v3.5.0
     $ go build -o $GOPATH/bin ./cmd/gobgp
     $ go build -o $GOPATH/bin ./cmd/gobgpd
 
@@ -167,7 +167,7 @@ In order to handle out-of-order delivery of mitigation requests, 'mid' values MU
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123
 
-### Client Controller [mitigation_retrieve_all_query]
+### Client Controller [mitigation_retrieve_multi_query]
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -targetProtocol=17 -aliasName=https1
@@ -176,6 +176,11 @@ In order to handle out-of-order delivery of mitigation requests, 'mid' values MU
 
     $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
      -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -targetPrefix=1.2.0.10/32
+
+### Client Controller [mitigation_retrieve_content_query]
+
+    $ $GOPATH/bin/dots_client_controller -request mitigation_request -method Get \
+     -cuid=dz6pHjaADkaFTbjr0JGBpw -mid=123 -c=c
 
 ### Client Controller [mitigation_withdraw]
 
