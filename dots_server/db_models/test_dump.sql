@@ -215,11 +215,6 @@ CREATE TABLE `mitigation_scope` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-INSERT INTO `mitigation_scope` (`id`, `customer_id`, `client_identifier`, `client_domain_identifier`, `mitigation_id`, `status`, `lifetime`, `trigger-mitigation`,`created`, `updated`)
-VALUES
-  (1,128,'','',12332,7,1000, 1,'2017-04-13 13:44:34','2017-04-13 13:44:34'),
-  (2,128,'','',12333,7,1000, 1,'2017-04-13 13:44:34','2017-04-13 13:44:34');
-
 # mitigation_scope trigger when status change
 # ------------------------------------------------------------
 
