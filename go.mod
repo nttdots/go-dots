@@ -31,7 +31,7 @@ require (
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	xorm.io/builder v0.3.6 // indirect
 	xorm.io/core v0.7.2-0.20190928055935-90aeac8d08eb // indirect
 )
