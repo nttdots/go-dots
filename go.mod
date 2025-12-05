@@ -1,6 +1,6 @@
 module github.com/nttdots/go-dots
 
-go 1.18
+go 1.23.0
 
 require (
 	github.com/aristanetworks/goeapi v0.6.0
@@ -15,7 +15,7 @@ require (
 	github.com/osrg/gobgp/v3 v3.5.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/shopspring/decimal v1.3.1
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.8.3
 	github.com/ugorji/go/codec v1.2.7
 	github.com/xeipuuv/gojsonschema v1.2.0
 	google.golang.org/grpc v1.56.3
